@@ -34,6 +34,7 @@ import CadVoiceBroadcastMonitor from '@/components/CadVoiceBroadcastMonitor';
 import CadSourceSyncMonitor from '@/components/CadSourceSyncMonitor';
 import SupervisorOperationsMonitor from '@/components/SupervisorOperationsMonitor';
 import GlobalOperationsTicker from '@/components/GlobalOperationsTicker';
+import CommandPromotionBanner from '@/components/command/CommandPromotionBanner';
 import NotificationMonitor from '@/components/NotificationMonitor';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
 import WelcomeBriefing from '@/components/WelcomeBriefing';
@@ -1766,6 +1767,7 @@ export default function Layout({ children, currentPageName }) {
       </header>
 
       <GlobalOperationsTicker user={user} currentPageName={currentPageName} />
+      <CommandPromotionBanner user={user}/>
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
       <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${MODERNIZED_WORKSPACE_PAGES.has(currentPageName) ? 'pathfinder-modern-page' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
