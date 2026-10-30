@@ -26,8 +26,12 @@ export function useOwnLocationHidden(userId) {
     const setHidden = hidden => { confirmedHidden = hidden; setVisibility({ userId, hidden }); };
     let active = true;
     let email = '';
+    let lastReadAt=0;
+    let pendingRead=false;
     const apply = value => { ++version.current; if (active) setHidden(value); };
     const refresh = async () => {
+      if(pendingRead || Date.now()-lastReadAt<30000)return;
+      pendingRead=true;lastReadAt=Date.now();
       const requestVersion = ++version.current;
       try {
         const { data } = await base44.functions.invoke('manageLiveLocationPrivacy', { action: 'get' });
@@ -36,6 +40,7 @@ export function useOwnLocationHidden(userId) {
           setHidden(data.hidden === true);
         }
       } catch { /* Keep the last confirmed visibility; never reveal a hidden marker on an error. */ }
+      finally{pendingRead=false;}
     };
     const changed = event => {
       if (event?.detail?.user_id !== userId || typeof event.detail.hidden !== 'boolean') return;

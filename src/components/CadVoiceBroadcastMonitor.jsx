@@ -52,12 +52,13 @@ export default function CadVoiceBroadcastMonitor({ user }) {
     const recover = async () => {
       if (disposed || busy || navigator.onLine === false) { schedule(); return; }
       const health = getBase44RequestHealth();
-      if (health.rateLimitedUntil || health.readRetryAt) { schedule(60000); return; }
+      if (health.rateLimitedUntil || health.readRetryAt) { schedule(120000); return; }
       busy = true; lastRecovery = Date.now();
       try {
         const data = await invoke({action:'list'});
         for (const record of data.broadcasts || []) await process(record);
       } catch (error) {
+        if (/429|rate.limit|too many requests/i.test(String(error?.message || ''))) schedule(120000);
         console.warn('CAD voice recovery will retry:', error?.message || 'Connection unavailable');
       } finally { busy = false; schedule(); }
     };
