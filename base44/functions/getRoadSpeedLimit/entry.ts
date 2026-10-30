@@ -87,6 +87,27 @@ async function tomtomJson(endpoint: string, params: URLSearchParams, timeoutMs =
 // The broader road catalog requires a privately configured TomTom API key.
 // Snap the officer's actual recent GPS segment; do not derive a legal speed
 // from road class, average traffic speed, or a fictional GPS coordinate.
+async function lookupTomTomSinglePointSpeed(lat:number,lng:number,heading:number,requestedRoad:string) {
+  if (!tomtomKeys().length) return null;
+  // TomTom Reverse Geocoding provides the actual posted limit when available;
+  // unlike route matching it can work immediately without a second GPS fix.
+  const params = new URLSearchParams({ radius: '25', returnSpeedLimit: 'true', language: 'en-US' });
+  if (Number.isFinite(heading)) params.set('heading', String(Math.round(((heading % 360) + 360) % 360)));
+  const payload = await tomtomJson(`/search/2/reverseGeocode/${lat},${lng}.json`, params);
+  const record = payload?.addresses?.[0];
+  const address = record?.address || {};
+  const rawLimit = String(address.speedLimit || '').trim().toUpperCase();
+  const match = rawLimit.match(/^(\d+(?:\.\d+)?)(KPH|MPH)$/);
+  if (!match) return null;
+  const number = Number(match[1]);
+  const mph = match[2] === 'MPH' ? number : number * 0.621371;
+  if (mph < 10 || mph > 90) return null;
+  const streetName = String(address.streetName || address.street || '');
+  // Never conflate a named junction's next-turn instruction with actual GPS road.
+  return { speed_limit_mph: Math.round(mph), road_name: streetName || requestedRoad,
+    source: 'TomTom matched posted speed limit', estimated: false };
+}
+
 async function lookupTomTomPostedLimit(
   lat: number, lng: number, priorLat: number, priorLng: number, requestedRoad: string,
 ) {
@@ -183,15 +204,17 @@ Deno.serve(async req => {
     const cached = cachedSpeedLimit(cacheKey);
     if (cached) return Response.json({ success: true, ...cached });
 
-    // Prefer verified state records. On roads with no state inventory entry,
-    // the optional commercial road-matching catalog covers city/county streets
-    // where a speed limit is available. Without credentials, fall back to OSM.
+    // Prefer road-matched limits from the GPS track, then exact single-point
+    // reverse-geocoding (works on the very first precise GPS fix), followed by
+    // state inventory and OSM. Each step reports N/A rather than guessing.
+    const priorLat = body.previous_latitude == null ? NaN : Number(body.previous_latitude);
+    const priorLng = body.previous_longitude == null ? NaN : Number(body.previous_longitude);
+    const tomtomTrack = await lookupTomTomPostedLimit(lat, lng, priorLat, priorLng, requestedRoad).catch(() => null);
+    if (tomtomTrack) return Response.json({ success: true, ...storeSpeedLimit(cacheKey, tomtomTrack) });
+    const tomtomPoint = await lookupTomTomSinglePointSpeed(lat, lng, heading, requestedRoad).catch(() => null);
+    if (tomtomPoint) return Response.json({ success: true, ...storeSpeedLimit(cacheKey, tomtomPoint) });
     const virginia = await lookupVirginiaPostedLimit(lat, lng, heading, requestedRoad).catch(() => null);
     if (virginia) return Response.json({ success: true, ...storeSpeedLimit(cacheKey, virginia) });
-    const priorLat = Number(body.previous_latitude);
-    const priorLng = Number(body.previous_longitude);
-    const tomtom = await lookupTomTomPostedLimit(lat, lng, priorLat, priorLng, requestedRoad).catch(() => null);
-    if (tomtom) return Response.json({ success: true, ...storeSpeedLimit(cacheKey, tomtom) });
 
     if (Date.now() < osmBackoffUntil) return Response.json({ success: true,
       ...storeSpeedLimit(cacheKey, { speed_limit_mph: null, road_name: requestedRoad,
