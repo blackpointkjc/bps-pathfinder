@@ -30,7 +30,7 @@ Deno.serve(async req => {
     const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
     const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id'];
     const siteRecords = async (entity:any,limit=200) => {
-      const rows = await entity.filter({site_name:site},'-created_date',limit).catch(()=>[]);
+      const rows = await entity.filter({site_name:site},'-created_date',limit);
       return rows.filter((row:any)=>siteKey(row.site_name)===siteKey(site));
     };
     if (action==='sites') {
@@ -53,7 +53,8 @@ Deno.serve(async req => {
       }
       if(!officer)return fail('Officer records access required',403);
       const query=clean(data.query,100).toLowerCase();if(query.length<2)return fail('Enter a person name, plate or VIN');
-      const terms=query.split(/\s+/).filter(Boolean);
+      const terms=query.split(/\s+/).filter(term=>/[a-z0-9]{2,}/i.test(term));
+      if(!terms.length)return fail('Enter a name or a complete plate/VIN');
       const found=rows.filter((row:any)=> {
         const name=clean(row.full_name).toLowerCase(), plate=plateKey(row.vehicle_plate), vin=clean(row.vehicle_vin).toUpperCase();
         return terms.every(term=>name.includes(term)||plate.includes(plateKey(term))||vin.includes(term.toUpperCase()));
