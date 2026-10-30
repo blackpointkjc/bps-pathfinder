@@ -32,6 +32,7 @@ import { listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirecto
 
 export default function AdminUsers({ embedded = false }) {
   const navigate = useNavigate();
+  const goToPromotions=()=>navigate('/AdminCenter?section=people&admin_people_tool=promotion');
   const [accountSearch,setAccountSearch]=useState("");
   const [accountRole,setAccountRole]=useState("all");
   const [editingUser, setEditingUser] = useState(null);
@@ -729,6 +730,7 @@ export default function AdminUsers({ embedded = false }) {
             </TabsList>
 
             <TabsContent value="active" className="mt-4">
+             <button type="button" onClick={goToPromotions} className="mb-3 rounded-lg border border-amber-500 bg-amber-950/40 px-4 py-2 text-xs font-black text-amber-200">🎖️ Promotions / Change of Command</button>
              <div className="overflow-x-auto rounded-xl border border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-900 text-xs text-slate-400"><tr><th className="p-3">Account</th><th className="p-3">Access</th><th className="p-3">Platoon / Unit</th><th className="p-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-800 bg-slate-950">{approvedStaff.map(person=><tr key={person.id} className="hover:bg-slate-900"><td className="p-3"><div className="flex items-center gap-3">{person.profile_photo_url&&<img src={person.profile_photo_url} alt="" className="h-10 w-10 rounded-full object-cover"/>}<div><strong className="block text-white">{(person.additional_roles||[]).includes('client')?[person.first_name,person.last_name].filter(Boolean).join(' '):[person.rank,person.last_name].filter(Boolean).join(' ')||person.full_name||person.email}</strong><span className="text-xs text-slate-400">{person.email}</span></div></div></td><td className="p-3"><div className="flex max-w-sm flex-wrap gap-1">{[...(person.role==='admin'?['admin']:[]),...(person.additional_roles||[])].map(role=><span key={role} className="rounded border border-slate-700 px-2 py-1 text-xs text-cyan-200">{accessLabel(role)}</span>)}{isPendingUser(person)&&<span className="text-xs text-amber-300">Pending access</span>}</div></td><td className="p-3 text-slate-300">{person.platoon||'—'} / {person.unit_number||'—'}</td><td className="p-3"><Button type="button" size="sm" variant="outline" onClick={()=>handleEditUser(person)}>Manage account</Button>{isPendingUser(person)&&<select aria-label={'Assign access to '+person.email} defaultValue="" onChange={async event=>{const category=event.target.value;if(category&&await confirmInApp('Assign '+category+' access to '+person.email+'?'))await assignUserCategory(person,category);event.target.value='';}} className="ml-2 rounded border border-slate-600 bg-slate-900 p-2 text-xs text-white"><option value="">Assign access…</option>{['officer','support','student','client'].map(role=><option key={role}>{role}</option>)}</select>}</td></tr>)}</tbody></table>{!approvedStaff.length&&<p className="p-6 text-sm text-slate-400">No accounts match these filters.</p>}</div>
             </TabsContent>
             <TabsContent value="pending" className="mt-4 space-y-3">

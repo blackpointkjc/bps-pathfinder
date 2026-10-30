@@ -20,6 +20,7 @@ import AdminGeofenceAlerts from './AdminGeofenceAlerts';
 import AdminAutoDispatchControls from './AdminAutoDispatchControls';
 import AdminOfficerManagement from './AdminOfficerManagement';
 import AdminUsers from './AdminUsers';
+import AdminPromotions from './AdminPromotions';
 import AdminDutyAttendance from './AdminDutyAttendance';
 import AdminLocations from './AdminLocations';
 import AdminReports from './AdminReports';
@@ -154,6 +155,7 @@ function AdminPersonnelAccessHub() {
  return <AdminInlineFunctions queryParam="admin_people_tool" defaultTool="availability" tools={[
   {id:'availability',label:'Personnel & Command',component:AdminOfficerManagement},
   {id:'users',label:'Accounts & Access',component:AdminUsers},
+  {id:'promotion',label:'Promotions & Command',component:AdminPromotions},
   {id:'clients',label:'Client Accounts',component:ManageClients},
   {id:'duty',label:'Duty & Attendance',component:AdminDutyAttendance},
  ]}/>;
