@@ -33,6 +33,17 @@ Deno.serve(async req => {
       const rows = await entity.filter({site_name:site},'-created_date',limit);
       return rows.filter((row:any)=>siteKey(row.site_name)===siteKey(site));
     };
+    // Supervisor Action Items can display parking approvals without loading
+    // resident PII or scanning every property's vehicle registry.
+    if(action==='review_queue'){
+      if(!supervisor)return fail('Supervisor approval access required',403);
+      const pending=await entities.ParkingViolation.filter({status:'issued'},'-created_date',100);
+      return Response.json({reviews:(pending||[]).filter((v:any)=>v.supervisor_review_status!=='approved').map((v:any)=>({
+        id:v.id,citation_number:v.citation_number,location:v.location,violation_date:v.violation_date,
+        license_plate:v.license_plate,violation_type:v.violation_type,officer_name:v.officer_name,
+        status:v.status,supervisor_review_status:v.supervisor_review_status,
+      }))});
+    }
     if (action==='sites') {
       // Client site lists come only from assigned user locations. Officers may
       // use the existing location directory but never receive resident lists
@@ -93,9 +104,16 @@ Deno.serve(async req => {
       const input=data.violation||{};
       const entry:any={};for(const field of parkingFields)if(input[field]!==undefined)entry[field]=typeof input[field]==='string'?clean(input[field],field==='description'?2200:300):input[field];
       if(!plateKey(entry.license_plate)||!clean(entry.violation_type))return fail('Plate and violation type are required');
-      entry.license_plate=plateKey(entry.license_plate);entry.location=site;entry.violation_date=entry.violation_date||dates().slice(0,10);
+      entry.license_plate=plateKey(entry.license_plate);entry.location=site;
+      // Never trust a flag or linked resident id supplied by the officer.
+      // Plate verification happens against server-side property records only.
+      entry.resident_id='';entry.resident_verified=false;
+      const residents=await siteRecords(entities.PropertyResident,300);
+      const matchingResident=residents.find((r:any)=>plateKey(r.vehicle_plate)===entry.license_plate && clean(r.vehicle_state).toUpperCase()===clean(entry.license_state).toUpperCase());
+      if(matchingResident){entry.resident_id=matchingResident.id;entry.resident_verified=true;}
+      entry.violation_date=entry.violation_date||dates().slice(0,10);
       entry.violation_time=entry.violation_time||dates().slice(11,16);
-      entry.citation_number=entry.citation_number||`BPS-PV-${Date.now().toString(36).toUpperCase()}`;
+      entry.citation_number=`BPS-PV-${crypto.randomUUID().slice(0,12).toUpperCase()}`;
       const rules=await siteRecords(entities.PropertyParkingRule,100);
       const rule=rules.find((r:any)=>r.violation_type===entry.violation_type&&r.active!==false);
       entry.warning_issued=rule?.warning_only===true||entry.warning_issued===true;
@@ -119,6 +137,12 @@ Deno.serve(async req => {
       const patch:any={};for(const field of parkingFields){if(input[field]!==undefined)patch[field]=typeof input[field]==='string'?clean(input[field],field==='description'?2200:300):input[field];}
       if(patch.license_plate)patch.license_plate=plateKey(patch.license_plate);
       patch.location=original.location;patch.citation_number=original.citation_number;
+      // The server's property registry is authoritative; a client payload
+      // cannot mark an arbitrary plate as an active registered resident.
+      const currentPlate=plateKey(patch.license_plate||original.license_plate);
+      const currentState=clean(patch.license_state||original.license_state).toUpperCase();
+      const registered=(await siteRecords(entities.PropertyResident,300)).find((r:any)=>plateKey(r.vehicle_plate)===currentPlate&&clean(r.vehicle_state).toUpperCase()===currentState);
+      patch.resident_id=registered?.id||'';patch.resident_verified=!!registered;
       patch.fine_amount=original.fine_amount;patch.status='issued';patch.supervisor_review_status='pending';patch.was_rejected=true;
       patch.approval_history=[...(Array.isArray(original.approval_history)?original.approval_history:[]),history(user,'resubmitted',patch.description||'Officer revised returned parking notice')].slice(-60);
       return Response.json({success:true,violation:await entities.ParkingViolation.update(id,patch)});
@@ -152,7 +176,10 @@ Deno.serve(async req => {
       const notes=clean(data.notes,1000);
       let patch:any={};
       if(client){if(!['acknowledged','disputed','resolved'].includes(status))return fail('Invalid client response');patch={client_review_status:status,client_notes:notes};}
-      else if(supervisor){if(!['approved','returned','rejected'].includes(status))return fail('Invalid supervisor decision');patch=status==='approved'?{supervisor_review_status:'approved',status:'approved',supervisor_notes:notes}:{supervisor_review_status:'returned',status:'rejected',supervisor_notes:notes,admin_notes:notes,was_rejected:true};}
+      else if(supervisor){if(!['approved','returned','rejected'].includes(status))return fail('Invalid supervisor decision');
+        if(old.status!=='issued')return fail('Only submitted, pending notices can be approved or returned');
+        if((status==='returned'||status==='rejected')&&!notes)return fail('A reason is required when returning a notice');
+        patch=status==='approved'?{supervisor_review_status:'approved',status:'approved',supervisor_notes:notes}:{supervisor_review_status:'returned',status:'rejected',supervisor_notes:notes,admin_notes:notes,was_rejected:true};}
       else return fail('Review access required',403);
       patch.approval_history=[...(Array.isArray(old.approval_history)?old.approval_history:[]),history(user,client?'client_review':'supervisor_review',`${status}: ${notes}`)].slice(-60);
       const result=await entities.ParkingViolation.update(id,patch);
