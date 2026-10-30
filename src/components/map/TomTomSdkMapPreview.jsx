@@ -3,6 +3,17 @@ import { createPortal } from 'react-dom';
 import { X, Shield, MapPin, Crosshair, CloudSun } from 'lucide-react';
 import { appParams } from '@/lib/app-params';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import maplibreWorkerCode from 'maplibre-gl/dist/maplibre-gl-worker.mjs?raw';
+
+let inlinedMaplibreWorkerURL = null;
+const workerURL = () => {
+  if (!inlinedMaplibreWorkerURL) {
+    // Private Base44 apps can deny unauthenticated worker-file downloads.
+    // A same-document Blob worker needs no additional auth or network fetch.
+    inlinedMaplibreWorkerURL = URL.createObjectURL(new Blob([maplibreWorkerCode], {type:'text/javascript'}));
+  }
+  return inlinedMaplibreWorkerURL;
+};
 
 const coords = (point) => Array.isArray(point) && point.length >= 2
   && [point[0],point[1]].every(n => Number.isFinite(Number(n)))
@@ -100,7 +111,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         // No API key is passed to the map. The authenticated Base44 function
         // adds credentials upstream and strips them from styles and other data.
         TomTomConfig.instance.put({commonBaseURL:proxy,language:'en-US'});
-        maplibre.setWorkerUrl('/tomtom-sdk/maplibre-gl-worker.mjs');
+        maplibre.setWorkerUrl(workerURL());
         sdk=new TomTomMap({registerMapLibreWorker:false,
           style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['trafficFlow','trafficIncidents']},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
