@@ -445,7 +445,11 @@ async function fastGeocodeWebsiteCall(call: any) {
 async function geocodeFreshWebsiteOnlyCalls(calls: any[]) {
   const now = Date.now();
   const candidates = (calls || []).filter(call => call?.source_channel === 'grac_website_live'
-    && !Number.isFinite(Number(call.latitude))
+    && !(call.latitude !== null && call.latitude !== undefined && call.latitude !== ''
+      && call.longitude !== null && call.longitude !== undefined && call.longitude !== ''
+      && Number.isFinite(Number(call.latitude)) && Number.isFinite(Number(call.longitude))
+      && Math.abs(Number(call.latitude)) <= 90 && Math.abs(Number(call.longitude)) <= 180
+      && !(Number(call.latitude) === 0 && Number(call.longitude) === 0))
     && now - new Date(call.time_received || 0).getTime() <= 45 * 60_000).slice(0, 8);
   const replacements = new Map<string, any>();
   const batch = await Promise.all(candidates.map(fastGeocodeWebsiteCall));
@@ -1132,7 +1136,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     try {
     const located=await fastGeocodeWebsiteCall(call);
     if(!Number.isFinite(Number(located.latitude))||!Number.isFinite(Number(located.longitude)))return;
-    const patch={latitude:located.latitude,longitude:located.longitude,geo_confidence:located.geo_confidence,geo_method:located.geo_method,geo_approximate:true};
+    const patch={latitude:located.latitude,longitude:located.longitude,geo_confidence:located.geo_confidence,geo_method:located.geo_method,geo_approximate:located.geo_approximate !== false};
     const updatedCall=await base44.asServiceRole.entities.DispatchCall.update(call.id,patch);
     propertyAlertsCreated+=await createImmediatePropertyAlerts(base44,{...call,...patch,...updatedCall},monitored,callPropertyKeys,alertKeys,sideEffects);
     } catch(error:any) {alertFailures++;console.warn('New call is published; coordinate enrichment will retry',error?.message||error);}
