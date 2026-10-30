@@ -60,12 +60,7 @@ const angleDifference = (a, b) => {
     return Math.abs((((Number(a) - Number(b)) % 360) + 540) % 360 - 180);
 };
 
-const PRIORITY_COLORS = {
-    critical: 'bg-red-600 text-white',
-    high: 'bg-orange-600 text-white',
-    medium: 'bg-yellow-500 text-black',
-    low: 'bg-slate-600 text-slate-200',
-};
+
 const STATUS_DOT = {
     'Available': 'bg-slate-400',
     'Dispatched': 'bg-cyan-400',

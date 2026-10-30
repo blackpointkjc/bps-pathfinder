@@ -103,3 +103,7 @@
  .pf-call-panel-body {flex:none;overflow:visible;}
  .pf-call-footer {position:sticky;bottom:0;z-index:2;}
 }
+
+.bps-operations-ticker {height:28px!important;box-shadow:none!important;background:#2a1d24!important;border-bottom-color:#58363d!important;}
+.bps-operations-ticker-track button {font-family:Inter,system-ui,sans-serif!important;font-size:11px!important;font-weight:550!important;letter-spacing:0!important;text-transform:none!important;padding-block:4px!important;}
+@media(max-width:600px){.pf-map-header-actions{max-width:100%;flex-wrap:wrap;justify-content:flex-end;}}

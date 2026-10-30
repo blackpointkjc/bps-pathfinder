@@ -36,7 +36,11 @@ export default function CADCenter({ embedded = false }) {
  useEffect(()=>{
   if(!['dispatch','map'].includes(active.id)||!hostRef.current)return;
   const host=hostRef.current;
-  const measure=()=>host.style.setProperty('--cad-workspace-height',`${Math.max(180,window.innerHeight-Math.max(0,host.getBoundingClientRect().top)-8)}px`);
+  const measure=()=>{
+    const viewport=host.closest('main[data-page]');
+    const bottom=Math.min(window.innerHeight,viewport?.getBoundingClientRect().bottom||window.innerHeight);
+    host.style.setProperty('--cad-workspace-height',Math.max(160,bottom-Math.max(0,host.getBoundingClientRect().top)-8)+'px');
+  };
   measure();
   const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
   if(host.parentElement)observer?.observe(host.parentElement);

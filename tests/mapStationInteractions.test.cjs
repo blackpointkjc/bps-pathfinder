@@ -31,6 +31,7 @@ function load(file){
   if(name==='react-leaflet'||name==='lucide-react')return leafletComponents;
   if(name==='leaflet')return leaflet;
   if(name==='react-leaflet-cluster')return 'MarkerClusterGroup';
+  if(name==='./MapIconFilters')return {MapIconFilterContent:'MapIconFilterContent'};
   if(name.startsWith('@/'))return load(path.resolve('src',name.slice(2))+'.js');
   if(name.startsWith('.')){
    const dest=path.resolve(path.dirname(file),name);
@@ -79,6 +80,20 @@ verifyInteraction(load('src/components/map/PrecinctMarkers.jsx').default,{showSt
 verifyInteraction(load('src/components/map/JailMarkers.jsx').default,{showJails:true},'onNavigateToJail',4);
 verifyInteraction(load('src/components/map/CCPDStation.jsx').default,{showStations:true},'onNavigateToStation',1);
 verifyInteraction(load('src/components/map/RAAStations.jsx').default,{showStations:true},'onNavigateToStation',5);
+// The compact dock owns its adjacent drawer and forwards controls explicitly.
+const ToolDock=load('src/components/map/MapToolDock.jsx').default;
+const panelChanges=[],actionCalls=[];
+const actions=['search','recenter','fitunits','calls','home'].map(key=>({key,title:key,icon:key,onClick:()=>actionCalls.push(key)}));
+let dockElements=walk(ToolDock({actions,panel:null,onPanelChange:value=>panelChanges.push(value),filters:{},onFiltersChange:()=>{}}));
+assert.equal(dockElements.filter(e=>e.type==='button').length,6);
+dockElements.find(e=>e.props['aria-label']==='Map layers').props.onClick();
+assert.deepEqual(panelChanges,['layers']);
+assert.deepEqual(actionCalls,[]);
+dockElements=walk(ToolDock({actions,panel:'layers',onPanelChange:value=>panelChanges.push(value),filters:{},onFiltersChange:()=>{}}));
+assert.equal(dockElements.filter(e=>e.type==='aside').length,1);
+dockElements.find(e=>e.props['aria-label']==='Close map tools').props.onClick();
+assert.equal(panelChanges.at(-1),null);
+
 // Unit marker uses the same popup-only policy; its existing button remains.
 const units=fs.readFileSync('src/components/map/OtherUnitsLayer.jsx','utf8');
 assert(!units.includes('eventHandlers={{ click: () => onUnitClick'));
