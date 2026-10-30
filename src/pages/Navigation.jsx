@@ -207,6 +207,7 @@ export default function Navigation() {
     const offRouteConfirmationsRef = useRef(0);
     const lastSpeedLimitLookupRef = useRef({ at: 0, lat: null, lng: null, road: '' });
     const speedLimitRequestSeqRef = useRef(0);
+    const [speedLimitRetryRevision, setSpeedLimitRetryRevision] = useState(0);
     const navSnapIndexRef = useRef(0);
     const navStepRouteIndexesRef = useRef([]);
     const destinationRequestRef = useRef(0);
@@ -1004,6 +1005,19 @@ export default function Navigation() {
         }
     }, [currentLocation, isNavigating, navRoute, navDestination, routing, gpsQuality?.accuracy, heading, speed]);
 
+    // Retry a transient speed-limit failure even if GPS coordinates remain
+    // stationary. Previously the effect only reran on location movement, so a
+    // timeout left the posted-limit panel at N/A indefinitely.
+    useEffect(() => {
+        const retry = () => {
+            if (document.visibilityState === 'visible' && navigator.onLine)
+                setSpeedLimitRetryRevision(previous => previous + 1);
+        };
+        const timer = window.setInterval(retry, 35_000);
+        window.addEventListener('online', retry);
+        return () => { window.clearInterval(timer); window.removeEventListener('online', retry); };
+    }, []);
+
     useEffect(() => {
         const accurate = isLiveTracking && gpsQuality?.state === 'live' && Number(gpsQuality?.accuracy) <= 75;
         if (!accurate || !currentLocation || !validPosition(currentLocation[0], currentLocation[1])) {
@@ -1054,7 +1068,7 @@ export default function Navigation() {
             setRoadSpeedLimitRoad('');
             setRoadSpeedLimitStatus('Speed-limit data unavailable');
         });
-    }, [currentLocation, isNavigating, isLiveTracking, gpsQuality?.state, gpsQuality?.accuracy, heading, navStepIndex, navSteps]);
+    }, [currentLocation, isNavigating, isLiveTracking, gpsQuality?.state, gpsQuality?.accuracy, heading, navStepIndex, navSteps, speedLimitRetryRevision]);
 
     useEffect(() => {
         if (!currentLocation || !validPosition(currentLocation[0], currentLocation[1])) return;

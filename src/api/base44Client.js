@@ -144,6 +144,7 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
+  if (meta?.kind === 'function' && meta?.name === 'getRoadSpeedLimit') return 86;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
   if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer','TimeEntry'].includes(meta?.name)) return 90;
@@ -381,7 +382,12 @@ function queuedRead(key, task, meta = {}) {
     job.priority = readPriority(meta);
     // Foreground requests remain bounded; throttle windows are detected and
     // surfaced explicitly by the pump, not mistaken for a queue deadlock.
-    armQueueTimeout(READ_QUEUE_TIMEOUT_MS);
+    // Live CAD and road data must report a loading failure promptly rather than
+    // leaving the officer staring at an apparently infinite spinner for two
+    // minutes. Background/administrative reads retain their full allowance.
+    const foregroundTimeout = meta?.kind === 'function' && ['getActiveDispatchCalls', 'getOnDutyUnits', 'getRoadSpeedLimit'].includes(meta?.name)
+      ? 35_000 : READ_QUEUE_TIMEOUT_MS;
+    armQueueTimeout(foregroundTimeout);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
     if (insertAt < 0) readQueue.push(job);
     else readQueue.splice(insertAt, 0, job);
@@ -675,6 +681,7 @@ export function getBase44RequestHealth() {
   const until = sharedRateLimitUntil();
   return {
     queuedReads: readQueue.length,
+    oldestQueuedReadMs: readQueue.length ? Math.max(0, Date.now() - Math.min(...readQueue.map(job => job.queuedAt))) : 0,
     activeReads,
     activeWrites,
     rateLimitedUntil: until > Date.now() ? new Date(until).toISOString() : null,
