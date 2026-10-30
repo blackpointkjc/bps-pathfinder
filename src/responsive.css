@@ -353,6 +353,116 @@ html.pf-map-fullscreen .cad-app main[data-page="Navigation"] {
   .cad-app .cad-command-workstation .dispatch-call-card { margin: 6px 8px; padding: 10px; }
 }
 
+
+
+/* Mobile CAD workstations: one native dropdown replaces the horizontal tool rail.
+   Keep the button rail on desktop, even when imported map styles have display:flex. */
+@media (max-width: 1279px) {
+  .cad-app .cad-console-shell > .cad-mode-nav { display: none !important; }
+  .cad-app .cad-console-shell > .cad-mobile-workstation-picker {
+    display: block !important;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 0;
+  }
+  .cad-app .cad-console-shell > .cad-mobile-workstation-picker select {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+    touch-action: manipulation;
+  }
+}
+@media (min-width: 1280px) {
+  .cad-app .cad-console-shell > .cad-mobile-workstation-picker { display: none !important; }
+  .cad-app .cad-console-shell > .cad-mode-nav { display: flex !important; }
+}
+
+/* Session briefing is portaled above the app shell, not constrained by its
+   clipped/scrolling CAD and mobile navigation containers. */
+.pf-session-briefing-dialog,
+.pf-session-briefing-content { min-width: 0; }
+.pf-session-briefing-content {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.pf-session-briefing-content > * { max-width: 100%; min-width: 0; }
+.pf-session-briefing-content :is(.grid, .flex) { min-width: 0; }
+.pf-session-briefing-content :is(.grid, .flex) > * { min-width: 0; }
+@media (max-width: 767px) {
+  .pf-session-briefing-overlay {
+    width: 100vw;
+    height: 100dvh;
+    box-sizing: border-box;
+    padding: max(8px, env(safe-area-inset-top, 0px))
+             max(8px, env(safe-area-inset-right, 0px))
+             max(8px, env(safe-area-inset-bottom, 0px))
+             max(8px, env(safe-area-inset-left, 0px));
+  }
+  .pf-session-briefing-dialog {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .pf-session-briefing-dialog > :first-child {
+    padding: 10px 12px;
+  }
+  .pf-session-briefing-dialog > :first-child h1 {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+  .pf-session-briefing-content {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    padding: 10px;
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+  .pf-session-briefing-content .col-span-2 { grid-column: auto; }
+  .pf-session-briefing-content .truncate {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+  .pf-session-briefing-content :is(p, span, div, button) { overflow-wrap: anywhere; }
+  .pf-session-briefing-footer {
+    flex: 0 0 auto;
+    padding: 8px 10px 10px;
+    max-width: 100%;
+  }
+  .pf-session-briefing-footer > div:first-child > div:first-child { line-height: 1.4; }
+  .pf-session-briefing-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 8px;
+    width: 100%;
+  }
+  .pf-session-briefing-actions > button {
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 8px;
+    white-space: normal;
+  }
+}
+@media (max-height: 500px) and (max-width: 767px) {
+  .pf-session-briefing-dialog > :first-child { padding: 6px 10px; }
+  .pf-session-briefing-dialog > :first-child .h-11 { height: 32px; width: 32px; }
+  .pf-session-briefing-footer { padding: 5px 8px; }
+  .pf-session-briefing-footer > div:first-child > div:first-child { display: none; }
+}
+
 /* Native fullscreen keeps controls clear of the notch in either orientation. */
 html.pf-map-fullscreen .live-map-toolbar {
   padding-top: max(8px, env(safe-area-inset-top));
