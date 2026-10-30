@@ -340,12 +340,17 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;margin:0 -6px 22px;">
         <tr>
           ${statCell('Company Performance Avg', company.overall == null ? '—' : `${company.overall}%`, '#67e8f9')}
-          ${statCell('Attendance Coverage', company.onTime == null ? '—' : `${company.onTime}%`, '#86efac')}
+          ${statCell('Avg Officer Attendance', company.onTime == null ? '—' : `${company.onTime}%`, '#86efac')}
           ${statCell('Active Team', String(company.activeOperational), '#93c5fd')}
           ${statCell('Company Missing', String(company.totalMissing), company.totalMissing > 0 ? '#fca5a5' : '#86efac')}
         </tr>
       </table>
 
+      <p style="margin:-10px 0 16px;color:#b8cadf;font-size:12px;line-height:1.6;">
+        Company operational average: ${company.overallScored} of ${company.activeOperational} officers scored.
+        Company attendance average: ${company.attendanceScored} of ${company.activeOperational} officers scored.
+        Officers with no eligible records are <strong>not scored</strong>, not counted as zero. Every scored officer has equal weight within each company average.
+      </p>
       <div style="border:1px solid ${hasItems ? '#7f1d1d' : '#14532d'};border-radius:14px;background:${hasItems ? '#1c1014' : '#0f1c16'};overflow:hidden;">
         <div style="padding:14px 16px;border-bottom:1px solid ${hasItems ? '#4c1d24' : '#1f3d2c'};">
           <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${hasItems ? '#fca5a5' : '#86efac'};">Your Missing Items</div>
@@ -367,7 +372,7 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
         These are company-wide operational performance and attendance figures, not your individual certification-completion rating. Company figures above are aggregate only. This email shows <strong style="color:#cbd5e1;">only your own</strong> missing requirements. Other employees’ names, rankings, scores, and compliance details are not included.
       </div>
     </div>`;
-  const message = `Company-wide operational performance average (NOT your personal score): ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Company attendance coverage: ${company.onTime == null ? 'not yet scored' : `${company.onTime}%`} • Active operational team members: ${company.activeOperational} • Company missing requirements: ${company.totalMissing}\n\n${personalMissingMessage(items)}`;
+  const message = `Company-wide operational performance average (NOT your personal score): ${company.overall == null ? 'not yet scored' : `${company.overall}%`} (${company.overallScored}/${company.activeOperational} officers scored) • Average scored officer attendance: ${company.onTime == null ? 'not yet scored' : `${company.onTime}%`} (${company.attendanceScored}/${company.activeOperational} officers scored) • Active operational team members: ${company.activeOperational} • Company missing requirements: ${company.totalMissing}\n\n${personalMissingMessage(items)}`;
   return { subject, content, message };
 }
 
@@ -697,6 +702,9 @@ Deno.serve(async (req) => {
     const punctualityRows = metricResults.filter(row => row.metrics?.punctuality?.total > 0);
     const attendanceCohort=averageScoredOfficers(punctualityRows,row=>row.metrics?.punctuality?.rate,rankingCandidates.length);
     const companyOnTime=attendanceCohort.rate;
+    const categoryLabels=['Attendance','Job Duty / Performance','Call-Out Attendance','Training Completion','Bid Standing','Client Feedback','Supervisor Rating','Recognition'];
+    const companyCategoryCohorts=categoryLabels.map(label=>({label,...averageScoredOfficers(rankings,
+      row=>row.metrics?.overall?.categories?.find((item:any)=>item.label===label)?.score,rankingCandidates.length)}));
 
     const dateLabel = new Intl.DateTimeFormat('en-US', {
       timeZone: TIME_ZONE, month: 'long', day: 'numeric', year: 'numeric',
@@ -723,6 +731,7 @@ Deno.serve(async (req) => {
         attendance_scored_officers:attendanceCohort.scoredOfficers,
         attendance_unscored_officers:attendanceCohort.unscoredOfficers,
         scoring_population:rankingCandidates.length,
+        company_category_cohorts:companyCategoryCohorts,
         score_window:{from:now.monthStart,to:now.date,time_zone:TIME_ZONE},
         score_definition:'Weighted operational performance (attendance 55%, job duty 15%, call-outs 15%, training 3%, and optional categories); not certification-file completion.',
         rankings: rankings.map((row, index) => ({ position: row.score==null?null:index + 1, name: rankedName(row.user),
@@ -749,7 +758,7 @@ Deno.serve(async (req) => {
       () => `Black Point Daily Brief — ${dateLabel}`,
       user => {
         const items = [...(missing.get(String(user.id)) || [])];
-        return `Company-wide operational performance average (NOT your personal score): ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Company attendance coverage: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}
+        return `Company-wide operational performance average (NOT your personal score): ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} (${companySnapshot.overallScored}/${companySnapshot.activeOperational} officers scored) • Average officer attendance: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} (${companySnapshot.attendanceScored}/${companySnapshot.activeOperational} officers scored) • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}
 
 Your personnel certification file: DCJS core ${activeCertificationExpiry(user,'dcjs')||'expiration not recorded'}; Firearm ${activeCertificationExpiry(user,'firearm')||'expiration not recorded'}. These credentials are separate from operational performance scoring.`;
       },

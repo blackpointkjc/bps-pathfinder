@@ -1149,7 +1149,8 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   const scoreable = configured.filter(item => item.score != null);
   const activeWeight = scoreable.reduce((sum, item) => sum + item.baseWeight, 0);
   const score = Math.round(scoreable.reduce((sum, item) => sum + (item.score * item.baseWeight), 0) / activeWeight);
-  const categories = scoreable.map(item => ({ label: item.label, score: item.score, weight: item.baseWeight }));
+  const categories = scoreable.map(item => ({ label: item.label, score: item.score,
+    weight: item.baseWeight, effectiveWeight: Math.round(item.baseWeight * 1000 / activeWeight) / 10 }));
   return {
     score,
     categories,
