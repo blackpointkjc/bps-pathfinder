@@ -32,8 +32,10 @@ Deno.serve(async (req) => {
       if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
     }
     const optionalErrors: string[] = [];
-
-    const aliases = [...new Set([officer.email, officer.work_email, officer.pathfinder_email, officer.microsoft_email, officer.outlook_email, ...(officer.email_aliases || [])].map(value => String(value || '').trim().toLowerCase()).filter(Boolean))];
+    const storedUser = await base44.asServiceRole.entities.User.get(String(officer.id)).catch(() => null);
+    const identities = [officer, storedUser].filter(Boolean);
+    const aliases = [...new Set(identities.flatMap(person => [person.email, person.work_email, person.pathfinder_email,
+      person.microsoft_email, person.outlook_email, ...(person.email_aliases || [])]).map(value => String(value || '').trim().toLowerCase()).filter(Boolean))];
     const identityQuery = { officer_email: { $in: aliases } };
 
     // Load the officer's core schedule first, then supporting datasets in a
@@ -42,7 +44,14 @@ Deno.serve(async (req) => {
     // optional vehicle/PTO lookup was temporarily unavailable.
     const schedules = await readWithRetry(
       'officer schedule',
-      () => base44.asServiceRole.entities.Schedule.filter(identityQuery, '-shift_date', 1000),
+      async () => {
+        const direct = await base44.asServiceRole.entities.Schedule.filter(identityQuery, '-shift_date', 1000);
+        if (direct.length) return direct;
+        // Recover schedules stored before an officer's login alias was changed.
+        // Match only canonical verified aliases, never other officers' shifts.
+        const recent = await base44.asServiceRole.entities.Schedule.list('-shift_date', 1500);
+        return recent.filter((row: any) => aliases.includes(String(row.officer_email || '').trim().toLowerCase()));
+      },
     );
     const callOuts = await readWithRetry('call-outs', () => base44.asServiceRole.entities.CallOut.filter(identityQuery, '-call_out_date', 1000));
     const weekStatuses = await readWithRetry(

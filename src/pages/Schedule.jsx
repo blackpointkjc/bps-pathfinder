@@ -235,13 +235,14 @@ export default function Schedule() {
     if (!dateStr || !allWeekStatuses || !user?.email) return false;
     // ScheduleWeekStatus owns the actual publication window. Do not assume the
     // week starts on Sunday; payroll/schedule periods may start on another day.
-    const status = allWeekStatuses.find(item =>
+    const status = [...allWeekStatuses].reverse().find(item =>
       item?.week_start_date && item?.week_end_date &&
       dateStr >= item.week_start_date && dateStr <= item.week_end_date
     );
     if (!status?.is_ready) return false;
-    return !(status.unpublished_officer_emails || []).some(email => String(email).trim().toLowerCase() === String(user.email).trim().toLowerCase());
-  }, [allWeekStatuses, user?.email]);
+    const heldEmails = new Set([user.email, user.work_email, user.pathfinder_email, user.microsoft_email].filter(Boolean).map(email => String(email).trim().toLowerCase());
+    return !(status.unpublished_officer_emails || []).some(email => heldEmails.has(String(email).trim().toLowerCase()));
+  }, [allWeekStatuses, user?.email, user?.work_email, user?.pathfinder_email, user?.microsoft_email]);
 
   const visibleSchedules = React.useMemo(() => {
     if (!schedules) return [];
@@ -320,6 +321,7 @@ export default function Schedule() {
             <div className="flex items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-300"><RefreshCw className="h-4 w-4"/><span>Live updates enabled</span></div>
           </div>
         </section>
+        {schedules.length > 0 && visibleSchedules.length === 0 && !schedulesLoading && <p role="status" className="rounded-xl border border-amber-700/50 bg-amber-950/20 p-3 text-xs text-amber-200">{schedules.some(s => String(s.shift_date) >= format(weekStart, 'yyyy-MM-dd') && String(s.shift_date) <= format(weekEnd, 'yyyy-MM-dd')) ? 'Shifts exist for these dates, but publication is still restricted for this account. Check the weekly publication status.' : 'Shifts exist for other dates. Use the schedule arrows to view the published period.'}</p>}
         {!!scheduleData.sourceErrors?.length && <div role="status" className="rounded-xl border border-amber-700/60 bg-amber-950/30 p-3 text-sm text-amber-200">The core schedule loaded, but these supporting sections are temporarily unavailable: {scheduleData.sourceErrors.join(', ')}. Refresh to retry.</div>}
         {scheduleError && <div className="rounded-xl border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">Schedule data could not be loaded: {scheduleError.message}</div>}
 
