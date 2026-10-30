@@ -1154,7 +1154,7 @@ export default function GlobalMessageBanner({ user }) {
         <div role="alert" className="pf-voice-warning pointer-events-auto flex items-center gap-2 rounded-xl border border-amber-400/60 bg-amber-950/95 px-3 py-2 text-xs font-semibold text-amber-50 shadow-2xl">
           <VolumeX className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1">CAD audio paused by device. Visual alerts are active.</span>
-          <button type="button" className="shrink-0 rounded-md border border-amber-300/70 px-2 py-2 font-bold text-white" onClick={() => { retryVoiceAnnouncement(); setVoiceWarning(null); }} aria-label="Retry CAD audio">Enable audio</button>
+          <button type="button" className="shrink-0 rounded-md border border-amber-300/70 px-2 py-2 font-bold text-white" onClick={() => { if (!retryVoiceAnnouncement()) announceVoice("Pathfinder CAD audio ready.", { force: true }); }} aria-label="Retry CAD audio">Enable audio</button>
           <button type="button" className="shrink-0 rounded p-2" onClick={() => setVoiceWarning(null)} aria-label="Dismiss CAD audio warning"><X className="h-4 w-4" /></button>
         </div>
       )}
