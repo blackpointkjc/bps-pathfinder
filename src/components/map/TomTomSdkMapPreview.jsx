@@ -14,7 +14,10 @@ const mapped = (latitude, longitude) => latitude != null && longitude != null
 const marker = (id, lat, lon, properties={}) => ({type:'Feature', id: String(id),
   geometry:{type:'Point',coordinates:[Number(lon),Number(lat)]},properties});
 const featureCollection = features => ({type:'FeatureCollection',features});
-const sdkProxyBase = () => `${String(appParams.serverUrl || 'https://base44.app').replace(/\/$/,'')}/api/apps/${encodeURIComponent(appParams.appId)}/functions/tomtomMapProxy`;
+// Base44 resolves function routes under the *app's own origin*. Cross-origin
+// base44.app URLs can fail credentialed tile-worker requests (wildcard CORS).
+// Use same-origin /functions, both in published and preview apps.
+const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
 
 /**
  * Opt-in interactive TomTom SDK renderer. Does not unmount or replace the
