@@ -1,0 +1,5 @@
+{
+  "name":"applyScheduledPromotions",
+  "entrypoint":"entry.ts",
+  "automations":[{"name":"Apply scheduled personnel promotions at 10 AM Eastern","description":"Hourly DST-aware check. Activates approved promotions, role changes, photos, supervisor assignments and official announcements only at/after 10:00 AM America/New_York on the effective date.","type":"scheduled","schedule_mode":"recurring","schedule_type":"cron","cron_expression":"0 * * * *","is_active":true,"function_args":{"scheduled":true}}]
+}
