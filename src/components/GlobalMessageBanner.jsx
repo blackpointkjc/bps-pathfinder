@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageCircle, Siren, Volume2, VolumeX, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -260,6 +261,7 @@ function BannerIcon({ kind }) {
 }
 
 export default function GlobalMessageBanner({ user }) {
+  const navigate = useNavigate();
   const [banners, setBanners] = useState([]);
   const [voiceWarning, setVoiceWarning] = useState(null);
   const audioSettings = useRef({ enabled: true, volume: 1, voice_profile: 'american_ai', enabled_event_types: [] });
@@ -1177,7 +1179,7 @@ export default function GlobalMessageBanner({ user }) {
                 }).catch(() => null);
               }
               await dismiss(banner.id);
-              window.location.href = createPageUrl(banner.page);
+              navigate(createPageUrl(banner.page));
             }}
             className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
           >
