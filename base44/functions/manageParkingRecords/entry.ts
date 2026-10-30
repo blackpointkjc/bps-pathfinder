@@ -104,7 +104,7 @@ Deno.serve(async req => {
     // A legacy single-car resident is projected as a vehicle until migrated,
     // without rewriting or losing any pre-existing lease record.
     const publicResident=(row:any)=>({id:row.id,site_name:row.site_name,full_name:row.full_name,
-      unit_number:row.unit_number,building:row.building,lease_status:row.lease_status,
+      unit_number:row.unit_number,building:row.building,phone:row.phone,lease_status:row.lease_status,
       lease_start:row.lease_start,lease_end:row.lease_end,resident_type:row.resident_type,
       vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_year:row.vehicle_year,
       vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin});
