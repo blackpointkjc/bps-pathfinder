@@ -1,4 +1,4 @@
-import { startHistoricalCadBackfill } from '@/lib/cadReferenceBackfill';
+import { isValidCallRecord } from '../../base44/functions/_shared/callFeedPolicy.js';
 import { cadReference } from '@/lib/cadReference';
 import { cadDestination } from '@/lib/cadNavigation';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
@@ -99,6 +99,18 @@ export default function CallHistory() {
     const lastServerReadRef=useRef(0);
     const pendingSearchRef=useRef(false);
     const monitoredPropertiesRef = useRef([]);
+    const cursorRef = useRef(null);
+    const [nextCursor, setNextCursor] = useState(null);
+    const [historyWarning, setHistoryWarning] = useState('');
+    const pagesLoadedRef = useRef(0);
+    const filtersRef = useRef({agency:agencyFilter,status:statusFilter});
+    filtersRef.current = {agency:agencyFilter,status:statusFilter};
+    const filtersMountedRef = useRef(false);
+    useEffect(() => {
+      if (!filtersMountedRef.current) { filtersMountedRef.current = true; return; }
+      setRefreshing(true);
+      void loadAll(true);
+    }, [agencyFilter, statusFilter]);
 
     const decorateRealtimePropertyMatch = (row) => {
         if (!row) return row;
@@ -118,7 +130,12 @@ export default function CallHistory() {
     const applyRealtimeDispatchEvent = (event) => {
         const type = String(event?.type || '').toLowerCase();
         const record = event?.data || event?.record || null;
-        if (!record || type === 'delete') return;
+        if (!record || type === 'delete' || !isValidCallRecord(record)) return;
+        const stamp = parseServerDate(record.time_received || record.created_date)?.getTime() || 0;
+        if (stamp < Date.now() - 90 * 86400000 || stamp > Date.now() + 120000) return;
+        if (filtersRef.current.agency !== 'ALL' && record.agency !== filtersRef.current.agency) return;
+        if (filtersRef.current.status !== 'ALL' && record.status !== filtersRef.current.status) return;
+        if (searchRef.current && ![record.incident,record.location,record.call_id,record.bps_reference,record.agency_cad_number].some(value=>String(value||'').toLowerCase().includes(searchRef.current.toLowerCase()))) return;
         const liveRow = decorateRealtimePropertyMatch({ ...record, _source: 'active' });
         setRows(current => {
             const next = [...current];
@@ -188,39 +205,6 @@ export default function CallHistory() {
         };
     }, []);
 
-    useEffect(()=>{
-        if(loading)return;
-        void startHistoricalCadBackfill();
-        let cancelled=false;
-        const repair=async()=>{
-            while(!cancelled){
-                const missing=referenceRowsRef.current.filter(row=>!cadReference(row)&&row._referenceEntity&&row._referenceId).slice(0,500);
-                if(!missing.length)return;
-                try{
-                    const response=await base44.functions.invoke('ensure-cad-references',{records:missing.map(row=>({entity:row._referenceEntity,id:row._referenceId}))});
-                    const data=response?.data||response||{};
-                    if(cancelled)return;
-                    if(data.error)throw new Error(data.error);
-                    if(data.mappings?.length){
-                        const references=new Map(data.mappings.map(item=>[item.entity+':'+item.id,item.reference]));
-                        setRows(previous=>previous.map(row=>{const reference=references.get(row._referenceEntity+':'+row._referenceId);return reference?{...row,bps_reference:reference,call_id:reference}:row;}));
-                        clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
-                    }
-                    if(!missing.length&&data.done)return;
-                    if(missing.length&&!data.mappings?.length)return;
-                }catch(error){
-                    const status=Number(error?.response?.status||error?.status),message=error?.response?.data?.error||error?.message||'';
-                    if([409,429,502,503,504].includes(status)||/rate.limit|429/i.test(message)){
-                        await new Promise(resolve=>setTimeout(resolve,status===409?10000:60000));continue;
-                    }
-                    console.warn('CAD reference repair will resume on the next history refresh',message);return;
-                }
-                await new Promise(resolve=>setTimeout(resolve,missing.length?250:3000));
-            }
-        };
-        void repair();return()=>{cancelled=true;};
-    },[loading,lastRefresh]);
-
     const init = async () => {
         try {
             const user = await withRequestTimeout(base44.auth.me(), 12000, 'Call history authentication');
@@ -234,9 +218,11 @@ export default function CallHistory() {
         await loadAll();
     };
 
-    const loadAll = async (force=false) => {
+    const loadAll = async (force=false, append=false) => {
         if(loadInFlightRef.current){if(force)pendingSearchRef.current=true;return;}
-        if(!force&&Date.now()-lastServerReadRef.current<45000)return;
+        if (!force && !append && pagesLoadedRef.current > 1) return;
+        if (!force && !append && Date.now()-lastServerReadRef.current<45000) return;
+        if (append && !cursorRef.current) return;
         lastServerReadRef.current=Date.now();
         loadInFlightRef.current = true;
         try {
@@ -248,7 +234,7 @@ export default function CallHistory() {
               .catch(error=>console.warn('[HISTORY] Property boundaries unavailable',error?.message));
 
             const result = await withRequestTimeout(
-                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current}),
+                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, ...filtersRef.current, page_size:75, cursor:append?cursorRef.current:null}),
                 15000,
                 'Call history request'
             );
@@ -260,13 +246,17 @@ export default function CallHistory() {
             // This makes Call History update immediately even if PropertyAlert
             // persistence is briefly delayed by ingestion or rate limiting.
             feedRows = feedRows.map(row => decorateRealtimePropertyMatch(row));
-            setRows(feedRows);setLoading(false);setRefreshing(false);
+            cursorRef.current = payload.next_cursor || null;
+            setNextCursor(cursorRef.current);
+            pagesLoadedRef.current = append ? pagesLoadedRef.current + 1 : 1;
+            setHistoryWarning((payload.warnings || []).length ? 'Some related details could not be loaded. Refresh to retry.' : '');
+            setLoading(false);
 
             // Collapse active/archive copies by the original CAD entity id while
             // preserving property metadata from either copy. Prefer the active row
             // when it exists so current status remains authoritative.
             const mergedByCall = new Map();
-            for (const row of feedRows) {
+            for (const row of (append ? [...referenceRowsRef.current, ...feedRows] : feedRows)) {
                 const identity = String(row.original_call_id || (row._source === 'active' ? row.id : '') || row.call_id || row.id);
                 const current = mergedByCall.get(identity);
                 if (!current) {
@@ -561,6 +551,11 @@ export default function CallHistory() {
                 </select>
             </div>
 
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+              <span>Last 90 days · {rows.length} calls loaded · Filters apply to loaded results</span>
+              {nextCursor && <button type="button" disabled={refreshing} onClick={()=>{setRefreshing(true);void loadAll(true,true);}} className="min-h-10 rounded border border-cyan-600 bg-cyan-950 px-4 font-bold text-cyan-100 disabled:opacity-50">{refreshing?'Loading…':'Load older calls'}</button>}
+              {historyWarning && <span role="status" className="text-amber-300">{historyWarning}</span>}
+            </div>
             {/* Table */}
             <div className="mt-2 max-h-[calc(100dvh-265px)] overflow-auto rounded-t-xl border border-[#293f55] bg-[#08131f]">
                 {/* Column Headers */}
@@ -676,7 +671,7 @@ export default function CallHistory() {
 
             {/* Status Bar */}
             <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 rounded-b-xl border border-t-0 border-[#293f55] bg-[#091522] px-3 py-1.5 text-[9px] text-slate-500 sm:px-4">
-                <span>TOTAL: <span className="text-white">{sorted.length}</span></span>
+                <span>LOADED: <span className="text-white">{sorted.length}</span></span>
                 <span>ACTIVE: <span className="text-cyan-300">{activeCount}</span></span>
                 <span>ARCHIVED: <span className="text-slate-300">{archivedCount}</span></span>
                 <span>PROPERTY CALLS: <span className="text-amber-300">{propertyCount}</span></span>

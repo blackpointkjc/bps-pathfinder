@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const candidates = [
       ...(activeRead.data || []).map((row:any) => ({row,source:'active'})),
       ...(archivedRead.data || []).map((row:any) => ({row,source:'archived'})),
-    ].sort((a,b) => callTimestamp(b.row) - callTimestamp(a.row) || (a.source === 'active' ? -1 : 1));
+    ].sort((a,b) => callTimestamp(b.row) - callTimestamp(a.row) || (a.source === b.source ? 0 : a.source === 'active' ? -1 : 1));
     const selected:any[] = [];
     const consumed = {active:0,archived:0};
     const seen = new Set<string>();
