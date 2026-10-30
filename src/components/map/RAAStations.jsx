@@ -45,7 +45,7 @@ export default function RAAStations({ showStations = true, onNavigateToStation }
                     icon={createRAAIcon()}
 
                 >
-                    <Tooltip direction="top" opacity={1}>{station.name} — {station.address}</Tooltip>
+                    <Tooltip direction="top" opacity={1}>Richmond Ambulance Authority — {station.name} — {station.address}</Tooltip>
                     <Popup autoPan={false} maxWidth={250}>
                         <div className="p-2">
                             <div className="flex items-center gap-2 mb-2">

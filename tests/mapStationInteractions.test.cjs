@@ -75,7 +75,7 @@ function verifyInteraction(Component, props, callbackName, expectedCount){
 verifyInteraction(load('src/components/map/EmergencyStationMarkers.jsx').default,{filters:{showFireStations:true,showRescueStations:true}},'onNavigate',75);
 verifyInteraction(load('src/components/map/PoliceStationMarkers.jsx').default,{showStations:true},'onNavigateToStation',8);
 verifyInteraction(load('src/components/map/PrecinctMarkers.jsx').default,{showStations:true},'onNavigateToPrecinct',5);
-verifyInteraction(load('src/components/map/JailMarkers.jsx').default,{showJails:true},'onNavigateToJail',3);
+verifyInteraction(load('src/components/map/JailMarkers.jsx').default,{showJails:true},'onNavigateToJail',4);
 verifyInteraction(load('src/components/map/CCPDStation.jsx').default,{showStations:true},'onNavigateToStation',1);
 verifyInteraction(load('src/components/map/RAAStations.jsx').default,{showStations:true},'onNavigateToStation',5);
 // Unit marker uses the same popup-only policy; its existing button remains.
@@ -89,4 +89,4 @@ function luminance(hex){
 }
 assert((luminance('ffffff')+.05)/(luminance('111827')+.05)>4.5);
 assert((luminance('e2e8f0')+.05)/(luminance('111827')+.05)>4.5);
-console.log('PASS: all requested station sets, official coordinates, regional/type filters, shared-site dedupe, 97 popup-only markers, explicit Navigate callbacks, hover details, readable contrast.');
+console.log('PASS: all requested station sets, official coordinates, regional/type filters, shared-site dedupe, 98 popup-only markers, explicit Navigate callbacks, hover details, readable contrast.');
