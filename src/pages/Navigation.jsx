@@ -14,7 +14,7 @@ import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import { projectOntoRoute } from '@/lib/navigationGeometry';
 import {
-    Layers, MapPin, Users,
+    Layers, Map as MapIcon, MapPin, Users,
     Eye, EyeOff, Crosshair, Flame, X, AlertTriangle, Navigation2, Square, Search,
     ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Home
 } from 'lucide-react';
