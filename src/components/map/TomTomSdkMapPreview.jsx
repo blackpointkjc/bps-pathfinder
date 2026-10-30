@@ -38,6 +38,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const [trafficReady,setTrafficReady]=useState(false);
   const [ready,setReady]=useState(false);
   const [error,setError]=useState('');
+  const [resourceStatus,setResourceStatus]=useState('Checking map resources…');
   clickRef.current=onCallClick;
   cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination};
   // A traffic style reload creates new sources. Immediately repopulate them
@@ -66,6 +67,36 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         ]);
         if(cancelled || !elementRef.current) return;
         const proxy=sdkProxyBase();
+        // Validate the actual signed-in map-style and vector tile endpoints.
+        // MapLibre can emit a 'load' event with no usable tile imagery; report
+        // service responses separately so a blank map is never silent.
+        void (async()=>{
+          try {
+            const auth=window.localStorage.getItem('base44_access_token');
+            const requestHeaders={...(auth?{Authorization:`Bearer ${auth}`}:{}) ,
+              'Base44-App-Id':appParams.appId,
+              ...(appParams.functionsVersion?{'Base44-Functions-Version':appParams.functionsVersion}:{})};
+            const url=new URL(proxy);
+            url.searchParams.set('resourcePath','/maps/orbis/assets/styles/0.6.0-0/style.json');
+            url.searchParams.set('apiVersion','1');
+            url.searchParams.set('map','basic_street-light');
+            const styleResponse=await fetch(url,{headers:requestHeaders,credentials:'include'});
+            if(!styleResponse.ok)throw new Error(`style HTTP ${styleResponse.status}`);
+            const json=await styleResponse.json();
+            const template=json.sources?.vectorTiles?.tiles?.[0];
+            if(!template)throw new Error('style missing street-tile source');
+            const tileUrl=String(template).replace(/\{z\}/g,'13').replace(/\{x\}/g,'2330').replace(/\{y\}/g,'3139');
+            const tileResponse=await fetch(tileUrl,{headers:requestHeaders,credentials:'include'});
+            if(!tileResponse.ok)throw new Error(`street tile HTTP ${tileResponse.status}`);
+            if(cancelled)return;
+            setResourceStatus('TomTom street tiles available');
+          }catch(e){
+            if(!cancelled){
+              setResourceStatus(`TomTom tile connection failed: ${e?.message || 'network error'}`);
+              setError('TomTom map resource check failed. Back to CAD uses the original map.');
+            }
+          }
+        })();
         // No API key is passed to the map. The authenticated Base44 function
         // adds credentials upstream and strips them from styles and other data.
         TomTomConfig.instance.put({commonBaseURL:proxy,language:'en-US'});
@@ -197,6 +228,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       <div ref={elementRef} className="absolute inset-0" aria-label="TomTom interactive map"/>
       {error && <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl border border-amber-500 bg-slate-950/95 p-4 text-sm text-amber-100 shadow-lg">{error}</div>}
       {!ready && !error && <div role="status" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-slate-950/90 p-3 text-xs text-white">Loading TomTom map resources…</div>}
+      <div role="status" className="pointer-events-none absolute bottom-4 right-3 max-w-[55%] rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200">{resourceStatus}</div>
       {ready && <div className="pointer-events-none absolute bottom-4 left-3 rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><MapPin className="mr-1 inline h-3 w-3"/>Red: CAD calls · Blue: units · Green: your GPS</div>}
     </div>
   </div>,document.body);
