@@ -25,6 +25,72 @@ const mapped = (latitude, longitude) => latitude != null && longitude != null
 const marker = (id, lat, lon, properties={}) => ({type:'Feature', id: String(id),
   geometry:{type:'Point',coordinates:[Number(lon),Number(lat)]},properties});
 const featureCollection = features => ({type:'FeatureCollection',features});
+// Preserve the CAD symbology from the original Pathfinder map: blue PD calls,
+// red fire/PulsePoint, amber EMS, priority/approximate rings, and officer
+// patrol shields. MapLibre canvas icons are local and work through private
+// Base44 without an external image host or extra geocoding requests.
+const callType = call => {
+  const incident=String(call.incident||'').toLowerCase();
+  const agency=String(call.agency||'').toUpperCase();
+  const channel=String(call.source_channel||call.source||'').toLowerCase();
+  const external=String(call.external_call_id||'').toLowerCase();
+  if(channel.includes('pulsepoint')||external.startsWith('pulsepoint:'))return 'pulsepoint';
+  if(/ems|medical|ambulance|unconscious|overdose|stroke|cardiac/.test(incident))return 'ems';
+  if(agency.includes('FD')||/fire|smoke|alarm/.test(incident))return 'fire';
+  return 'police';
+};
+const priorityCall = call => /shooting|shots fired|stabbing|officer down|active shooter|10-00|cardiac arrest|person with gun|assault|robbery|burglary in progress|domestic|pursuit|fire|accident with injury/i
+  .test(`${call.incident||''} ${call.description||''}`);
+const cadCallIcon = call => {
+  const kind=callType(call);
+  const approximate=call.geo_approximate===true;
+  const priority=priorityCall(call);
+  return `${kind}${approximate?'-approx':''}${priority?'-priority':''}`;
+};
+function registerCadIcons(map){
+  const size=80, ratio=2;
+  const canvas=document.createElement('canvas');
+  canvas.width=size;canvas.height=size;
+  const context=canvas.getContext('2d');
+  const register=(name,draw)=>{
+    if(map.hasImage(name))return;
+    context.clearRect(0,0,size,size);
+    draw(context);
+    map.addImage(name,context.getImageData(0,0,size,size),{pixelRatio:ratio});
+  };
+  const circle=(ctx,x,y,r,fill,stroke='#fff',width=5)=>{
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=width;ctx.strokeStyle=stroke;ctx.stroke();
+  };
+  for(const type of ['police','fire','ems','pulsepoint']){
+    for(const approximate of [false,true])for(const priority of [false,true]){
+      register(`bps-${type}${approximate?'-approx':''}${priority?'-priority':''}`,ctx=>{
+        const fill={police:'#1e40af',fire:'#dc2626',ems:'#d97706',pulsepoint:'#b91c1c'}[type];
+        circle(ctx,40,40,32,fill,priority?'#ef4444':'#fff',approximate?3:6);
+        ctx.fillStyle='#fff';ctx.font=`900 ${type==='pulsepoint'?25:27}px Arial,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(({police:'PD',fire:'FD',ems:'EMS',pulsepoint:'PP'})[type],40,42);
+        // Active/arrived status dot like the existing CAD markers.
+        circle(ctx,64,16,10,'#ef4444','#fff',3);
+        if(approximate){ctx.beginPath();ctx.arc(40,40,36,0,Math.PI*2);ctx.setLineDash([7,5]);ctx.lineWidth=4;ctx.strokeStyle='#fbbf24';ctx.stroke();ctx.setLineDash([]);}
+      });
+    }
+  }
+  register('bps-unit-shield',ctx=>{
+    ctx.beginPath();ctx.moveTo(40,5);ctx.lineTo(69,17);ctx.lineTo(66,48);ctx.quadraticCurveTo(60,66,40,75);ctx.quadraticCurveTo(20,66,14,48);ctx.lineTo(11,17);ctx.closePath();
+    ctx.fillStyle='#0f3b68';ctx.fill();ctx.strokeStyle='#dbeafe';ctx.lineWidth=5;ctx.stroke();
+    circle(ctx,40,36,18,'#e5eef8','#60a5fa',4);
+    ctx.fillStyle='#0c4a6e';ctx.font='900 24px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('★',40,36);
+  });
+  register('bps-self-shield',ctx=>{
+    ctx.beginPath();ctx.moveTo(40,5);ctx.lineTo(69,17);ctx.lineTo(66,48);ctx.quadraticCurveTo(60,66,40,75);ctx.quadraticCurveTo(20,66,14,48);ctx.lineTo(11,17);ctx.closePath();
+    ctx.fillStyle='#124776';ctx.fill();ctx.strokeStyle='#67e8f9';ctx.lineWidth=5;ctx.stroke();
+    circle(ctx,40,36,18,'#edf6ff','#38bdf8',4);
+    ctx.fillStyle='#0c4a6e';ctx.font='900 24px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('★',40,36);
+  });
+  register('bps-search-pin',ctx=>{circle(ctx,40,40,29,'#10b981','#fff',6);circle(ctx,40,40,9,'#fff','#fff',1);});
+  register('bps-destination-pin',ctx=>{circle(ctx,40,40,29,'#f97316','#fff',6);circle(ctx,40,40,9,'#fff','#fff',1);});
+}
+
 // Base44 resolves function routes under the *app's own origin*. Cross-origin
 // base44.app URLs can fail credentialed tile-worker requests (wildcard CORS).
 // Use same-origin /functions, both in published and preview apps.
@@ -66,7 +132,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const snapshot=cadDataRef.current;
     const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
     callsRef.current=calls;
-    map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42)}))));
+    map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
     const units=(snapshot.otherUnits||[]).filter(unit=>mapped(unit.latitude,unit.longitude));
     map.getSource('pathfinder-units')?.setData(featureCollection(units.map((unit,i)=>marker(unit.id||i,unit.latitude,unit.longitude,{label:String(unit.unit_number||unit.unitName||unit.name||'Officer').slice(0,35)}))));
     map.getSource('pathfinder-self')?.setData(featureCollection(coords(snapshot.currentLocation)?[marker('self',snapshot.currentLocation[0],snapshot.currentLocation[1])]:[]));
@@ -180,10 +246,11 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         cleanupRef.current=()=>{window.removeEventListener('resize',resize);observer?.disconnect();window.clearInterval(renderMonitor);previousCleanup?.();};
         const dataInit=()=>{
           if(cancelled) return;
+          registerCadIcons(map);
           if(!map.getSource('pathfinder-calls')){
             map.addSource('pathfinder-calls',{type:'geojson',data:featureCollection([])});
-            map.addLayer({id:'pathfinder-calls-dot',type:'circle',source:'pathfinder-calls',
-              paint:{'circle-radius':8,'circle-color':'#ff334b','circle-stroke-width':2,'circle-stroke-color':'#fff'}});
+            map.addLayer({id:'pathfinder-calls-dot',type:'symbol',source:'pathfinder-calls',
+              layout:{'icon-image':['get','icon'],'icon-size':0.88,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.addLayer({id:'pathfinder-calls-label',type:'symbol',source:'pathfinder-calls',
               layout:{'text-field':['get','label'],'text-size':11,'text-offset':[0,1.6],'text-optional':true},
               paint:{'text-color':'#ffffff','text-halo-color':'#7f1025','text-halo-width':2}});
@@ -195,16 +262,16 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           }
           if(!map.getSource('pathfinder-units')){
             map.addSource('pathfinder-units',{type:'geojson',data:featureCollection([])});
-            map.addLayer({id:'pathfinder-units-dot',type:'circle',source:'pathfinder-units',
-              paint:{'circle-radius':7,'circle-color':'#0ea5e9','circle-stroke-width':2,'circle-stroke-color':'#fff'}});
+            map.addLayer({id:'pathfinder-units-dot',type:'symbol',source:'pathfinder-units',
+              layout:{'icon-image':'bps-unit-shield','icon-size':0.75,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.addLayer({id:'pathfinder-units-label',type:'symbol',source:'pathfinder-units',
               layout:{'text-field':['get','label'],'text-size':11,'text-offset':[0,1.55],'text-optional':true},
               paint:{'text-color':'#fff','text-halo-color':'#075985','text-halo-width':2}});
           }
           if(!map.getSource('pathfinder-self')){
             map.addSource('pathfinder-self',{type:'geojson',data:featureCollection([])});
-            map.addLayer({id:'pathfinder-self-dot',type:'circle',source:'pathfinder-self',
-              paint:{'circle-radius':10,'circle-color':'#22c55e','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
+            map.addLayer({id:'pathfinder-self-dot',type:'symbol',source:'pathfinder-self',
+              layout:{'icon-image':'bps-self-shield','icon-size':0.82,'icon-allow-overlap':true,'icon-ignore-placement':true}});
           }
           if(!map.getSource('pathfinder-route')){
             map.addSource('pathfinder-route',{type:'geojson',data:featureCollection([])});
@@ -213,13 +280,13 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           }
           if(!map.getSource('pathfinder-destination')){
             map.addSource('pathfinder-destination',{type:'geojson',data:featureCollection([])});
-            map.addLayer({id:'pathfinder-destination-dot',type:'circle',source:'pathfinder-destination',
-              paint:{'circle-radius':10,'circle-color':'#f97316','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
+            map.addLayer({id:'pathfinder-destination-dot',type:'symbol',source:'pathfinder-destination',
+              layout:{'icon-image':'bps-destination-pin','icon-size':0.75,'icon-allow-overlap':true,'icon-ignore-placement':true}});
           }
           if(!map.getSource('pathfinder-search-results')){
             map.addSource('pathfinder-search-results',{type:'geojson',data:featureCollection([])});
-            map.addLayer({id:'pathfinder-search-results-dot',type:'circle',source:'pathfinder-search-results',
-              paint:{'circle-radius':8,'circle-color':'#facc15','circle-stroke-color':'#111827','circle-stroke-width':2}});
+            map.addLayer({id:'pathfinder-search-results-dot',type:'symbol',source:'pathfinder-search-results',
+              layout:{'icon-image':'bps-search-pin','icon-size':0.72,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.on('click','pathfinder-search-results-dot',event=>{
               const feature=event.features?.[0];
               if(feature?.geometry?.coordinates)onSelectPointRef.current?.([feature.geometry.coordinates[1],feature.geometry.coordinates[0]]);
@@ -227,8 +294,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           }
           if(!map.getSource('pathfinder-selected-point')){
             map.addSource('pathfinder-selected-point',{type:'geojson',data:featureCollection([])});
-            map.addLayer({id:'pathfinder-selected-point-dot',type:'circle',source:'pathfinder-selected-point',
-              paint:{'circle-radius':12,'circle-color':'#f97316','circle-stroke-width':3,'circle-stroke-color':'#ffffff'}});
+            map.addLayer({id:'pathfinder-selected-point-dot',type:'symbol',source:'pathfinder-selected-point',
+              layout:{'icon-image':'bps-search-pin','icon-size':0.85,'icon-allow-overlap':true,'icon-ignore-placement':true}});
           }
           syncCadData(map);
           mapReadyRef.current=true;
@@ -272,11 +339,10 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           if(cancelled)return;
           tileErrorsRef.current++;
           const status=Number(e?.error?.status||e?.error?.statusCode||0);
-          if(!mapReadyRef.current || tileErrorsRef.current>=3) {
-            if(embedded)onMapUnavailableRef.current?.();
-            setError(status===401||status===403
-              ? 'TomTom map resources were denied. Your original CAD map is still available.'
-              : 'TomTom map tiles did not load correctly. Back to CAD remains available.');
+          // Optional terrain and traffic tile errors must not remove a
+          // working TomTom street map. Fallback only if no base map renders.
+          if((status===401||status===403) && !mapReadyRef.current){
+            setError('TomTom map access denied. Checking map availability…');
           }
           console.warn('[TomTom SDK map]',status||e?.error?.code||'Map resource error');
         };
@@ -287,7 +353,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           const rendered=map.isStyleLoaded() && map.queryRenderedFeatures().length>0;
           if(!rendered){setError('TomTom map has not rendered street features.'); if(embedded)onMapUnavailableRef.current?.();}
         },18000);
-      }catch(e){if(!cancelled)setError(`TomTom SDK could not start: ${e?.message||'Unknown error'}. Close to return to CAD.`);}
+      }catch(e){if(!cancelled){setError(`TomTom map could not start: ${e?.message||'Unknown error'}.`);if(embedded)onMapUnavailableRef.current?.();}}
     }
     init();
     return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;terrainInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
