@@ -40,7 +40,7 @@ export default function CadVoiceBroadcastButton({ user }) {
         {sendError && <p role="alert" className="mt-3 rounded border border-red-500 bg-red-950/60 p-3 text-xs text-red-100">{sendError}</p>}
         <div className="mt-4 flex justify-end gap-3">
           <button type="button" disabled={sending} onClick={() => setOpen(false)} className="min-h-10 rounded border border-slate-600 px-3">Cancel</button>
-          <button type="button" disabled={sending || !message.trim()} onClick={send} className="min-h-10 "rounded bg-amber-500 px-4 py-2 font-bold text-black disabled:opacity-50">{sending ? 'Sending…' : 'Send announcement'}</button>
+          <button type="button" disabled={sending || !message.trim()} onClick={send} className="min-h-10 rounded bg-amber-500 px-4 py-2 font-bold text-black disabled:opacity-50">{sending ? 'Sending…' : 'Send announcement'}</button>
         </div>
       </div>
     </div>, document.body)}
