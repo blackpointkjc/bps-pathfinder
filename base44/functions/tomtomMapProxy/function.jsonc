@@ -1,0 +1,5 @@
+{
+  "name": "tomtomMapProxy",
+  "entrypoint": "entry.ts",
+  "description": "Authenticated TomTom map style/tile/sprite/glyph proxy that retains both TomTom keys only on Base44 servers."
+}
