@@ -1,3 +1,4 @@
+import { addressHistoryPattern } from '../../base44/functions/_shared/addressHistoryMatch.js';
 import { isValidCallRecord } from '../../base44/functions/_shared/callFeedPolicy.js';
 import { cadReference } from '@/lib/cadReference';
 import { cadDestination } from '@/lib/cadNavigation';
@@ -137,6 +138,8 @@ export default function CallHistory() {
         if (!record || type === 'delete' || !isValidCallRecord(record)) return;
         const stamp = parseServerDate(record.time_received || record.created_date)?.getTime() || 0;
         if (stamp < Date.now() - 90 * 86400000 || stamp > Date.now() + 120000) return;
+        if (fromDateRef.current && stamp < new Date(fromDateRef.current+'T00:00:00').getTime()) return;
+        if (throughDateRef.current && stamp > new Date(throughDateRef.current+'T23:59:59.999').getTime()) return;
         if (filtersRef.current.agency !== 'ALL' && record.agency !== filtersRef.current.agency) return;
         if (filtersRef.current.status !== 'ALL' && record.status !== filtersRef.current.status) return;
         if (searchRef.current && ![record.incident,record.location,record.call_id,record.bps_reference,record.agency_cad_number].some(value=>String(value||'').toLowerCase().includes(searchRef.current.toLowerCase()))) return;
@@ -356,9 +359,11 @@ export default function CallHistory() {
 
     const printPropertyAlerts = () => {
         const q = search.toLowerCase();
+        const addressPattern = addressHistoryPattern(search);
+        const addressMatches = addressPattern && new RegExp(addressPattern, 'i').test(String(r.location || ''));
         const propertyRows = rows.filter(row => {
             if (!row._propertyCall) return false;
-            if (q && ![
+            if (q && !addressMatches && ![
                 row.incident,
                 row.location,
                 row.agency,
@@ -448,7 +453,9 @@ export default function CallHistory() {
 
     const filtered = rows.filter(r => {
         const q = search.toLowerCase();
-        if (q && ![
+        const addressPattern = addressHistoryPattern(search);
+        const addressMatches = addressPattern && new RegExp(addressPattern, 'i').test(String(r.location || ''));
+        if (q && !addressMatches && ![
             r.incident,
             r.location,
             r.agency,

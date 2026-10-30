@@ -1,3 +1,4 @@
+import { addressHistoryPattern } from '../_shared/addressHistoryMatch.js';
 import { callTimestamp, isValidCallRecord } from '../_shared/callFeedPolicy.js';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
@@ -35,7 +36,10 @@ Deno.serve(async (req) => {
     const input=await req.json().catch(()=>({}));
     const search=String(input.search||'').trim().slice(0,160);
     const escaped=Array.from(search).map(c=>'\\^$.*+?()[]{}|'.includes(c)?'\\'+c:c).join('');
+    const addressPattern = addressHistoryPattern(search);
     const searchQuery=search?{$or:['call_id','bps_reference','agency_cad_number','incident','location','original_call_id'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))}:null;
+
+    if (searchQuery && addressPattern) searchQuery.$or.push({ location: { $regex: addressPattern, $options: 'i' } });
 
     const pageSize = Math.max(25, Math.min(100, Number(input.page_size) || 75));
     const cursor = input.cursor || {};
