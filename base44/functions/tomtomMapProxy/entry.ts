@@ -30,7 +30,7 @@ Deno.serve(async req => {
   if (req.method !== 'GET') return jsonError(405, 'method_not_allowed');
   try {
     const url = new URL(req.url);
-    const suffix = url.pathname.match(/\btomtomMapProxy(\/.*)$/)?.[1];
+    const suffix = url.searchParams.get('resourcePath') || url.pathname.match(/\btomtomMapProxy(\/.*)$/)?.[1];
     if (!suffix || suffix.length > 500 || !allowedPath.test(suffix) || suffix.includes('..'))
       return jsonError(400, 'unsupported_tomtom_resource');
     const me = await createClientFromRequest(req).auth.me().catch(() => null);
@@ -48,6 +48,7 @@ Deno.serve(async req => {
     if (!keys.length) return jsonError(503, 'tomtom_not_configured');
     const params = new URLSearchParams(url.search);
     params.delete('key');
+    params.delete('resourcePath');
     if (params.toString().length > 1900) return jsonError(400, 'query_too_long');
     const version = req.headers.get('TomTom-Api-Version');
     let lastStatus = 503;
@@ -82,7 +83,7 @@ Deno.serve(async req => {
         }
         // Do not send absolute upstream URLs or secret-bearing query strings
         // from style responses to MapLibre; preserve the secure proxy prefix.
-        const proxyPrefix = `${url.origin}${url.pathname.slice(0, -suffix.length)}`;
+        const proxyPrefix = `${url.origin}${url.pathname.replace(/\/tomtomMapProxy(?:\/.*)?$/, '/tomtomMapProxy')}`;
         body = body.replace(/https:\/\/api\.tomtom\.com/gi, proxyPrefix);
         return new Response(body, { status: response.status, headers: out });
       }

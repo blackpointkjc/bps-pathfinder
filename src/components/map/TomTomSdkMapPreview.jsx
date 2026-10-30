@@ -14,7 +14,7 @@ const mapped = (latitude, longitude) => latitude != null && longitude != null
 const marker = (id, lat, lon, properties={}) => ({type:'Feature', id: String(id),
   geometry:{type:'Point',coordinates:[Number(lon),Number(lat)]},properties});
 const featureCollection = features => ({type:'FeatureCollection',features});
-const sdkProxyBase = () => `${String(appParams.serverUrl || 'https://base44.app').replace(/\/$/,'')}/api/functions/tomtomMapProxy`;
+const sdkProxyBase = () => `${String(appParams.serverUrl || 'https://base44.app').replace(/\/$/,'')}/api/apps/${encodeURIComponent(appParams.appId)}/functions/tomtomMapProxy`;
 
 /**
  * Opt-in interactive TomTom SDK renderer. Does not unmount or replace the
@@ -51,8 +51,16 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             const url=new URL(request.url,window.location.href);
             // Guard against forwarding a user's Base44 session to TomTom/CDNs.
             if(url.origin!==new URL(proxy).origin || !url.pathname.startsWith(new URL(proxy).pathname)) return request;
+            // Base44 routes one function name only; nested paths otherwise
+            // return 404. Tunnel the SDK resource pathname as a query value.
+            const proxyPath = new URL(proxy).pathname;
+            const suffix = url.pathname.slice(proxyPath.length);
+            const resolved = new URL(proxy);
+            resolved.search = url.search;
+            if (suffix) resolved.searchParams.set('resourcePath', suffix);
+            resolved.searchParams.delete('key');
             const token=window.localStorage.getItem('base44_access_token');
-            return {...request,headers:{...(request.headers||{}),
+            return {...request,url:resolved.toString(),headers:{...(request.headers||{}),
               ...(token?{Authorization:`Bearer ${token}`}:{}) ,
               'Base44-App-Id':appParams.appId,
               ...(appParams.functionsVersion?{'Base44-Functions-Version':appParams.functionsVersion}:{})},
