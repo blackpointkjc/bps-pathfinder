@@ -319,6 +319,8 @@ function personalMissingMessage(items: string[]) {
 function personalSummaryEmail(dateLabel: string, user: any, items: string[], company: { overall: number | null; onTime: number | null; activeOperational: number; totalMissing: number }) {
   const subject = `Black Point Daily Brief — ${dateLabel}`;
   const hasItems = items.length > 0;
+  const certificationInfo=[['DCJS core',activeCertificationExpiry(user,'dcjs')],['Firearm / firearms training',activeCertificationExpiry(user,'firearm')]];
+  const certificateStatus=(date:string)=>!date?'No expiration recorded in officer file':date<easternNow().date?`Expired ${date}`:`Recorded expiration: ${date}`;
   const statCell = (label: string, value: string, tone = '#eab308') => `
     <td width="25%" valign="top" style="padding:6px;">
       <div style="min-height:82px;border:1px solid #263449;border-radius:12px;background:#0b1522;padding:14px 12px;box-sizing:border-box;">
@@ -356,6 +358,11 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
         </div>
       </div>
 
+      <div style="margin-top:16px;padding:14px;border:1px solid #1b4461;border-radius:10px;background:#081a2d;">
+        <div style="color:#67e8f9;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;">Your officer certification file (not a performance score)</div>
+        ${certificationInfo.map(([label,expiry])=>`<p style="margin:8px 0 0;color:#dbeafe;font-size:13px;"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(certificateStatus(expiry))}</p>`).join('')}
+        <p style="margin:8px 0 0;color:#94a3b8;font-size:11px;">These dates are read from your own personnel file. A credential on file does not automatically change duty, attendance or other operational ratings.</p>
+      </div>
       <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#0b1220;color:#7f8da3;font-size:11px;line-height:1.5;">
         These are company-wide operational performance and attendance figures, not your individual certification-completion rating. Company figures above are aggregate only. This email shows <strong style="color:#cbd5e1;">only your own</strong> missing requirements. Other employees’ names, rankings, scores, and compliance details are not included.
       </div>
@@ -734,7 +741,9 @@ Deno.serve(async (req) => {
       () => `Black Point Daily Brief — ${dateLabel}`,
       user => {
         const items = [...(missing.get(String(user.id)) || [])];
-        return `Company-wide operational performance average (NOT your personal score): ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Company attendance coverage: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}`;
+        return `Company-wide operational performance average (NOT your personal score): ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Company attendance coverage: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}
+
+Your personnel certification file: DCJS core ${activeCertificationExpiry(user,'dcjs')||'expiration not recorded'}; Firearm ${activeCertificationExpiry(user,'firearm')||'expiration not recorded'}. These credentials are separate from operational performance scoring.`;
       },
     );
 
