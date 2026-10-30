@@ -283,7 +283,7 @@ export default function MyPerformanceAnalytics() {
 
   const categoryRatings = useMemo(() => [
     { label: 'Attendance', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: (onTimeStats.total > 0 ? `${onTimeStats.attended ?? (onTimeStats.onTime + onTimeStats.late + onTimeStats.overrun)} of ${onTimeStats.total} elapsed shifts worked • ${onTimeStats.missed || 0} missed${onTimeStats.exempt ? ` • ${onTimeStats.exempt} neutral/exempt` : ''}` : (onTimeStats.exempt ? `${onTimeStats.exempt} elapsed shift${onTimeStats.exempt === 1 ? '' : 's'} neutral/exempt` : 'No elapsed scheduled shifts')) + ' • Clock-in timing excluded' },
-    { label: 'Job Duty / Performance', score: jobDuty.score, detail: `One weighted category. Breakdown: DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
+    { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
     { label: 'Call-Out Attendance', score: callOutAttendance.score, detail: callOutAttendance.score != null ? `${callOutAttendance.count} call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : 'No elapsed scheduled shifts' },
     { label: 'Training Completion', score: trainingStats.total > 0 ? trainingStats.percentage : null, detail: trainingStats.total > 0 ? `${trainingStats.completed} complete • ${trainingStats.pending} pending • ${trainingStats.total} assigned` : 'No assigned training/compliance records' },
     { label: 'Bid Standing', score: bidStats.score, detail: bidStats.score != null ? `${bidStats.accepted} assigned shift bid${bidStats.accepted === 1 ? '' : 's'}` : 'No assigned bid outcome to score' },
@@ -537,7 +537,6 @@ export default function MyPerformanceAnalytics() {
         <Card className="overflow-hidden border border-slate-200 shadow-sm">
           <CardHeader className="bg-slate-50">
             <CardTitle className="text-base text-slate-900">Job Duty Breakdown</CardTitle>
-            <p className="text-xs text-slate-500">These compliance measures feed the single Job Duty / Performance category above. They are not scored a second time.</p>
           </CardHeader>
           <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
             <div className="rounded-lg border border-slate-200 bg-white p-3"><div className="text-xs font-black uppercase text-slate-600">Daily Activity Reports</div><div className="mt-1 text-xl font-black text-slate-900">{jobDuty.dailyActivity.completed}/{jobDuty.dailyActivity.required}</div><div className="mt-1 text-xs text-slate-500">{jobDuty.dailyActivity.missed} missing</div></div>
