@@ -1,0 +1,131 @@
+import { createClientFromRequest } from 'npm:@base44/sdk';
+
+// Property and person data is ONLY served through this authenticated, site-
+// scoped endpoint. Both new entities deny all direct browser CRUD via RLS.
+const clean = (value: unknown, max=160) => String(value ?? '').trim().slice(0,max);
+const siteKey = (value: unknown) => clean(value).split(' - ')[0].split(':')[0].trim().toLowerCase();
+const plateKey = (value: unknown) => clean(value).toUpperCase().replace(/[^A-Z0-9]/g,'');
+const dates = () => new Date().toISOString();
+const fail = (error: string, status=400) => Response.json({error},{status});
+const history = (user:any, action:string, notes:string) => ({actor:clean(user.email||user.id),action,notes:clean(notes,600),at:dates()});
+
+Deno.serve(async req => {
+  try {
+    const sdk = createClientFromRequest(req);
+    const user = await sdk.auth.me().catch(()=>null);
+    if (!user?.id) return fail('Sign in required',401);
+    const roles = new Set((user.additional_roles||[]).map((role:unknown)=>clean(role).toLowerCase()));
+    const client = user.user_type==='client' || user.rank==='Client' || user.role==='client' || roles.has('client');
+    const admin = !client && (user.role==='admin'||roles.has('full_access'));
+    const supervisor = admin || (!client && (roles.has('supervisor')||user.is_supervisor===true||['sergeant','lieutenant','captain','major','colonel'].some(rank=>clean(user.rank).toLowerCase().includes(rank))));
+    const officer = !client && (supervisor||['officer','dispatch','admin'].includes(user.role)||['officer','dispatch','cad_access'].some(role=>roles.has(role)));
+    if(!client && !officer) return fail('Parking records access required',403);
+    const sites = new Set([...(user.assigned_locations||[]),...(user.assigned_sites||[]),...(user.assigned_location?[user.assigned_location]:[])].map(siteKey).filter(Boolean));
+    const scope = (site:unknown) => !!siteKey(site) && (!client || sites.has(siteKey(site)));
+    const data = await req.json().catch(()=>({}));
+    const action = clean(data.action);
+    const site = clean(data.site_name||data.location);
+    const entities = sdk.asServiceRole.entities;
+    const sitePermitted = () => scope(site) ? null : fail('Property not assigned or not selected',403);
+    const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
+    const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id'];
+    const siteRecords = async (entity:any,limit=200) => {
+      const rows = await entity.filter({site_name:site},'-created_date',limit).catch(()=>[]);
+      return rows.filter((row:any)=>siteKey(row.site_name)===siteKey(site));
+    };
+    if (action==='sites') {
+      // Client site lists come only from assigned user locations. Officers may
+      // use the existing location directory but never receive resident lists
+      // without specifying a site first.
+      return Response.json({sites:client?[...sites]:[],role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
+    }
+    if (['overview','residents','rules','violations','resident_save','rule_save','issue','review','records_check','export'].includes(action)) {
+      const rejected=sitePermitted();if(rejected)return rejected;
+    }
+    if (action==='overview' || action==='residents' || action==='records_check') {
+      const rows=await siteRecords(entities.PropertyResident,300);
+      if(action==='residents'||action==='overview') {
+        const residents=client?rows:rows.map((row:any)=>({id:row.id,site_name:row.site_name,full_name:row.full_name,unit_number:row.unit_number,lease_status:row.lease_status,
+          vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_year:row.vehicle_year,vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin}));
+        if(action==='residents')return Response.json({residents});
+        const [rules,violations]=await Promise.all([siteRecords(entities.PropertyParkingRule,100),entities.ParkingViolation.filter({location:site},'-created_date',200)]);
+        return Response.json({residents,rules,violations:violations.filter((v:any)=>siteKey(v.location)===siteKey(site))});
+      }
+      if(!officer)return fail('Officer records access required',403);
+      const query=clean(data.query,100).toLowerCase();if(query.length<2)return fail('Enter a person name, plate or VIN');
+      const terms=query.split(/\s+/).filter(Boolean);
+      const found=rows.filter((row:any)=> {
+        const name=clean(row.full_name).toLowerCase(), plate=plateKey(row.vehicle_plate), vin=clean(row.vehicle_vin).toUpperCase();
+        return terms.every(term=>name.includes(term)||plate.includes(plateKey(term))||vin.includes(term.toUpperCase()));
+      }).map((row:any)=>({id:row.id,source:'Property resident registry',site_name:row.site_name,full_name:row.full_name,unit_number:row.unit_number,lease_status:row.lease_status,
+        vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin}));
+      const parking=await entities.ParkingViolation.filter({location:site},'-created_date',150);
+      const past=parking.filter((p:any)=>siteKey(p.location)===siteKey(site) && (plateKey(p.license_plate).includes(plateKey(query))||clean(p.subject_name||p.vehicle_owner).toLowerCase().includes(query))).slice(0,20)
+        .map((p:any)=>({id:p.id,source:'Parking violation',citation_number:p.citation_number,date:p.violation_date,status:p.status,license_plate:p.license_plate,violation_type:p.violation_type}));
+      return Response.json({matches:[...found,...past],resident_matches:found.length,prior_violations:past.length,source:'Internal Pathfinder records only; not DMV/NCIC'});
+    }
+    if(action==='resident_save') {
+      if(!client&&!admin)return fail('Client or admin property access required',403);
+      const input=data.resident||{};
+      const record:any={site_name:site};for(const field of residentFields)if(field!=='site_name')record[field]=clean(input[field],field==='notes'?1000:180);
+      if(!record.full_name)return fail('Resident name required');
+      if(record.vehicle_plate)record.vehicle_plate=plateKey(record.vehicle_plate);
+      record.updated_by=clean(user.email);record.updated_at=dates();
+      let result;
+      if(data.id){const old=await entities.PropertyResident.get(clean(data.id));if(!old||siteKey(old.site_name)!==siteKey(site))return fail('Resident not found at this property',404);result=await entities.PropertyResident.update(old.id,record);}
+      else result=await entities.PropertyResident.create({...record,registered_by:clean(user.email)});
+      return Response.json({success:true,resident:result});
+    }
+    if(action==='rule_save'){
+      if(!client&&!admin)return fail('Client or admin property access required',403);
+      const r=data.rule||{};
+      const amount=Number(r.fine_amount||0);
+      if(!clean(r.label)||!clean(r.violation_type)||!Number.isFinite(amount)||amount<0||amount>10000)return fail('A violation label, type, and valid fine are required');
+      const record={site_name:site,label:clean(r.label),violation_type:clean(r.violation_type),description:clean(r.description,1200),fine_amount:amount,warning_only:r.warning_only===true,active:r.active!==false,updated_by:clean(user.email),updated_at:dates()};
+      let result;
+      if(data.id){const old=await entities.PropertyParkingRule.get(clean(data.id));if(!old||siteKey(old.site_name)!==siteKey(site))return fail('Rule not found at property',404);result=await entities.PropertyParkingRule.update(old.id,record);}
+      else result=await entities.PropertyParkingRule.create(record);
+      return Response.json({success:true,rule:result});
+    }
+    if(action==='issue'){
+      if(!officer)return fail('Only officers can issue parking notices',403);
+      const input=data.violation||{};
+      const entry:any={};for(const field of parkingFields)if(input[field]!==undefined)entry[field]=typeof input[field]==='string'?clean(input[field],field==='description'?2200:300):input[field];
+      if(!plateKey(entry.license_plate)||!clean(entry.violation_type))return fail('Plate and violation type are required');
+      entry.license_plate=plateKey(entry.license_plate);entry.location=site;entry.violation_date=entry.violation_date||dates().slice(0,10);
+      entry.violation_time=entry.violation_time||dates().slice(11,16);
+      entry.citation_number=entry.citation_number||`BPS-PV-${Date.now().toString(36).toUpperCase()}`;
+      const rules=await siteRecords(entities.PropertyParkingRule,100);
+      const rule=rules.find((r:any)=>r.violation_type===entry.violation_type&&r.active!==false);
+      entry.warning_issued=rule?.warning_only===true||entry.warning_issued===true;
+      entry.fine_amount=entry.warning_issued?0:Number(rule?.fine_amount||0);
+      entry.status='issued';entry.supervisor_review_status='pending';entry.client_review_status='pending';entry.client_visible=true;
+      entry.officer_name=clean(user.full_name||`${user.first_name||''} ${user.last_name||''}`.trim()||user.email);
+      entry.approval_history=[history(user,'issued',entry.description||'Officer submitted parking notice')];
+      const result=await entities.ParkingViolation.create(entry);
+      return Response.json({success:true,violation:result});
+    }
+    if(action==='violations'||action==='export'){
+      const since=action==='export'?new Date(Date.now()-30*86400000).toISOString().slice(0,10):'';
+      const rows=await entities.ParkingViolation.filter({location:site},'-created_date',450);
+      const violations=rows.filter((row:any)=>siteKey(row.location)===siteKey(site) && (!since||String(row.violation_date||'')>=since)
+        && (!client || row.client_visible!==false));
+      return Response.json({violations,window_days:action==='export'?30:null});
+    }
+    if(action==='review'){
+      const id=clean(data.id);if(!id)return fail('Notice ID required');
+      const old=await entities.ParkingViolation.get(id);
+      if(!old||!scope(old.location)||siteKey(old.location)!==siteKey(site))return fail('Notice not found at this property',404);
+      const status=clean(data.status);
+      const notes=clean(data.notes,1000);
+      let patch:any={};
+      if(client){if(!['acknowledged','disputed','resolved'].includes(status))return fail('Invalid client response');patch={client_review_status:status,client_notes:notes};}
+      else if(supervisor){if(!['approved','returned','rejected'].includes(status))return fail('Invalid supervisor decision');patch=status==='approved'?{supervisor_review_status:'approved',status:'approved',supervisor_notes:notes}:{supervisor_review_status:'returned',status:'rejected',supervisor_notes:notes,admin_notes:notes,was_rejected:true};}
+      else return fail('Review access required',403);
+      patch.approval_history=[...(Array.isArray(old.approval_history)?old.approval_history:[]),history(user,client?'client_review':'supervisor_review',`${status}: ${notes}`)].slice(-60);
+      const result=await entities.ParkingViolation.update(id,patch);
+      return Response.json({success:true,violation:result});
+    }
+    return fail('Unknown parking action',400);
+  } catch(error:any){console.error('manageParkingRecords',String(error?.message||error));return fail('Parking records request failed',503);}
+});
