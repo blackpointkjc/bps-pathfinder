@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { requestCadLiveSync } from '@/lib/cadCallFeed';
+import { getBase44RequestHealth } from '@/api/base44Client';
 
 // One app-wide guarded source poll, including when an officer is not on Dispatch Center.
 // cadCallFeed shares a cross-tab cooldown/lock; the server has its own ingestion lease.
@@ -22,6 +23,9 @@ export default function CadSourceSyncMonitor({ user }) {
       // Poll visible command screens only. The backend scheduler remains responsible
       // for unattended ingestion; browser checks supplement it while in use.
       if (!active || running || !navigator.onLine || document.visibilityState !== 'visible') return;
+      const health=getBase44RequestHealth();
+      const cooldown=Math.max(Date.parse(health.readRetryAt||'')||0,Date.parse(health.rateLimitedUntil||'')||0);
+      if(Date.now()<cooldown || Number(health.queuedReads||0)>=5)return;
       const page = window.location.pathname + window.location.search;
       if (!/Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|SupervisorCenter|SupervisorOverview|SupervisorCommandBoard|SupervisorFieldOversight|admin_center=(cad|supervisor)/i.test(page)) return;
       running = true;
@@ -37,11 +41,11 @@ export default function CadSourceSyncMonitor({ user }) {
       }
     };
     // Let the signed-in page load before beginning expensive source ingestion.
-    const first = window.setTimeout(sync, 3_000);
+    const first = window.setTimeout(sync, 12_000);
     // Upstream ingestion is expensive and already protected by a server-side
-    // scheduled workflow. A 30s foreground fallback plus realtime CAD events
+    // scheduled workflow. A 90s foreground fallback plus realtime CAD events
     // avoids four source polls per minute on every signed-in command session.
-    const timer = window.setInterval(sync, 30_000);
+    const timer = window.setInterval(sync, 90_000);
     const resume = () => { if (navigator.onLine) void sync(); };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);

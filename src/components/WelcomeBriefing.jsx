@@ -372,11 +372,11 @@ export default function WelcomeBriefing({ user }) {
       if (task?.assigned_to && String(task.assigned_to) !== String(user.id)) return;
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
-        loadRef.current?.();
-      }, 3000);
+        if(document.visibilityState==='visible' && navigator.onLine)loadRef.current?.();
+      }, 9000);
     };
     const unsubscribers = ['Task','Notification','Announcement','AnnouncementReceipt','ChatMention','TimeEntry','ActiveOfficer','Schedule','ScheduleWeekStatus','VehicleAssignment','Unit'].map(name => base44.entities[name].subscribe(refreshBriefing));
-    const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') loadRef.current?.(); }, 30000);
+    const poll = window.setInterval(() => { if (document.visibilityState === 'visible' && navigator.onLine) loadRef.current?.(); }, 180000);
     const onFocus = () => loadRef.current?.();
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onFocus);
