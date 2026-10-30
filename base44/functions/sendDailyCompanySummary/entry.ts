@@ -162,9 +162,18 @@ function verifiedProfileCourse(user:any,course:any, today:string){
 
 function activeCertificationExpiry(user:any,type:string){
   const kind=type.toLowerCase().includes('firearm')?'firearm':'dcjs';
-  const dates=[user?.[kind+'_expiration'],...(user?.officer_certifications||[]).filter((c:any)=>String(c?.certification_type||c?.training_name||'').toLowerCase().includes(kind))
-    .map((c:any)=>c.expiration_date)].map(value=>String(value||'').slice(0,10)).filter(value=>/^\d{4}-\d{2}-\d{2}$/.test(value));
-  return dates.sort().at(-1)||'';
+  const records=Array.isArray(user?.officer_certifications)?user.officer_certifications:[];
+  const relevant=records.filter((c:any)=>{
+    const code=String(c?.course_id||'').toUpperCase();
+    const title=String(c?.certification_type||c?.training_name||'').toLowerCase();
+    return kind==='firearm'? /^(07|08|09|10)/.test(code)||/firearm|handgun|shotgun|patrol rifle/.test(title):
+      /^01/.test(code)||String(c?.category||'').toLowerCase()==='dcjs'||/dcjs|security officer core/.test(title);
+  }).filter((c:any)=>!['revoked','rejected','pending'].includes(String(c.status||'').toLowerCase()));
+  const fromFile=relevant.map((c:any)=>String(c.expiration_date||c.firearm_expiration_date||'').slice(0,10))
+    .filter((date:string)=>/^\d{4}-\d{2}-\d{2}$/.test(date));
+  const raw=String(user?.[kind+'_expiration']||'').slice(0,10);
+  const all=[...( /^\d{4}-\d{2}-\d{2}$/.test(raw)?[raw]:[]),...fromFile];
+  return all.sort().at(-1)||'';
 }
 
 function resolvedDeliveryEmail(user: any, outlook: any[], teams: any[]) {
