@@ -57,7 +57,10 @@ async function fetchTomTomRoute(lat:number,lng:number,destLat:number,destLng:num
           ref: instruction.roadNumbers?.join(';') || '',
           destinations: String(instruction.signpostText || ''),
           distance: Math.max(0, (Number.isFinite(next) ? next : meters) - here),
-          duration: 0,
+          // TomTom supplies route-wide travel time, not reliable per-instruction
+          // durations. Allocate its traffic-aware ETA by remaining road distance
+          // so the browser cannot collapse a long route to one minute.
+          duration: seconds * Math.max(0, (Number.isFinite(next) ? next : meters) - here) / Math.max(1, meters),
           maneuver: { type: kind, modifier, exit: instruction.roundaboutExitNumber,
             location: [Number(instruction.point?.longitude || pts[0].longitude), Number(instruction.point?.latitude || pts[0].latitude)] },
           instruction: String(instruction.message || ''),
