@@ -158,7 +158,7 @@ function registerCadIcons(map){
 const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
@@ -487,6 +487,19 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.resize();
             map.triggerRepaint();
             setResourceStatus('TomTom 3D map is loading or rebuilding; CAD backup remains in Map Tools.');
+            // Read-only maps have a full GPS detail fallback. If a TomTom map
+            // is genuinely blank after extended startup, don't leave an
+            // officer's history hidden behind a white canvas indefinitely.
+            // CAD Navigation does not use this option: a terrain/style reload
+            // must not unexpectedly replace an active driver map.
+            if(allowBlankMapFallback){
+              window.setTimeout(()=>{
+                if(cancelled||!sdkRef.current)return;
+                let hasStreets=false;
+                try{hasStreets=map.isStyleLoaded()&&map.queryRenderedFeatures().length>0;}catch{}
+                if(!hasStreets){setError('TomTom map failed to render. Switching to detailed GPS map.');onMapUnavailableRef.current?.();}
+              },10000);
+            }
           }
         },18000);
       }catch(e){if(!cancelled){setError(`TomTom map could not start: ${e?.message||'Unknown error'}.`);if(embedded)onMapUnavailableRef.current?.();}}

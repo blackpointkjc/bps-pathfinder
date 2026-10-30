@@ -138,7 +138,7 @@ function HistoricalOfficerMap({ data, officerName, theme }) {
   return <Card className="my-4 overflow-hidden">
     <CardHeader><CardTitle>{officerName} · Historical Movement</CardTitle><p className="text-sm text-slate-500">{data.date}{windowLabel} · {model.points.length} mapped pings · Eastern Time. The detailed GPS view retains individual ping timestamps, speeds and accuracy.</p><button type="button" className="mt-2 rounded-lg border border-cyan-700 px-3 py-2 text-xs text-cyan-200" onClick={()=>setUseTomTomHistory(value=>!value)}>{useTomTomHistory?'Open detailed GPS points':'Show TomTom historical route'}</button></CardHeader>
     <CardContent className="p-0"><div className="relative h-[420px] w-full sm:h-[540px]">
-      {useTomTomHistory && navigator.onLine ? <TomTomSdkMapPreview embedded mapTheme={theme} route={trail} initialCenter={trail[0]||null}
+      {useTomTomHistory && navigator.onLine ? <TomTomSdkMapPreview embedded allowBlankMapFallback mapTheme={theme} route={trail} initialCenter={trail[0]||null}
         showPoliceStations={false} showFireStations={false} showJails={false}
         searchPins={[{id:'trail-start',name:'First GPS ping',coords:trail[0]},{id:'trail-end',name:'Last GPS ping',coords:trail[trail.length-1]}].filter(point=>point.coords)}
         onMapUnavailable={()=>setUseTomTomHistory(false)}/> : <MapContainer key={data.date + (data.window_label || '') + officerName} center={[Number(model.points[0].latitude), Number(model.points[0].longitude)]} zoom={14} style={{height:'100%',width:'100%'}}>
@@ -862,7 +862,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                   <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"><p className="text-sm text-slate-500">{activeOfficerLoading ? 'Loading officer locations…' : `${officersForMap.length} officers on map. TomTom shows current and last-known officers; the detailed map retains GPS accuracy circles.`}</p><button type="button" className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200" onClick={()=>{setUseTomTomLive(value=>!value);setTomTomLiveFailed(false);}}>{useTomTomLive&&!tomTomLiveFailed?'Detailed GPS map':'TomTom live map'}</button></div>
                   <div className="relative h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                     {useTomTomLive && !tomTomLiveFailed && navigator.onLine ? <TomTomSdkMapPreview
-                      embedded mapTheme={mapTheme} initialCenter={officersForMap[0]?[Number(officersForMap[0].latitude),Number(officersForMap[0].longitude)]:null}
+                      embedded allowBlankMapFallback mapTheme={mapTheme} initialCenter={officersForMap[0]?[Number(officersForMap[0].latitude),Number(officersForMap[0].longitude)]:null}
                       fitMarkers showPoliceStations={false} showFireStations={false} showJails={false}
                       otherUnits={officersForMap.map(officer=>({...officer,map_visible:true,session_active:true,
                         unit_number:getOfficerName(officer.officer_email),status:officer.gps_stale?'Out of Service':'Available'}))}

@@ -880,7 +880,7 @@ export default function TimeClock() {
                     </CardHeader>
                     <CardContent className="p-0">
                       <div className="relative h-[300px] w-full">
-                        {useTomTomClockMap&&!tomTomClockFailed&&navigator.onLine ? <TomTomSdkMapPreview embedded
+                        {useTomTomClockMap&&!tomTomClockFailed&&navigator.onLine ? <TomTomSdkMapPreview embedded allowBlankMapFallback
                           currentLocation={[currentLocationCoords.lat,currentLocationCoords.lng]}
                           mapTheme={clockMapTheme} showPoliceStations={false} showFireStations={false} showJails={false}
                           geofence={(()=>{const name=activeEntry.location?.split(' - ')[0]?.trim();
