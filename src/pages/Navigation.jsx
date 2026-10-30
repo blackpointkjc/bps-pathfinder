@@ -1106,12 +1106,24 @@ export default function Navigation() {
         if (!roadChanged && now - previous.at < 25000 && distance < 90) return;
         const requestSeq = ++speedLimitRequestSeqRef.current;
         lastSpeedLimitLookupRef.current = { at: now, lat: currentLocation[0], lng: currentLocation[1], road: roadName };
-        if (roadChanged || distance > 90) {
-            setRoadSpeedLimit(null);
-            setRoadSpeedLimitRoad('');
-            setRoadSpeedLimitSource('');
+        // Display a verified TomTom legal road section immediately while the
+        // posted-limit provider responds. Never invent a limit from road class.
+        let routeLimit = null;
+        if (isNavigating && !navOffRoute && navRoute.length > 1 && navSpeedLimitSections.length) {
+            const matched = projectOntoRoute(currentLocation, navRoute,
+                Math.max(0, navSnapIndexRef.current - 5),
+                Math.min(navRoute.length - 1, navSnapIndexRef.current + 80));
+            if (matched && matched.distance <= 25) {
+                const section = navSpeedLimitSections.find(row => matched.index >= row.start && matched.index < row.end);
+                if (section && Number.isFinite(Number(section.mph)) && section.mph >= 10 && section.mph <= 90) routeLimit = section.mph;
+            }
         }
-        if (roadChanged || distance > 90 || previous.at === 0) setRoadSpeedLimitStatus('Checking road data');
+        if (roadChanged || distance > 90) {
+            setRoadSpeedLimit(routeLimit);
+            setRoadSpeedLimitRoad('');
+            setRoadSpeedLimitSource(routeLimit != null ? 'TomTom legal route speed limit' : '');
+        }
+        if (routeLimit == null && (roadChanged || distance > 90 || previous.at === 0)) setRoadSpeedLimitStatus('Checking road data');
         withRequestTimeout(base44.functions.invoke('getRoadSpeedLimit', {
             latitude: currentLocation[0], longitude: currentLocation[1], road_name: roadName,
             // Below 12 mph, GPS heading often reflects sensor drift rather than
@@ -1147,9 +1159,6 @@ export default function Navigation() {
             setRoadSpeedLimitStatus(hasLimit ? 'Mapped posted limit' : payload.reason === 'gps_accuracy_too_low' ? 'GPS too imprecise for road match' : payload.reason === 'map_provider_rate_limited' ? 'Speed data provider busy' : payload.reason === 'posted_limit_unavailable' ? 'Speed data temporarily unavailable' : 'No mapped limit for this road');
         }).catch(() => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
-            setRoadSpeedLimit(null);
-            setRoadSpeedLimitSource('');
-            setRoadSpeedLimitRoad('');
             setRoadSpeedLimitStatus('Posted speed limit unavailable');
         });
     }, [currentLocation, isNavigating, isLiveTracking, gpsQuality?.state, gpsQuality?.accuracy, heading, navStepIndex, navSteps, navRoute, navOffRoute, navSpeedLimitSections, speedLimitRetryRevision]);
@@ -1834,7 +1843,7 @@ export default function Navigation() {
                             </div>
                             <div className="px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
-                                <div className="mt-0.5 text-2xl font-black leading-none">{Math.max(0, Math.round(Number(speed) || 0))}<span className="ml-1 text-[10px] font-black">MPH</span></div>
+                                <div className="mt-0.5 text-2xl font-black leading-none">{isLiveTracking ? Math.max(0, Math.round(Number(speed) || 0)) : '—'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
                             </div>
                         </div>
                 </div>
@@ -1849,7 +1858,7 @@ export default function Navigation() {
                         </div>
                         <div className="px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
-                            <div className="mt-0.5 text-2xl font-black leading-none">{Math.max(0, Math.round(Number(speed) || 0))}<span className="ml-1 text-[10px] font-black">MPH</span></div>
+                            <div className="mt-0.5 text-2xl font-black leading-none">{isLiveTracking ? Math.max(0, Math.round(Number(speed) || 0)) : '—'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
                         </div>
                     </div>
                 </div>
