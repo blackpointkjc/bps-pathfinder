@@ -76,6 +76,14 @@
     },
     "emergency_contact": {
       "type": "string"
+    },
+    "monthly_rent": {
+      "type": "number",
+      "description": "Optional monthly lease rent; property manager/client-only, never sent to officer rent-roll searches"
+    },
+    "rent_due_day": {
+      "type": "number",
+      "description": "Optional day of month the rent is due; property manager/client-only"
     }
   },
   "required": [

@@ -186,6 +186,16 @@ Deno.serve(async req => {
       const record:any={site_name:site};for(const field of residentFields)if(field!=='site_name')record[field]=clean(input[field],field==='notes'?1000:180);
       if(!record.full_name)return fail('Resident name required');
       if(!['active','pending','former'].includes(record.lease_status))record.lease_status='pending';
+      if(input.monthly_rent!==undefined&&clean(input.monthly_rent)){
+        const monthly=Number(input.monthly_rent);
+        if(!Number.isFinite(monthly)||monthly<0||monthly>100000)return fail('Enter a valid nonnegative monthly rent amount');
+        record.monthly_rent=monthly;
+      }
+      if(input.rent_due_day!==undefined&&clean(input.rent_due_day)){
+        const due=Number(input.rent_due_day);
+        if(!Number.isSafeInteger(due)||due<1||due>31)return fail('Rent due day must be from 1 through 31');
+        record.rent_due_day=due;
+      }
       if(record.vehicle_plate)record.vehicle_plate=plateKey(record.vehicle_plate);
       record.updated_by=clean(user.email);record.updated_at=dates();
       let result;
