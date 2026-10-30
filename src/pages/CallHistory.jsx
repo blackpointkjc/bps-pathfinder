@@ -320,7 +320,10 @@ export default function CallHistory() {
             setLastRefresh(new Date());
         } catch (e) {
             console.error('[HISTORY] feed load failed:', e);
-            toast.error(`Call history could not be loaded: ${e?.message || 'Unknown error'}`);
+            setHistoryWarning('Call History service is unavailable or throttled. Previous records remain visible if already loaded; retry after the API cooldown.');
+            // This is not an empty history search result; leave an explicit
+            // warning rather than silently displaying zero records.
+            console.warn('Call History request failed:',e?.message||'Unknown error');
             // Preserve the last confirmed feed during a transient timeout instead of
             // replacing valid call history with an empty screen.
         } finally {
@@ -612,7 +615,7 @@ export default function CallHistory() {
                 </div>
 
                 {sorted.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">— NO RECORDS MATCH FILTERS —</div>
+                    <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">{historyWarning ? '— CALL HISTORY UNAVAILABLE —' : '— NO RECORDS MATCH FILTERS —'}</div>
                 ) : sorted.map((row, idx) => {
                     const isActive = row._source === 'active' && isVisibleActiveCall(row);
                     const agKey = agencyKey(row.agency);

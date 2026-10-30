@@ -57,6 +57,7 @@ export default function DispatchCenter({embedded=false}) {
     const [units, setUnits] = useState([]);
     const [unitLoadStatus, setUnitLoadStatus] = useState('loading');
     const [activeCalls, setActiveCalls] = useState(() => readCachedDispatchCalls());
+    const [callsLoadWarning, setCallsLoadWarning] = useState('');
     const [callDistrict, setCallDistrict] = useState(null);
     const [selectedCall, setSelectedCall] = useState(null);
     const [loading, setLoading] = useState(activeCalls.length === 0);
@@ -442,6 +443,7 @@ export default function DispatchCenter({embedded=false}) {
             }
 
             console.log('📞 Dispatch active calls:', recentCalls.length);
+            setCallsLoadWarning('');
             setActiveCalls(recentCalls);
             // Don't leave an incident assignable after it clears or leaves the live queue.
             setSelectedCall(current => current ? (recentCalls.find(call => call.id === current.id) || null) : null);
@@ -453,6 +455,7 @@ export default function DispatchCenter({embedded=false}) {
             lastActiveCallsLoadRef.current = Date.now();
          } catch (error) {
              console.error('Error loading active calls:', error);
+             setCallsLoadWarning('Active dispatch data is temporarily unavailable. Showing last confirmed calls if available; automatic retry will resume after the API cooldown.');
          } finally {
              activeCallsLoadingRef.current = false;
          }
@@ -890,7 +893,7 @@ export default function DispatchCenter({embedded=false}) {
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {allCalls.length === 0 ? (
-                                <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'Loading Current Calls…' : queueSearch ? 'No Calls Match This Search' : queueFilter==='agency' ? 'No Active Calls' : 'No Property Calls Match This Filter'}</div>
+                                <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'Loading Current Calls…' : callsLoadWarning ? 'Active call feed unavailable — retrying when the API recovers' : queueSearch ? 'No Calls Match This Search' : queueFilter==='agency' ? 'No Active Calls' : 'No Property Calls Match This Filter'}</div>
                             ) : allCalls.map(call => {
                                 const pulsePoint = isPulsePointCall(call);
                                 return (
