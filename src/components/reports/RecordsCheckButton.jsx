@@ -1,4 +1,4 @@
-import React,{useState} from 'react';
+import {useState} from 'react';
 import { base44 } from '@/api/base44Client';
 import { announceRecordSearch } from '@/utils/voiceAnnouncer';
 export default function RecordsCheckButton({name='',plate='',site='',compact=false}){

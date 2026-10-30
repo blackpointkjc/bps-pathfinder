@@ -49,7 +49,7 @@ Deno.serve(async req => {
           vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_year:row.vehicle_year,vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin}));
         if(action==='residents')return Response.json({residents});
         const [rules,violations]=await Promise.all([siteRecords(entities.PropertyParkingRule,100),entities.ParkingViolation.filter({location:site},'-created_date',200)]);
-        return Response.json({residents,rules,violations:violations.filter((v:any)=>siteKey(v.location)===siteKey(site))});
+        return Response.json({residents,rules,violations:violations.filter((v:any)=>siteKey(v.location)===siteKey(site)&&(!client||v.client_visible!==false))});
       }
       if(!officer)return fail('Officer records access required',403);
       const query=clean(data.query,100).toLowerCase();if(query.length<2)return fail('Enter a person name, plate or VIN');

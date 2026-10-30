@@ -1,4 +1,3 @@
-import React from 'react';
 import { US_STATES } from '@/lib/vehicleForm';
 const PARTS=[['vehicle_year','Year'],['vehicle_make','Make'],['vehicle_model','Model'],['vehicle_color','Color'],['vehicle_plate','Plate'],['vehicle_vin','VIN']];
 export default function VehicleFields({value={},onChange,plateField='vehicle_plate',stateField='vehicle_state',prefix='vehicle',compact=false}){
