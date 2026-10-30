@@ -6,7 +6,7 @@ import { createPageUrl } from '../utils';
 import { announceVoice, isVoiceEnabled, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { playPropertyHorn } from '@/utils/alertUtils';
-import { isClockedInAtProperty } from '@/lib/clockedPropertyAlarm';
+import { isClockedInAtProperty, getActiveTimeEntry } from '@/lib/clockedPropertyAlarm';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
 
 const SOURCES = [
@@ -541,14 +541,17 @@ export default function GlobalMessageBanner({ user }) {
         if (payload.error || !Array.isArray(payload.entries)) return false;
         entries = payload.entries;
       } catch (error) {
-        // Fail closed: neither the horn nor call speech may bypass duty matching.
+        // A verified open shift is required for the on-duty property broadcast.
         console.warn('Property call duty check failed:', error?.message);
         return false;
       }
-      if (!active || !isCurrent() || property?.active === false
-        || property?.property_monitoring_enabled !== true
-        || !isClockedInAtProperty(entries, property)) return false;
-      if (!hornCompleted) await playPropertyHorn(() => active && isCurrent());
+      if (!active || !isCurrent() || !getActiveTimeEntry(entries)) return false;
+      if (property && (property.active === false || property.property_monitoring_enabled !== true)) return false;
+      // All on-duty officers hear the existing property-call wording. Only the
+      // officer currently clocked in at this property gets the attention horn.
+      if (!hornCompleted && isClockedInAtProperty(entries, property)) {
+        await playPropertyHorn(() => active && isCurrent());
+      }
       return active && isCurrent();
     };
 

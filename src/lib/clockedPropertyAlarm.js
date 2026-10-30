@@ -1,11 +1,15 @@
 // Match the authoritative open time punch, never a scheduled/assigned post alone.
 const normalize = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
+export function getActiveTimeEntry(entries, now = Date.now()) {
+  return (entries || []).filter(row => !row.clock_out && row.archived !== true
+    && Number.isFinite(Date.parse(row.clock_in)) && Date.parse(row.clock_in) <= now)
+    .sort((a, b) => Date.parse(b.clock_in) - Date.parse(a.clock_in))[0] || null;
+}
+
 export function isClockedInAtProperty(entries, property, now = Date.now()) {
   if (!property) return false;
-  const entry = (entries || []).filter(row => !row.clock_out && row.archived !== true
-    && Number.isFinite(Date.parse(row.clock_in)) && Date.parse(row.clock_in) <= now)
-    .sort((a, b) => Date.parse(b.clock_in) - Date.parse(a.clock_in))[0];
+  const entry = getActiveTimeEntry(entries, now);
   if (!entry) return false;
   if (entry.location_id) return String(entry.location_id) === String(property.id);
   // TimeClock and change-post currently persist "site name - address".

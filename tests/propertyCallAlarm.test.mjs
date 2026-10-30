@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { isClockedInAtProperty } from '../src/lib/clockedPropertyAlarm.js';
+import { isClockedInAtProperty, getActiveTimeEntry } from '../src/lib/clockedPropertyAlarm.js';
 
 const now = Date.now();
 const property = { id: 'site-a', site_name: 'Oak Court', address: '10 Main St', active: true, property_monitoring_enabled: true };
@@ -34,9 +34,9 @@ const fakeClient = {
     return { data: { entries } };
   } },
 };
-const makePrelude = new Function('active', 'base44', 'isClockedInAtProperty', 'playPropertyHorn', 'normalized',
+const makePrelude = new Function('active', 'base44', 'isClockedInAtProperty', 'playPropertyHorn', 'normalized', 'getActiveTimeEntry',
   preludeSource + '; return propertyHornPrelude;');
-const prelude = makePrelude(true, fakeClient, isClockedInAtProperty, async () => { horns++; }, value => String(value || '').trim().toLowerCase());
+const prelude = makePrelude(true, fakeClient, isClockedInAtProperty, async () => { horns++; }, value => String(value || '').trim().toLowerCase(), getActiveTimeEntry);
 await prelude({ propertyId: 'site-a' })(() => true);
 await prelude({ callId: 'call-a' })(() => true);
 assert.equal(horns, 2); // Both raw PropertyAlert and durable CallStatusLog resolve the same post.
@@ -45,6 +45,13 @@ assert.equal(await prelude({ propertyId: 'site-a' })(() => true), false);
 assert.equal(horns, 2);
 assert.equal(await prelude({ propertyId: 'site-a' })(() => false), false);
 assert.equal(lookups, 3);
+
+// On-duty at another post still hears the property call, with no horn.
+entries = [{ ...punch, location: 'Another Post - 99 Main St' }];
+assert.equal(await prelude({ propertyId: 'site-a' })(() => true), true);
+assert.equal(horns, 2);
+entries = [];
+assert.equal(await prelude({ propertyId: 'site-a' })(() => true), false);
 
 // Actual voice queue: dedupe occurs before the prelude and speech awaits it.
 const storage = new Map();
