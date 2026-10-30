@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
 
 function rolesOf(user: any) {
   return new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
       ].filter((value, index, values) => value && values.indexOf(value) === index);
       let result = null;
       for (const candidate of candidates) {
-        result = await geocodeWithCensus(candidate) || await geocodeWithPhoton(candidate);
+        result = await tomtomGeocode(candidate) || await geocodeWithCensus(candidate) || await geocodeWithPhoton(candidate);
         if (result) break;
       }
       if (!result) {

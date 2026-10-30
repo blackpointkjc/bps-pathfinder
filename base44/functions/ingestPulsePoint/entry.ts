@@ -1,5 +1,6 @@
 import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
 import { createDecipheriv, createHash } from 'node:crypto';
 
 const GABC_URL = 'https://web.pulsepoint.org/DB/gabc.php';
@@ -178,6 +179,9 @@ async function geocodePulsePointAddress(address: string, agency: any) {
   if (!cleanAddress || /address unavailable/i.test(cleanAddress)) return null;
   const suffix = String(agency?.area || agency?.name || 'Virginia').trim();
   const query = /\bVA\b|Virginia/i.test(cleanAddress) ? cleanAddress : `${cleanAddress}, ${suffix}`;
+  const tomtom = await tomtomGeocode(query);
+  if (tomtom) return { latitude:tomtom.latitude,longitude:tomtom.longitude,
+    geo_confidence:tomtom.geo_confidence,geo_method:'tomtom',geo_approximate:tomtom.geo_approximate };
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=${encodeURIComponent(query)}`;
     const results = await fetchJson(url);

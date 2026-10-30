@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -117,6 +118,14 @@ async function smartGeocode(location, agency) {
     const jurisdiction = getJurisdiction(agency, location);
     const city = cityForJurisdiction(jurisdiction);
     const parsed = parseLocation(location);
+    // Map actual CAD addresses with TomTom first; retain Census/Photon
+    // for records TomTom cannot locate. No center-of-jurisdiction pin guessing.
+    const tomtom = await tomtomGeocode(`${location}, ${city}`);
+    if (tomtom && withinBounds(tomtom.lat,tomtom.lon,jurisdiction)) {
+        return {latitude:tomtom.lat,longitude:tomtom.lon,geo_method:'tomtom',
+            geo_confidence:tomtom.geo_confidence,geo_approximate:tomtom.geo_approximate};
+    }
+
 
     // ── Strategy 1: Full address (block midpoint) ──
     if (parsed.type === 'block') {

@@ -1,6 +1,7 @@
 import { fetchCadSource } from './sourceFetch.ts';
 import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
 
 // Entity reads are throttled per caller. A 429 means "pause, then continue": wait
 // the window the platform states and retry once so an ingestion cycle keeps its
@@ -414,6 +415,9 @@ async function fastGeocodeWebsiteCall(call: any) {
     : ['CCPD','CCFD'].includes(agency) ? 'Chesterfield County, VA'
       : 'Richmond, VA';
   const address = `${String(call?.location || '').replace(/^RICH:\s*/i, '')}, ${area}`;
+  const tomtom = await tomtomGeocode(address);
+  if (tomtom) return {...call,latitude:tomtom.latitude,longitude:tomtom.longitude,
+    geo_confidence:tomtom.geo_confidence,geo_method:'tomtom',geo_approximate:tomtom.geo_approximate};
   const photon = fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=3&lang=en`, {
     headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-CAD/4.2' }, signal: AbortSignal.timeout(4500),
   }).then(async response => {

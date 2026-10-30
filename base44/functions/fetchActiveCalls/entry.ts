@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
 
 // Calculate distance between two coordinates in meters using Haversine formula
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
@@ -15,6 +16,8 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
 
 // Simple geocoding using Nominatim (free OpenStreetMap service)
 async function geocodeAddress(address) {
+  const tomtom = await tomtomGeocode(String(address || '') + ', Richmond, VA');
+  if (tomtom) return {lat:tomtom.lat,lon:tomtom.lon};
   try {
     // Clean address - remove block numbers and suffixes
     let cleanAddress = address
