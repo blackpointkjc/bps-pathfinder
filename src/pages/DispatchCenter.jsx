@@ -174,15 +174,15 @@ export default function DispatchCenter({embedded=false}) {
                 .sort(comparePersonnel));
         };
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
-        const localInterval = setInterval(async () => {
-            if (document.visibilityState !== 'visible') return;
-            // App-wide CadSourceSyncMonitor owns upstream ingestion. This screen
-            // only refreshes persisted calls; running ingestion here duplicates
-            // expensive backend work and causes 429s across every workspace.
-            clearActiveDispatchCallMemoryCache();
-            lastActiveCallsLoadRef.current = 0;
-            loadActiveCalls(true);
-        }, 20000);
+        const localInterval = setInterval(() => {
+            if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+            // Live DispatchCall subscriptions paint new/changed calls immediately.
+            // Reconcile with the backend only every 90 seconds or on the
+            // ingestion-finished signal. The former 20s forced cache flush
+            // caused overlapping 500-row reads on every mounted CAD screen.
+            if(Date.now()-lastActiveCallsLoadRef.current < 85_000)return;
+            void loadActiveCalls();
+        }, 90_000);
 
         // Visible Dispatch Center screens share the guarded upstream sync lock.
         // Repaint immediately after persisted writes complete so the queue does

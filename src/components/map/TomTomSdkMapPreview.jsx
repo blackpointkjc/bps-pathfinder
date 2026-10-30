@@ -156,6 +156,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const terrainInitRef=useRef(false);
   const perspectiveInitRef=useRef(false);
   const mapReadyRef=useRef(false);
+  const activeThemeRef=useRef(mapTheme);
+  const switchingThemeRef=useRef(false);
+  const nextThemeRef=useRef(mapTheme);
   const cleanupRef=useRef(null);
   const tileErrorsRef=useRef(0);
   const [trafficVisible,setTrafficVisible]=useState(true);
@@ -285,6 +288,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         });
         if(cancelled){sdk?.destroy?.();return;}
         sdkRef.current=sdk;
+        activeThemeRef.current=mapTheme;
         const map=sdk.mapLibreMap;
         // Some iPads and embedded browsers build the map before their flex
         // viewport is laid out. Keep its WebGL canvas matched to the element.
@@ -452,6 +456,37 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     init();
     return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;terrainInitRef.current=false;perspectiveInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
   }, []);
+  // The Pathfinder day/night toggle changes props, not the TomTom map
+  // instance. Update the actual TomTom style and retain module state. The
+  // style.load handler below rebuilds CAD overlays on the new style.
+  useEffect(()=>{
+    const sdk=sdkRef.current;
+    if(!sdk || !ready)return;
+    nextThemeRef.current=mapTheme;
+    if(switchingThemeRef.current || activeThemeRef.current===mapTheme)return;
+    let stopped=false;
+    const update=async()=>{
+      switchingThemeRef.current=true;
+      try{
+        while(!stopped && activeThemeRef.current!==nextThemeRef.current){
+          const target=nextThemeRef.current;
+          await sdk.setStyle({type:'standard',id:target==='night'?'streetDarkDriving':'streetLightDriving',
+            include:['terrain','trafficFlow','trafficIncidents']});
+          if(stopped)return;
+          activeThemeRef.current=target;
+          syncCadData(sdk.mapLibreMap);
+        }
+        if(!stopped)setError('');
+      }catch(error){
+        if(!stopped){
+          console.warn('TomTom theme change failed:',error?.message||error);
+          setError('TomTom map theme could not load; current map remains available.');
+        }
+      }finally{switchingThemeRef.current=false;}
+    };
+    void update();
+    return()=>{stopped=true;};
+  },[mapTheme,ready]);
   useEffect(()=>{
     if(!trafficReady)return;
     trafficRef.current.flow?.setVisible(trafficVisible);

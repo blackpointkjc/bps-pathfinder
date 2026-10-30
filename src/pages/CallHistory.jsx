@@ -104,6 +104,7 @@ export default function CallHistory() {
     const lastServerReadRef=useRef(0);
     const pendingSearchRef=useRef(false);
     const monitoredPropertiesRef = useRef([]);
+    const propertyBoundariesReadAtRef = useRef(0);
     const cursorRef = useRef(null);
     const [nextCursor, setNextCursor] = useState(null);
     const [historyWarning, setHistoryWarning] = useState('');
@@ -236,12 +237,18 @@ export default function CallHistory() {
             // Keep a current in-memory copy of monitored property boundaries so
             // active CAD rows can be classified immediately even before the
             // durable PropertyAlert write arrives.
-            void withRequestTimeout(base44.entities.Location.list('site_name',300),10000,'Property monitoring boundaries')
-              .then(locations=>{monitoredPropertiesRef.current=monitoredPropertiesFromLocations(locations||[]);})
-              .catch(error=>console.warn('[HISTORY] Property boundaries unavailable',error?.message));
+            if(!propertyBoundariesReadAtRef.current || Date.now()-propertyBoundariesReadAtRef.current > 5*60_000){
+              propertyBoundariesReadAtRef.current=Date.now();
+              void withRequestTimeout(base44.entities.Location.list('site_name',300),10000,'Property monitoring boundaries')
+                .then(locations=>{monitoredPropertiesRef.current=monitoredPropertiesFromLocations(locations||[]);})
+                .catch(error=>{
+                  propertyBoundariesReadAtRef.current=0;
+                  console.warn('[HISTORY] Property boundaries unavailable',error?.message);
+                });
+            }
 
             const result = await withRequestTimeout(
-                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined, page_size:75, cursor:append?cursorRef.current:null}),
+                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined, page_size:40, cursor:append?cursorRef.current:null}),
                 15000,
                 'Call history request'
             );

@@ -18,14 +18,14 @@ export default function DataConnectionStatus() {
       // Direct CAD/function calls don't belong to React Query, so a queued
       // backend read could previously leave the map showing Loading forever
       // without triggering this monitor. Warn after 18s of a real queue stall.
-      const waiting = Number(health.oldestQueuedReadMs || 0) >= 18_000;
+      const waiting = Number(health.oldestQueuedReadMs || 0) >= 35_000;
       const throttled = until > Date.now() || quietUntil > Date.now();
       setStatus(failed.length >= 2 || waiting
         ? { rateLimited: throttled, failed: failed.length, waiting, queue: health.queuedReads }
         : null);
       // Recover only failed active reads, once per 30 seconds. Successful queries,
       // mutations, and in-progress forms are left alone.
-      if (failed.length && Date.now() >= quietUntil && Date.now() - lastRetryAt >= 30_000 && navigator.onLine) {
+      if (failed.length >= 2 && !waiting && Date.now() >= quietUntil && Date.now() - lastRetryAt >= 120_000 && navigator.onLine) {
         lastRetryAt = Date.now();
         void queryClient.refetchQueries({ type: 'active', predicate: query => query.state.status === 'error' }).catch(() => {});
       }
