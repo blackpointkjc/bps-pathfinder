@@ -37,7 +37,7 @@ function printNotice(ticket,openedWindow){
 }
 function print30Day(items,site){
  const filtered=items.filter(row=>String(row.violation_date||'')>=new Date(Date.now()-30*86400000).toISOString().slice(0,10));
- printDocument('30-DAY PARKING VIOLATION ROLL',`${site} · ${filtered.length} violation(s) · Generated ${new Date().toLocaleString()}`,`<table><thead><tr><th>Date</th><th>Notice</th><th>Unit</th><th>Vehicle / plate</th><th>Violation</th><th>Fine</th><th>Status</th></tr></thead><tbody>${filtered.map(row=>`<tr><td>${escapeHtml(row.violation_date)}</td><td>${escapeHtml(row.citation_number)}</td><td>${escapeHtml(row.unit_number)}</td><td>${escapeHtml(vehicleSummary({...row,vehicle_plate:row.license_plate,vehicle_state:row.license_state}))}</td><td>${escapeHtml(row.violation_type)}</td><td>${escapeHtml(row.warning_issued?'Warning':formatMoney(row.fine_amount))}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}</tbody></table>`);
+ printDocument('30-DAY PARKING VIOLATION ROLL',`${site} · ${filtered.length} violation(s) · Generated ${new Date().toLocaleString()}`,`<table><thead><tr><th>Date</th><th>Notice</th><th>Unit</th><th>Vehicle / plate</th><th>Photo</th><th>Violation</th><th>Fine</th><th>Status</th></tr></thead><tbody>${filtered.map(row=>`<tr><td>${escapeHtml(row.violation_date)}</td><td>${escapeHtml(row.citation_number)}</td><td>${escapeHtml(row.unit_number)}</td><td>${escapeHtml(vehicleSummary({...row,vehicle_plate:row.license_plate,vehicle_state:row.license_state}))}</td><td>${/^https:\/\//.test(row.photo_url||'')?`<img src="${escapeHtml(row.photo_url)}" alt="Evidence photo" style="max-width:80px;max-height:70px"/>`:''}</td><td>${escapeHtml(row.violation_type)}</td><td>${escapeHtml(row.warning_issued?'Warning':formatMoney(row.fine_amount))}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}</tbody></table>`);
 }
 
 export default function ParkingRecords({mode='officer'}){
@@ -64,6 +64,9 @@ export default function ParkingRecords({mode='officer'}){
  const save=async (operation,payload,callback)=>{setBusy(true);setError('');try{await action(operation,payload);toast.success('Parking records updated');callback?.();await refresh();}catch(e){setError(e.message||'Update failed');toast.error(e.message||'Update failed');}finally{setBusy(false)}};
  const rules=data.rules||[],residents=data.residents||[],violations=data.violations||[];
  const ruleFor=rules.find(item=>item.violation_type===ticket.violation_type&&item.active!==false);
+ const plateKey=value=>String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const matchedResident=residents.find(item=>plateKey(item.vehicle_plate)&&plateKey(item.vehicle_plate)===plateKey(ticket.license_plate)
+   && String(item.vehicle_state||'').toUpperCase()===String(ticket.license_state||'').toUpperCase());
  const matchingResidents=useMemo(()=>residents.filter(item=>String(item.full_name||'').toLowerCase().includes(search.toLowerCase())||String(item.vehicle_plate||'').toLowerCase().includes(search.toLowerCase())||String(item.unit_number||'').toLowerCase().includes(search.toLowerCase())),[residents,search]);
  const filteredViolations=violations.filter(row=>(statusFilter==='all'||row.status===statusFilter)&&[row.license_plate,row.vehicle_owner,row.unit_number,row.citation_number,row.violation_type].some(value=>String(value||'').toLowerCase().includes(search.toLowerCase())));
  const printAndSave=async event=>{event.preventDefault();if(!site)return;
@@ -72,7 +75,9 @@ export default function ParkingRecords({mode='officer'}){
   const printWindow=window.open('','_blank','width=850,height=960');
   if(printWindow)printWindow.document.write('<title>Saving parking notice…</title><p>Saving parking ticket for printing…</p>');
   setBusy(true);try{
-   const response=await action(editingTicketId?'resubmit':'issue',{id:editingTicketId||undefined,violation:ticket});
+   const response=await action(editingTicketId?'resubmit':'issue',{id:editingTicketId||undefined,violation:{...ticket,
+      resident_id:matchedResident?.id||ticket.resident_id||'',resident_verified:!!matchedResident,
+      vehicle_owner:ticket.vehicle_owner||matchedResident?.full_name||'',unit_number:ticket.unit_number||matchedResident?.unit_number||''}});
    if(printWindow)printNotice(response.violation,printWindow);
    setTicket(blankTicket());setEditingTicketId('');setTab('violations');await refresh();toast.success('Parking notice saved for supervisor review'+(printWindow?' and opened for printing':' — print from the notice list'));
   }catch(e){printWindow?.close();setError(e.message||'Ticket not saved');toast.error(e.message||'Ticket not saved');}finally{setBusy(false)}};
@@ -89,6 +94,7 @@ export default function ParkingRecords({mode='officer'}){
     <div className="grid gap-3 sm:grid-cols-3">{[['violation_date','Date','date'],['violation_time','Time','time'],['unit_number','Apartment / parking space','text']].map(([field,label,type])=><label key={field} className="text-xs">{label}<input type={type} value={ticket[field]||''} onChange={e=>setTicket(t=>({...t,[field]:e.target.value}))} className={classes}/></label>)}</div>
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs">Person / registered owner<input value={ticket.subject_name||''} onChange={e=>setTicket(t=>({...t,subject_name:e.target.value,vehicle_owner:e.target.value}))} className={classes}/></label><label className="text-xs">Date of birth<input type="date" value={ticket.subject_dob||''} onChange={e=>setTicket(t=>({...t,subject_dob:e.target.value}))} className={classes}/></label></div>
     <VehicleFields value={{...ticket,vehicle_plate:ticket.license_plate,vehicle_state:ticket.license_state}} onChange={values=>setTicket(t=>({...t,...values,license_plate:values.vehicle_plate,license_state:values.vehicle_state}))}/>
+    {matchedResident&&<div role="status" className="rounded-lg border border-emerald-700 bg-emerald-950/30 p-2 text-xs text-emerald-200">Registered property vehicle found: <b>{matchedResident.full_name}</b> · Unit {matchedResident.unit_number||'not recorded'} · {matchedResident.lease_status||'status unknown'}. This is an internal lease/parking registry match, not DMV ownership verification.</div>}
     <RecordsCheckButton name={ticket.subject_name} plate={ticket.license_plate} site={site}/>
     <label className="block text-xs">Property violation<select value={ticket.violation_type} onChange={e=>setTicket(t=>({...t,violation_type:e.target.value}))} className={classes}>{standardTypes.map(([id,name])=><option key={id} value={id}>{rules.find(item=>item.violation_type===id)?.label||name}</option>)}</select></label>
     <p className="text-xs text-slate-400">Fine according to this property’s rules: <b className="text-cyan-200">{ruleFor?.warning_only?'Warning only':formatMoney(ruleFor?.fine_amount||0)}</b>. Officers cannot change client fines.</p>

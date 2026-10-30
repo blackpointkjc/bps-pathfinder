@@ -28,7 +28,7 @@ Deno.serve(async req => {
     const entities = sdk.asServiceRole.entities;
     const sitePermitted = () => scope(site) ? null : fail('Property not assigned or not selected',403);
     const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
-    const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id'];
+    const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id','resident_verified'];
     const siteRecords = async (entity:any,limit=200) => {
       const rows = await entity.filter({site_name:site},'-created_date',limit);
       return rows.filter((row:any)=>siteKey(row.site_name)===siteKey(site));
