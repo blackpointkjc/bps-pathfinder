@@ -496,8 +496,6 @@ export default function AdminAnalytics() {
     retry: false,
     placeholderData: (previousData, previousQuery) => previousQuery?.queryKey?.[2] === analyticsStartDate && previousQuery?.queryKey?.[3] === analyticsEndDate ? previousData : undefined,
   });
-  const trainingCompletions = analyticsData.trainingCompletions || [];
-  const allTraining = (analyticsData.trainingModules || []).filter(module => module.active !== false);
   const dispatchCalls = analyticsData.dispatchCalls || [];
   const callAssignments = analyticsData.callAssignments || [];
   const allCommendations = analyticsData.commendations || [];
