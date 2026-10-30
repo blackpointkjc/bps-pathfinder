@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Shield, MapPin, Crosshair, CloudSun } from 'lucide-react';
 import { appParams } from '@/lib/app-params';
+import { getVisibleEmergencyStations } from '@/lib/emergencyStationCatalog';
+import { POLICE_STATIONS } from './PoliceStationMarkers';
+import { precincts } from './PrecinctMarkers';
+import { jails } from './JailMarkers';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibreWorkerCode from 'maplibre-gl/dist/maplibre-gl-worker.mjs?raw';
 
@@ -87,6 +91,13 @@ function registerCadIcons(map){
     circle(ctx,40,36,18,'#edf6ff','#38bdf8',4);
     ctx.fillStyle='#0c4a6e';ctx.font='900 24px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('★',40,36);
   });
+  for(const kind of ['police','fire','rescue','jail']){
+    register(`bps-facility-${kind}`,ctx=>{
+      circle(ctx,40,40,33,({police:'#1e40af',fire:'#dc2626',rescue:'#d97706',jail:'#7c3aed'})[kind],'#fff',5);
+      ctx.font='900 23px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
+      ctx.fillText(({police:'PD',fire:'FD',rescue:'EMS',jail:'JAIL'})[kind],40,40);
+    });
+  }
   register('bps-search-pin',ctx=>{circle(ctx,40,40,29,'#10b981','#fff',6);circle(ctx,40,40,9,'#fff','#fff',1);});
   register('bps-destination-pin',ctx=>{circle(ctx,40,40,29,'#f97316','#fff',6);circle(ctx,40,40,9,'#fff','#fff',1);});
 }
@@ -97,17 +108,19 @@ function registerCadIcons(map){
 const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
   const callsRef=useRef(activeCalls);
+  const facilitiesRef=useRef([]);
   const userInteractedRef=useRef(false);
   const mapClickEnabledRef=useRef(mapPickEnabled);
   const lastFollowAtRef=useRef(0);
   const onSelectPointRef=useRef(onSelectPoint);
+  const onSelectFacilityRef=useRef(onSelectFacility);
   const onMapUnavailableRef=useRef(onMapUnavailable);
-  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin});
+  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
   const terrainInitRef=useRef(false);
@@ -122,8 +135,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const [renderStatus,setRenderStatus]=useState('Initializing renderer…');
   clickRef.current=onCallClick;
   onSelectPointRef.current=onSelectPoint;
+  onSelectFacilityRef.current=onSelectFacility;
   onMapUnavailableRef.current=onMapUnavailable;
-  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin};
+  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails};
   mapClickEnabledRef.current=mapPickEnabled;
   // A traffic style reload creates new sources. Immediately repopulate them
   // from the latest CAD snapshot instead of waiting for the next GPS update.
@@ -141,6 +155,23 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     map.getSource('pathfinder-search-results')?.setData(featureCollection(pins.map((pin,index)=>marker(pin.id||`search-${index}`,pin.coords[0],pin.coords[1],{title:String(pin.name||pin.address||'Destination').slice(0,70)}))));
     const chosen=snapshot.selectedPin;
     map.getSource('pathfinder-selected-point')?.setData(featureCollection(chosen&&coords(chosen.coords)?[marker('selected',chosen.coords[0],chosen.coords[1])]:[]));
+    const facilities=[];
+    if(snapshot.showPoliceStations){
+      for(const station of Object.values(POLICE_STATIONS).flat())
+        facilities.push({...station,kind:'police',coords:station.coords});
+      for(const station of precincts)
+        facilities.push({...station,kind:'police',coords:station.coords});
+    }
+    if(snapshot.showJails)for(const jail of jails)facilities.push({...jail,kind:'jail',coords:jail.coords});
+    if(snapshot.showFireStations){
+      for(const station of getVisibleEmergencyStations({...snapshot.facilityFilters,showFireStations:true,showRescueStations:true}))
+        facilities.push({...station,kind:station.kind==='rescue'?'rescue':'fire',coords:[station.lat,station.lng]});
+    }
+    const shown=facilities.filter(item=>coords(item.coords));
+    facilitiesRef.current=shown;
+    map.getSource('pathfinder-facilities')?.setData(featureCollection(shown.map((facility,index)=>
+      marker(`facility-${index}`,facility.coords[0],facility.coords[1],{key:index,icon:`bps-facility-${facility.kind}`,
+      label:String(facility.name||facility.kind).slice(0,70)}))));
     const points=(snapshot.route||[]).filter(coords).map(point=>[Number(point[1]),Number(point[0])]);
     map.getSource('pathfinder-route')?.setData(featureCollection(points.length>=2?[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]:[]));
   };
@@ -297,6 +328,18 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addLayer({id:'pathfinder-selected-point-dot',type:'symbol',source:'pathfinder-selected-point',
               layout:{'icon-image':'bps-search-pin','icon-size':0.85,'icon-allow-overlap':true,'icon-ignore-placement':true}});
           }
+          if(!map.getSource('pathfinder-facilities')){
+            map.addSource('pathfinder-facilities',{type:'geojson',data:featureCollection([])});
+            map.addLayer({id:'pathfinder-facilities-symbols',type:'symbol',source:'pathfinder-facilities',
+              layout:{'icon-image':['get','icon'],'icon-size':0.65,'icon-allow-overlap':false,
+                'text-field':['get','label'],'text-size':10,'text-offset':[0,2],'text-optional':true},
+              paint:{'text-color':'#fff','text-halo-color':'#0f172a','text-halo-width':2}});
+            map.on('click','pathfinder-facilities-symbols',event=>{
+              const index=Number(event.features?.[0]?.properties?.key);
+              const station=facilitiesRef.current[index];
+              if(station)onSelectFacilityRef.current?.({name:station.name,address:station.address||station.name,coords:station.coords,label:'Facility'});
+            });
+          }
           syncCadData(map);
           mapReadyRef.current=true;
           setReady(true);
@@ -366,7 +409,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     if(ready&&map)syncCadData(map);
-  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin]);
+  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails]);
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     const driving=Boolean(navigation) || Number(speedMph)>=5;
