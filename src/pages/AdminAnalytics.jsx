@@ -800,7 +800,6 @@ export default function AdminAnalytics() {
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyAttendanceStats.rate != null ? `${companyAttendanceStats.rate}%` : '—'}</p>
               <p className="text-xs text-slate-400">Average Officer Attendance</p>
-              <p className="text-[10px] text-slate-500">{companyAttendanceStats.unscoredOfficers||0} not scored · equal officer weight</p>
             </CardContent>
           </Card>
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
@@ -808,8 +807,6 @@ export default function AdminAnalytics() {
               <BarChart3 className="w-6 h-6 text-cyan-500 mb-2" />
               <p className="text-2xl font-bold text-cyan-400">{companyOverallScore != null ? `${companyOverallScore}%` : '—'}</p>
               <p className="text-xs text-slate-400">Overall Operational Performance</p>
-              <p className="mt-1 text-[11px] text-slate-300">{companyOverallStats.scoredOfficers} scored / {companyOverallStats.totalOfficers} officers</p>
-              <p className="text-[10px] text-slate-500">{companyOverallStats.unscoredOfficers} not scored · weighted categories</p>
             </CardContent>
           </Card>
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
@@ -869,8 +866,8 @@ export default function AdminAnalytics() {
         </div>
 
         <section className="rounded-xl border border-cyan-700/50 bg-slate-900 p-4 text-white" aria-label="Company performance aggregation explanation">
-          <h2 className="text-sm font-black text-cyan-200">Company score breakdown · scored officers only</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">Average Officer Attendance: {companyAttendanceStats.rate == null ? 'Not scored' : `${companyAttendanceStats.preciseRate}% (${companyAttendanceStats.rate}% rounded)`} from {companyAttendanceStats.scoredOfficers||0} officers, with {companyAttendanceStats.unscoredOfficers||0} not scored. The figure is derived from the same verified officer scores displayed below, not a second shift-count calculation. The Overall Operational Performance is a separate average of verified officers' weighted operational categories; the two figures can differ when other categories have scored evidence. A category with 0/0 required items is not scored, does not count as 0%, and does not lower the officer or company average.</p>
+          <h2 className="text-sm font-black text-cyan-200">Company performance by category</h2>
+
           <div className="mt-3 flex flex-wrap gap-2" aria-label="Attendance officers included in company average">
             {companyAttendanceStats.byOfficer.map(officer=><span key={officer.email} className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-slate-200">{officer.name}: <strong className="text-green-300">{officer.rate}%</strong> · {officer.workedShifts??'—'}/{officer.totalShifts} shifts</span>)}
             {!companyAttendanceStats.byOfficer.length&&<span className="text-xs text-slate-400">No verified attendance rates available for this reporting period.</span>}
@@ -879,8 +876,6 @@ export default function AdminAnalytics() {
             {companyCategoryBreakdown.map(category=><div key={category.label} className="rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs">
               <div className="font-bold text-white">{category.label}</div>
               <div className="mt-1 font-black text-cyan-300">{category.rate==null?'Not scored':`${category.preciseRate}%`}</div>
-              <div className="mt-1 text-slate-400">{category.scoredOfficers} / {category.totalOfficers} officers scored</div>
-              <div className="text-slate-500">{category.unscoredOfficers} not scored</div>
             </div>)}
           </div>
         </section>
