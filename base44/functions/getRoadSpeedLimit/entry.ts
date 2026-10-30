@@ -65,14 +65,32 @@ async function lookupVirginiaPostedLimit(lat: number, lng: number, heading: numb
   return best ? { speed_limit_mph: Math.round(best.mph), road_name: best.name || requestedRoad, source: 'Virginia DOT posted speed limits', estimated: false, matched_distance_m: Math.round(best.dist) } : null;
 }
 
+
+const tomtomKeys = () => [...new Set([Deno.env.get('TOMTOM_API_KEY'), Deno.env.get('TOMTOM_API_KEY_BACKUP')].filter(Boolean))] as string[];
+async function tomtomJson(endpoint: string, params: URLSearchParams, timeoutMs = 4800) {
+  const keys = tomtomKeys();
+  for (const key of keys) {
+    const query = new URLSearchParams(params);
+    query.set('key', key);
+    try {
+      const response = await fetch(`https://api.tomtom.com${endpoint}?${query}`, {
+        headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (response.ok) return await response.json();
+      // A malformed request must not burn a second key or flood TomTom.
+      if (![401, 403, 408, 429, 500, 502, 503, 504].includes(response.status)) return null;
+    } catch { /* network error: try backup key or existing fallback */ }
+  }
+  return null;
+}
+
 // The broader road catalog requires a privately configured TomTom API key.
 // Snap the officer's actual recent GPS segment; do not derive a legal speed
 // from road class, average traffic speed, or a fictional GPS coordinate.
 async function lookupTomTomPostedLimit(
   lat: number, lng: number, priorLat: number, priorLng: number, requestedRoad: string,
 ) {
-  const key = Deno.env.get('TOMTOM_API_KEY') || '';
-  if (!key || !valid(priorLat) || !valid(priorLng)) return null;
+  if (!tomtomKeys().length || !valid(priorLat) || !valid(priorLng)) return null;
   const mLat = 111320 * (lat - priorLat);
   const mLng = 111320 * Math.cos(lat * Math.PI / 180) * (lng - priorLng);
   const distance = Math.hypot(mLat, mLng);
@@ -80,16 +98,11 @@ async function lookupTomTomPostedLimit(
   // device teleportation; these could match the wrong street or carriageway.
   if (distance < 12 || distance > 1200) return null;
   const params = new URLSearchParams({
-    key,
     points: `${priorLng},${priorLat};${lng},${lat}`,
-    fields: '{route{properties{speedLimits{value,unit,type},address{roadName}}}}',
+    fields: '{route{properties{id,speedLimits{value,unit,type},address{roadName}}}}',
     vehicleType: 'PassengerCar', measurementSystem: 'imperial',
   });
-  const response = await fetch(`https://api.tomtom.com/snapToRoads/1?${params}`, {
-    signal: AbortSignal.timeout(4500),
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  const payload = await response.json().catch(() => null);
+  const payload = await tomtomJson('/snapToRoads/1', params);
   const route = Array.isArray(payload?.route) ? payload.route : [];
   for (const part of [...route].reverse()) {
     const props = part?.properties || {};

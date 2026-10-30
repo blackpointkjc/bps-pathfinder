@@ -1,5 +1,24 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
+
+const tomtomKeys = () => [...new Set([Deno.env.get('TOMTOM_API_KEY'), Deno.env.get('TOMTOM_API_KEY_BACKUP')].filter(Boolean))] as string[];
+async function tomtomJson(endpoint: string, params: URLSearchParams, timeoutMs = 4800) {
+  const keys = tomtomKeys();
+  for (const key of keys) {
+    const query = new URLSearchParams(params);
+    query.set('key', key);
+    try {
+      const response = await fetch(`https://api.tomtom.com${endpoint}?${query}`, {
+        headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (response.ok) return await response.json();
+      // A malformed request must not burn a second key or flood TomTom.
+      if (![401, 403, 408, 429, 500, 502, 503, 504].includes(response.status)) return null;
+    } catch { /* network error: try backup key or existing fallback */ }
+  }
+  return null;
+}
+
 // Server-side navigation geocoding fallback: avoids browser CORS blocks that
 // previously turned Search back into GO with no destination to navigate to.
 const valid = (lat: unknown, lon: unknown) => Number.isFinite(Number(lat)) && Number.isFinite(Number(lon))
@@ -25,6 +44,14 @@ Deno.serve(async req => {
 
     if (reverse) {
       if (!valid(lat, lon)) return Response.json({ error: 'Valid latitude and longitude are required.' }, { status: 400 });
+      const mapped = await tomtomJson(`/search/2/reverseGeocode/${lat},${lon}.json`, new URLSearchParams({ radius: '60', returnSpeedLimit: 'false' }));
+      const tt = mapped?.addresses?.[0];
+      if (tt?.address?.freeformAddress) {
+        const label = String(tt.address.freeformAddress);
+        return Response.json({ success: true, provider: 'TomTom', result: {
+          name: label, address: label, coords: [lat, lon], type: 'map_point',
+        } });
+      }
       const settled = await Promise.allSettled([
         fetchJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`),
         fetchJson(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`),
@@ -59,6 +86,26 @@ Deno.serve(async req => {
     const near = valid(lat, lon) && input.latitude != null && input.longitude != null
       ? '&lat=' + lat + '&lon=' + lon : '';
     const encoded = encodeURIComponent(query);
+
+    // TomTom searches addresses, cross streets, managed road names and POIs.
+    // Keep the structured property directory as the highest-priority browser
+    // source; this provider handles unmatched free-form destinations.
+    const ttParams = new URLSearchParams({ limit: '8', countrySet: 'US', language: 'en-US', typeahead: 'false' });
+    if (input.latitude != null && input.longitude != null && valid(lat, lon)) {
+      ttParams.set('lat', String(lat)); ttParams.set('lon', String(lon));
+    }
+    const tomtom = await tomtomJson(`/search/2/search/${encoded}.json`, ttParams);
+    const tomtomRows = (tomtom?.results || []).map((item: any) => {
+      const address = String(item.address?.freeformAddress || item.poi?.name || '').trim();
+      const houseNumber = String(item.address?.streetNumber || '');
+      const coords = [Number(item.position?.lat), Number(item.position?.lon)];
+      return { name: String(item.poi?.name || address || query), address: address || query,
+        houseNumber, coords, type: String(item.type || 'address').toLowerCase(), provider: 'TomTom' };
+    }).filter((row: any) => valid(row.coords[0], row.coords[1]));
+    const streetNumber = query.match(/^\d{1,6}\b/)?.[0];
+    const matchingRows = streetNumber ? tomtomRows.filter((row: any) =>
+      new RegExp('(^|[^0-9])' + streetNumber + '([^0-9]|$)').test(row.houseNumber || row.address)) : tomtomRows;
+    if (matchingRows.length) return Response.json({ success: true, results: matchingRows.slice(0, 6), providers_checked: 1, provider: 'TomTom' });
 
     const providers: Array<() => Promise<any[]>> = [
       async () => {
