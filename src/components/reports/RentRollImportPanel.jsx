@@ -4,10 +4,9 @@ import {rentRollRowsFromText,RENT_ROLL_CSV_HEADERS} from '@/lib/rentRollCsv';
 import {Download,FileUp,CheckCircle2,AlertTriangle} from 'lucide-react';
 
 const button='rounded-lg border border-cyan-700 bg-[#0a2639] px-3 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50';
-const example=['Sample Resident','101','Building A','active','','','','','ABC123','VA','Toyota','Camry','Gray','P-101','active','',''];
 function downloadTemplate(){
  const escape=value=>'"'+String(value||'').replaceAll('"','""')+'"';
- const content=[RENT_ROLL_CSV_HEADERS,example].map(row=>row.map(escape).join(',')).join('\r\n');
+ const content=RENT_ROLL_CSV_HEADERS.map(escape).join(',')+'\r\n';
  const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));
  const a=document.createElement('a');a.href=url;a.download='property-rent-roll-import-template.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
