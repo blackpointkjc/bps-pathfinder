@@ -205,7 +205,6 @@ export default function Navigation() {
     const speedLimitRequestSeqRef = useRef(0);
     const navSnapIndexRef = useRef(0);
     const navStepRouteIndexesRef = useRef([]);
-    const initialOperationalFitRef = useRef(false);
     const destinationRequestRef = useRef(0);
     const callsLoadingRef = useRef(false);
     const [callsError, setCallsError] = useState('');
@@ -406,25 +405,9 @@ export default function Navigation() {
 
 
 
-    useEffect(() => {
-        if (initialOperationalFitRef.current) return;
-        const coords = [];
-        if (currentLocation && Number.isFinite(Number(currentLocation[0])) && Number.isFinite(Number(currentLocation[1]))) {
-            coords.push([Number(currentLocation[0]), Number(currentLocation[1])]);
-        }
-        for (const item of [...activeCalls, ...otherUnits]) {
-            const liveLat = Number(item.latitude);
-            const liveLng = Number(item.longitude);
-            const lastLat = Number(item.last_known_latitude);
-            const lastLng = Number(item.last_known_longitude);
-            if (Number.isFinite(liveLat) && Number.isFinite(liveLng) && !(liveLat === 0 && liveLng === 0)) coords.push([liveLat, liveLng]);
-            else if (Number.isFinite(lastLat) && Number.isFinite(lastLng) && !(lastLat === 0 && lastLng === 0)) coords.push([lastLat, lastLng]);
-        }
-        if (coords.length < 2) return;
-        initialOperationalFitRef.current = true;
-        setFitBounds(coords);
-        window.setTimeout(() => setFitBounds(null), 1000);
-    }, [activeCalls, otherUnits, currentLocation]);
+    // Do not auto-fit newly arrived officer/call markers on map load. That
+    // async camera move could interrupt manual panning even with GPS turned off.
+    // The explicit Fit All Units control is available to reframe the map.
 
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
 
