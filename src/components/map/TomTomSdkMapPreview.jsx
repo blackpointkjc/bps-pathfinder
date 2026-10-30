@@ -44,12 +44,14 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
   const mapReadyRef=useRef(false);
+  const cleanupRef=useRef(null);
   const tileErrorsRef=useRef(0);
   const [trafficVisible,setTrafficVisible]=useState(true);
   const [trafficReady,setTrafficReady]=useState(false);
   const [ready,setReady]=useState(false);
   const [error,setError]=useState('');
   const [resourceStatus,setResourceStatus]=useState('Checking map resources…');
+  const [renderStatus,setRenderStatus]=useState('Initializing renderer…');
   clickRef.current=onCallClick;
   cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination};
   // A traffic style reload creates new sources. Immediately repopulate them
@@ -143,6 +145,28 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         if(cancelled){sdk?.destroy?.();return;}
         sdkRef.current=sdk;
         const map=sdk.mapLibreMap;
+        // Some iPads and embedded browsers build the map before their flex
+        // viewport is laid out. Keep its WebGL canvas matched to the element.
+        const observer=typeof ResizeObserver==='function' ? new ResizeObserver(()=>map.resize()) : null;
+        if(observer)observer.observe(elementRef.current);
+        const resize=()=>map.resize();
+        window.addEventListener('resize',resize);
+        window.requestAnimationFrame(()=>{if(!cancelled)map.resize();});
+        const updateRenderStatus=()=>{
+          if(cancelled)return;
+          const canvas=map.getCanvas();
+          const rect=elementRef.current?.getBoundingClientRect();
+          const layerCount=map.getStyle()?.layers?.length||0;
+          const sourceCount=Object.keys(map.getStyle()?.sources||{}).length;
+          let featureCount=0;
+          try{featureCount=map.queryRenderedFeatures().length;}catch{}
+          setRenderStatus(`Canvas ${Math.round(rect?.width||0)}×${Math.round(rect?.height||0)} · GL ${canvas.width}×${canvas.height} · Layers ${layerCount} · Sources ${sourceCount} · Features ${featureCount}`);
+        };
+        map.on('idle',updateRenderStatus);
+        const renderMonitor=window.setInterval(updateRenderStatus,3500);
+        window.setTimeout(()=>{if(!cancelled)updateRenderStatus();},800);
+        const previousCleanup=cleanupRef.current;
+        cleanupRef.current=()=>{window.removeEventListener('resize',resize);observer?.disconnect();window.clearInterval(renderMonitor);previousCleanup?.();};
         const dataInit=()=>{
           if(cancelled) return;
           if(!map.getSource('pathfinder-calls')){
@@ -215,7 +239,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       }catch(e){if(!cancelled)setError(`TomTom SDK could not start: ${e?.message||'Unknown error'}. Close to return to CAD.`);}
     }
     init();
-    return ()=>{cancelled=true;clearTimeout(errorTimer);trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
+    return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
   }, []);
   useEffect(()=>{
     if(!trafficReady)return;
@@ -239,7 +263,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       <div ref={elementRef} className="absolute inset-0" aria-label="TomTom interactive map"/>
       {error && <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl border border-amber-500 bg-slate-950/95 p-4 text-sm text-amber-100 shadow-lg">{error}</div>}
       {!ready && !error && <div role="status" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-slate-950/90 p-3 text-xs text-white">Loading TomTom map resources…</div>}
-      <div role="status" className="pointer-events-none absolute bottom-4 right-3 max-w-[55%] rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200">{resourceStatus}</div>
+      <div role="status" className="pointer-events-none absolute bottom-4 right-3 max-w-[70%] rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><div>{resourceStatus}</div><div className="mt-0.5 opacity-75">{renderStatus}</div></div>
       {ready && <div className="pointer-events-none absolute bottom-4 left-3 rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><MapPin className="mr-1 inline h-3 w-3"/>Red: CAD calls · Blue: units · Green: your GPS</div>}
     </div>
   </div>,document.body);
