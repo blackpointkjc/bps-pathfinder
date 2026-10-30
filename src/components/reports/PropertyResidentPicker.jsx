@@ -18,7 +18,7 @@ export default function PropertyResidentPicker({site,onSelect,label='Find reside
    const result=response?.data||response||{};
    if(result.error)throw Error(result.error);
    if(active)setData({residents:result.residents||[],vehicles:result.vehicles||[]});
-  }).catch(err=>{if(active)setError('Property rent roll unavailable: '+(err.message||'Retry'))}).finally(()=>{if(active)setLoading(false)});
+  }).catch(err=>{if(active)setError('Property rent roll unavailable: '+(err?.response?.data?.error||err?.data?.error||err.message||'Retry'))}).finally(()=>{if(active)setLoading(false)});
   return()=>{active=false};
  },[site,reload]);
  useEffect(()=>{

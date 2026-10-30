@@ -51,9 +51,14 @@ export default function ParkingRecords({mode='officer'}){
  const [sessionUser,setSessionUser]=useState(null),[returnedTasks,setReturnedTasks]=useState([]);
  const [car,setCar]=useState(blankCar),[carId,setCarId]=useState(''),[rentSearch,setRentSearch]=useState(''),[siteAuto,setSiteAuto]=useState(false);
  const action=async (name,payload={})=>{
-  const response=await base44.functions.invoke('manageParkingRecords',{action:name,site_name:site,...payload});const output=response?.data||response||{};
-  if(output.error)throw Error(output.error);
-  return output;
+  try{
+    const response=await base44.functions.invoke('manageParkingRecords',{action:name,site_name:site,...payload});const output=response?.data||response||{};
+    if(output.error)throw Error(output.error);
+    return output;
+  }catch(error){
+    const detail=error?.response?.data||error?.data||{};
+    throw new Error(detail?.error||detail?.message||error?.message||'Property records request failed');
+  }
  };
  useEffect(()=>{let cancelled=false;(async()=>{
    try{
