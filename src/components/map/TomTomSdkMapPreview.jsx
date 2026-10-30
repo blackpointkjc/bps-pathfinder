@@ -250,7 +250,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const map=sdkRef.current?.mapLibreMap;
     if(ready&&map)syncCadData(map);
   },[ready,currentLocation,activeCalls,otherUnits,route,destination]);
-  return createPortal(<div role="dialog" aria-modal="true" aria-label="TomTom SDK interactive map" className="fixed inset-0 z-[2147482900] flex flex-col bg-[#07101b] text-white" style={{paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
+  return createPortal(<div role="dialog" aria-modal="true" aria-label="TomTom SDK interactive map" className="fixed inset-0 z-[2147482900] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#07101b] text-white" style={{height:'100dvh',minHeight:'100dvh',width:'100vw',paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-900 bg-[#0b1d2b] p-2 sm:flex-nowrap sm:gap-3 sm:p-3">
       <div className="flex min-w-0 items-center gap-2"><Shield className="h-5 w-5 shrink-0 text-cyan-300"/><div className="min-w-0"><h2 className="truncate text-sm font-black">TomTom Maps SDK</h2><p className="truncate text-[10px] text-slate-300">Interactive map preview · CAD remains available underneath</p></div></div>
       <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
@@ -259,8 +259,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         <button type="button" onClick={onClose} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-cyan-700 px-3 text-xs font-bold"><X size={17}/>Back to CAD</button>
       </div>
     </div>
-    <div className="relative min-h-0 flex-1">
-      <div ref={elementRef} className="absolute inset-0" aria-label="TomTom interactive map"/>
+    <div className="relative min-h-[240px] w-full flex-1 overflow-hidden" style={{height:'calc(100dvh - 100px)',minHeight:'240px',flex:'1 1 auto'}}>
+      <div ref={elementRef} className="absolute inset-0 h-full w-full" style={{width:'100%',height:'100%',minHeight:'240px'}} aria-label="TomTom interactive map"/>
       {error && <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl border border-amber-500 bg-slate-950/95 p-4 text-sm text-amber-100 shadow-lg">{error}</div>}
       {!ready && !error && <div role="status" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-slate-950/90 p-3 text-xs text-white">Loading TomTom map resources…</div>}
       <div role="status" className="pointer-events-none absolute bottom-4 right-3 max-w-[70%] rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><div>{resourceStatus}</div><div className="mt-0.5 opacity-75">{renderStatus}</div></div>
