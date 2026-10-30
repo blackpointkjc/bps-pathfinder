@@ -7,7 +7,7 @@ import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/l
 // Hold for 2 seconds to activate
 const HOLD_MS = 2000;
 
-export default function OfficerDistressButton({ currentUser, className = '' }) {
+export default function OfficerDistressButton({ currentUser, className = '', compact = false }) {
     const [holding, setHolding] = useState(false);
     const [progress, setProgress] = useState(0);
     const [activated, setActivated] = useState(false);
@@ -126,7 +126,7 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     }
 
     return (
-        <div className={`relative select-none ${className}`}>
+        <div className={`relative select-none ${compact?'pf-emergency-compact':''} ${className}`}>
             <button
                 type="button"
                 onPointerDown={startHold}
@@ -151,7 +151,7 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
                 )}
                 <AlertTriangle className={`w-4 h-4 relative z-10 ${holding ? 'animate-pulse' : ''}`} />
                 <span className="relative z-10">
-                    {holding ? `HOLD... ${Math.round(progress)}%` : 'OFFICER DISTRESS'}
+                    {holding ? `HOLD... ${Math.round(progress)}%` : (compact?'SOS':'OFFICER DISTRESS')}
                 </span>
             </button>
         </div>

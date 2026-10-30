@@ -17,11 +17,12 @@ const badges = {
     Dispatch:'bg-cyan-900/40 text-cyan-300 border-cyan-600/50',
 };
 
-export default function OfficerDutyStatusControl({ user, status, onChange, saving = false, statuses, inline = false }) {
+export default function OfficerDutyStatusControl({ user, status, onChange, saving = false, statuses, inline = false, compact = false }) {
     if (!user) return null;
     const options = statuses || officerDutyStatuses(user);
     const selected = status || 'Out of Service';
     const name = inline && user.unit_number ? 'Unit ' + user.unit_number : user.rank && user.last_name ? [normalizeRank(user.rank),user.last_name].join(' ') : user.unit_number ? 'Unit ' + user.unit_number : user.full_name || 'My';
+    if (compact) return <label className="pf-duty-select"><span>{user.unit_number?'Unit '+user.unit_number:'My status'}</span><select aria-label="My duty status" value={selected} disabled={saving} onChange={event=>onChange(event.target.value)}>{options.map(option=><option key={option} value={option}>{option==='Enroute'?'En route':option}</option>)}</select></label>;
     return <div role="group" aria-label={`My duty status: ${selected}`} className={`command-status-bar flex min-w-0 flex-none flex-wrap items-center gap-x-2 gap-y-1 ${inline ? 'live-map-duty-buttons sm:ml-auto' : 'border-t border-slate-800 bg-slate-900/80 px-3 py-1.5'}`}>
         <span className="min-w-0 break-words font-mono text-[10px] font-semibold uppercase tracking-wide text-slate-400">{name} · Status</span>
         <div className="command-status-options flex min-w-0 flex-wrap items-center gap-1.5">
