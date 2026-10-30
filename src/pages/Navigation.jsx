@@ -1869,6 +1869,7 @@ export default function Navigation() {
             {/* Street address search and destination routing */}
             {showAddressSearch && !mapPickMode && (
                 <div style={{ top: toolbarHeight + 12 }} className={`pf-map-search-panel pointer-events-auto absolute z-[1220] overflow-x-hidden overflow-y-auto rounded-xl ${isNavigating ? 'pf-search-routing' : ''}`}>
+                    <div className="pf-address-search-heading flex items-center justify-between gap-2 px-2 py-2 text-sm font-bold text-white"><span>Find destination</span><button type="button" className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-white" onClick={() => { setShowAddressSearch(false); setAddressResults([]); setAddressQuery(''); }} aria-label="Close destination search"><X className="h-4 w-4" /></button></div>
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input
@@ -1923,7 +1924,7 @@ export default function Navigation() {
                     {addressSearchError && (
                         <div role="alert" className="mt-2 rounded-lg border border-amber-500/60 bg-amber-950/70 p-3 text-xs text-amber-100">{addressSearchError}</div>
                     )}
-                    {!mapSelectedDestination && addressResults.length === 0 && recentDestinations.length > 0 && <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-600 bg-slate-950 p-3">
+                    {!mapSelectedDestination && addressResults.length === 0 && recentDestinations.length > 0 && !addressQuery.trim() && <div className="pf-recent-destinations mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-600 bg-slate-950 p-3">
                         <h3 className="text-sm font-bold text-white">Recent destinations · this device</h3>
                         {recentDestinations.map(item => <button type="button" key={item.key} onClick={() => { setMapSelectedDestination(item); setAddressQuery(item.address || item.name); }} className="block min-h-11 w-full border-b border-slate-800 py-2 text-left text-sm text-white"><strong className="block">{item.name}</strong><span className="block text-xs text-slate-300">{item.address}</span><span className="text-xs text-slate-400">Last routed {new Date(item.visitedAt).toLocaleString()}</span></button>)}
                     </div>}
@@ -1949,7 +1950,7 @@ export default function Navigation() {
                         </button>
                     )}
                     {addressResults.length > 0 && (
-                        <div className="relative z-[1220] mt-2 max-h-[55vh] overflow-y-auto rounded-xl border border-[#45637f] bg-[#07111f] shadow-[0_24px_70px_rgba(0,0,0,0.8)]">
+                        <div className="pf-address-results relative z-[1220] mt-2 max-h-[55vh] overflow-y-auto rounded-xl border border-[#45637f] bg-[#07111f] shadow-[0_24px_70px_rgba(0,0,0,0.8)]">
                             <div className="border-b border-[#1e2d4a] px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                                 Select a destination · pins are shown on the map
                             </div>
