@@ -29,6 +29,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
   const callsRef=useRef(activeCalls);
+  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
   const mapReadyRef=useRef(false);
@@ -37,6 +38,22 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const [ready,setReady]=useState(false);
   const [error,setError]=useState('');
   clickRef.current=onCallClick;
+  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination};
+  // A traffic style reload creates new sources. Immediately repopulate them
+  // from the latest CAD snapshot instead of waiting for the next GPS update.
+  const syncCadData=(map)=>{
+    if(!map || !map.getSource('pathfinder-calls'))return;
+    const snapshot=cadDataRef.current;
+    const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
+    callsRef.current=calls;
+    map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id}))));
+    const units=(snapshot.otherUnits||[]).filter(unit=>mapped(unit.latitude,unit.longitude));
+    map.getSource('pathfinder-units')?.setData(featureCollection(units.map((unit,i)=>marker(unit.id||i,unit.latitude,unit.longitude))));
+    map.getSource('pathfinder-self')?.setData(featureCollection(coords(snapshot.currentLocation)?[marker('self',snapshot.currentLocation[0],snapshot.currentLocation[1])]:[]));
+    map.getSource('pathfinder-destination')?.setData(featureCollection(snapshot.destination && coords(snapshot.destination.coords)?[marker('destination',snapshot.destination.coords[0],snapshot.destination.coords[1])]:[]));
+    const points=(snapshot.route||[]).filter(coords).map(point=>[Number(point[1]),Number(point[0])]);
+    map.getSource('pathfinder-route')?.setData(featureCollection(points.length>=2?[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]:[]));
+  };
   useEffect(()=>{
     let cancelled=false;
     let sdk;
@@ -115,6 +132,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addLayer({id:'pathfinder-destination-dot',type:'circle',source:'pathfinder-destination',
               paint:{'circle-radius':10,'circle-color':'#f97316','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
           }
+          syncCadData(map);
           mapReadyRef.current=true;
           setReady(true);
           // Re-running TrafficFlowModule.get on every style.load can cause
@@ -152,18 +170,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   },[trafficVisible,trafficReady]);
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
-    if(!ready||!map)return;
-    const calls=activeCalls.filter(call=>mapped(call.latitude,call.longitude));
-    // Keep current calls in the component, never in global window state.
-    callsRef.current=calls;
-    map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id}))));
-    const units=otherUnits.filter(unit=>mapped(unit.latitude,unit.longitude));
-    map.getSource('pathfinder-units')?.setData(featureCollection(units.map((unit,i)=>marker(unit.id||i,unit.latitude,unit.longitude))));
-    map.getSource('pathfinder-self')?.setData(featureCollection(coords(currentLocation)?[marker('self',currentLocation[0],currentLocation[1])]:[]));
-    map.getSource('pathfinder-destination')?.setData(featureCollection(destination && coords(destination.coords)?[marker('destination',destination.coords[0],destination.coords[1])]:[]));
-    const points=route.filter(coords).map(point=>[Number(point[1]),Number(point[0])]);
-    map.getSource('pathfinder-route')?.setData(featureCollection(points.length>=2?[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]:[]));
-    return undefined;
+    if(ready&&map)syncCadData(map);
   },[ready,currentLocation,activeCalls,otherUnits,route,destination]);
   return createPortal(<div role="dialog" aria-modal="true" aria-label="TomTom SDK interactive map" className="fixed inset-0 z-[2147482900] flex flex-col bg-[#07101b] text-white" style={{paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-900 bg-[#0b1d2b] p-2 sm:flex-nowrap sm:gap-3 sm:p-3">
