@@ -1625,7 +1625,10 @@ export default function Navigation() {
                         },
                         {
                             key: 'tomtom-main',
-                            onClick: () => {setUseTomTomMainMap(value=>!value);setTomTomMainMapFailed(false);},
+                            onClick: () => {
+                                if(tomTomMainMapFailed){setUseTomTomMainMap(true);setTomTomMainMapFailed(false);}
+                                else setUseTomTomMainMap(value=>!value);
+                            },
                             title: useTomTomMainMap ? 'Use backup offline/CAD map' : 'Use TomTom as main map',
                             icon: <Layers className="h-4 w-4" />,
                             active: useTomTomMainMap && !tomTomMainMapFailed,
@@ -1668,6 +1671,14 @@ export default function Navigation() {
                       selectedPin={mapSelectedDestination}
                       searchPins={showAddressSearch ? addressResults : []}
                       mapPickEnabled={mapPickMode}
+                      facilityFilters={jurisdictionFilters}
+                      showPoliceStations={jurisdictionFilters.showPoliceStations}
+                      showFireStations={jurisdictionFilters.showFireStations}
+                      showJails={jurisdictionFilters.showJails}
+                      onSelectFacility={facility=>{
+                        setMapSelectedDestination(facility);
+                        setShowAddressSearch(true);
+                      }}
                       mapTheme={mapTheme}
                       navigation={isNavigating && activeNavStep ? {instruction:formatInstruction(activeNavStep), distance:navDistanceLabel, eta:navEtaLabel, provider:navRouteProvider} : null}
                       onMapUnavailable={()=>setTomTomMainMapFailed(true)}
@@ -1717,6 +1728,10 @@ export default function Navigation() {
                 >
                     <OfficerDistressMarker autoCenter={false} />
                 </MapView>}
+                {useTomTomMainMap && (tomTomMainMapFailed || !isOnline) && <div role="status" className="pointer-events-auto absolute bottom-3 left-3 z-[1205] flex max-w-[calc(100%-24px)] flex-wrap items-center gap-2 rounded-xl border border-amber-600/70 bg-slate-950/95 px-3 py-2 text-xs text-amber-100 shadow-lg">
+                  <span>TomTom {isOnline ? 'map unavailable' : 'requires internet'} · Showing backup CAD map</span>
+                  {isOnline && <button type="button" className="rounded-md bg-amber-600 px-3 py-1.5 font-bold text-black" onClick={()=>{setUseTomTomMainMap(true);setTomTomMainMapFailed(false);}}>Retry TomTom</button>}
+                </div>}
             </div>
 
             <div ref={toolbarRef} className="absolute left-0 right-0 top-0 z-[1010]">

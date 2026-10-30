@@ -4,7 +4,7 @@ import { Marker, Popup, Tooltip } from 'react-leaflet';
 // Jail icon
 const jailIcon = facilityMapIcon('jail');
 
-const jails = [
+export const jails = [
     {
         name: 'Richmond City Jail',
         address: '1701 Fairfield Way, Richmond, VA 23223',

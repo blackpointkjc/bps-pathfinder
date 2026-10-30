@@ -3,7 +3,7 @@ import { Marker, Popup, Tooltip } from 'react-leaflet';
 
 const policeStationIcon = facilityMapIcon('police');
 
-const POLICE_STATIONS = {
+export const POLICE_STATIONS = {
     henrico: [
         {
             name: 'West Station (Headquarters)',

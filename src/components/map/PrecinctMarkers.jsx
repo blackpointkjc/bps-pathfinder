@@ -3,7 +3,7 @@ import { Marker, Popup, Tooltip } from 'react-leaflet';
 
 const precinctIcon = facilityMapIcon('police');
 
-const precincts = [
+export const precincts = [
     {
         name: 'Richmond Police Headquarters',
         precinctNumber: 'HQ',
