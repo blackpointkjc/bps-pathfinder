@@ -1176,7 +1176,7 @@ export default function Navigation() {
         }
     };
 
-    const showHomeLocation = async () => {
+    const showHomeLocation = async ({ navigate = false } = {}) => {
         setMapPickMode(false);
         setShowAddressSearch(false);
         setAddressSearching(true);
@@ -1223,9 +1223,10 @@ export default function Navigation() {
             setNavigationFallbackAddress(freshHomeAddress);
             setAddressResults([]);
             setFitBounds([...(currentLocation ? [currentLocation] : []), destination.coords]);
-            await startNavigationToPoint(destination);
+            if (navigate) await startNavigationToPoint(destination);
+            else setShowAddressSearch(true);
         } catch (error) {
-            const message = error?.message || 'Unable to start navigation to Home';
+            const message = error?.message || 'Unable to locate Home';
             setAddressSearchError(message);
             toast.error(message);
         } finally {
@@ -1482,7 +1483,7 @@ export default function Navigation() {
                         {
                             key: 'home',
                             onClick: () => {setMapToolsPanel(null);setShowCallSidebar(false);showHomeLocation();},
-                            title: 'Navigate to my saved Home address',
+                            title: 'Show my saved Home address',
                             icon: <Home className="h-4 w-4" />,
                             active: mapSelectedDestination?.label === 'Home',
                             disabled: isNavigating,
@@ -1688,7 +1689,7 @@ export default function Navigation() {
                             className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-black ${mapPickMode ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-emerald-600/50 bg-emerald-950/70 text-emerald-100 hover:bg-emerald-900/70'} disabled:opacity-40`}>
                             <MapPin className="h-3.5 w-3.5" /> {mapPickMode ? 'CLICK MAP' : 'PICK ON MAP'}
                         </button>
-                        <button type="button" onClick={showHomeLocation} disabled={addressSearching || isNavigating}
+                        <button type="button" onClick={()=>showHomeLocation({navigate:true})} disabled={addressSearching || isNavigating}
                             className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/50 bg-blue-900/80 px-3 py-2 text-[10px] font-black text-blue-100 hover:bg-blue-800 disabled:opacity-40 sm:col-span-1">
                             <Navigation2 className="h-3.5 w-3.5" /> NAVIGATE HOME
                         </button>

@@ -39,7 +39,7 @@
 .pf-icon-button:hover { background:#ffffff12; border-color:#ffffff15; }
 .pf-icon-button:disabled { opacity:.4; cursor:not-allowed; }
 .pf-duty-select { display:flex; align-items:center; gap:7px; border:1px solid #344557; border-radius:6px; height:34px; padding:0 7px 0 9px; font-size:11px; white-space:nowrap; }
-.pf-duty-select > span { color:#8fa5bb; }.pf-duty-select select { max-width:118px; background:#142234; border:0; outline-offset:2px; font-size:11px; color:#e7f1fc; padding:2px 4px; min-height:26px; }
+.pf-duty-select > span { color:#8fa5bb; }.pf-duty-select select { max-width:118px; background:#142234; border:0; outline-offset:2px; font-size:11px; color:#e7f1fc; padding:2px 4px; min-height:26px!important; }
 .pf-emergency-compact > button { min-height:32px!important; height:32px; padding:0 8px!important; border:1px solid #a14b50!important; border-radius:6px!important; gap:5px!important; font-family:inherit!important; font-size:10px!important; box-shadow:none!important; }
 .pf-emergency-compact svg { width:13px; height:13px; }
 /* One rail, one adjacent panel. No floating filter controls share its lane. */
