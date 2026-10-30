@@ -27,6 +27,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import IDScanner from "../components/IDScanner";
 import SignaturePad from "../components/SignaturePad";
+import VehicleFields from '@/components/reports/VehicleFields';
+import RecordsCheckButton from '@/components/reports/RecordsCheckButton';
+import {US_STATES,vehicleSummary} from '@/lib/vehicleForm';
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
@@ -67,6 +70,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
     subject_state: "",
     subject_zip: "",
     vehicle_info: "",
+    vehicle_year:"",vehicle_make:"",vehicle_model:"",vehicle_color:"",vehicle_plate:"",vehicle_state:"VA",vehicle_vin:"",
     reason: "",
     duration: "Permanent",
     police_notified: false,
@@ -244,6 +248,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
       subject_state: "",
       subject_zip: "",
       vehicle_info: "",
+    vehicle_year:"",vehicle_make:"",vehicle_model:"",vehicle_color:"",vehicle_plate:"",vehicle_state:"VA",vehicle_vin:"",
       reason: "",
       duration: "Permanent",
       police_notified: false,
@@ -915,11 +920,13 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                   <div className="grid md:grid-cols-4 gap-4">
                     <div className="space-y-2 md:col-span-2"><Label>Street Address</Label><Input value={formData.subject_address} onChange={(e)=>setFormData({...formData,subject_address:e.target.value})}/></div>
                     <div className="space-y-2"><Label>City</Label><Input value={formData.subject_city} onChange={(e)=>setFormData({...formData,subject_city:e.target.value})}/></div>
-                    <div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label>State</Label><Input maxLength={2} value={formData.subject_state} onChange={(e)=>setFormData({...formData,subject_state:e.target.value.toUpperCase()})}/></div><div className="space-y-2"><Label>ZIP</Label><Input value={formData.subject_zip} onChange={(e)=>setFormData({...formData,subject_zip:e.target.value})}/></div></div>
+                    <div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label>State</Label><select value={formData.subject_state||''} onChange={e=>setFormData({...formData,subject_state:e.target.value})} className="h-10 w-full rounded-md border border-slate-500 bg-slate-950 px-2 text-white"><option value="">State</option>{US_STATES.map(([abbr,name])=><option key={abbr} value={abbr}>{name} ({abbr})</option>)}</select></div><div className="space-y-2"><Label>ZIP</Label><Input value={formData.subject_zip} onChange={(e)=>setFormData({...formData,subject_zip:e.target.value})}/></div></div>
                   </div>
                   <div className="space-y-2"><Label>Physical Description / Distinguishing Features</Label><Textarea value={formData.subject_description} onChange={(e)=>setFormData({...formData,subject_description:e.target.value})} rows={3}/></div>
                 </div>
-                <div className="space-y-2"><Label htmlFor="vehicle_info">Associated Vehicle</Label><Input id="vehicle_info" placeholder="Make, model, color, plate, state" value={formData.vehicle_info} onChange={(e)=>setFormData({...formData,vehicle_info:e.target.value})}/></div>
+                <VehicleFields value={formData} onChange={fields=>setFormData({...fields,vehicle_info:vehicleSummary(fields)})} />
+                <RecordsCheckButton name={formData.subject_name} plate={formData.vehicle_plate} site={formData.location}/>
+
                 <div className="space-y-2">
                   <Label htmlFor="reason">Reason for Notice *</Label>
                   <Textarea

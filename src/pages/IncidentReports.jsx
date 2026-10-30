@@ -22,6 +22,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
+import VehicleFields from '@/components/reports/VehicleFields';
+import RecordsCheckButton from '@/components/reports/RecordsCheckButton';
+import {vehicleSummary} from '@/lib/vehicleForm';
 import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import { toast } from 'sonner';
 import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
@@ -70,6 +73,7 @@ export default function IncidentReports() {
     description: "",
     suspect_description: "",
     suspect_vehicle: "",
+    vehicle_year:"",vehicle_make:"",vehicle_model:"",vehicle_color:"",vehicle_plate:"",vehicle_state:"VA",vehicle_vin:"",
     persons_involved: "",
     victims: "",
     witnesses: "",
@@ -554,6 +558,7 @@ Provide:
       description: "",
       suspect_description: "",
       suspect_vehicle: "",
+    vehicle_year:"",vehicle_make:"",vehicle_model:"",vehicle_color:"",vehicle_plate:"",vehicle_state:"VA",vehicle_vin:"",
       persons_involved: "",
       victims: "",
       witnesses: "",
@@ -1494,7 +1499,7 @@ Provide:
                 />
 
                 <div className="space-y-2">
-                  <Label htmlFor="suspect_vehicle">Suspect / Involved Vehicle</Label>
+                  <Label htmlFor="suspect_vehicle">Additional vehicle description (legacy / notes)</Label>
                   <Input
                     id="suspect_vehicle"
                     placeholder="Make, model, color, license plate..."
@@ -1503,6 +1508,8 @@ Provide:
                   />
                 </div>
 
+                <VehicleFields value={formData} onChange={fields=>setFormData({...fields,suspect_vehicle:vehicleSummary(fields)})}/>
+                <RecordsCheckButton name={formData.persons?.[0]?.name||formData.persons_involved} plate={formData.vehicle_plate} site={formData.location}/>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
