@@ -1032,7 +1032,11 @@ export default function Navigation() {
         setRoadSpeedLimitStatus('Checking posted limit');
         withRequestTimeout(base44.functions.invoke('getRoadSpeedLimit', {
             latitude: currentLocation[0], longitude: currentLocation[1], road_name: roadName,
-            heading, accuracy: gpsQuality?.accuracy ?? null,
+            // Below 12 mph, GPS heading often reflects sensor drift rather than
+            // the carriageway; avoid filtering out a correctly mapped road.
+            heading: Number(speed) >= 12 ? heading : null,
+            speed_mph: Number(speed) || 0,
+            accuracy: gpsQuality?.accuracy ?? null,
         }), 10000, 'Road speed limit').then(response => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
             const payload = response?.data || response || {};
@@ -1042,7 +1046,7 @@ export default function Navigation() {
             setRoadSpeedLimitSource(verified ? String(payload.source || '') : '');
             setRoadSpeedLimitRoad(verified ? String(payload.road_name || '') : '');
             setRoadSpeedLimitEstimated(payload.estimated === true);
-            setRoadSpeedLimitStatus(verified ? 'Mapped posted limit' : 'No verified limit available');
+            setRoadSpeedLimitStatus(verified ? 'Mapped posted limit' : (payload.reason === 'gps_accuracy_too_low' ? 'GPS too imprecise for road match' : 'No mapped limit for this road'));
         }).catch(() => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
             setRoadSpeedLimit(null);

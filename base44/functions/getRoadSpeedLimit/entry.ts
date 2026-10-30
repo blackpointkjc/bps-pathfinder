@@ -79,7 +79,11 @@ Deno.serve(async req => {
     }
 
     const requestedRoad = String(body.road_name || '').trim();
-    const heading = body.heading === null || body.heading === undefined || body.heading === '' ? Number.NaN : Number(body.heading);
+    const speedMph = Number(body.speed_mph);
+    // Low-speed compass values are frequently noisy: prefer the nearest
+    // geometry rather than excluding the correct roadway on a bad bearing.
+    const reportedHeading = body.heading === null || body.heading === undefined || body.heading === '' ? Number.NaN : Number(body.heading);
+    const heading = Number.isFinite(speedMph) && speedMph < 12 ? Number.NaN : reportedHeading;
     const accuracy = body.accuracy === null || body.accuracy === undefined || body.accuracy === '' ? Number.NaN : Number(body.accuracy);
     // Do not publish a posted speed limit from a coarse network/Wi-Fi fix. At
     // street intersections a 100m+ fix can easily land on the wrong road.
@@ -200,7 +204,7 @@ Deno.serve(async req => {
     // nearest directionally compatible tagged segment.
     const posted = roads
       .filter(road => Number.isFinite(road.mph) && road.mph > 0 && road.highway !== 'service')
-      .filter(road => road.distance <= (hasRoadNameMatch(road) ? 65 : 35))
+      .filter(road => road.distance <= (hasRoadNameMatch(road) ? 45 : 25))
       .filter(road => !Number.isFinite(heading) || road.headingDifference <= 50)
       .map(road => ({
         ...road,
