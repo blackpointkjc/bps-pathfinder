@@ -9,6 +9,7 @@ async function fetchTomTomRoute(lat:number,lng:number,destLat:number,destLng:num
   const params = new URLSearchParams({
     routeType: 'fastest', traffic: 'true', travelMode: 'car',
     instructionsType: 'text', language: 'en-US', routeRepresentation: 'polyline',
+    sectionType: 'speedLimit',
   });
   if (Number.isFinite(heading)) params.set('vehicleHeading', String(Math.round(((heading%360)+360)%360)));
   const path = `/routing/1/calculateRoute/${lat},${lng}:${destLat},${destLng}/json`;
@@ -61,9 +62,19 @@ async function fetchTomTomRoute(lat:number,lng:number,destLat:number,destLng:num
           instruction: String(instruction.message || ''),
         };
       });
+      const speedLimitSections = (raw.sections || [])
+        .filter((section:any)=>String(section.sectionType || '').toUpperCase() === 'SPEED_LIMIT')
+        .map((section:any)=>({
+          start: Number(section.startPointIndex), end: Number(section.endPointIndex),
+          mph: Math.round(Number(section.maxSpeedLimitInKmh) * 0.621371),
+        }))
+        .filter((section:any)=>Number.isInteger(section.start) && Number.isInteger(section.end)
+          && section.start >= 0 && section.end > section.start && section.end < pts.length
+          && section.mph >= 10 && section.mph <= 90);
       return {
         geometry: { type: 'LineString', coordinates: pts.map((x:any)=>[x.longitude,x.latitude]) },
         distance: meters, duration: seconds, legs: [{steps:osmSteps}],
+        speedLimitSections,
         provider: 'TomTom traffic-aware routing',
       };
     } catch { /* Key, network or provider failure: try backup or OSRM fallback */ }

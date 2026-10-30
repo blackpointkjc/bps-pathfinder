@@ -178,6 +178,7 @@ export default function Navigation() {
     useEffect(() => { setRecentDestinations(readRecentDestinations(currentUser?.id)); }, [currentUser?.id]);
 
     const [navRoute, setNavRoute] = useState([]);
+    const [navSpeedLimitSections, setNavSpeedLimitSections] = useState([]);
     const [navSteps, setNavSteps] = useState([]);
     const [navStepIndex, setNavStepIndex] = useState(0);
     const [navDistanceMiles, setNavDistanceMiles] = useState(0);
@@ -897,6 +898,7 @@ export default function Navigation() {
             const routeCoords = (route.geometry?.coordinates || []).map(([x, y]) => [y, x]);
             const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
             setNavRoute(routeCoords);
+            setNavSpeedLimitSections(Array.isArray(route.speedLimitSections) ? route.speedLimitSections : []);
             navSnapIndexRef.current = 0;
             offRouteSinceRef.current = 0;
             offRouteConfirmationsRef.current = 0;
@@ -1058,11 +1060,25 @@ export default function Navigation() {
             const payload = response?.data || response || {};
             const limit = Number(payload.speed_limit_mph);
             const verified = Number.isFinite(limit) && limit >= 10 && limit <= 90;
-            setRoadSpeedLimit(verified ? Math.round(limit) : null);
-            setRoadSpeedLimitSource(verified ? String(payload.source || '') : '');
-            setRoadSpeedLimitRoad(verified ? String(payload.road_name || '') : '');
+            // When point matching has no posted limit, reuse TomTom's *legal*
+            // speed-limit sections for the confirmed current route. Never use
+            // the planned route if the officer is off-route or >25m from it.
+            let routeLimit = null;
+            if (!verified && isNavigating && !navOffRoute && navRoute.length > 1 && navSpeedLimitSections.length) {
+                const matched = projectOntoRoute(currentLocation, navRoute,
+                    Math.max(0, navSnapIndexRef.current - 5),
+                    Math.min(navRoute.length - 1, navSnapIndexRef.current + 80));
+                if (matched && matched.distance <= 25) {
+                    const section = navSpeedLimitSections.find(row => matched.index >= row.start && matched.index < row.end);
+                    if (section) routeLimit = section.mph;
+                }
+            }
+            const hasLimit = verified || routeLimit != null;
+            setRoadSpeedLimit(hasLimit ? (verified ? Math.round(limit) : routeLimit) : null);
+            setRoadSpeedLimitSource(verified ? String(payload.source || '') : routeLimit != null ? 'TomTom legal route speed limit' : '');
+            setRoadSpeedLimitRoad(hasLimit ? String(payload.road_name || '') : '');
             setRoadSpeedLimitEstimated(payload.estimated === true);
-            setRoadSpeedLimitStatus(verified ? 'Mapped posted limit' : payload.reason === 'gps_accuracy_too_low' ? 'GPS too imprecise for road match' : payload.reason === 'map_provider_rate_limited' ? 'Speed data provider busy' : payload.reason === 'posted_limit_unavailable' ? 'Speed data temporarily unavailable' : 'No mapped limit for this road');
+            setRoadSpeedLimitStatus(hasLimit ? 'Mapped posted limit' : payload.reason === 'gps_accuracy_too_low' ? 'GPS too imprecise for road match' : payload.reason === 'map_provider_rate_limited' ? 'Speed data provider busy' : payload.reason === 'posted_limit_unavailable' ? 'Speed data temporarily unavailable' : 'No mapped limit for this road');
         }).catch(() => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
             setRoadSpeedLimit(null);
@@ -1070,7 +1086,7 @@ export default function Navigation() {
             setRoadSpeedLimitRoad('');
             setRoadSpeedLimitStatus('Speed-limit data unavailable');
         });
-    }, [currentLocation, isNavigating, isLiveTracking, gpsQuality?.state, gpsQuality?.accuracy, heading, navStepIndex, navSteps, speedLimitRetryRevision]);
+    }, [currentLocation, isNavigating, isLiveTracking, gpsQuality?.state, gpsQuality?.accuracy, heading, navStepIndex, navSteps, navRoute, navOffRoute, navSpeedLimitSections, speedLimitRetryRevision]);
 
     useEffect(() => {
         if (!currentLocation || !validPosition(currentLocation[0], currentLocation[1])) return;
@@ -1266,6 +1282,7 @@ export default function Navigation() {
         setFollowMyLocation(false);
         setNavDestination(null);
         setNavRoute([]);
+        setNavSpeedLimitSections([]);
         setNavSteps([]);
         setNavStepIndex(0);
         setNavDistanceMiles(0);
