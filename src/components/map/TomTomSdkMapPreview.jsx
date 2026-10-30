@@ -35,7 +35,7 @@ const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
  * operational Leaflet CAD map. If the map proxy is inaccessible or WebGL fails,
  * officers close this view and keep the full-featured dispatch map unchanged.
  */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',onCallClick}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
@@ -261,6 +261,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         <button type="button" onClick={onClose} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-cyan-700 px-3 text-xs font-bold"><X size={17}/>Back to CAD</button>
       </div>
     </div>
+    {navigation && <div role="status" className="shrink-0 border-b border-emerald-700 bg-[#0a251b] px-3 py-2 text-white"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{navigation.distance} · {navigation.instruction}</strong><span className="text-xs font-bold text-emerald-200">{navigation.eta} ETA · {navigation.provider === 'TomTom' ? 'TomTom routing' : 'Fallback routing'}</span></div>{navigation.then && <div className="mt-1 text-xs text-slate-200">Then: {navigation.then}</div>}</div>}
     <div className="relative min-h-[240px] w-full flex-1 overflow-hidden" style={{height:'calc(100dvh - 100px)',minHeight:'240px',flex:'1 1 auto'}}>
       <div ref={elementRef} className="absolute inset-0 h-full w-full" style={{width:'100%',height:'100%',minHeight:'240px'}} aria-label="TomTom interactive map"/>
       {error && <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl border border-amber-500 bg-slate-950/95 p-4 text-sm text-amber-100 shadow-lg">{error}</div>}

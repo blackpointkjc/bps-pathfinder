@@ -904,6 +904,7 @@ export default function Navigation() {
                 }
             }
             if (!route) throw new Error('In-app routing is unavailable. Open driving directions in Google Maps below.');
+            setNavRouteProvider(String(route.provider || '').includes('TomTom') ? 'TomTom' : 'Fallback');
             setNavOffRoute(false);
             setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
             const routeCoords = (route.geometry?.coordinates || []).map(([x, y]) => [y, x]);
@@ -1698,6 +1699,7 @@ export default function Navigation() {
                                 <div><div className="text-base font-black text-white">{navDurationMinutes} min</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{navDistanceMiles.toFixed(1)} mi left</div></div>
                                 <div className="hidden min-w-0 sm:block"><div className="max-w-[185px] truncate text-xs font-black text-white">{navDestination.name}</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-500">Destination</div></div>
                             </div>
+                            <button type="button" onClick={() => setShowTomTomSdkPreview(true)} className="flex min-h-10 shrink-0 items-center gap-1 rounded-full border border-cyan-600 bg-cyan-950 px-2.5 text-[10px] font-bold text-cyan-100" title="Open TomTom interactive turn-by-turn driving map"><MapIcon className="h-4 w-4" />TomTom Map</button>
                             <button type="button" onClick={toggleNavigationVoice} className={`flex h-10 w-10 items-center justify-center rounded-full border ${navVoiceMuted ? 'border-slate-600 bg-slate-900 text-slate-400' : 'border-emerald-500 bg-emerald-950 text-emerald-200'}`} title={navVoiceMuted ? 'Turn navigation voice on' : 'Mute navigation voice'}>{navVoiceMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
                             <button type="button" onClick={recenter} className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-500 bg-blue-950 text-blue-200" title="Recenter navigation"><LocateFixed className="h-4 w-4" /></button>
                             <button type="button" onClick={stopInAppNavigation} className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500 bg-red-950 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
@@ -1879,6 +1881,7 @@ export default function Navigation() {
                     route={navRoute}
                     destination={navDestination}
                     mapTheme={mapTheme}
+                    navigation={isNavigating && activeNavStep ? { instruction: formatInstruction(activeNavStep), distance: navDistanceLabel, then: nextNavStep ? formatInstruction(nextNavStep) : '', eta: navEtaLabel, provider: navRouteProvider } : null}
                     onCallClick={call => { setShowTomTomSdkPreview(false); setSelectedCall(call); setShowCallSidebar(true); }}
                 />
             </Suspense>}
