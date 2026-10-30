@@ -138,3 +138,7 @@
 .pf-facility-marker > span svg {width:18px;height:18px;stroke-width:2.3;}
 .pf-facility-marker:hover > span {background:var(--facility-color)!important;border-color:#fff;transform:scale(1.12);}
 .pf-facility-cluster > span {width:28px;height:28px;background:#243c56;color:#fff;border:2px solid #a8c9e8;font-size:12px;box-shadow:0 2px 5px #0008;}
+.pf-map-tool-panel .pf-layer-swatch {background:#78300e!important;border-color:#ce783f!important;}.pf-map-tool-panel .pf-layer-swatch:after {background:#ffc18c;}
+.pf-map-tool-panel .pf-layer-swatch.police {background:#173e6c!important;border-color:#5796d3!important;}.pf-map-tool-panel .pf-layer-swatch.police:after {background:#9acfff;}
+.pf-map-tool-panel .pf-layer-swatch.rescue {background:#105647!important;border-color:#48aa93!important;}.pf-map-tool-panel .pf-layer-swatch.rescue:after {background:#8de9d0;}
+.pf-map-tool-panel .pf-layer-swatch.jail {background:#443c63!important;border-color:#9688bc!important;}.pf-map-tool-panel .pf-layer-swatch.jail:after {background:#d0c2f4;}

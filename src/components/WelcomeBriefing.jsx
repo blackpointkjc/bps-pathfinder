@@ -154,6 +154,8 @@ export default function WelcomeBriefing({ user }) {
     localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
     setOfflineSince(savedActive);
     let active = true;
+    let firstLoad = true;
+    let requestRunning = false;
     let recoveryTimer;
     let recoveryAttempts = 0;
     const scheduleRecovery = (retryAt = 0) => {
@@ -163,6 +165,8 @@ export default function WelcomeBriefing({ user }) {
       recoveryTimer = window.setTimeout(load, Math.max(10000, retryAt - Date.now()) + Math.random() * 3000);
     };
     const load = async () => {
+      if (!active || requestRunning) return;
+      requestRunning = true;
       const failedSources = [];
       try {
         // Load one authenticated backend snapshot instead of launching many
@@ -277,9 +281,11 @@ export default function WelcomeBriefing({ user }) {
         scheduleRecovery();
         setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary'])));
       } finally {
+        requestRunning = false;
         if (active) {
           setLoading(false);
-          setOpen(true);
+          if (firstLoad) setOpen(true);
+          firstLoad = false;
         }
       }
     };

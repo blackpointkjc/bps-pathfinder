@@ -1,0 +1,12 @@
+import { build } from 'esbuild';
+import assert from 'node:assert/strict';
+const result = await build({entryPoints:['src/lib/briefingActivity.js'],bundle:true,write:false,platform:'node',format:'esm'});
+const {selectPropertyBriefingAlerts: select}=await import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));
+const since=Date.parse('2026-10-28T12:00:00Z'), until=Date.parse('2026-10-29T12:00:00Z');
+const alert={id:'a',callId:'c',propertyId:'p',created_date:'2026-10-29T10:00:00Z',callTime:'2026-10-27T10:00:00Z'};
+assert.equal(select([alert],[{call_id:'c',property_id:'p'}],since,until).length,1,'dismissed calls remain in away activity');
+assert.equal(select([alert,{...alert,id:'b'}],[],since,until).length,1,'duplicate call/property pairs count once');
+assert.equal(select([{...alert,created_date:'2026-10-28T10:00:00Z'}, {...alert,is_test:true}],[],since,until).length,0);
+assert.equal(select([alert],[],since,Date.parse('2026-10-29T09:00:00Z')).length,0);
+assert.equal(select([alert],[],since,until).length,1,'advancing refresh window includes new activity');
+console.log('PASS: briefing activity timestamps, dismissed history, duplicate events, test exclusion, advancing window');
