@@ -1594,7 +1594,9 @@ export default function Navigation() {
     const navDistanceLabel = navTurnDistanceFeet < 1000
         ? `${Math.max(0, Math.round(navTurnDistanceFeet / 50) * 50)} ft`
         : `${(navTurnDistanceFeet / 5280).toFixed(navTurnDistanceFeet >= 5280 ? 1 : 2)} mi`;
-    const navEtaLabel = new Date(Date.now() + navDurationMinutes * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const navEtaLabel = (isLiveTracking || routePreviewOnly)
+        ? new Date(Date.now() + navDurationMinutes * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        : 'GPS lost';
 
     const getUnitNumberFromId = (userId) => {
         if (currentUser?.id === userId) return currentUser.unit_number || currentUser.full_name?.split(' ')[0] || 'UNIT';
@@ -1747,7 +1749,7 @@ export default function Navigation() {
                     heading={heading}
                     locationHistory={isLiveTracking ? locationHistory : []}
                     unitName={unitName || currentUser?.unit_number}
-                    flashAssignedEnroute={flashSelfAssignedEnroute}
+                    flashAssignedEnroute={flashSelfAssignedEnroute && isLiveTracking}
                     otherUnits={mapVisibleUnits}
                     currentUserId={currentUser?.id}
                     speed={speed}
@@ -1829,7 +1831,7 @@ export default function Navigation() {
                             <div className="flex min-w-0 flex-1 items-center gap-4">
                                 <div><div className="text-base font-black text-white">{navEtaLabel}</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">ETA</div></div>
                                 <div className="h-8 w-px bg-slate-700" />
-                                <div><div className="text-base font-black text-white">{navDurationMinutes} min</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{navDistanceMiles.toFixed(1)} mi left</div></div>
+                                <div><div className="text-base font-black text-white">{isLiveTracking || routePreviewOnly ? `${navDurationMinutes} min` : '—'}</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{navDistanceMiles.toFixed(1)} mi {isLiveTracking || routePreviewOnly ? 'left' : 'at last fix'}</div></div>
                                 <div className="hidden min-w-0 sm:block"><div className="max-w-[185px] truncate text-xs font-black text-white">{navDestination.name}</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-500">Destination</div></div>
                             </div>
 
