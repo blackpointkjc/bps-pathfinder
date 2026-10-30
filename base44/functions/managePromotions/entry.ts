@@ -94,7 +94,7 @@ const easternNow=(date=new Date())=>{
 };
 const PERMITTED_ROLES=['officer','supervisor','dispatch','cad_access','support','hr','trainer','full_access'];
 
-const safeOfficer=(u:any)=>({id:u.id,name:name(u),rank:u.rank||'Officer',unit_number:u.unit_number||'',platoon:u.platoon||'',oversight_platoon:u.oversight_platoon||'',supervisor_id:u.supervisor_id||'',supervisor_name:u.supervisor_name||'',email:u.email||'',is_supervisor:!!u.is_supervisor});
+const safeOfficer=(u:any)=>({id:u.id,name:name(u),rank:u.rank||'Officer',unit_number:u.unit_number||'',platoon:u.platoon||'',oversight_platoon:u.oversight_platoon||'',supervisor_id:u.supervisor_id||'',supervisor_name:u.supervisor_name||'',email:u.email||'',is_supervisor:!!u.is_supervisor,system_role:u.role||'user',additional_roles:Array.isArray(u.additional_roles)?u.additional_roles:[],profile_photo_url:u.profile_photo_url||''});
 async function version(users:any[]){
  const snapshot=users.map(u=>[u.id,u.updated_date,u.rank,u.unit_number,u.platoon,u.oversight_platoon,u.supervisor_id,u.next_level_supervisor_id,u.employment_status,u.termination_date]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(snapshot)));
@@ -194,7 +194,7 @@ Deno.serve(async req=>{
   const requestId=trim(input.request_id,80);
   if(!/^[a-zA-Z0-9_-]{12,80}$/.test(requestId))return fail('A valid idempotent command request ID is required.',400);
   const prior=await entities.PersonnelPromotion.filter({request_id:requestId},'-created_date',1);
-  if(prior.length)return Response.json({success:prior[0].status==='complete',already_processed:true,event_id:prior[0].id,status:prior[0].status,announcement_published:prior[0].announcement_published,warnings:prior[0].warnings||[]});
+  if(prior.length)return Response.json({success:['scheduled','complete'].includes(prior[0].status),scheduled:prior[0].status==='scheduled',already_processed:true,event_id:prior[0].id,status:prior[0].status,announcement_published:prior[0].announcement_published,warnings:prior[0].warnings||[]});
   const event=await entities.PersonnelPromotion.create({
     request_id:requestId,officer_id:plan.officer.id,officer_email:plan.officer.email,officer_name:name(plan.officer),
     previous_rank:plan.officer.rank,new_rank:plan.updates.rank,previous_unit:trim(plan.officer.unit_number),new_unit:plan.updates.unit_number,
