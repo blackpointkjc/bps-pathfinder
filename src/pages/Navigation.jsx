@@ -1145,10 +1145,39 @@ export default function Navigation() {
         });
     };
 
-    const startInAppNavigation = () => startNavigationToPoint({
-        coords: selectedCall?.latitude && selectedCall?.longitude ? [Number(selectedCall.latitude), Number(selectedCall.longitude)] : null,
-        name: selectedCall?.location || selectedCall?.incident || 'Call location',
-    }, { dispatchCall: selectedCall });
+    const startInAppNavigation = async () => {
+        const call = selectedCall;
+        if (!call) return;
+        let destination = validPosition(call.latitude, call.longitude)
+            ? { coords: [Number(call.latitude), Number(call.longitude)], name: call.location || call.incident || 'Call location' }
+            : null;
+        if (!destination) {
+            // Live CAD records sometimes arrive before GRAC provides GPS. Use
+            // the same TomTom-first server geocoder used for dispatch creation;
+            // do not block officers from starting directions to an address.
+            const address = String(call.location || '').trim();
+            if (address.length < 5) {
+                toast.error('Call address is missing. Dispatch must provide a location.');
+                return;
+            }
+            try {
+                const region = /HPD|HFD|HENRICO/i.test(String(call.agency || '')) ? 'Henrico County, VA'
+                    : /CCPD|CCFD|CHESTERFIELD/i.test(String(call.agency || '')) ? 'Chesterfield County, VA' : 'Richmond, VA';
+                const query = /\b(VA|Virginia|Richmond|Henrico|Chesterfield)\b/i.test(address) ? address : `${address}, ${region}`;
+                const result = await withRequestTimeout(base44.functions.invoke('geocodeNavigationDestination', {query}), 10000, 'Call address lookup');
+                const matches = result?.data?.results || result?.results || [];
+                const point = matches.find(item => validPosition(item?.coords?.[0], item?.coords?.[1]));
+                if (point) destination = {coords: point.coords, name: address, address};
+            } catch (error) {
+                console.warn('Dispatch call address navigation lookup failed:', error?.message || error);
+            }
+        }
+        if (!destination) {
+            toast.error('No verified map location for this call. Confirm its address with Dispatch.');
+            return;
+        }
+        await startNavigationToPoint(destination, {dispatchCall: call});
+    };
 
     const openInAppStreetView = () => {
         const lat = Number(selectedCall?.latitude);
