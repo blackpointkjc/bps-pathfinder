@@ -94,6 +94,7 @@ function BriefCard({ icon: Icon, label, value, detail, tone = 'blue', onClick })
 export default function WelcomeBriefing({ user }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [browsingBriefing, setBrowsingBriefing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], tasks: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], allLiveOfficers: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const [dataErrors, setDataErrors] = useState([]);
@@ -368,6 +369,8 @@ export default function WelcomeBriefing({ user }) {
   // supervisors open them inline inside Supervisor Center (Command → Action Items).
   const openActionItems = () => {
     if (!canOpenSupervisorTasks) return;
+    setBrowsingBriefing(true);
+    setOpen(false);
     if (isAdmin) {
       navigate(`${createPageUrl('AdminCenter')}?admin_center=supervisor&admin_supervisor_section=operations&admin_supervisor_tool=tasks`);
       return;
@@ -460,11 +463,16 @@ export default function WelcomeBriefing({ user }) {
     // Navigation from inside the briefing must not acknowledge or dismiss it.
     // Keep this as SPA navigation so the briefing remains mounted and visible.
     const centerRoutes = {
-      DispatchCenter: '/CADCenter?section=live&tool=dispatch',
+      DispatchCenter: isAdmin ? '/AdminCenter?admin_center=cad&cad_section=live&cad_tool=dispatch' : '/CADCenter?section=live&tool=dispatch',
       Schedule: '/OfficerCenter?section=today&tool=myschedule',
       Announcements: '/OfficerCenter?section=today&tool=announcements',
       SupervisorTasks: '/SupervisorCenter?section=command&tool=tasks',
     };
+    // The old popup stayed on top after navigation; links technically routed
+    // but users could not see the destination. Show the destination immediately
+    // and leave an explicit way to finish the unacknowledged briefing.
+    setBrowsingBriefing(true);
+    setOpen(false);
     navigate(centerRoutes[page] || createPageUrl(page));
   };
 
@@ -485,6 +493,7 @@ export default function WelcomeBriefing({ user }) {
         // explicitly choose Available/Enroute/On Scene/etc. from the status bar.
         localStorage.setItem(lastStatusKey, 'Out of Service');
       }
+      setBrowsingBriefing(false);
       sessionStorage.setItem(sessionKey, 'acknowledged');
       localStorage.setItem(storageKey, new Date().toISOString());
       setOpen(false);
@@ -499,6 +508,11 @@ export default function WelcomeBriefing({ user }) {
   if (!user?.id || !user?.email) return null;
 
   return createPortal(
+    <>
+    {browsingBriefing && !open && <div role="status" className="fixed bottom-3 left-3 right-3 z-[2147481000] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400 bg-[#111d2b] p-3 text-xs font-semibold text-amber-100 shadow-2xl">
+      <span>Shift briefing not acknowledged. Return to finish your session briefing.</span>
+      <button type="button" onClick={() => { setBrowsingBriefing(false); setOpen(true); }} className="min-h-10 rounded-lg border border-amber-400 px-3 py-2 font-black">Return to briefing</button>
+    </div>}
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pf-session-briefing-overlay fixed inset-0 z-[2147482000] flex items-center justify-center overflow-hidden bg-black/75 p-2 backdrop-blur-md sm:p-4">
@@ -636,7 +650,8 @@ export default function WelcomeBriefing({ user }) {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>,
+    </AnimatePresence>
+    </>,
     document.body
   );
 }
