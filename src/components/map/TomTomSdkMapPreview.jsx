@@ -35,11 +35,15 @@ const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
  * operational Leaflet CAD map. If the map proxy is inaccessible or WebGL fails,
  * officers close this view and keep the full-featured dispatch map unchanged.
  */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
   const callsRef=useRef(activeCalls);
+  const userInteractedRef=useRef(false);
+  const lastFollowAtRef=useRef(0);
+  const onSelectPointRef=useRef(onSelectPoint);
+  const onMapUnavailableRef=useRef(onMapUnavailable);
   const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
@@ -53,6 +57,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const [resourceStatus,setResourceStatus]=useState('Checking map resources…');
   const [renderStatus,setRenderStatus]=useState('Initializing renderer…');
   clickRef.current=onCallClick;
+  onSelectPointRef.current=onSelectPoint;
+  onMapUnavailableRef.current=onMapUnavailable;
   cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination};
   // A traffic style reload creates new sources. Immediately repopulate them
   // from the latest CAD snapshot instead of waiting for the next GPS update.
@@ -220,15 +226,22 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         };
         map.on('load',dataInit);
         map.on('style.load',dataInit);
+        map.on('click', event=>{
+          const features=map.queryRenderedFeatures(event.point,{layers:['pathfinder-calls-dot']});
+          if(!features.length)onSelectPointRef.current?.([event.lngLat.lat,event.lngLat.lng]);
+        });
+        map.on('dragstart',()=>{userInteractedRef.current=true;});
         if(map.isStyleLoaded()) dataInit();
         const onMapError=e=>{
           if(cancelled)return;
           tileErrorsRef.current++;
           const status=Number(e?.error?.status||e?.error?.statusCode||0);
-          if(!mapReadyRef.current || tileErrorsRef.current>=3)
+          if(!mapReadyRef.current || tileErrorsRef.current>=3) {
+            if(embedded)onMapUnavailableRef.current?.();
             setError(status===401||status===403
               ? 'TomTom map resources were denied. Your original CAD map is still available.'
               : 'TomTom map tiles did not load correctly. Back to CAD remains available.');
+          }
           console.warn('[TomTom SDK map]',status||e?.error?.code||'Map resource error');
         };
         map.on('error',onMapError);
@@ -236,7 +249,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         errorTimer=window.setTimeout(()=>{
           if(cancelled)return;
           const rendered=map.isStyleLoaded() && map.queryRenderedFeatures().length>0;
-          if(!rendered)setError('TomTom map has not rendered street features. Back to CAD uses the original working map.');
+          if(!rendered){setError('TomTom map has not rendered street features.'); if(embedded)onMapUnavailableRef.current?.();}
         },18000);
       }catch(e){if(!cancelled)setError(`TomTom SDK could not start: ${e?.message||'Unknown error'}. Close to return to CAD.`);}
     }
@@ -252,22 +265,32 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const map=sdkRef.current?.mapLibreMap;
     if(ready&&map)syncCadData(map);
   },[ready,currentLocation,activeCalls,otherUnits,route,destination]);
-  return createPortal(<div role="dialog" aria-modal="true" aria-label="TomTom SDK interactive map" className="fixed inset-0 z-[2147482900] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#07101b] text-white" style={{height:'100dvh',minHeight:'100dvh',width:'100vw',paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-900 bg-[#0b1d2b] p-2 sm:flex-nowrap sm:gap-3 sm:p-3">
+  useEffect(()=>{
+    const map=sdkRef.current?.mapLibreMap;
+    if (!ready || !map || !coords(currentLocation) || !navigation) return;
+    const now=Date.now();
+    if(now-lastFollowAtRef.current<700)return;
+    lastFollowAtRef.current=now;
+    const bearing=Number.isFinite(Number(heading)) ? Number(heading) : map.getBearing();
+    map.easeTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:Math.max(map.getZoom(),16),pitch:55,bearing,duration:650,essential:true});
+  },[ready,currentLocation,heading,navigation?.instruction]);
+  const surface = <div role={embedded ? 'region' : 'dialog'} aria-modal="true" aria-label="TomTom SDK interactive map" className={embedded ? 'absolute inset-0 flex h-full w-full flex-col overflow-hidden bg-[#07101b] text-white' : 'fixed inset-0 z-[2147482900] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#07101b] text-white'} style={embedded ? {height:'100%',minHeight:0,width:'100%'} : {height:'100dvh',minHeight:'100dvh',width:'100vw',paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
+    {!embedded && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-900 bg-[#0b1d2b] p-2 sm:flex-nowrap sm:gap-3 sm:p-3">
       <div className="flex min-w-0 items-center gap-2"><Shield className="h-5 w-5 shrink-0 text-cyan-300"/><div className="min-w-0"><h2 className="truncate text-sm font-black">TomTom Maps SDK</h2><p className="truncate text-[10px] text-slate-300">Interactive map preview · CAD remains available underneath</p></div></div>
       <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
         <button type="button" disabled={!trafficReady} onClick={()=>setTrafficVisible(v=>!v)} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold disabled:opacity-50" aria-pressed={trafficVisible} title="Toggle real TomTom traffic flow and road incidents"><CloudSun size={17}/>{trafficVisible?'Traffic on':'Traffic off'}</button>
         <button type="button" onClick={()=>{const map=sdkRef.current?.mapLibreMap;if(map&&coords(currentLocation))map.flyTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:16});}} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold" title="Recenter TomTom map on your GPS"><Crosshair size={17}/><span className="hidden sm:inline">Recenter</span></button>
         <button type="button" onClick={onClose} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-cyan-700 px-3 text-xs font-bold"><X size={17}/>Back to CAD</button>
       </div>
-    </div>
-    {navigation && <div role="status" className="shrink-0 border-b border-emerald-700 bg-[#0a251b] px-3 py-2 text-white"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{navigation.distance} · {navigation.instruction}</strong><span className="text-xs font-bold text-emerald-200">{navigation.eta} ETA · {navigation.provider === 'TomTom' ? 'TomTom routing' : 'Fallback routing'}</span></div>{navigation.then && <div className="mt-1 text-xs text-slate-200">Then: {navigation.then}</div>}</div>}
-    <div className="relative min-h-[240px] w-full flex-1 overflow-hidden" style={{height:'calc(100dvh - 100px)',minHeight:'240px',flex:'1 1 auto'}}>
-      <div ref={elementRef} className="absolute inset-0 h-full w-full" style={{width:'100%',height:'100%',minHeight:'240px'}} aria-label="TomTom interactive map"/>
+    </div>}
+    {!embedded && navigation && <div role="status" className="shrink-0 border-b border-emerald-700 bg-[#0a251b] px-3 py-2 text-white"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{navigation.distance} · {navigation.instruction}</strong><span className="text-xs font-bold text-emerald-200">{navigation.eta} ETA · {navigation.provider === 'TomTom' ? 'TomTom routing' : 'Fallback routing'}</span></div>{navigation.then && <div className="mt-1 text-xs text-slate-200">Then: {navigation.then}</div>}</div>}
+    <div className="relative min-h-0 w-full flex-1 overflow-hidden" style={embedded ? {height:'100%',minHeight:0,flex:'1 1 auto'} : {height:'calc(100dvh - 100px)',minHeight:'240px',flex:'1 1 auto'}}>
+      <div ref={elementRef} className="absolute inset-0 h-full w-full" style={{width:'100%',height:'100%',minHeight:embedded ? 0 : '240px'}} aria-label="TomTom interactive map"/>
       {error && <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl border border-amber-500 bg-slate-950/95 p-4 text-sm text-amber-100 shadow-lg">{error}</div>}
       {!ready && !error && <div role="status" className="pointer-events-none absolute inset-x-3 top-3 rounded-xl bg-slate-950/90 p-3 text-xs text-white">Loading TomTom map resources…</div>}
       {(error || !ready) && <div role="status" className="pointer-events-none absolute bottom-4 right-3 max-w-[70%] rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><div>{resourceStatus}</div>{error && <div className="mt-0.5 opacity-75">{renderStatus}</div>}</div>}
-      {ready && <div className="pointer-events-none absolute bottom-4 left-3 rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><MapPin className="mr-1 inline h-3 w-3"/>Red: CAD calls · Blue: units · Green: your GPS</div>}
+      {!embedded && ready && <div className="pointer-events-none absolute bottom-4 left-3 rounded-lg bg-slate-950/85 p-2 text-[10px] text-slate-200"><MapPin className="mr-1 inline h-3 w-3"/>Red: CAD calls · Blue: units · Green: your GPS</div>}
     </div>
-  </div>,document.body);
+  </div>;
+  return embedded ? surface : createPortal(surface,document.body);
 }
