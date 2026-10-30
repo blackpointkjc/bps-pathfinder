@@ -314,7 +314,7 @@ function pumpReads() {
         job.attempt = (job.attempt || 0) + 1;
         if (retryable && !throttled && job.attempt <= 1 && Date.now() - job.queuedAt < READ_QUEUE_TIMEOUT_MS - 30000) {
           job.readyAt = Date.now() + (throttled ? 1000 : 2000 * 2 ** job.attempt) + Math.random() * 3000;
-          job.armQueueTimeout(READ_QUEUE_TIMEOUT_MS - (Date.now() - job.queuedAt));
+          job.armQueueTimeout(Math.max(5_000, (job.totalQueueTimeoutMs || READ_QUEUE_TIMEOUT_MS) - (Date.now() - job.queuedAt)));
           readQueue.push(job);
         } else job.reject(error);
       })
@@ -362,6 +362,10 @@ function queuedRead(key, task, meta = {}) {
         if (index < 0) return;
         // Keep the total wait bounded even if other requests renew a cooldown.
         readQueue.splice(index, 1);
+        // Unblock the next queued read immediately when a slow/blocked request
+        // times out; without this the whole queue could remain idle until a
+        // separate event happened to wake the scheduler.
+        pumpReads();
         const throttleMs = Math.max(0, readRecoveryUntil - Date.now(), sharedRateLimitUntil() - Date.now());
         const error = new Error(throttleMs > 0
           ? `Base44 API is temporarily throttled. Retry after ${Math.ceil(throttleMs / 1000)} seconds.`
@@ -387,6 +391,7 @@ function queuedRead(key, task, meta = {}) {
     // minutes. Background/administrative reads retain their full allowance.
     const foregroundTimeout = meta?.kind === 'function' && ['getActiveDispatchCalls', 'getOnDutyUnits', 'getRoadSpeedLimit'].includes(meta?.name)
       ? 35_000 : READ_QUEUE_TIMEOUT_MS;
+    job.totalQueueTimeoutMs = foregroundTimeout;
     armQueueTimeout(foregroundTimeout);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
     if (insertAt < 0) readQueue.push(job);
