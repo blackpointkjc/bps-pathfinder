@@ -65,6 +65,28 @@ async function lookupVirginiaPostedLimit(lat: number, lng: number, heading: numb
   return best ? { speed_limit_mph: Math.round(best.mph), road_name: best.name || requestedRoad, source: 'Virginia DOT posted speed limits', estimated: false, matched_distance_m: Math.round(best.dist) } : null;
 }
 
+// Reduce provider throttling during fleet tracking. This cache is private to
+// the warm backend instance; it never stores officer identity or routes.
+const speedLimitCache = new Map<string, { until: number; payload: Record<string, unknown> }>();
+let osmBackoffUntil = 0;
+function cachedSpeedLimit(key: string) {
+  const entry = speedLimitCache.get(key);
+  if (!entry || entry.until < Date.now()) { speedLimitCache.delete(key); return null; }
+  return entry.payload;
+}
+function storeSpeedLimit(key: string, payload: Record<string, unknown>) {
+  if (speedLimitCache.size > 900) {
+    for (const [entryKey, entry] of speedLimitCache) {
+      if (entry.until < Date.now()) speedLimitCache.delete(entryKey);
+      if (speedLimitCache.size <= 600) break;
+    }
+    if (speedLimitCache.size > 900) speedLimitCache.delete(speedLimitCache.keys().next().value as string);
+  }
+  const verified = Number(payload.speed_limit_mph) > 0;
+  speedLimitCache.set(key, { until: Date.now() + (verified ? 5 * 60_000 : 60_000), payload });
+  return payload;
+}
+
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
@@ -97,10 +119,24 @@ Deno.serve(async req => {
         reason: 'gps_accuracy_too_low',
       });
     }
+    // A small position cell + known road/direction prevents mixing speed limits
+    // across parallel carriageways while deduplicating unchanged road queries.
+    const cacheKey = `${lat.toFixed(4)}:${lng.toFixed(4)}:${normalizeRoad(requestedRoad)}:${Number.isFinite(heading) ? Math.round(heading / 45) : 'unknown'}`;
+    const cached = cachedSpeedLimit(cacheKey);
+    if (cached) return Response.json({ success: true, ...cached });
+
+    // Prefer the maintained state dataset where coverage exists. The public
+    // OSM map endpoint has a shared request budget and may issue HTTP 429;
+    // do not request it unnecessarily or repeatedly retry a throttle response.
+    const virginia = await lookupVirginiaPostedLimit(lat, lng, heading, requestedRoad).catch(() => null);
+    if (virginia) return Response.json({ success: true, ...storeSpeedLimit(cacheKey, virginia) });
+
+    if (Date.now() < osmBackoffUntil) return Response.json({ success: true,
+      ...storeSpeedLimit(cacheKey, { speed_limit_mph: null, road_name: requestedRoad,
+        source: '', estimated: false, reason: 'map_provider_rate_limited' }) });
+
     const delta = 0.00125;
     const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join(',');
-
-    const virginiaLookup = lookupVirginiaPostedLimit(lat, lng, heading, requestedRoad).catch(() => null);
     const osmResponse = await fetch(`https://api.openstreetmap.org/api/0.6/map?bbox=${bbox}`, {
       headers: {
         Accept: 'application/xml',
@@ -110,10 +146,10 @@ Deno.serve(async req => {
     }).catch(() => null);
 
     if (!osmResponse?.ok) {
-      const virginia = await virginiaLookup;
-      return Response.json({ success: true, ...(virginia || {
-        speed_limit_mph: null, road_name: requestedRoad, source: '',
-        estimated: false, reason: 'posted_limit_unavailable',
+      if (osmResponse?.status === 429) osmBackoffUntil = Date.now() + 5 * 60_000;
+      return Response.json({ success: true, ...storeSpeedLimit(cacheKey, {
+        speed_limit_mph: null, road_name: requestedRoad, source: '', estimated: false,
+        reason: osmResponse?.status === 429 ? 'map_provider_rate_limited' : 'posted_limit_unavailable',
       }) });
     }
 
@@ -215,26 +251,21 @@ Deno.serve(async req => {
 
     const currentRoad = posted[0] || null;
     if (currentRoad) {
-      return Response.json({
-        success: true,
+      return Response.json({ success: true, ...storeSpeedLimit(cacheKey, {
         speed_limit_mph: currentRoad.mph,
         road_name: currentRoad.name || requestedRoad,
         source: 'OpenStreetMap posted maxspeed',
         estimated: false,
         matched_distance_m: Math.round(currentRoad.distance),
-      });
+      }) });
     }
 
-    const virginia = await virginiaLookup;
-    if (virginia) return Response.json({ success: true, ...virginia });
-    return Response.json({
-      success: true,
+    return Response.json({ success: true, ...storeSpeedLimit(cacheKey, {
       speed_limit_mph: null,
       road_name: requestedRoad || '',
-      source: '',
-      estimated: false,
+      source: '', estimated: false,
       reason: 'no_reliable_posted_limit',
-    });
+    }) });
   } catch (error: any) {
     console.error('getRoadSpeedLimit failed', error);
     return Response.json({ error: error?.message || 'Speed-limit lookup failed' }, { status: 500 });

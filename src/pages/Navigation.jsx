@@ -1046,7 +1046,7 @@ export default function Navigation() {
             setRoadSpeedLimitSource(verified ? String(payload.source || '') : '');
             setRoadSpeedLimitRoad(verified ? String(payload.road_name || '') : '');
             setRoadSpeedLimitEstimated(payload.estimated === true);
-            setRoadSpeedLimitStatus(verified ? 'Mapped posted limit' : (payload.reason === 'gps_accuracy_too_low' ? 'GPS too imprecise for road match' : 'No mapped limit for this road'));
+            setRoadSpeedLimitStatus(verified ? 'Mapped posted limit' : payload.reason === 'gps_accuracy_too_low' ? 'GPS too imprecise for road match' : payload.reason === 'map_provider_rate_limited' ? 'Speed data provider busy' : payload.reason === 'posted_limit_unavailable' ? 'Speed data temporarily unavailable' : 'No mapped limit for this road');
         }).catch(() => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
             setRoadSpeedLimit(null);
