@@ -815,15 +815,15 @@ export default function Navigation() {
     const getFreshDeviceLocation = async () => {
         setGpsQuality(previous => ({ ...previous, state: 'acquiring' }));
         try {
-            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: Infinity });
+            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: 100 });
             const fresh = [fix.latitude, fix.longitude];
             const quality = locationQuality(fix);
             setGpsQuality(quality);
             setCurrentLocation(fresh);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(liveSpeedMph(fix.speed)));
-            setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
-            return fresh;
+            setIsLiveTracking(quality.state === 'live');
+            return quality.state === 'live' ? fresh : null;
         } catch (liveError) {
             try {
                 const best = await requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 });
@@ -834,21 +834,22 @@ export default function Navigation() {
                 setCurrentLocation(fresh);
                 if (best.heading !== null) setHeading(best.heading);
                 setSpeed(Math.round(liveSpeedMph(best.speed)));
-                setIsLiveTracking(quality.state === 'live' || quality.state === 'low_accuracy');
-                return fresh;
+                setIsLiveTracking(quality.state === 'live');
+                return quality.state === 'live' ? fresh : null;
             } catch (deviceError) {
                 const fallback = getLiveLocation(30000);
                 const fallbackQuality = locationQuality(fallback);
                 setGpsQuality(fallbackQuality);
                 if (fallback) {
                     setCurrentLocation([fallback.latitude, fallback.longitude]);
-                    setIsLiveTracking(fallbackQuality.state === 'live' || fallbackQuality.state === 'low_accuracy');
+                    setIsLiveTracking(fallbackQuality.state === 'live');
                 } else {
                     setIsLiveTracking(false);
                 }
                 console.warn('[NAV] precise GPS request failed:', deviceError?.message || liveError?.message);
-                // A valid recent cached fix can start a route while device GPS recovers.
-                return fallback ? [fallback.latitude, fallback.longitude] : null;
+                // A coarse cached network location is never safe as the live
+                // departure point for vehicle directions.
+                return fallback && fallbackQuality.state === 'live' ? [fallback.latitude, fallback.longitude] : null;
             }
         }
     };
@@ -878,9 +879,10 @@ export default function Navigation() {
             const originOverride = Array.isArray(options.originOverride) && validPosition(options.originOverride[0], options.originOverride[1])
                 ? [Number(options.originOverride[0]), Number(options.originOverride[1])]
                 : null;
-            const recentFix = getLiveLocation(options.reroute ? 12_000 : 15_000);
+            const rawRecentFix = getLiveLocation(options.reroute ? 12_000 : 15_000);
+            const recentFix = locationQuality(rawRecentFix).state === 'live' ? rawRecentFix : null;
             let freshLocation = originOverride
-                || (options.reroute && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
+                || (options.reroute && isLiveTracking && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
                 || (recentFix && validPosition(recentFix.latitude, recentFix.longitude) ? [recentFix.latitude, recentFix.longitude] : null)
                 || (recentFix && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
                 || await getFreshDeviceLocation();
