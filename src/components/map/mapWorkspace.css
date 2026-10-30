@@ -107,3 +107,9 @@
 .bps-operations-ticker {height:28px!important;box-shadow:none!important;background:#2a1d24!important;border-bottom-color:#58363d!important;}
 .bps-operations-ticker-track button {font-family:Inter,system-ui,sans-serif!important;font-size:11px!important;font-weight:550!important;letter-spacing:0!important;text-transform:none!important;padding-block:4px!important;}
 @media(max-width:600px){.pf-map-header-actions{max-width:100%;flex-wrap:wrap;justify-content:flex-end;}}
+.pf-map-heading h1,.pf-map-subtitle {white-space:nowrap;}
+@media(max-width:420px){
+ .pf-map-heading {flex:1 0 100%;min-width:0;}
+ .pf-map-header-actions {width:100%;margin-left:0;justify-content:space-between;}
+ .pf-map-heading h1 {font-size:15px!important;line-height:1.3!important;}
+}
