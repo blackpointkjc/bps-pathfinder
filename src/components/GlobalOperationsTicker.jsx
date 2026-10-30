@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, FileWarning, MapPin, Siren } from 'lucide-react';
 import { base44, getBase44RequestHealth } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
@@ -164,6 +165,7 @@ function propertySegments(rows = [], calls = []) {
 }
 
 export default function GlobalOperationsTicker({ user, currentPageName }) {
+  const navigate = useNavigate();
   const [calls, setCalls] = useState([]);
   const [activeBolos, setActiveBolos] = useState([]);
   const [distress, setDistress] = useState([]);
@@ -285,7 +287,7 @@ export default function GlobalOperationsTicker({ user, currentPageName }) {
             <button
               key={segment.key}
               type="button"
-              onClick={() => { window.location.href = segment.href; }}
+              onClick={() => navigate(segment.href)}
               className="group flex shrink-0 items-center gap-2 px-5 py-2 text-left text-[10px] font-black uppercase tracking-[0.11em] text-white hover:bg-white/10"
             >
               {segment.kind === 'bolo'
