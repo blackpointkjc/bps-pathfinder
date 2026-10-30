@@ -1,10 +1,13 @@
 
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {MapContainer,TileLayer} from 'react-leaflet';
+import {MapContainer} from 'react-leaflet';
+import PathfinderTileLayer from '/src/components/map/PathfinderTileLayer';
 import {Search,Crosshair,Users,Eye,Home,Flame,Layers,MapPin} from 'lucide-react';
 import '/src/index.css';
 import '/src/App.css';
+import '/src/responsive.css';
+import '/src/field-readability.css';
 import '/src/components/map/mapWorkspace.css';
 import 'leaflet/dist/leaflet.css';
 import LiveMapToolbar from '/src/components/map/LiveMapToolbar';
@@ -34,7 +37,7 @@ function Review(){
  <nav className="cad-mode-nav">{['Command board','Dispatch queue','Officer queue','Live map','Officer status','BOLO / alerts','Call history','Records'].map(label=><button key={label} aria-current={label==='Live map'?'page':undefined}>{label}</button>)}</nav>
  <div className="pf-navigation-workspace" style={{flex:1,minHeight:0,position:'relative'}}>
  <MapContainer center={[37.55,-77.445]} zoom={13} style={{position:'absolute',inset:0}} zoomControl={false}>
- <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap"/>
+ <PathfinderTileLayer theme="day"/>
  <EmergencyStationMarkers filters={filters} onNavigate={noop}/><PoliceStationMarkers showStations={filters.showPoliceStations} onNavigateToStation={noop}/><PrecinctMarkers showStations={filters.showPoliceStations} onNavigateToPrecinct={noop}/>
  </MapContainer>
  <div style={{position:'absolute',top:0,left:0,right:0,zIndex:1010}}><LiveMapToolbar user={user} status={status} onStatusChange={setStatus} onBack={noop} onRecenter={noop} gpsLabel="GPS unavailable" online unitCount={1} callCount={27} unassignedCount={3} criticalCount={2} onToggleFullscreen={noop} onRefreshCalls={noop} callsStatus="Calls checked 9:25 PM"/></div>
