@@ -50,8 +50,8 @@ Deno.serve(async req => {
     const action = clean(data.action);
     const site = clean(data.site_name||data.location);
     const sitePermitted = () => scope(site) ? null : fail('Property not assigned or not selected',403);
-    const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
-    const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id','resident_verified'];
+    const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','lease_start','lease_end','lease_id','building','resident_type','emergency_contact','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
+    const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id','resident_verified','vehicle_record_id'];
     const siteRecords = async (entity:any,limit=200) => {
       const rows = await entity.filter({site_name:site},'-created_date',limit);
       return rows.filter((row:any)=>siteKey(row.site_name)===siteKey(site));
@@ -78,32 +78,97 @@ Deno.serve(async req => {
       }))});
     }
     if (action==='sites') {
-      // Client site lists come only from assigned user locations. Officers may
-      // use the existing location directory but never receive resident lists
-      // without specifying a site first.
-      return Response.json({sites:client?[...new Map(assignedNames.map(name=>[siteKey(name),name])).values()]:[],role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
+      // Property options are returned without resident PII. Always prefer a
+      // verified active duty assignment in officer apps; otherwise let staff
+      // choose a property explicitly before any resident search.
+      let options=[...new Map(assignedNames.map(name=>[siteKey(name),name])).values()];
+      if(officer&&!client){
+        try {const locations=await entities.Location.list('site_name',350);
+          options=[...new Map([...(locations||[]).map((loc:any)=>clean(loc.site_name)).filter(Boolean),...options].map(name=>[siteKey(name),name])).values()];}
+        catch(error){console.warn('Parking site list unavailable',String((error as Error)?.message||error));}
+      }
+      let dutySite='';
+      if(officer&&user.email){try{
+        const shifts=await entities.TimeEntry.filter({officer_email:user.email},'-clock_in',10);
+        const current=(shifts||[]).find((row:any)=>row.clock_in&&!row.clock_out);
+        const duty=clean(current?.location||'');
+        dutySite=options.find(name=>siteKey(name)===siteKey(duty))||'';
+      }catch(error){console.warn('Parking duty property lookup unavailable',String((error as Error)?.message||error));}}
+      return Response.json({sites:options,duty_site:dutySite,role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
     }
-    if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export'].includes(action)) {
+    if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export','rent_roll','vehicle_save','resident_lookup'].includes(action)) {
       const rejected=sitePermitted();if(rejected)return rejected;
     }
-    if (action==='overview' || action==='residents' || action==='records_check') {
+    // Single property-scoped resident/vehicle registry shared by the client,
+    // officers' parking workflow, and incident/trespass party selectors.
+    // A legacy single-car resident is projected as a vehicle until migrated,
+    // without rewriting or losing any pre-existing lease record.
+    const publicResident=(row:any)=>({id:row.id,site_name:row.site_name,full_name:row.full_name,
+      unit_number:row.unit_number,building:row.building,lease_status:row.lease_status,
+      lease_start:row.lease_start,lease_end:row.lease_end,resident_type:row.resident_type,
+      vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_year:row.vehicle_year,
+      vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin});
+    const publicVehicle=(v:any)=>({id:v.id,resident_id:v.resident_id,site_name:v.site_name,
+      plate:v.plate,state:v.state,year:v.year,make:v.make,model:v.model,color:v.color,vin:v.vin,
+      permit_number:v.permit_number,permit_status:v.permit_status,vehicle_status:v.vehicle_status,unit_number:v.unit_number});
+    const residentCars=(residents:any[],registered:any[])=>{
+      const cars=registered.map(publicVehicle);
+      for(const row of residents){
+        if(!plateKey(row.vehicle_plate))continue;
+        if(cars.some(v=>v.resident_id===row.id&&plateKey(v.plate)===plateKey(row.vehicle_plate)&&clean(v.state).toUpperCase()===clean(row.vehicle_state).toUpperCase()))continue;
+        cars.push({id:'legacy:'+row.id,resident_id:row.id,site_name:site,plate:plateKey(row.vehicle_plate),state:clean(row.vehicle_state)||'VA',year:row.vehicle_year||'',make:row.vehicle_make||'',model:row.vehicle_model||'',color:row.vehicle_color||'',vin:row.vehicle_vin||'',permit_number:'',permit_status:'unknown',vehicle_status:'registered',unit_number:row.unit_number||''});
+      }
+      return cars;
+    };
+    if(action==='vehicle_save'){
+      if(!client&&!admin)return fail('Client or administrator registration required',403);
+      const input=data.vehicle||{};
+      const resident=await entities.PropertyResident.get(clean(input.resident_id));
+      if(!resident||siteKey(resident.site_name)!==siteKey(site))return fail('Select a resident on this property rent roll',404);
+      const plate=plateKey(input.plate);
+      if(plate.length<2)return fail('Vehicle license plate required');
+      const record:any={site_name:site,resident_id:resident.id,resident_name:resident.full_name,unit_number:resident.unit_number,
+        plate,state:clean(input.state||'VA',3).toUpperCase(),year:clean(input.year),make:clean(input.make),
+        model:clean(input.model),color:clean(input.color),vin:clean(input.vin,25).toUpperCase(),
+        permit_number:clean(input.permit_number),permit_status:clean(input.permit_status||'active'),
+        vehicle_status:clean(input.vehicle_status||'registered'),updated_at:dates(),updated_by:clean(user.email)};
+      let result;
+      if(data.id){const existing=await entities.PropertyVehicle.get(clean(data.id));
+        if(!existing||siteKey(existing.site_name)!==siteKey(site)||existing.resident_id!==resident.id)return fail('Vehicle is not linked to that resident at this property',404);
+        result=await entities.PropertyVehicle.update(existing.id,record);
+      }else result=await entities.PropertyVehicle.create(record);
+      return Response.json({success:true,vehicle:publicVehicle(result)});
+    }
+    if (['overview','residents','records_check','rent_roll','resident_lookup'].includes(action)) {
       const rows=await siteRecords(entities.PropertyResident,300);
+      const registered=await siteRecords(entities.PropertyVehicle,500);
+      const vehicles=residentCars(rows,registered);
+      if(action==='rent_roll'||action==='resident_lookup'){
+        const q=clean(data.query,100).toLowerCase();
+        const residents=rows.map(publicResident).filter(row=>{
+          if(!q)return true;
+          const cars=vehicles.filter(v=>v.resident_id===row.id);
+          return [row.full_name,row.unit_number,row.building,...cars.map(v=>v.plate),...cars.map(v=>v.vin)].some(value=>clean(value).toLowerCase().includes(q));
+        });
+        if(action==='resident_lookup'&&!officer)return fail('Officer resident lookup access required',403);
+        return Response.json({residents,vehicles:vehicles.filter(v=>residents.some(row=>row.id===v.resident_id)),source:'Property rent roll (not DMV/NCIC)'});
+      }
       if(action==='residents'||action==='overview') {
-        const residents=client?rows:rows.map((row:any)=>({id:row.id,site_name:row.site_name,full_name:row.full_name,unit_number:row.unit_number,lease_status:row.lease_status,
-          vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_year:row.vehicle_year,vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin}));
-        if(action==='residents')return Response.json({residents});
+        const residents=client?rows:rows.map(publicResident);
+        if(action==='residents')return Response.json({residents,vehicles});
         const [rules,violations]=await Promise.all([siteRecords(entities.PropertyParkingRule,100),entities.ParkingViolation.filter({location:site},'-created_date',200)]);
-        return Response.json({residents,rules,violations:violations.filter((v:any)=>siteKey(v.location)===siteKey(site)&&(!client||v.client_visible!==false))});
+        return Response.json({residents,vehicles,rules,violations:violations.filter((v:any)=>siteKey(v.location)===siteKey(site)&&(!client||v.client_visible!==false))});
       }
       if(!officer)return fail('Officer records access required',403);
       const query=clean(data.query,100).toLowerCase();if(query.length<2)return fail('Enter a person name, plate or VIN');
       const terms=query.split(/\s+/).filter(term=>/[a-z0-9]{2,}/i.test(term));
       if(!terms.length)return fail('Enter a name or a complete plate/VIN');
       const found=rows.filter((row:any)=> {
-        const name=clean(row.full_name).toLowerCase(), plate=plateKey(row.vehicle_plate), vin=clean(row.vehicle_vin).toUpperCase();
-        return terms.every(term=>name.includes(term)||plate.includes(plateKey(term))||vin.includes(term.toUpperCase()));
-      }).map((row:any)=>({id:row.id,source:'Property resident registry',site_name:row.site_name,full_name:row.full_name,unit_number:row.unit_number,lease_status:row.lease_status,
-        vehicle_plate:row.vehicle_plate,vehicle_state:row.vehicle_state,vehicle_make:row.vehicle_make,vehicle_model:row.vehicle_model,vehicle_color:row.vehicle_color,vehicle_vin:row.vehicle_vin}));
+        const name=clean(row.full_name).toLowerCase();
+        const cars=vehicles.filter(v=>v.resident_id===row.id);
+        return terms.every(term=>name.includes(term)||cars.some(v=>plateKey(v.plate).includes(plateKey(term))||clean(v.vin).toUpperCase().includes(term.toUpperCase())));
+      }).map((row:any)=>({id:row.id,source:'Property resident registry',...publicResident(row),
+        vehicles:vehicles.filter(v=>v.resident_id===row.id)}));
       const parking=await entities.ParkingViolation.filter({location:site},'-created_date',150);
       const past=parking.filter((p:any)=>siteKey(p.location)===siteKey(site) && (plateKey(p.license_plate).includes(plateKey(query))||clean(p.subject_name||p.vehicle_owner).toLowerCase().includes(query))).slice(0,20)
         .map((p:any)=>({id:p.id,source:'Parking violation',citation_number:p.citation_number,date:p.violation_date,status:p.status,license_plate:p.license_plate,violation_type:p.violation_type}));
@@ -142,8 +207,11 @@ Deno.serve(async req => {
       // Plate verification happens against server-side property records only.
       entry.resident_id='';entry.resident_verified=false;
       const residents=await siteRecords(entities.PropertyResident,300);
-      const matchingResident=residents.find((r:any)=>plateKey(r.vehicle_plate)===entry.license_plate && clean(r.vehicle_state).toUpperCase()===clean(entry.license_state).toUpperCase());
-      if(matchingResident){entry.resident_id=matchingResident.id;entry.resident_verified=true;}
+      const registeredVehicles=await siteRecords(entities.PropertyVehicle,500);
+      const match=registeredVehicles.find((v:any)=>plateKey(v.plate)===entry.license_plate && clean(v.state).toUpperCase()===clean(entry.license_state).toUpperCase());
+      const matchingResident=match?residents.find((r:any)=>r.id===match.resident_id):residents.find((r:any)=>plateKey(r.vehicle_plate)===entry.license_plate && clean(r.vehicle_state).toUpperCase()===clean(entry.license_state).toUpperCase());
+      if(matchingResident){entry.resident_id=matchingResident.id;entry.resident_verified=true;entry.vehicle_record_id=match?.id||'';
+        entry.unit_number=entry.unit_number||matchingResident.unit_number;entry.vehicle_owner=entry.vehicle_owner||matchingResident.full_name;}
       entry.violation_date=entry.violation_date||dates().slice(0,10);
       entry.violation_time=entry.violation_time||dates().slice(11,16);
       entry.citation_number=`BPS-PV-${crypto.randomUUID().slice(0,12).toUpperCase()}`;
@@ -174,8 +242,10 @@ Deno.serve(async req => {
       // cannot mark an arbitrary plate as an active registered resident.
       const currentPlate=plateKey(patch.license_plate||original.license_plate);
       const currentState=clean(patch.license_state||original.license_state).toUpperCase();
-      const registered=(await siteRecords(entities.PropertyResident,300)).find((r:any)=>plateKey(r.vehicle_plate)===currentPlate&&clean(r.vehicle_state).toUpperCase()===currentState);
-      patch.resident_id=registered?.id||'';patch.resident_verified=!!registered;
+      const residents=await siteRecords(entities.PropertyResident,300);
+      const car=(await siteRecords(entities.PropertyVehicle,500)).find((v:any)=>plateKey(v.plate)===currentPlate&&clean(v.state).toUpperCase()===currentState);
+      const registered=car?residents.find((r:any)=>r.id===car.resident_id):residents.find((r:any)=>plateKey(r.vehicle_plate)===currentPlate&&clean(r.vehicle_state).toUpperCase()===currentState);
+      patch.resident_id=registered?.id||'';patch.resident_verified=!!registered;patch.vehicle_record_id=car?.id||'';
       patch.fine_amount=original.fine_amount;patch.status='issued';patch.supervisor_review_status='pending';patch.was_rejected=true;
       patch.approval_history=[...(Array.isArray(original.approval_history)?original.approval_history:[]),history(user,'resubmitted',patch.description||'Officer revised returned parking notice')].slice(-60);
       return Response.json({success:true,violation:await entities.ParkingViolation.update(id,patch)});
