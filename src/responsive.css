@@ -247,6 +247,112 @@ html.pf-map-fullscreen .cad-app main[data-page="Navigation"] {
   overflow: hidden; background: #07101a;
 }
 
+
+/* CAD on phones/tablets: one page scroller, independently scrollable call list,
+   and reachable lower status strip. The fixed-height desktop console was clipping
+   the lower banner inside the mobile page scroller. */
+.cad-mode-nav,
+.cad-mobile-view-tabs,
+.cad-queue-filter-strip,
+.cad-bottom-status {
+  scrollbar-width: thin;
+  scrollbar-color: #4b8db4 #0b1a2b;
+  -webkit-overflow-scrolling: touch;
+}
+.cad-mode-nav::-webkit-scrollbar,
+.cad-mobile-view-tabs::-webkit-scrollbar,
+.cad-queue-filter-strip::-webkit-scrollbar,
+.cad-bottom-status::-webkit-scrollbar { height: 6px; }
+.cad-mode-nav::-webkit-scrollbar-thumb,
+.cad-mobile-view-tabs::-webkit-scrollbar-thumb,
+.cad-queue-filter-strip::-webkit-scrollbar-thumb,
+.cad-bottom-status::-webkit-scrollbar-thumb {
+  background: #4b8db4;
+  border-radius: 999px;
+}
+.cad-bottom-status:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: -2px;
+}
+.cad-status-scroll-button {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  background: #10253a;
+}
+.cad-status-scroll-button:hover { background: #1a3751; }
+
+@media (max-width: 1279px) {
+  .cad-app .cad-mode-nav {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scroll-padding-inline: 12px;
+  }
+  .cad-app .cad-mode-nav > button { min-height: 44px; flex: 0 0 auto; }
+  .cad-app main[data-page="CADCenter"] .cad-shell-dispatch {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    width: 100%;
+    max-width: 100%;
+  }
+  .cad-app main[data-page="CADCenter"] .cad-shell-dispatch > .cad-screen-dispatch {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none;
+    overflow: visible !important;
+  }
+  .cad-app .cad-command-workstation {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    max-width: 100%;
+  }
+  .cad-app .cad-command-workstation .dispatch-main {
+    flex: none;
+    height: clamp(350px, 61dvh, 640px);
+    min-height: 350px;
+    overflow: hidden !important;
+  }
+  .cad-app .cad-command-workstation .dispatch-main > div { height: 100%; min-height: 0; }
+  .cad-app .cad-command-workstation .dispatch-main .overflow-y-auto {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cad-app .cad-command-workstation .dispatch-prior-calls {
+    flex: none;
+    height: clamp(350px, 61dvh, 640px);
+    min-height: 350px;
+  }
+  .cad-app .cad-command-workstation .cad-queue-controls > .relative {
+    order: -2;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .cad-app .cad-command-workstation .cad-queue-filter-strip {
+    order: -1;
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    touch-action: pan-x;
+  }
+  .cad-app .cad-command-workstation .cad-queue-controls > .flex-1 { display: none; }
+  .cad-app .cad-mobile-view-tabs,
+  .cad-app .cad-bottom-status { touch-action: pan-x; }
+  .cad-app .cad-command-workstation .cad-bottom-status-wrap { max-width: 100%; min-width: 0; }
+  .cad-app .cad-command-workstation .cad-bottom-status { scroll-behavior: smooth; }
+}
+@media (max-width: 639px) {
+  .cad-app .cad-command-workstation .dispatch-kpis > div { min-width: 0; }
+  .cad-app .cad-command-workstation .cad-queue-controls {
+    gap: 6px;
+    padding: 8px;
+  }
+  .cad-app .cad-command-workstation .dispatch-main { height: max(350px, 56dvh); }
+  .cad-app .cad-command-workstation .dispatch-call-card { margin: 6px 8px; padding: 10px; }
+}
+
 /* Native fullscreen keeps controls clear of the notch in either orientation. */
 html.pf-map-fullscreen .live-map-toolbar {
   padding-top: max(8px, env(safe-area-inset-top));
