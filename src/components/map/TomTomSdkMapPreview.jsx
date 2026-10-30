@@ -25,6 +25,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
+  const callsRef=useRef(activeCalls);
   const [ready,setReady]=useState(false);
   const [error,setError]=useState('');
   clickRef.current=onCallClick;
@@ -78,7 +79,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
               paint:{'circle-radius':8,'circle-color':'#ff334b','circle-stroke-width':2,'circle-stroke-color':'#fff'}});
             map.on('click','pathfinder-calls-dot',event=>{
               const id=event.features?.[0]?.properties?.id;
-              const current=(window.__bpsTomTomMapCalls||[]).find(call=>String(call.id)===String(id));
+              const current=(callsRef.current||[]).find(call=>String(call.id)===String(id));
               if(current) clickRef.current?.(current);
             });
           }
@@ -121,8 +122,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const map=sdkRef.current?.mapLibreMap;
     if(!ready||!map)return;
     const calls=activeCalls.filter(call=>mapped(call.latitude,call.longitude));
-    // Keep the current call references scoped to this opt-in session only.
-    window.__bpsTomTomMapCalls=calls;
+    // Keep current calls in the component, never in global window state.
+    callsRef.current=calls;
     map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id}))));
     const units=otherUnits.filter(unit=>mapped(unit.latitude,unit.longitude));
     map.getSource('pathfinder-units')?.setData(featureCollection(units.map((unit,i)=>marker(unit.id||i,unit.latitude,unit.longitude))));
@@ -130,7 +131,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     map.getSource('pathfinder-destination')?.setData(featureCollection(destination && coords(destination.coords)?[marker('destination',destination.coords[0],destination.coords[1])]:[]));
     const points=route.filter(coords).map(point=>[Number(point[1]),Number(point[0])]);
     map.getSource('pathfinder-route')?.setData(featureCollection(points.length>=2?[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]:[]));
-    return ()=>{delete window.__bpsTomTomMapCalls;};
+    return undefined;
   },[ready,currentLocation,activeCalls,otherUnits,route,destination]);
   return createPortal(<div role="dialog" aria-modal="true" aria-label="TomTom SDK interactive map" className="fixed inset-0 z-[2147482900] flex flex-col bg-[#07101b] text-white" style={{paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
     <div className="flex shrink-0 items-center justify-between gap-3 border-b border-cyan-900 bg-[#0b1d2b] p-3">

@@ -32,7 +32,7 @@ Deno.serve(async req => {
     const url = new URL(req.url);
     const suffix = url.searchParams.get('resourcePath') || url.pathname.match(/\btomtomMapProxy(\/.*)$/)?.[1];
     if (!suffix || suffix.length > 500 || !allowedPath.test(suffix) || suffix.includes('..'))
-      return Response.json({ error: 'unsupported_tomtom_resource', path_valid: Boolean(suffix), query_keys: [...url.searchParams.keys()] }, {status: 400, headers: cors});
+      return jsonError(400, 'unsupported_tomtom_resource');
     const me = await createClientFromRequest(req).auth.me().catch(() => null);
     if (!me?.id || me.disabled === true) return jsonError(401, 'sign_in_required');
     const now = Date.now();
