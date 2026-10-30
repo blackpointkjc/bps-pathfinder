@@ -10,8 +10,7 @@ const activeOfficer = user => {
   return (officerRoles.some(role => roles.has(role)) || officerRanks.includes(lower(user.rank)))
     && !user.termination_date && !['pending','disabled','inactive','suspended'].includes(lower(user.account_status))
     && !['client','student','pending'].includes(type)
-    && !['client','student','pending'].some(role => roles.has(role))
-    && !['out of service','off duty','off-duty','oos'].includes(lower(user.status));
+    && !['client','student','pending'].some(role => roles.has(role));
 };
 async function allRows(entity, query, sort = 'created_date') {
   const rows = [];
@@ -37,9 +36,10 @@ Deno.serve(async req => {
       const key = user.id + ':' + requestKey;
       const previous = await db.CadVoiceBroadcast.filter({request_key:key}, 'created_date', 1);
       if (previous.length) return Response.json({success:true, broadcast:previous[0], recipients:previous[0].recipient_emails.length});
-      const shifts = (await allRows(db.TimeEntry, {
-        archived:{$ne:true}, $or:[{clock_out:null},{clock_out:''},{clock_out:{$exists:false}}]
-      }, '-clock_in')).filter(openShift);
+      // Avoid an expensive OR query across historical payroll rows on every
+      // broadcast. Limit to recent clock-ins and verify open shifts in code.
+      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const shifts = (await db.TimeEntry.filter({clock_in: {$gte: cutoff}}, '-clock_in', 1500)).filter(openShift);
       const emails = [...new Set(shifts.map(row => row.officer_email).filter(Boolean))];
       const eligible = new Set();
       for (let index = 0; index < emails.length; index += 100) {
@@ -47,7 +47,7 @@ Deno.serve(async req => {
         users.filter(activeOfficer).forEach(person => eligible.add(lower(person.email)));
       }
       const targets = shifts.filter(row => eligible.has(lower(row.officer_email)));
-      if (!targets.length) return Response.json({error:'No active on-duty officers are available'}, {status:409});
+      if (!targets.length) return Response.json({error:'No clocked-in eligible officers found. Confirm an officer has an open shift before sending.'}, {status:409});
       const broadcast = await db.CadVoiceBroadcast.create({
         request_key:key, message, sender_id:user.id,
         sender_name:[user.rank,user.first_name,user.last_name].filter(Boolean).join(' ') || user.full_name || 'Administrator',

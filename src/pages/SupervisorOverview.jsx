@@ -65,8 +65,10 @@ export default function SupervisorOverview() {
       const failures = [];
       const read = async (label, loader, fallback = {}) => { try { const response=await loader(); const value=response?.data||response; if(value?.error)throw new Error(value.error); return value; } catch { failures.push(label); return fallback; } };
       const users = await read('Officer directory', () => listDirectoryUsers('-last_updated', 500), []);
-      const assignmentResult = await read('Task assignments', () => base44.functions.invoke('syncSupervisorOperationalTasks', {}));
-      const supervisorAssignments = assignmentResult?.data || assignmentResult || {};
+      // Assignment synchronisation is a background write-heavy workflow, not
+      // a read for every overview render. The scoped task reader below provides
+      // the current actionable records without throttling other command pages.
+      const supervisorAssignments = {};
       const taskResult = await read('Personnel actions', () => base44.functions.invoke('getSupervisorScopedTasks', {}));
       const taskPayload = taskResult?.data || taskResult || {};
       const [boardResult, reportResult, locationSnapshot] = await Promise.all([
