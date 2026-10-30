@@ -138,7 +138,7 @@ function registerCadIcons(map){
 const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
@@ -155,6 +155,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const trafficInitRef=useRef(false);
   const terrainInitRef=useRef(false);
   const perspectiveInitRef=useRef(false);
+  const markerFitRef=useRef(false);
   const mapReadyRef=useRef(false);
   const activeThemeRef=useRef(mapTheme);
   const requestedThemeRef=useRef(mapTheme);
@@ -187,6 +188,16 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       marker(unit.id||i,position.latitude,position.longitude,{
         icon:unitShieldIcon(unit),label:String(unit.unit_number||unit.unitName||unit.name||'Officer').slice(0,35)
       }))));
+    if(fitMarkers && !markerFitRef.current && units.length && map.getZoom){
+      markerFitRef.current=true;
+      const coordsArray=units.map(({position})=>[Number(position.longitude),Number(position.latitude)]);
+      if(coordsArray.length===1){map.easeTo({center:coordsArray[0],zoom:13.5,pitch:42,duration:300});}
+      else{
+        const bounds=coordsArray.reduce((acc,point)=>[[Math.min(acc[0][0],point[0]),Math.min(acc[0][1],point[1])],[Math.max(acc[1][0],point[0]),Math.max(acc[1][1],point[1])]],
+          [[Infinity,Infinity],[-Infinity,-Infinity]]);
+        map.fitBounds(bounds,{padding:60,maxZoom:13.5,duration:300});
+      }
+    }
     map.getSource('pathfinder-self')?.setData(featureCollection(coords(snapshot.currentLocation)?[marker('self',snapshot.currentLocation[0],snapshot.currentLocation[1])]:[]));
     map.getSource('pathfinder-destination')?.setData(featureCollection(snapshot.destination && coords(snapshot.destination.coords)?[marker('destination',snapshot.destination.coords[0],snapshot.destination.coords[1])]:[]));
     const pins=(snapshot.searchPins||[]).filter(pin=>coords(pin?.coords));
@@ -260,7 +271,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         sdk=new TomTomMap({registerMapLibreWorker:false,
           style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['terrain','trafficFlow','trafficIncidents']},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
-            ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:15.5,pitch:50},
+            ? [Number(currentLocation[1]),Number(currentLocation[0])] : coords(initialCenter)
+              ? [Number(initialCenter[1]),Number(initialCenter[0])] : [-77.436,37.541],zoom:fitMarkers?12:15.5,pitch:50},
           // MapLibre's transformRequest MUST be synchronous; an async callback
           // returns a Promise instead of RequestParameters and breaks tiles.
           transformRequest:request=>{

@@ -18,6 +18,7 @@ import { isInternalMember } from '@/lib/directoryUtils';
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
+import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
 
 import GPSAuditReport from '@/components/GPSAuditReport';
 import { auditDay, auditTime, buildAuditModel } from '@/lib/locationAudit';
@@ -213,6 +214,8 @@ export default function AdminLocationTracker({ embedded = false }) {
   const [mapUnavailable, setMapUnavailable] = useState(false);
   const [deviceLocationState, setDeviceLocationState] = useState(null);
   const [mapTheme, setMapTheme] = usePathfinderMapTheme();
+  const [useTomTomLive,setUseTomTomLive]=useState(true);
+  const [tomTomLiveFailed,setTomTomLiveFailed]=useState(false);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -846,9 +849,14 @@ export default function AdminLocationTracker({ embedded = false }) {
                     </Alert>
                   )}
                   {activeOfficerError && <Alert className="m-4" variant="destructive"><AlertDescription>Officer locations could not load. {activeOfficerError.message}</AlertDescription></Alert>}
-                  <p className="px-4 py-3 text-sm text-slate-500">{activeOfficerLoading ? 'Loading officer locations…' : `${officersForMap.length} officers on map. Blue: recent GPS. Gray: last known; the officer may be offline.`}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"><p className="text-sm text-slate-500">{activeOfficerLoading ? 'Loading officer locations…' : `${officersForMap.length} officers on map. TomTom shows current and last-known officers; the detailed map retains GPS accuracy circles.`}</p><button type="button" className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200" onClick={()=>{setUseTomTomLive(value=>!value);setTomTomLiveFailed(false);}}>{useTomTomLive&&!tomTomLiveFailed?'Detailed GPS map':'TomTom live map'}</button></div>
                   <div className="relative h-[360px] w-full sm:h-[500px] lg:h-[600px]">
-                    <MapContainer
+                    {useTomTomLive && !tomTomLiveFailed && navigator.onLine ? <TomTomSdkMapPreview
+                      embedded mapTheme={mapTheme} initialCenter={officersForMap[0]?[Number(officersForMap[0].latitude),Number(officersForMap[0].longitude)]:null}
+                      fitMarkers showPoliceStations={false} showFireStations={false} showJails={false}
+                      otherUnits={officersForMap.map(officer=>({...officer,map_visible:true,session_active:true,
+                        unit_number:getOfficerName(officer.officer_email),status:officer.gps_stale?'Out of Service':'Available'}))}
+                      onMapUnavailable={()=>setTomTomLiveFailed(true)}/> : <MapContainer
                       center={[37.5407, -77.4360]}
                       zoom={12}
                       style={{ height: '100%', width: '100%' }}
@@ -923,7 +931,8 @@ export default function AdminLocationTracker({ embedded = false }) {
                         </CircleMarker>
                         </React.Fragment>
                       ))}
-                    </MapContainer>
+                    </MapContainer>}
+                    {tomTomLiveFailed&&useTomTomLive&&<div role="status" className="absolute bottom-3 left-3 z-[600] rounded-lg border border-amber-600 bg-slate-950/95 p-2 text-xs text-amber-100">TomTom unavailable. Showing detailed GPS map. <button type="button" className="underline" onClick={()=>setTomTomLiveFailed(false)}>Retry</button></div>}
                     {officersForMap.length === 0 && (
                       <div className="pointer-events-none absolute left-1/2 top-4 z-[500] -translate-x-1/2 rounded-lg border border-amber-300 bg-white/95 px-4 py-2 text-center text-xs font-bold text-slate-800 shadow-lg">
                         Street map is online. Waiting for a valid officer location fix.
