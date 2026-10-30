@@ -1,3 +1,4 @@
+import { addressHistoryPattern } from '../_shared/addressHistoryMatch.js';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const clean = (v:any) => String(v || '').trim();
 Deno.serve(async req => {
@@ -10,26 +11,21 @@ Deno.serve(async req => {
   const allowed = roles.some(r=>['admin','officer','dispatch','supervisor','cad_access','full_access'].includes(r)) || ['officer','senior officer','corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(String(user.rank||'').toLowerCase());
   if (!allowed) return Response.json({error:'Operational access required'}, {status:403});
   const input = await req.json();
-  const address = clean(input.address).slice(0,200);
+  let address = clean(input.address).slice(0,200);
   const propertyId = clean(input.propertyId).slice(0,80);
-  const locality = address.split(',')[1]?.trim().toLowerCase() || '';
+  if (propertyId && !address.match(/^\s*\d+[a-z]?\s+/i)) {
+    const property = await api.asServiceRole.entities.Location.get(propertyId).catch(() => null);
+    address = clean(property?.address || address);
+  }
   const since = new Date(Date.now()-90*86400000).toISOString();
-  const number = address.match(/^\s*(\d+[a-z]?)\s+(.+)/i);
-  if (!propertyId && !number) return Response.json({error:'Select a numbered street address or managed property to check call history.'}, {status:400});
-  // Anchor to house number and street, allowing standard street abbreviations.
-  const street = number ? number[2].split(',')[0].replace(/[^a-z0-9\s]/gi,' ').trim().split(/\s+/) : [];
-  const alternatives:any = {street:'st',road:'rd',avenue:'ave',drive:'dr',lane:'ln',court:'ct',boulevard:'blvd',place:'pl',parkway:'pkwy',north:'n',south:'s',east:'e',west:'w'};
-  const token = (word:string) => {
-    const w=word.toLowerCase(); const pair=Object.entries(alternatives).find(([full,short])=>w===full||w===short);
-    return pair ? '(?:'+pair.join('|')+')\\.?' : w;
-  };
-  const pattern = number ? '^\\s*'+number[1]+'\\s+'+street.map(token).join('\\s+')+'(?:\\s*(?:,|$)|\\s+(?:apt|unit|suite|#)\\b)' : '';
+  const pattern = addressHistoryPattern(address);
+  if (!propertyId && !pattern) return Response.json({error:'Select a numbered street address or managed property to check call history.'}, {status:400});
   const rows:any[]=[]; const errors:string[]=[]; let truncated=false;
   const read=async(entity:string,query:any,kind:string)=>{
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const batch:any = await Promise.race([
-        api.asServiceRole.entities[entity].filter(query,'-created_date',300),
+        api.asServiceRole.entities[entity].filter(query,entity==='PropertyAlert'?'-created_date':'-time_received',300),
         new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('History source timeout')),10000);})
       ]);
       if(batch.length===300) truncated=true;
@@ -39,8 +35,11 @@ Deno.serve(async req => {
   };
   const reads:Promise<void>[]=[];
   if(propertyId) reads.push(read('PropertyAlert',{propertyId,created_date:{$gte:since}},'property'));
-  if(number) {
-    const query={location:{$regex:pattern,$options:'i'},created_date:{$gte:since}};
+  if(pattern) {
+    const query={location:{$regex:pattern,$options:'i'},$or:[
+      {time_received:{$gte:since}},
+      {$and:[{$or:[{time_received:null},{time_received:''},{time_received:{$exists:false}}]},{created_date:{$gte:since}}]}
+    ]};
     reads.push(read('DispatchCall',query,'call'),read('CallHistory',query,'history'));
   }
   await Promise.all(reads);
@@ -53,7 +52,6 @@ Deno.serve(async req => {
     const id=clean(r.callId||r.original_call_id||r.id);
     const incident=clean(r.callIncident||r.incident)||'Incident type unavailable';
     const location=clean(r.callLocation||r.location||address);
-    if (r._kind !== 'property' && locality && !location.toLowerCase().includes(locality)) continue;
     const fingerprint=[time,incident.toLowerCase(),location.toLowerCase()].join('|');
     if(identities.has(id)||fingerprints.has(fingerprint))continue;
     identities.add(id);fingerprints.add(fingerprint);
