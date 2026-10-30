@@ -113,7 +113,8 @@ function changePlan(users:any[],input:any){
  if(!['admin','user'].includes(nextSystemRole))throw new Error('System role must be Administrator or Employee.');
  const nextRoles=Array.isArray(input.additional_roles)?[...new Set(input.additional_roles.map((role:any)=>trim(role).toLowerCase()))]:
    (officer.additional_roles||[]).map((role:any)=>trim(role).toLowerCase());
- if(nextRoles.some((role:string)=>!PERMITTED_ROLES.includes(role)))throw new Error('The selected account role is not supported for personnel promotions.');
+ const existingRoles=(officer.additional_roles||[]).map((role:any)=>trim(role).toLowerCase());
+ if(nextRoles.some((role:string)=>!PERMITTED_ROLES.includes(role)&&!existingRoles.includes(role)))throw new Error('The selected account role is not supported for personnel promotions.');
  if(nextSystemRole==='admin'&&!nextRoles.includes('full_access'))nextRoles.push('full_access');
  if(supervisorRank(proposed)&&!nextRoles.includes('supervisor'))nextRoles.push('supervisor');
  const nextPhoto=trim(input.profile_photo_url,2000);
@@ -128,16 +129,16 @@ function changePlan(users:any[],input:any){
  const platoon=rankLevel(proposed)<=2?'Command':requestedPlatoon;
  if(!['A','B','Command','Unassigned'].includes(platoon))throw new Error('Platoon must be A, B, Command, or Unassigned.');
  if(rankLevel(proposed)>2&&platoon==='Command')throw new Error('Only Colonel, Lt Colonel and Major belong to Command platoon.');
- const oversight=proposed==='Major'?trim(input.oversight_platoon||officer.oversight_platoon):'';
- if(proposed==='Major'&&!['A','B'].includes(oversight))throw new Error('Major must oversee Platoon A or B.');
+ const oversight=rankLevel(proposed)<=2?trim(input.oversight_platoon||officer.oversight_platoon):'';
+ if(rankLevel(proposed)<=2&&!['A','B'].includes(oversight))throw new Error('Command staff must select Platoon A or B to oversee.');
  const superId=trim(input.supervisor_id);
  const supervisor=superId?users.find(u=>u.id===superId):null;
  if(superId&&(!isEmployee(supervisor)||supervisor.id===officer.id||rankLevel(supervisor.rank)>=rankLevel(proposed)))throw new Error('Reporting supervisor must be a different active higher-ranking officer.');
  if(rankLevel(proposed)>2&&!supervisor)throw new Error('Select the higher-ranking command officer who will supervise this officer.');
  const transfer=Boolean(input.transfer_platoon);
  if(transfer&&!supervisorRank(proposed))throw new Error('Platoon command transfer requires Sergeant rank or higher.');
- if(transfer&&!['A','B'].includes(proposed==='Major'?oversight:platoon))throw new Error('Choose Platoon A or B before transferring its chain of command.');
- const affectedPlatoon=proposed==='Major'?oversight:platoon;
+ if(transfer&&!['A','B'].includes(rankLevel(proposed)<=2?oversight:platoon))throw new Error('Choose Platoon A or B before transferring its chain of command.');
+ const affectedPlatoon=rankLevel(proposed)<=2?oversight:platoon;
  const transfers=transfer?users.filter(u=>isEmployee(u)&&u.id!==officer.id&&u.platoon===affectedPlatoon&&rankLevel(u.rank)>rankLevel(proposed)&&u.supervisor_id!==officer.id):[];
  if(transfers.length>150)throw new Error('Command transfer exceeds 150 officers. Use platoon balance to resolve the roster first.');
  const rolesChanged=nextSystemRole!==trim(officer.role||'user')||

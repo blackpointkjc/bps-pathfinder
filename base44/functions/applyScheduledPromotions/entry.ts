@@ -35,10 +35,25 @@ async function runOne(entities:any,event:any,clock:any){
   if(check.some(key=>patch[key]!==undefined&&String(after[key]??'')!==String(patch[key]??'')))throw Error('Updated officer rank, access, photo or command could not be verified');
   if(!patch.additional_roles.every((role:string)=>(after.additional_roles||[]).includes(role)))throw Error('Scheduled access roles did not all persist');
   changed++;
+  // Synchronize the actual rank and newly effective portrait across the CAD
+  // identity/roster collections. Never do this at the time of scheduling.
+  const emailList=[...new Set([after.email,after.work_email,after.pathfinder_email,...(after.email_aliases||[])].filter(Boolean))];
+  for(const collection of ['OfficerRoster','ActiveOfficer','Unit']){
+   try{
+    const query=collection==='OfficerRoster'?{email:{$in:emailList}}:
+      collection==='ActiveOfficer'?{officer_email:{$in:emailList}}:{user_id:after.id};
+    const records=await entities[collection].filter(query,'-updated_date',250);
+    for(const row of records||[]){
+      const identity=collection==='Unit'?{unit_id:String(after.unit_number||''),label:`${after.rank} ${after.last_name||''}`.trim()}:
+        {rank:after.rank,unit_number:String(after.unit_number||''),...(patch.profile_photo_url?{profile_photo_url:patch.profile_photo_url}:{})};
+      if(Object.keys(identity).some(key=>String(row[key]??'')!==String(identity[key]??'')))await entities[collection].update(row.id,identity);
+    }
+   }catch(error:any){warnings.push(collection+' roster/photo synchronization needs review: '+text(error.message));}
+  }
   // Reassignment and notifications happen ONLY after the officer's effective update.
   for(const subordinateId of event.planned_transfers||[]){
    const member=await entities.User.get(subordinateId);
-   if(!isActive(member)||member.platoon!==(event.new_rank==='Major'?event.oversight_platoon:event.new_platoon)){
+   if(!isActive(member)||member.platoon!==(event.oversight_platoon||event.new_platoon)){
     warnings.push('Subordinate '+subordinateId+' is no longer eligible for command transfer');continue;
    }
    await entities.User.update(member.id,{supervisor_id:after.id,supervisor_email:after.email,
