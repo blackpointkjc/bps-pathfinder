@@ -58,6 +58,24 @@
     },
     "registered_by": {
       "type": "string"
+    },
+    "lease_start": {
+      "type": "string"
+    },
+    "lease_end": {
+      "type": "string"
+    },
+    "lease_id": {
+      "type": "string"
+    },
+    "building": {
+      "type": "string"
+    },
+    "resident_type": {
+      "type": "string"
+    },
+    "emergency_contact": {
+      "type": "string"
     }
   },
   "required": [

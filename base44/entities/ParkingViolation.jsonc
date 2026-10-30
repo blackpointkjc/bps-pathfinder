@@ -223,6 +223,9 @@
     "officer_id": {
       "type": "string",
       "description": "Authenticated officer who originally issued the ticket"
+    },
+    "vehicle_record_id": {
+      "type": "string"
     }
   },
   "required": [
