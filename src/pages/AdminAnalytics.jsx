@@ -229,10 +229,28 @@ export default function AdminAnalytics() {
   const [showSummaryDialog, setShowSummaryDialog] = useState(false);
   const [summarySending, setSummarySending] = useState(false);
   const [summaryResult, setSummaryResult] = useState(null);
+  const [summaryPreview,setSummaryPreview]=useState(null);
+  const [summaryPreviewBusy,setSummaryPreviewBusy]=useState(false);
+  const [summaryPreviewError,setSummaryPreviewError]=useState('');
+  const [summaryPreviewSearch,setSummaryPreviewSearch]=useState('');
   const queryClient = useQueryClient();
 
   const { user, isLoadingAuth } = useAuth();
 
+  const previewCompanySummary=async()=>{
+    if(summaryPreviewBusy||summarySending)return;
+    setSummaryPreviewBusy(true);setSummaryPreviewError('');setSummaryPreview(null);
+    try{
+      const response=await base44.functions.invoke('sendDailyCompanySummary',{action:'preview'});
+      const payload=response?.data||response||{};
+      if(payload.error)throw Object.assign(new Error(payload.error),{detail:payload});
+      setSummaryPreview(payload);
+    }catch(error){
+      const details=error?.response?.data||error?.data||error?.detail||{};
+      setSummaryPreviewError((details.error||error.message||'Summary verification unavailable')+
+        (Array.isArray(details.source_issues)?' · Missing: '+details.source_issues.slice(0,6).join(', '):''));
+    }finally{setSummaryPreviewBusy(false)}
+  };
   const sendCompanySummaryNow = async () => {
     setSummarySending(true);
     setSummaryResult(null);
@@ -729,7 +747,7 @@ export default function AdminAnalytics() {
             </button>
             <button
               type="button"
-              onClick={() => { setSummaryResult(null); setShowSummaryDialog(true); }}
+              onClick={() => { setSummaryResult(null);setSummaryPreview(null);setSummaryPreviewError('');setSummaryPreviewSearch('');setShowSummaryDialog(true); }}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500 to-yellow-500 px-4 py-2 text-sm font-black text-slate-950 shadow-lg shadow-amber-950/20 transition hover:from-amber-400 hover:to-yellow-400 sm:flex-none"
             >
               <Send className="h-4 w-4" />
@@ -1131,6 +1149,10 @@ export default function AdminAnalytics() {
                       <li>• Email is sent from management@blackpointkjc.com through the shared Outlook connection</li>
                     </ul>
                   </div>
+                  <section className="space-y-3 rounded-xl border border-cyan-700/50 bg-[#09263a]/60 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-black text-cyan-200">Check the real summary data</h3><p className="text-xs text-slate-400">Optional administrator-only verification. Scores here are operational performance, not DCJS/firearm certificate completion.</p></div><button type="button" disabled={summaryPreviewBusy||summarySending} onClick={previewCompanySummary} className="rounded-md border border-cyan-600 px-3 py-2 text-xs font-bold text-cyan-100">{summaryPreviewBusy?'Verifying source records…':'Preview officer score breakdown'}</button></div>
+                    {summaryPreviewError&&<p role="alert" className="rounded border border-amber-700 bg-amber-950/30 p-2 text-xs text-amber-200">{summaryPreviewError}</p>}
+                    {summaryPreview&&<><p className="text-xs text-emerald-200">Verified company performance average: {summaryPreview.company_overall==null?'Not scored':`${summaryPreview.company_overall}%`} · {summaryPreview.recipient_count||0} active recipients. No emails have been sent by this preview.</p><input className="h-9 w-full rounded border border-slate-600 bg-slate-950 px-3 text-xs text-white" value={summaryPreviewSearch} onChange={event=>setSummaryPreviewSearch(event.target.value)} placeholder="Find an officer by name (for example, Hiers)…" aria-label="Search summary preview officers"/><div className="max-h-48 space-y-2 overflow-y-auto">{(summaryPreview.rankings||[]).filter(item=>String(item.name||'').toLowerCase().includes(summaryPreviewSearch.toLowerCase())).slice(0,30).map(item=><div key={item.name} className="rounded border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200"><div className="font-black text-white">{item.name} · {item.overall_score==null?'Not scored':`${item.overall_score}% overall performance`}</div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-400"><span>Attendance: {item.attendance_coverage==null?'N/A':`${item.attendance_coverage}%`}</span><span>Job duty: {item.job_duty_score==null?'N/A':`${item.job_duty_score}%`}</span><span>Training: {item.training_percentage==null?'N/A':`${item.training_percentage}%`}</span></div><div className="mt-1 text-slate-500">{(item.categories||[]).map(category=>`${category.label}: ${category.score}%`).join(' · ')||'No scoreable operating categories'}</div></div>)}</div></>}
+                  </section>
                   <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button type="button" disabled={summarySending} onClick={() => setShowSummaryDialog(false)} className="min-h-11 rounded-xl border border-slate-700 px-4 text-sm font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-40">Cancel</button>
                     <button type="button" disabled={summarySending} onClick={sendCompanySummaryNow} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 text-sm font-black text-slate-950 hover:bg-amber-300 disabled:cursor-wait disabled:opacity-70">
