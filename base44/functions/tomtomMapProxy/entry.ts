@@ -121,7 +121,11 @@ Deno.serve(async req => {
               const original = new URL(raw);
               if (original.origin !== url.origin || !original.pathname.startsWith(new URL(proxyPrefix).pathname + '/')) return raw;
               const route = new URL(proxyPrefix);
-              route.searchParams.set('resourcePath', original.pathname.slice(new URL(proxyPrefix).pathname.length));
+              // URL.pathname percent-encodes MapLibre placeholders before
+              // URLSearchParams encodes them again (%257Bz%257D). Decode the
+              // pathname ONCE before adding it as a query value so the style
+              // URL still contains literal {z}/{x}/{y} for tile substitution.
+              route.searchParams.set('resourcePath', decodeURIComponent(original.pathname.slice(new URL(proxyPrefix).pathname.length)));
               original.searchParams.forEach((v, k) => { if (k !== 'key') route.searchParams.append(k, v); });
               // MapLibre substitutes these in source URLs before it requests a
               // font or a tile. Preserve the placeholders unescaped.
