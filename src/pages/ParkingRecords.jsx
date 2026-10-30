@@ -1,11 +1,11 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import { base44 } from '@/api/base44Client';
 import { listDirectoryLocations } from '@/lib/appDirectory';
 import { getClientPortalUser } from '@/utils/clientPreview';
 import VehicleFields from '@/components/reports/VehicleFields';
 import RecordsCheckButton from '@/components/reports/RecordsCheckButton';
-import { US_STATES,vehicleSummary } from '@/lib/vehicleForm';
-import { Car,Printer,Download,Search,ShieldCheck,Plus,RefreshCw } from 'lucide-react';
+import { vehicleSummary } from '@/lib/vehicleForm';
+import { Car,Printer,Download,RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadInternalFile } from '@/lib/internalUpload';
 
@@ -69,6 +69,17 @@ export default function ParkingRecords({mode='officer'}){
    && String(item.vehicle_state||'').toUpperCase()===String(ticket.license_state||'').toUpperCase());
  const matchingResidents=useMemo(()=>residents.filter(item=>String(item.full_name||'').toLowerCase().includes(search.toLowerCase())||String(item.vehicle_plate||'').toLowerCase().includes(search.toLowerCase())||String(item.unit_number||'').toLowerCase().includes(search.toLowerCase())),[residents,search]);
  const filteredViolations=violations.filter(row=>(statusFilter==='all'||row.status===statusFilter)&&[row.license_plate,row.vehicle_owner,row.unit_number,row.citation_number,row.violation_type].some(value=>String(value||'').toLowerCase().includes(search.toLowerCase())));
+ const export30=async type=>{
+  if(!site)return;
+  setBusy(true);setError('');
+  try {
+    const result=await action('export');
+    const records=result.violations||[];
+    if(type==='csv')csvDownload(records,site);
+    else print30Day(records,site);
+  }catch(error){setError('30-day parking export unavailable: '+(error.message||'Retry'))}
+  finally{setBusy(false)}
+ };
  const printAndSave=async event=>{event.preventDefault();if(!site)return;
   // Open print view inside the user gesture (before the network await) so iOS
   // Safari can print the officer notice after the authenticated save completes.
