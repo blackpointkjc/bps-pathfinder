@@ -13,19 +13,7 @@ import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
 
-function selectPropertyBriefingAlerts(alerts, receipts, since, until) {
-  const dismissed = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
-  const seen = new Set();
-  return (alerts || []).filter(item => {
-    const pair = `${item.callId}:${item.propertyId}`;
-    if (item.is_test === true || ['false_alarm', 'test'].includes(normalized(item.lifecycle_status))) return false;
-    if (seen.has(pair) || dismissed.has(pair)) return false;
-    seen.add(pair);
-    if (!since) return true;
-    const created = parseServerTimestamp(item.callTime || item.time_received || item.created_date)?.getTime() || 0;
-    return created > since && created <= until;
-  });
-}
+import { selectPropertyBriefingAlerts } from '@/lib/briefingActivity';
 
 function easternMinutesNow() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -126,7 +114,7 @@ export default function WelcomeBriefing({ user }) {
       const snapshot = response?.data || response || {};
       if (!snapshot.success || snapshot.sourceErrors?.length) throw new Error(snapshot.error || 'Property alerts are temporarily unavailable.');
       const window = propertyWindowRef.current;
-      const alerts = selectPropertyBriefingAlerts(snapshot.propertyAlerts, snapshot.propertyAlertReceipts, window.since, window.until);
+      const alerts = selectPropertyBriefingAlerts(snapshot.propertyAlerts, snapshot.propertyAlertReceipts, window.since, Date.now());
       setBrief(previous => ({ ...previous, propertyAlerts: alerts }));
       setDataErrors(previous => previous.filter(source => !['property alerts', 'property alert receipts'].includes(source)));
       propertyRetryRef.current = 0;
@@ -180,7 +168,7 @@ export default function WelcomeBriefing({ user }) {
         // Load one authenticated backend snapshot instead of launching many
         // browser-side entity requests during sign-in. This keeps the briefing
         // stable under role permissions and Base44 rate limits.
-        propertyWindowRef.current = { since: offlineSince, until: now };
+        propertyWindowRef.current = { since: savedActive, until: Date.now() };
         clearBase44ReadCacheMatching('function:getWelcomeBriefingData:');
         const response = await base44.functions.invoke('getWelcomeBriefingData', {});
         const snapshot = response?.data || response || {};
@@ -216,14 +204,14 @@ export default function WelcomeBriefing({ user }) {
         // sign in/out of Pathfinder several times between shifts; reusing an older
         // shift end caused the same property alerts to appear again on later logins.
         // Use the newest trustworthy marker, with TimeEntry only as the fallback.
-        const activityCandidates = [lastCompletedActivity, offlineSince]
+        const activityCandidates = [lastCompletedActivity, savedActive]
           .map(value => Number(value) || 0)
           .filter(value => value > 0 && value <= now);
         const effectiveOfflineSince = activityCandidates.length ? Math.max(...activityCandidates) : null;
         // This briefing ends at the current login/load, not at the current shift's
         // clock-in time. That keeps a mid-shift logout/login from reopening alerts
         // that were already visible earlier in the same duty shift.
-        const offlineWindowEnd = now;
+        const offlineWindowEnd = Date.now();
         setOfflineSince(effectiveOfflineSince);
         const briefingCutoff = effectiveOfflineSince || Math.max(accountCreated || 0, now - 86400000);
         const createdAfterCutoff = item => {
@@ -327,16 +315,20 @@ export default function WelcomeBriefing({ user }) {
     const refreshBriefing = event => {
       const task = event?.data;
       if (task?.assigned_to && String(task.assigned_to) !== String(user.id)) return;
-      if (task?.status && !['open', 'in_progress'].includes(normalized(task.status))) return;
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
         loadRef.current?.();
       }, 3000);
     };
-    const unsubscribeTasks = base44.entities.Task.subscribe(refreshBriefing);
+    const unsubscribers = ['Task','Notification','Announcement','AnnouncementReceipt','ChatMention','TimeEntry','ActiveOfficer','Schedule','VehicleAssignment','Unit'].map(name => base44.entities[name].subscribe(refreshBriefing));
+    const poll = window.setInterval(() => { if (document.visibilityState !== 'hidden') loadRef.current?.(); }, 30000);
+    const onFocus = () => loadRef.current?.();
+    window.addEventListener('focus', onFocus);
     return () => {
       window.clearTimeout(refreshTimer);
-      unsubscribeTasks?.();
+      unsubscribers.forEach(unsubscribe => unsubscribe?.());
+      window.clearInterval(poll);
+      window.removeEventListener('focus', onFocus);
     };
   }, [user?.id, open, loading]);
 

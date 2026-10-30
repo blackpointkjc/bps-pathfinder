@@ -25,7 +25,7 @@ export async function readBriefingSource(key, loader, deadline = Date.now() + 25
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const value = await loader();
-        cache.set(key, { value, freshUntil: Date.now() + 90000, staleUntil: Date.now() + 10 * 60000 });
+        cache.set(key, { value, freshUntil: Date.now() + 10000, staleUntil: Date.now() + 10 * 60000 });
         for (const [oldKey, record] of cache) if (record.staleUntil < Date.now()) cache.delete(oldKey);
         if (cache.size > 2000) cache.delete(cache.keys().next().value);
         return value;
