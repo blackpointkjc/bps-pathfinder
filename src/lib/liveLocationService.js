@@ -22,7 +22,8 @@ export const PRECISION_GPS_TARGET_METERS = 50;
 // rate-limits server persistence.
 export const DEVICE_GPS_REFRESH_MS = 15_000;
 export const BROWSER_GPS_MAX_USABLE_ACCURACY_METERS = 2_000;
-export const EXTERNAL_GPS_PRIORITY_MS = 2 * 60 * 1000;
+// Do not pin navigation to a dead USB receiver for two minutes after fixes stop.
+export const EXTERNAL_GPS_PRIORITY_MS = 35_000;
 export const GPS_WATCH_STALE_MS = 45_000;
 
 const GPS_OPTIONS = {
@@ -172,7 +173,8 @@ export function publishLiveLocation(fix) {
   // worse reading replace a recent better one from the same source.
   if (latestFix && candidate.timestamp - latestFix.timestamp < 30000
       && Number.isFinite(latestFix.accuracy)
-      && candidate.accuracy > latestFix.accuracy + 25) return;
+      && candidate.accuracy > latestFix.accuracy + (candidate.source === 'external_serial' ? 150 : 25)
+      && candidate.accuracy > (candidate.source === 'external_serial' ? 100 : 75)) return;
   latestFix = candidate;
   listeners.forEach(listener => {
     try { listener(latestFix); } catch (_) {}
@@ -196,7 +198,7 @@ export function requestFreshLiveLocation({ timeoutMs = 15000 } = {}) {
   // has a current fix, every caller (clock, maps, reports, distress and CAD)
   // receives it directly and must not start a competing browser/Wi-Fi lookup.
   const externalFix = getLiveLocation(EXTERNAL_GPS_PRIORITY_MS);
-  if (externalFix?.source === 'external_serial') return Promise.resolve(externalFix);
+  if (externalFix?.source === 'external_serial' && isTacticalLocationFix(externalFix, EXTERNAL_GPS_PRIORITY_MS)) return Promise.resolve(externalFix);
   if (!geolocationSupported()) {
     const error = new Error('GEOLOCATION_NOT_SUPPORTED');
     error.code = 0;
