@@ -400,9 +400,12 @@ export default function Navigation() {
             window.clearTimeout(refreshTimer);
             refreshTimer = window.setTimeout(() => fetchCalls(), 200);
         };
+        // Live DispatchCall events and the ingestion-finished signal repaint
+        // immediately. Reconcile only once per minute instead of every 15s;
+        // opening CAD plus Dispatch no longer queues duplicate 500-row reads.
         const localInterval = setInterval(() => {
-            if (document.visibilityState === 'visible') fetchCalls();
-        }, 15000);
+            if (document.visibilityState === 'visible' && navigator.onLine) fetchCalls();
+        }, 60000);
         window.addEventListener('bps-cad-ingest-finished', recoverCalls);
         window.addEventListener('bps-operational-resume', recoverCalls);
         window.addEventListener('online', recoverCalls);

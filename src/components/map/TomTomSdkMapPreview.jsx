@@ -157,8 +157,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const perspectiveInitRef=useRef(false);
   const mapReadyRef=useRef(false);
   const activeThemeRef=useRef(mapTheme);
-  const switchingThemeRef=useRef(false);
-  const nextThemeRef=useRef(mapTheme);
+  const requestedThemeRef=useRef(mapTheme);
   const cleanupRef=useRef(null);
   const tileErrorsRef=useRef(0);
   const [trafficVisible,setTrafficVisible]=useState(true);
@@ -461,31 +460,26 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   // style.load handler below rebuilds CAD overlays on the new style.
   useEffect(()=>{
     const sdk=sdkRef.current;
-    if(!sdk || !ready)return;
-    nextThemeRef.current=mapTheme;
-    if(switchingThemeRef.current || activeThemeRef.current===mapTheme)return;
-    let stopped=false;
-    const update=async()=>{
-      switchingThemeRef.current=true;
-      try{
-        while(!stopped && activeThemeRef.current!==nextThemeRef.current){
-          const target=nextThemeRef.current;
-          await sdk.setStyle({type:'standard',id:target==='night'?'streetDarkDriving':'streetLightDriving',
-            include:['terrain','trafficFlow','trafficIncidents']});
-          if(stopped)return;
-          activeThemeRef.current=target;
-          syncCadData(sdk.mapLibreMap);
-        }
-        if(!stopped)setError('');
-      }catch(error){
-        if(!stopped){
-          console.warn('TomTom theme change failed:',error?.message||error);
-          setError('TomTom map theme could not load; current map remains available.');
-        }
-      }finally{switchingThemeRef.current=false;}
-    };
-    void update();
-    return()=>{stopped=true;};
+    if(!sdk || !ready || requestedThemeRef.current===mapTheme)return;
+    requestedThemeRef.current=mapTheme;
+    let cancelled=false;
+    // The SDK supersedes earlier in-flight setStyle calls; this avoids
+    // rapid day/night taps leaving a previous theme stuck in the map.
+    void sdk.setStyle({type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',
+      include:['terrain','trafficFlow','trafficIncidents']})
+      .then(()=>{
+        if(cancelled)return;
+        activeThemeRef.current=mapTheme;
+        syncCadData(sdk.mapLibreMap);
+        setError('');
+      })
+      .catch(error=>{
+        if(cancelled)return;
+        requestedThemeRef.current=activeThemeRef.current;
+        console.warn('TomTom theme change failed:',error?.message||error);
+        setError('TomTom day/night map style failed to load. Tap the map-theme button to retry.');
+      });
+    return()=>{cancelled=true;};
   },[mapTheme,ready]);
   useEffect(()=>{
     if(!trafficReady)return;
