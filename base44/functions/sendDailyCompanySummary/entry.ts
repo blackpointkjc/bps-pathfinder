@@ -163,17 +163,22 @@ function verifiedProfileCourse(user:any,course:any, today:string){
 function activeCertificationExpiry(user:any,type:string){
   const kind=type.toLowerCase().includes('firearm')?'firearm':'dcjs';
   const records=Array.isArray(user?.officer_certifications)?user.officer_certifications:[];
-  const relevant=records.filter((c:any)=>{
-    const code=String(c?.course_id||'').toUpperCase();
-    const title=String(c?.certification_type||c?.training_name||'').toLowerCase();
-    return kind==='firearm'? /^(07|08|09|10)/.test(code)||/firearm|handgun|shotgun|patrol rifle/.test(title):
-      /^01/.test(code)||String(c?.category||'').toLowerCase()==='dcjs'||/dcjs|security officer core/.test(title);
-  }).filter((c:any)=>!['revoked','rejected','pending'].includes(String(c.status||'').toLowerCase()));
-  const fromFile=relevant.map((c:any)=>String(c.expiration_date||c.firearm_expiration_date||'').slice(0,10))
-    .filter((date:string)=>/^\d{4}-\d{2}-\d{2}$/.test(date));
+  const dateOf=(cert:any)=>String(cert?.expiration_date||cert?.firearm_expiration_date||'').slice(0,10);
+  const validDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value);
+  const current=records.filter((cert:any)=>!['revoked','rejected','pending'].includes(String(cert?.status||'').toLowerCase()));
+  const code=(cert:any)=>String(cert?.course_id||'').toUpperCase();
+  const name=(cert:any)=>String(cert?.training_name||cert?.certification_type||'').toLowerCase();
+  const relevant=kind==='firearm'?current.filter((cert:any)=>/^(07|08|09|10)/.test(code(cert))||/firearm|handgun|shotgun|patrol rifle/.test(name(cert))):
+    current.filter((cert:any)=>/^01/.test(code(cert))||String(cert?.category||'').toLowerCase()==='dcjs'||/dcjs|security officer core/.test(name(cert)));
+  const expiries=relevant.map(dateOf).filter(validDate);
+  const primary=kind==='dcjs'?current.filter((cert:any)=>/^01/.test(code(cert))||/security officer core/.test(name(cert))).map(dateOf).filter(validDate):[];
   const raw=String(user?.[kind+'_expiration']||'').slice(0,10);
-  const all=[...( /^\d{4}-\d{2}-\d{2}$/.test(raw)?[raw]:[]),...fromFile];
-  return all.sort().at(-1)||'';
+  // Core-subject credential controls the DCJS date when present. An unrelated
+  // DCJS certificate cannot make an expired 01E/01I credential look current.
+  if(primary.length)return primary.sort().at(-1)||'';
+  if(kind==='dcjs'&&validDate(raw))return raw;
+  if(kind==='dcjs'&&expiries.length)return expiries.sort()[0];
+  return [...(validDate(raw)?[raw]:[]),...expiries].sort().at(-1)||'';
 }
 
 function resolvedDeliveryEmail(user: any, outlook: any[], teams: any[]) {
