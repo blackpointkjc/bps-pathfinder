@@ -133,6 +133,9 @@ Deno.serve(async req => {
       if(conflict)return fail(conflict.resident_id===resident.id?
         'This plate is already registered to this resident. Edit its existing vehicle record instead.':
         'This plate is registered to a different resident at this property. Resolve the duplicate before saving.',409);
+      const legacyConflict=(await siteRecords(entities.PropertyResident,300)).find((other:any)=>
+        other.id!==resident.id&&plateKey(other.vehicle_plate)===plate&&clean(other.vehicle_state).toUpperCase()===state);
+      if(legacyConflict)return fail('This plate is already associated with another resident in the legacy property rent roll. Resolve that resident record before adding a second registration.',409);
       const record:any={site_name:site,resident_id:resident.id,resident_name:resident.full_name,unit_number:resident.unit_number,
         plate,state,year:clean(input.year),make:clean(input.make),
         model:clean(input.model),color:clean(input.color),vin:clean(input.vin,25).toUpperCase(),
