@@ -301,6 +301,7 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
         <div style="margin-top:4px;font-size:13px;color:#94a3b8;">${escapeHtml(dateLabel)} · Black Point Pathfinder</div>
       </div>
 
+      <p style="margin:0 0 12px;padding:12px;border-left:4px solid #67e8f9;background:#0f2434;color:#a5f3fc;font-size:13px;font-weight:700;">Company figures below are COMPANY-WIDE averages, not your individual performance, certification or training percentage.</p>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;margin:0 -6px 22px;">
         <tr>
           ${statCell('Company Performance Avg', company.overall == null ? '—' : `${company.overall}%`, '#67e8f9')}
@@ -326,7 +327,7 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
         These are company-wide operational performance and attendance figures, not your individual certification-completion rating. Company figures above are aggregate only. This email shows <strong style="color:#cbd5e1;">only your own</strong> missing requirements. Other employees’ names, rankings, scores, and compliance details are not included.
       </div>
     </div>`;
-  const message = `Company overall: ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Company on-time: ${company.onTime == null ? 'not yet scored' : `${company.onTime}%`} • Active operational team members: ${company.activeOperational} • Company missing requirements: ${company.totalMissing}\n\n${personalMissingMessage(items)}`;
+  const message = `Company-wide operational performance average (NOT your personal score): ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Company attendance coverage: ${company.onTime == null ? 'not yet scored' : `${company.onTime}%`} • Active operational team members: ${company.activeOperational} • Company missing requirements: ${company.totalMissing}\n\n${personalMissingMessage(items)}`;
   return { subject, content, message };
 }
 
@@ -691,7 +692,7 @@ Deno.serve(async (req) => {
       () => `Black Point Daily Brief — ${dateLabel}`,
       user => {
         const items = [...(missing.get(String(user.id)) || [])];
-        return `Company overall: ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Company on-time: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}`;
+        return `Company-wide operational performance average (NOT your personal score): ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Company attendance coverage: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}`;
       },
     );
 
