@@ -518,40 +518,6 @@ export default function AdminAnalytics() {
   const currentMonthStart = analyticsStartDate;
   const currentMonthEnd = analyticsEndDate;
 
-  const companyOnTimeStats = useMemo(() => {
-    const coreErrors = coreAnalytics.data?.service_errors || {};
-    if (!coreAnalytics.data || ['User','TimeEntry','Schedule','IncidentReport'].some(name => coreErrors[name])) return { rate: null, byOfficer: [], leaderboard: [] };
-    const coreUsers = (coreAnalytics.data.users || []).filter(isOperationalOfficer).filter(u => selectedSubdivision === 'all' || String(u.subdivision || u.substation || '') === selectedSubdivision);
-    const selectedCoreUsers = selectedDivision === 'all'
-      ? coreUsers
-      : coreUsers.filter(u => String(u.division || '') === String(selectedDivision));
-    const coreEntries = coreAnalytics.data.timeEntries || [];
-    const coreSchedules = coreAnalytics.data.schedules || [];
-    const coreIncidents = coreAnalytics.data.incidentReports || [];
-    const byOfficer = selectedCoreUsers.map(officer => {
-      const stats = calculatePunctuality(
-        coreEntries.filter(entry => recordMatchesOfficer(entry, officer)),
-        coreSchedules.filter(schedule => recordMatchesOfficer(schedule, officer)),
-        currentMonthStart,
-        currentMonthEnd,
-        coreIncidents,
-        officer
-      );
-      return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
-    }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
-    const totalOnTime = byOfficer.reduce((sum, item) => sum + (item.attended ?? (item.onTime + item.late + item.overrun)), 0);
-    const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
-    // The headline averages OFFICERS, not shifts. A person with 20 shifts
-    // cannot outweigh a person with 1 shift. Officers with no elapsed shifts
-    // are reported as Not scored instead of entering the mean as 0.
-    const average = averageScoredOfficers(byOfficer, row => row.rate, selectedCoreUsers.length);
-    const leaderboard = byOfficer.filter(item => {
-      const officer = selectedCoreUsers.find(user => emailKey(user.email) === emailKey(item.email));
-      return officer && isPunctualityLeaderboardOfficer(officer);
-    }).slice(0, 3);
-    return { ...average, rate: average.rate, shiftWeightedRate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : null,
-      onTimeCount: totalOnTime, scoredCount: totalEntries, byOfficer, leaderboard };
-  }, [coreAnalytics.data, selectedDivision, selectedSubdivision, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => calculateCompanyHours(
     timeEntries, filteredUsers, currentMonthStart, currentMonthEnd
@@ -593,6 +559,25 @@ export default function AdminAnalytics() {
   // A section with nothing to request must report that state, not sit on a
   // permanent "loading" message (for example a division filter with no officers).
   const performanceCardsReady = Boolean(officerPerformanceSnapshots.data) || !performanceRequestEnabled;
+
+  // Use the SAME verified officer snapshots shown immediately below this
+  // card. The older headline recomputed attendance from a separate Core batch,
+  // so a visible 100/0/67 officer set could disagree with the company figure.
+  const companyAttendanceStats = useMemo(() => {
+    const verified = overallByOfficer.filter(item => item.dataHealth === 'verified');
+    const scoredRows = verified.filter(item => item.punctuality?.total > 0 &&
+      typeof item.punctuality.rate === 'number' && Number.isFinite(item.punctuality.rate));
+    const average = averageScoredOfficers(scoredRows, row => row.punctuality.rate, performanceOfficerUsers.length);
+    const leaderboard = scoredRows.filter(item => {
+      const officer = performanceOfficerUsers.find(user => String(user.id) === String(item.user_id));
+      return officer && isPunctualityLeaderboardOfficer(officer);
+    }).map(item => ({ name: item.name, email: item.email, rate: item.punctuality.rate }))
+      .sort((a,b) => b.rate-a.rate || a.name.localeCompare(b.name)).slice(0,3);
+    return { ...average, leaderboard, byOfficer: scoredRows.map(item => ({
+      name: item.name, email: item.email, rate: item.punctuality.rate,
+      workedShifts: item.punctuality.attended, totalShifts: item.punctuality.total,
+    })).sort((a,b)=>b.rate-a.rate || a.name.localeCompare(b.name)) };
+  }, [overallByOfficer, performanceOfficerUsers]);
 
   const companyOverallStats = useMemo(() => averageScoredOfficers(
     overallByOfficer.filter(item => item.dataHealth === 'verified'),
@@ -813,10 +798,10 @@ export default function AdminAnalytics() {
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
-              <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate != null ? `${companyOnTimeStats.rate}%` : '—'}</p>
+              <p className="text-2xl font-bold text-green-600">{companyAttendanceStats.rate != null ? `${companyAttendanceStats.rate}%` : '—'}</p>
               <p className="text-xs text-slate-400">Average Officer Attendance</p>
-              <p className="mt-1 text-[11px] text-slate-300">{companyOnTimeStats.scoredOfficers||0} scored / {companyOnTimeStats.totalOfficers??0} officers</p>
-              <p className="text-[10px] text-slate-500">{companyOnTimeStats.unscoredOfficers||0} not scored · equal officer weight</p>
+              <p className="mt-1 text-[11px] text-slate-300">{companyAttendanceStats.scoredOfficers||0} scored / {companyAttendanceStats.totalOfficers??0} officers</p>
+              <p className="text-[10px] text-slate-500">{companyAttendanceStats.unscoredOfficers||0} not scored · equal officer weight</p>
             </CardContent>
           </Card>
           <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
@@ -886,7 +871,11 @@ export default function AdminAnalytics() {
 
         <section className="rounded-xl border border-cyan-700/50 bg-slate-900 p-4 text-white" aria-label="Company performance aggregation explanation">
           <h2 className="text-sm font-black text-cyan-200">Company score breakdown · scored officers only</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">Average Officer Attendance: {companyOnTimeStats.rate == null ? 'Not scored' : `${companyOnTimeStats.preciseRate}% (${companyOnTimeStats.rate}% rounded)`} from {companyOnTimeStats.scoredOfficers||0} officers, with {companyOnTimeStats.unscoredOfficers||0} not scored. Each officer contributes one equal-weight attendance percentage. The Overall Operational Performance is a separate average of each verified officer's weighted operational categories; the two figures can differ when other categories have scored evidence. A category with 0/0 required items is not scored, does not count as 0%, and does not lower the officer or company average.</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">Average Officer Attendance: {companyAttendanceStats.rate == null ? 'Not scored' : `${companyAttendanceStats.preciseRate}% (${companyAttendanceStats.rate}% rounded)`} from {companyAttendanceStats.scoredOfficers||0} officers, with {companyAttendanceStats.unscoredOfficers||0} not scored. The figure is derived from the same verified officer scores displayed below, not a second shift-count calculation. The Overall Operational Performance is a separate average of verified officers' weighted operational categories; the two figures can differ when other categories have scored evidence. A category with 0/0 required items is not scored, does not count as 0%, and does not lower the officer or company average.</p>
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Attendance officers included in company average">
+            {companyAttendanceStats.byOfficer.map(officer=><span key={officer.email} className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-xs text-slate-200">{officer.name}: <strong className="text-green-300">{officer.rate}%</strong> · {officer.workedShifts??'—'}/{officer.totalShifts} shifts</span>)}
+            {!companyAttendanceStats.byOfficer.length&&<span className="text-xs text-slate-400">No verified attendance rates available for this reporting period.</span>}
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {companyCategoryBreakdown.map(category=><div key={category.label} className="rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs">
               <div className="font-bold text-white">{category.label}</div>
@@ -1021,7 +1010,7 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {companyOnTimeStats.leaderboard && companyOnTimeStats.leaderboard.length > 0 ? companyOnTimeStats.leaderboard.map((officer, idx) => (
+                {companyAttendanceStats.leaderboard && companyAttendanceStats.leaderboard.length > 0 ? companyAttendanceStats.leaderboard.map((officer, idx) => (
                   <div key={officer.email} className="flex items-center justify-between p-2 border border-slate-700 bg-slate-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
