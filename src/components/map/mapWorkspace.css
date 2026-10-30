@@ -93,3 +93,13 @@
  .cad-app .pathfinder-header > :first-child {flex:1 1 auto!important;}
  .cad-app .pathfinder-header > :last-child {flex:0 0 auto!important;flex-wrap:nowrap!important;}
 }
+
+/* Secondary text remains readable on the new light panel surfaces. */
+.pf-panel-eyebrow,.pf-panel-description,.pf-layer-copy small,.pf-panel-hint,
+.pf-region-options small,.pf-call-state,.pf-call-reference,.pf-call-facts dt,
+.pf-call-section p,.pf-call-footer > span {color:#607185;}
+@media(max-height:650px){
+ .pf-map-call-panel {overflow-y:auto;overscroll-behavior:contain;}
+ .pf-call-panel-body {flex:none;overflow:visible;}
+ .pf-call-footer {position:sticky;bottom:0;z-index:2;}
+}

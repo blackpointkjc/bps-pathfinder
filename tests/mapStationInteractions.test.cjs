@@ -30,6 +30,7 @@ function load(file){
  const requireMock = name=>{
   if(name==='react-leaflet'||name==='lucide-react')return leafletComponents;
   if(name==='leaflet')return leaflet;
+  if(name==='react-leaflet-cluster')return 'MarkerClusterGroup';
   if(name.startsWith('@/'))return load(path.resolve('src',name.slice(2))+'.js');
   if(name.startsWith('.')){
    const dest=path.resolve(path.dirname(file),name);
