@@ -186,6 +186,8 @@ export default function Navigation() {
     const [showTomTomTraffic, setShowTomTomTraffic] = useState(true);
     const [navSteps, setNavSteps] = useState([]);
     const [navRouteProvider, setNavRouteProvider] = useState('');
+    const [manualOriginQuery, setManualOriginQuery] = useState('');
+    const [routePreviewOnly, setRoutePreviewOnly] = useState(false);
     const [navStepIndex, setNavStepIndex] = useState(0);
     const [navDistanceMiles, setNavDistanceMiles] = useState(0);
     const [navDurationMinutes, setNavDurationMinutes] = useState(0);
@@ -490,7 +492,7 @@ export default function Navigation() {
     // Modern staged turn prompts: one early cue, one near-turn cue, and a
     // turn-now cue. Each stage is spoken only once per maneuver.
     useEffect(() => {
-        if (!isNavigating || navVoiceMuted || !navSteps.length || navStepIndex < 0 || routing || navOffRoute) return;
+        if (!isNavigating || routePreviewOnly || navVoiceMuted || !navSteps.length || navStepIndex < 0 || routing || navOffRoute) return;
         const step = navSteps[navStepIndex];
         if (!step) return;
         const feet = Number(navTurnDistanceFeet);
@@ -506,7 +508,7 @@ export default function Navigation() {
         spokenNavPromptsRef.current.add(key);
         lastSpokenNavStepRef.current = navStepIndex;
         announceNavigationInstruction(formatInstruction(step), stage === 'now' ? 0 : feet);
-    }, [isNavigating, navVoiceMuted, navStepIndex, navSteps, navTurnDistanceFeet, routing, navOffRoute]);
+    }, [isNavigating, routePreviewOnly, navVoiceMuted, navStepIndex, navSteps, navTurnDistanceFeet, routing, navOffRoute]);
 
     const syncScheduledCadPartnership = async (user) => {
         if (!user?.email || !user?.id) return user;
@@ -843,12 +845,20 @@ export default function Navigation() {
                 ? [Number(options.originOverride[0]), Number(options.originOverride[1])]
                 : null;
             const recentFix = getLiveLocation(options.reroute ? 12_000 : 30_000);
-            const freshLocation = originOverride
+            let freshLocation = originOverride
                 || (options.reroute && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
                 || (recentFix && validPosition(recentFix.latitude, recentFix.longitude) ? [recentFix.latitude, recentFix.longitude] : null)
                 || (currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
                 || await getFreshDeviceLocation();
-            if (!freshLocation) throw new Error('GPS unavailable. Enable precise location or use Open in Google Maps below.');
+            let previewOnly = false;
+            if (!freshLocation && manualOriginQuery.trim().length >= 3) {
+                const origins = await withRequestTimeout(lookupNavigationDestinations(manualOriginQuery.trim(), null), 12000, 'Starting address lookup');
+                const origin = origins.find(item => validPosition(item?.coords?.[0], item?.coords?.[1]));
+                if (origin) { freshLocation = origin.coords.map(Number); previewOnly = true; }
+                else throw new Error('Starting address was not found. Enter a complete street address or enable precise GPS.');
+            }
+            if (!freshLocation) throw new Error('GPS is unavailable. Enter a starting address below to preview turn-by-turn directions, or enable precise location for live guidance.');
+            setRoutePreviewOnly(previewOnly);
             const [lat, lng] = freshLocation;
             const [destLat, destLng] = coords.map(Number);
             const originHeading = options.originHeading != null && Number.isFinite(Number(options.originHeading))
@@ -957,8 +967,10 @@ export default function Navigation() {
             setMapSelectedDestination(null);
             setFitBounds(null);
             setMapCenter(null);
-            if (shouldSetDispatchEnroute(options, currentUser)) await handleStatusChange('Enroute');
-            if (options.reroute) toast.success('Route updated from your current position');
+            // A route preview without live position must never change CAD duty status.
+            if (!previewOnly && shouldSetDispatchEnroute(options, currentUser)) await handleStatusChange('Enroute');
+            if (previewOnly) toast.success('Route preview ready. Enable precise GPS for live turn-by-turn tracking.');
+            else if (options.reroute) toast.success('Route updated from your current position');
             else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
             const message = error?.message || 'Unable to build route';
@@ -971,7 +983,7 @@ export default function Navigation() {
     };
 
     useEffect(() => {
-        if (!isNavigating || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
+        if (!isNavigating || routePreviewOnly || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
 
         // Compare only against the forward route. Looking at the entire polyline
         // lets a nearby road/interchange segment already driven falsely keep the
@@ -1325,6 +1337,7 @@ export default function Navigation() {
         setFollowMyLocation(false);
         setNavDestination(null);
         setNavRoute([]);
+        setRoutePreviewOnly(false);
         setNavRouteProvider('');
         setNavSpeedLimitSections([]);
         setNavTrafficSegments([]);
@@ -1695,7 +1708,8 @@ export default function Navigation() {
 
             {isNavigating && navDestination && (
                 <div style={{ top: toolbarHeight + 12 }} className="pointer-events-auto absolute left-3 right-3 z-[1215] md:right-auto md:w-[560px]">
-                    <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#06100d] shadow-[0_22px_70px_rgba(0,0,0,.72)]">
+                    <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#06100d] shadow-[0_22px_70px_rgba(0,0,.72)]">
+                        {routePreviewOnly && <div role="status" className="border-b border-amber-600/50 bg-amber-950 px-4 py-2 text-xs font-semibold text-amber-200">Route preview · Live GPS is not available. Directions will not advance automatically until GPS is enabled.</div>}
                         {(routing || navOffRoute) && (
                             <div className="flex items-center gap-2 border-b border-amber-500/30 bg-[#2a1a05] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">
                                 <RotateCcw className={`h-3.5 w-3.5 ${routing ? 'animate-spin' : ''}`} />
@@ -1781,6 +1795,11 @@ export default function Navigation() {
                             <Search className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'SEARCH'}
                         </button>
                     </form>
+                    <label className="mt-2 block rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
+                        <span className="block font-semibold">Starting address (optional when GPS is available)</span>
+                        <input value={manualOriginQuery} onChange={event => setManualOriginQuery(event.target.value)} placeholder="Enter your starting address if GPS is unavailable" className="mt-1 h-10 w-full rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500" />
+                        <span className="mt-1 block text-[10px] text-slate-400">No GPS? Enter a starting address, select any destination, then tap Navigate Here for a TomTom route preview. Live driving updates require device GPS.</span>
+                    </label>
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         <button type="button" onClick={() => showHomeLocation()} disabled={addressSearching || isNavigating}
                             className="flex items-center justify-center gap-1.5 rounded-lg border border-cyan-600/50 bg-cyan-950/70 px-3 py-2 text-[10px] font-black text-cyan-100 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-40">
