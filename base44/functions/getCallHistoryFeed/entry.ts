@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     const cursor = input.cursor || {};
     const snapshotMs = Math.min(Date.now(), Date.parse(cursor.snapshot_at || '') || Date.now());
     const snapshot = new Date(snapshotMs).toISOString();
-    const since = new Date(snapshotMs - 90 * 86400000).toISOString();
+    const since = new Date(Math.max(snapshotMs - 90 * 86400000, Math.min(snapshotMs, Date.parse(input.since || '') || 0))).toISOString();
     const offsets = {
       active: Math.max(0, Math.floor(Number(cursor.active) || 0)),
       archived: Math.max(0, Math.floor(Number(cursor.archived) || 0)),
