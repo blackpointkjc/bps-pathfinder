@@ -1523,7 +1523,7 @@ Provide:
                 </div>
 
                 <VehicleFields value={formData} onChange={fields=>setFormData({...fields,suspect_vehicle:vehicleSummary(fields)})}/>
-                <RecordsCheckButton name={formData.persons?.[0]?.name||formData.persons_involved} plate={formData.vehicle_plate} site={formData.location}/>
+                <RecordsCheckButton name={formData.persons?.[0]?[formData.persons[0].first_name,formData.persons[0].middle_name,formData.persons[0].last_name].filter(Boolean).join(' '):formData.persons_involved} plate={formData.vehicle_plate} site={formData.location}/>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox

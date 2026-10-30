@@ -127,8 +127,14 @@ Deno.serve(async req => {
       if(!resident||siteKey(resident.site_name)!==siteKey(site))return fail('Select a resident on this property rent roll',404);
       const plate=plateKey(input.plate);
       if(plate.length<2)return fail('Vehicle license plate required');
+      const state=clean(input.state||'VA',3).toUpperCase();
+      const conflict=(await siteRecords(entities.PropertyVehicle,500)).find((car:any)=>
+        car.id!==clean(data.id)&&plateKey(car.plate)===plate&&clean(car.state).toUpperCase()===state);
+      if(conflict)return fail(conflict.resident_id===resident.id?
+        'This plate is already registered to this resident. Edit its existing vehicle record instead.':
+        'This plate is registered to a different resident at this property. Resolve the duplicate before saving.',409);
       const record:any={site_name:site,resident_id:resident.id,resident_name:resident.full_name,unit_number:resident.unit_number,
-        plate,state:clean(input.state||'VA',3).toUpperCase(),year:clean(input.year),make:clean(input.make),
+        plate,state,year:clean(input.year),make:clean(input.make),
         model:clean(input.model),color:clean(input.color),vin:clean(input.vin,25).toUpperCase(),
         permit_number:clean(input.permit_number),permit_status:clean(input.permit_status||'active'),
         vehicle_status:clean(input.vehicle_status||'registered'),updated_at:dates(),updated_by:clean(user.email)};
@@ -210,7 +216,7 @@ Deno.serve(async req => {
       const registeredVehicles=await siteRecords(entities.PropertyVehicle,500);
       const match=registeredVehicles.find((v:any)=>plateKey(v.plate)===entry.license_plate && clean(v.state).toUpperCase()===clean(entry.license_state).toUpperCase());
       const matchingResident=match?residents.find((r:any)=>r.id===match.resident_id):residents.find((r:any)=>plateKey(r.vehicle_plate)===entry.license_plate && clean(r.vehicle_state).toUpperCase()===clean(entry.license_state).toUpperCase());
-      if(matchingResident){entry.resident_id=matchingResident.id;entry.resident_verified=true;entry.vehicle_record_id=match?.id||'';
+      if(matchingResident){entry.resident_id=matchingResident.id;entry.resident_verified=clean(matchingResident.lease_status)==='active';entry.vehicle_record_id=match?.id||'';
         entry.unit_number=entry.unit_number||matchingResident.unit_number;entry.vehicle_owner=entry.vehicle_owner||matchingResident.full_name;}
       entry.violation_date=entry.violation_date||dates().slice(0,10);
       entry.violation_time=entry.violation_time||dates().slice(11,16);
@@ -245,7 +251,7 @@ Deno.serve(async req => {
       const residents=await siteRecords(entities.PropertyResident,300);
       const car=(await siteRecords(entities.PropertyVehicle,500)).find((v:any)=>plateKey(v.plate)===currentPlate&&clean(v.state).toUpperCase()===currentState);
       const registered=car?residents.find((r:any)=>r.id===car.resident_id):residents.find((r:any)=>plateKey(r.vehicle_plate)===currentPlate&&clean(r.vehicle_state).toUpperCase()===currentState);
-      patch.resident_id=registered?.id||'';patch.resident_verified=!!registered;patch.vehicle_record_id=car?.id||'';
+      patch.resident_id=registered?.id||'';patch.resident_verified=!!registered&&clean(registered.lease_status)==='active';patch.vehicle_record_id=car?.id||'';
       patch.fine_amount=original.fine_amount;patch.status='issued';patch.supervisor_review_status='pending';patch.was_rejected=true;
       patch.approval_history=[...(Array.isArray(original.approval_history)?original.approval_history:[]),history(user,'resubmitted',patch.description||'Officer revised returned parking notice')].slice(-60);
       return Response.json({success:true,violation:await entities.ParkingViolation.update(id,patch)});
