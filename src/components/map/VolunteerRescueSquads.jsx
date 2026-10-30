@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Ambulance, MapPin } from 'lucide-react';
 
@@ -43,18 +43,9 @@ export default function VolunteerRescueSquads({ showStations = true, onNavigateT
                     key={`vrs-${index}`}
                     position={[squad.lat, squad.lng]}
                     icon={createVRSIcon()}
-                    eventHandlers={{
-                        click: (e) => {
-                            e.originalEvent.stopPropagation();
-                            if (onNavigateToStation) {
-                                onNavigateToStation({
-                                    name: squad.fullName,
-                                    coords: [squad.lat, squad.lng]
-                                });
-                            }
-                        }
-                    }}
+
                 >
+                    <Tooltip direction="top" opacity={1}>{squad.fullName} — {squad.address}</Tooltip>
                     <Popup autoPan={false} maxWidth={250}>
                         <div className="p-2">
                             <div className="flex items-center gap-2 mb-2">
@@ -72,6 +63,7 @@ export default function VolunteerRescueSquads({ showStations = true, onNavigateT
                                 Volunteer Rescue Squad
                             </div>
                         </div>
+                    {onNavigateToStation && <button type="button" className="min-h-11 w-full rounded border border-slate-500 bg-slate-100 px-3 py-2 font-bold text-slate-900" onClick={() => onNavigateToStation({name: squad.fullName, address: squad.address, coords: [squad.lat, squad.lng]})}>Navigate</button>}
                     </Popup>
                 </Marker>
             ))}

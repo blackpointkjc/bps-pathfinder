@@ -1,3 +1,4 @@
+import EmergencyStationMarkers from './EmergencyStationMarkers';
 import OfflineMapControl from './OfflineMapControl';
 import { observeElementSize } from '@/lib/observeElementSize';
 import { useEffect, useRef } from 'react';
@@ -15,10 +16,6 @@ import PoliceStationMarkers from './PoliceStationMarkers';
 import JailMarkers from './JailMarkers';
 import SearchPinMarker from './SearchPinMarker';
 import NavigationCamera from './NavigationCamera';
-import FireStationMarkers from './FireStationMarkers';
-import ChesterfieldFireStations from './ChesterfieldFireStations';
-import VolunteerRescueSquads from './VolunteerRescueSquads';
-import VolunteerFireCompanies from './VolunteerFireCompanies';
 import RAAStations from './RAAStations';
 import CCPDStation from './CCPDStation';
 import CallHeatmapLayer from './CallHeatmapLayer';
@@ -334,17 +331,10 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             {/* Jail markers */}
             <JailMarkers showJails={showJails} onNavigateToJail={onNavigateToJail} />
 
-            {/* Fire station markers */}
-            <FireStationMarkers showStations={showFireStations} onNavigateToStation={onNavigateToJail} />
-
-            {/* Chesterfield Fire Department */}
-            <ChesterfieldFireStations showStations={showFireStations} onNavigateToStation={onNavigateToJail} />
-
-            {/* Volunteer Rescue Squads */}
-            <VolunteerRescueSquads showStations={jurisdictionFilters?.showEMS} onNavigateToStation={onNavigateToJail} />
-
-            {/* Volunteer Fire Companies */}
-            <VolunteerFireCompanies showStations={showFireStations} onNavigateToStation={onNavigateToJail} />
+            <EmergencyStationMarkers
+                filters={{...jurisdictionFilters, showFireStations, showRescueStations:jurisdictionFilters?.showRescueStations ?? jurisdictionFilters?.showEMS}}
+                onNavigate={onNavigateToJail}
+            />
 
             {/* Richmond Ambulance Authority */}
             <RAAStations showStations={jurisdictionFilters?.showEMS} onNavigateToStation={onNavigateToJail} />

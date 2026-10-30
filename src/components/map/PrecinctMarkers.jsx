@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
 const precinctIcon = new L.DivIcon({
@@ -65,17 +65,9 @@ export default function PrecinctMarkers({ showStations = true, onNavigateToPreci
                     key={idx}
                     position={precinct.coords}
                     icon={precinctIcon}
-                    eventHandlers={{
-                        click: () => {
-                            if (onNavigateToPrecinct) {
-                                onNavigateToPrecinct({
-                                    coords: precinct.coords,
-                                    name: precinct.name
-                                });
-                            }
-                        }
-                    }}
+
                 >
+                    <Tooltip direction="top" opacity={1}>{precinct.name} — {precinct.address}</Tooltip>
                     <Popup autoPan={false}>
                         <div className="p-3 min-w-[200px]">
                             <div className="flex items-center gap-2 mb-2">

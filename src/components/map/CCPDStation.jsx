@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Shield, MapPin } from 'lucide-react';
 
@@ -37,19 +37,10 @@ export default function CCPDStation({ showStations = true, onNavigateToStation }
         <Marker
             position={[station.lat, station.lng]}
             icon={ccpdIcon}
-            eventHandlers={{
-                click: (e) => {
-                    e.originalEvent.stopPropagation();
-                    if (onNavigateToStation) {
-                        onNavigateToStation({
-                            name: station.name,
-                            coords: [station.lat, station.lng]
-                        });
-                    }
-                }
-            }}
+
         >
-            <Popup autoPan={false} maxWidth={250}>
+            <Tooltip direction="top" opacity={1}>{station.name} — {station.address}</Tooltip>
+                    <Popup autoPan={false} maxWidth={250}>
                 <div className="p-2">
                     <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-5 h-5 text-blue-600" />
@@ -65,7 +56,8 @@ export default function CCPDStation({ showStations = true, onNavigateToStation }
                         Chesterfield County Police
                     </div>
                 </div>
-            </Popup>
+            {onNavigateToStation && <button type="button" className="min-h-11 w-full rounded border border-slate-500 bg-slate-100 px-3 py-2 font-bold text-slate-900" onClick={() => onNavigateToStation({name: station.name, address: station.address, coords: [station.lat, station.lng]})}>Navigate</button>}
+                    </Popup>
         </Marker>
     );
 }

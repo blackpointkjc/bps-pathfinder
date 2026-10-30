@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Flame, MapPin } from 'lucide-react';
 
@@ -55,18 +55,9 @@ export default function ChesterfieldFireStations({ showStations = true, onNaviga
                     key={`cfd-${index}`}
                     position={[station.lat, station.lng]}
                     icon={cfdIcon}
-                    eventHandlers={{
-                        click: (e) => {
-                            e.originalEvent.stopPropagation();
-                            if (onNavigateToStation) {
-                                onNavigateToStation({
-                                    name: `CFD Station ${station.number} - ${station.name}`,
-                                    coords: [station.lat, station.lng]
-                                });
-                            }
-                        }
-                    }}
+
                 >
+                    <Tooltip direction="top" opacity={1}>CFD Station {station.number} — {station.name} — {station.address}</Tooltip>
                     <Popup autoPan={false} maxWidth={250}>
                         <div className="p-2">
                             <div className="flex items-center gap-2 mb-2">
@@ -83,6 +74,7 @@ export default function ChesterfieldFireStations({ showStations = true, onNaviga
                                 Chesterfield Fire Department
                             </div>
                         </div>
+                    {onNavigateToStation && <button type="button" className="min-h-11 w-full rounded border border-slate-500 bg-slate-100 px-3 py-2 font-bold text-slate-900" onClick={() => onNavigateToStation({name: station.name, address: station.address, coords: [station.lat, station.lng]})}>Navigate</button>}
                     </Popup>
                 </Marker>
             ))}

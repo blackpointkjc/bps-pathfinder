@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Ambulance, MapPin } from 'lucide-react';
 
@@ -43,18 +43,9 @@ export default function RAAStations({ showStations = true, onNavigateToStation }
                     key={`raa-${index}`}
                     position={[station.lat, station.lng]}
                     icon={createRAAIcon()}
-                    eventHandlers={{
-                        click: (e) => {
-                            e.originalEvent.stopPropagation();
-                            if (onNavigateToStation) {
-                                onNavigateToStation({
-                                    name: `RAA ${station.name}`,
-                                    coords: [station.lat, station.lng]
-                                });
-                            }
-                        }
-                    }}
+
                 >
+                    <Tooltip direction="top" opacity={1}>{station.name} — {station.address}</Tooltip>
                     <Popup autoPan={false} maxWidth={250}>
                         <div className="p-2">
                             <div className="flex items-center gap-2 mb-2">
@@ -71,6 +62,7 @@ export default function RAAStations({ showStations = true, onNavigateToStation }
                                 Richmond Ambulance Authority
                             </div>
                         </div>
+                    {onNavigateToStation && <button type="button" className="min-h-11 w-full rounded border border-slate-500 bg-slate-100 px-3 py-2 font-bold text-slate-900" onClick={() => onNavigateToStation({name: station.name, address: station.address, coords: [station.lat, station.lng]})}>Navigate</button>}
                     </Popup>
                 </Marker>
             ))}

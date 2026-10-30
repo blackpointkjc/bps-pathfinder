@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
 const policeStationIcon = new L.DivIcon({
@@ -84,17 +84,9 @@ export default function PoliceStationMarkers({ showStations = true, onNavigateTo
                     key={idx}
                     position={station.coords}
                     icon={policeStationIcon}
-                    eventHandlers={{
-                        click: () => {
-                            if (onNavigateToStation) {
-                                onNavigateToStation({
-                                    coords: station.coords,
-                                    name: station.name
-                                });
-                            }
-                        }
-                    }}
+
                 >
+                    <Tooltip direction="top" opacity={1}>{station.name} — {station.address}</Tooltip>
                     <Popup autoPan={false}>
                         <div className="p-2 min-w-[200px]">
                             <p className="font-bold text-blue-900">{station.name}</p>

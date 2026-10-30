@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Flame, MapPin } from 'lucide-react';
 
@@ -38,18 +38,9 @@ export default function VolunteerFireCompanies({ showStations = true, onNavigate
                     key={`vfc-${index}`}
                     position={[company.lat, company.lng]}
                     icon={vfcIcon}
-                    eventHandlers={{
-                        click: (e) => {
-                            e.originalEvent.stopPropagation();
-                            if (onNavigateToStation) {
-                                onNavigateToStation({
-                                    name: company.name,
-                                    coords: [company.lat, company.lng]
-                                });
-                            }
-                        }
-                    }}
+
                 >
+                    <Tooltip direction="top" opacity={1}>{company.name} — {company.address}</Tooltip>
                     <Popup autoPan={false} maxWidth={250}>
                         <div className="p-2">
                             <div className="flex items-center gap-2 mb-2">
@@ -66,6 +57,7 @@ export default function VolunteerFireCompanies({ showStations = true, onNavigate
                                 Volunteer Fire Company
                             </div>
                         </div>
+                    {onNavigateToStation && <button type="button" className="min-h-11 w-full rounded border border-slate-500 bg-slate-100 px-3 py-2 font-bold text-slate-900" onClick={() => onNavigateToStation({name: company.name, address: company.address, coords: [company.lat, company.lng]})}>Navigate</button>}
                     </Popup>
                 </Marker>
             ))}

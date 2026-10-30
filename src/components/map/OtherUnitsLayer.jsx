@@ -210,7 +210,6 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                     position={[unit.latitude, unit.longitude]}
                     title={unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || unit.officer_name || unit.email || 'Officer'}
                     icon={createOtherUnitIcon(unit.status, unit.heading, flashAssignedEnroute, unit.is_supervisor, unit.unit_number, unit.location_state)}
-                    eventHandlers={{ click: () => onUnitClick?.(unit) }}
                 >
                         <Popup autoPan={false}>
                             <div className="p-3 min-w-[240px]">

@@ -546,7 +546,7 @@ export default function GlobalMessageBanner({ user }) {
         return false;
       }
       if (!active || !isCurrent() || !getActiveTimeEntry(entries)) return false;
-      if (property && (property.active === false || property.property_monitoring_enabled !== true)) return false;
+      if (!property || property.active === false || property.property_monitoring_enabled !== true) return false;
       // All on-duty officers hear the existing property-call wording. Only the
       // officer currently clocked in at this property gets the attention horn.
       if (!hornCompleted && isClockedInAtProperty(entries, property)) {

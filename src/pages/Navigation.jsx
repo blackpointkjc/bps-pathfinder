@@ -1,3 +1,4 @@
+import MapIconFilters from '@/components/map/MapIconFilters';
 import { createPortal } from 'react-dom';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { readRecentDestinations, rememberDestination } from '@/lib/recentDestinations';
@@ -218,10 +219,17 @@ export default function Navigation() {
     const flashSelfAssignedEnroute = String(unitStatus || currentUser?.status || '').trim().toLowerCase() === 'enroute'
         && selfAssignedToCall;
 
-    const [jurisdictionFilters] = useState({
-        baseMapType: 'street', showPoliceStations: true, showFireStations: false,
-        showEMS: false, showJails: true
+    const [jurisdictionFilters, setJurisdictionFilters] = useState(() => {
+        const defaults = {baseMapType:'street',showPoliceStations:true,showFireStations:true,
+          showRescueStations:true,showEMS:true,showJails:true,
+          richmondFacilities:true,henricoFacilities:true,chesterfieldFacilities:true};
+        try { return {...defaults,...JSON.parse(localStorage.getItem('bps-map-icon-filters-v1') || '{}')}; }
+        catch { return defaults; }
     });
+    const changeMapIconFilters = filters => {
+        setJurisdictionFilters(filters);
+        try { localStorage.setItem('bps-map-icon-filters-v1', JSON.stringify(filters)); } catch {}
+    };
 
     const unitStatusRef = useRef(unitStatus);
 
@@ -1496,6 +1504,7 @@ export default function Navigation() {
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
                     gpsLabel={isLiveTracking ? `GPS · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS · last known / unavailable'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
+                <div className="absolute right-2 top-full mt-2"><MapIconFilters filters={jurisdictionFilters} onChange={changeMapIconFilters}/></div>
             </div>
 
             {isNavigating && navDestination && (

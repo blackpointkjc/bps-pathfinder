@@ -1,4 +1,4 @@
-import { Marker, Popup } from 'react-leaflet';
+import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
 // Jail icon
@@ -61,14 +61,9 @@ export default function JailMarkers({ showJails = true, onNavigateToJail }) {
                     key={index}
                     position={jail.coords}
                     icon={jailIcon}
-                    eventHandlers={{
-                        click: () => {
-                            if (onNavigateToJail) {
-                                onNavigateToJail(jail);
-                            }
-                        }
-                    }}
+
                 >
+                    <Tooltip direction="top" opacity={1}>{jail.name} — {jail.address}</Tooltip>
                     <Popup autoPan={false}>
                         <div className="p-2">
                             <p className="font-bold text-red-600 mb-1">{jail.name}</p>
