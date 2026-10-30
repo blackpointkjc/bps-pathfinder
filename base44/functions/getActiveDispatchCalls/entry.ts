@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const limit = Math.max(50, Math.min(500, Number(body?.limit || 100)));
     const cacheKey = (req.headers.get('Base44-App-Id') || '') + ':' + (req.headers.get('X-Data-Env') || 'prod');
     let cached = readCache.get(cacheKey);
-    if (!cached || Date.now() - cached.at >= 3000) {
+    if (!cached || Date.now() - cached.at >= 12000) {
       if (!cached?.pending) {
         cached = { at:0, rows:[], pending:(async () => {
           // The board is defined by recency, not by matching the last source poll.

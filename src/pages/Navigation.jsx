@@ -185,6 +185,7 @@ export default function Navigation() {
     const [navTrafficSegments, setNavTrafficSegments] = useState([]);
     const [showTomTomTraffic, setShowTomTomTraffic] = useState(true);
     const [navSteps, setNavSteps] = useState([]);
+    const [navRouteProvider, setNavRouteProvider] = useState('');
     const [navStepIndex, setNavStepIndex] = useState(0);
     const [navDistanceMiles, setNavDistanceMiles] = useState(0);
     const [navDurationMinutes, setNavDurationMinutes] = useState(0);
@@ -864,6 +865,7 @@ export default function Navigation() {
             const routePath = `${lng},${lat};${destLng},${destLat}?${browserQuery.toString()}`;
             const plainRoutePath = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
             let route = null;
+            let routeProvider = '';
             // Server-side routing avoids browser CORS/network policies that were
             // causing Search to finish and simply return to GO without starting.
             try {
@@ -877,7 +879,11 @@ export default function Navigation() {
                     origin_speed_mph: originSpeed,
                 }), 12_000, 'Navigation route');
                 const payload = routed?.data || routed || {};
-                if (payload?.route?.geometry?.coordinates?.length > 1) route = payload.route;
+                if (payload?.route?.geometry?.coordinates?.length > 1) {
+                    route = payload.route;
+                    routeProvider = payload.provider === 'TomTom' || String(route.provider || '').includes('TomTom')
+                        ? 'TomTom' : 'Fallback routing';
+                }
             } catch (serverRouteError) {
                 console.warn('[NAV] Server route failed; trying browser providers:', serverRouteError?.message || serverRouteError);
             }
@@ -890,7 +896,7 @@ export default function Navigation() {
                             const response = await fetch(`${host}${path}`, { signal: AbortSignal.timeout(7000) });
                             if (!response.ok) continue;
                             const data = await response.json();
-                            if (data.routes?.[0]?.geometry?.coordinates?.length > 1) { route = data.routes[0]; break; }
+                            if (data.routes?.[0]?.geometry?.coordinates?.length > 1) { route = data.routes[0]; routeProvider = 'Fallback routing'; break; }
                         } catch (serviceError) {
                             console.warn('[NAV] Browser route provider failed:', serviceError?.message || serviceError);
                         }
@@ -903,6 +909,7 @@ export default function Navigation() {
             const routeCoords = (route.geometry?.coordinates || []).map(([x, y]) => [y, x]);
             const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
             setNavRoute(routeCoords);
+            setNavRouteProvider(routeProvider || 'Fallback routing');
             setNavSpeedLimitSections(Array.isArray(route.speedLimitSections) ? route.speedLimitSections : []);
             setNavTrafficSegments(Array.isArray(route.trafficSegments) ? route.trafficSegments : []);
             navSnapIndexRef.current = 0;
@@ -1288,6 +1295,7 @@ export default function Navigation() {
         setFollowMyLocation(false);
         setNavDestination(null);
         setNavRoute([]);
+        setNavRouteProvider('');
         setNavSpeedLimitSections([]);
         setNavTrafficSegments([]);
         setNavSteps([]);
@@ -1670,7 +1678,10 @@ export default function Navigation() {
                                 <div className="mt-2 text-2xl font-black leading-none">{navDistanceLabel}</div>
                             </div>
                             <div className="min-w-0 flex-1 bg-[#0a1612] px-5 py-4">
-                                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Next maneuver</div>
+                                <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                                    <span>Next maneuver</span>
+                                    <span className="rounded border border-emerald-700/60 bg-emerald-950/40 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-emerald-100">{navRouteProvider === 'TomTom' ? 'TomTom turn-by-turn' : 'Fallback turn-by-turn'}</span>
+                                </div>
                                 <div className="mt-1 text-[22px] font-black leading-[1.12] text-white">{formatInstruction(activeNavStep)}</div>
                                 {nextNavStep && (
                                     <div className="mt-3 flex items-center gap-2 border-t border-slate-700 pt-3 text-xs text-slate-100">

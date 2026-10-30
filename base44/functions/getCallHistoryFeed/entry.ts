@@ -51,29 +51,28 @@ Deno.serve(async (req) => {
       active: Math.max(0, Math.floor(Number(cursor.active) || 0)),
       archived: Math.max(0, Math.floor(Number(cursor.archived) || 0)),
     };
-    const clauses:any[] = [
-      { created_date: { $lte: snapshot } },
-      { $or: [
-        { time_received: { $gte: since, $lte: until } },
-        { $and: [
-          { $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] },
-          { created_date: { $gte: since, $lte: until } },
-        ] },
-      ] },
-    ];
-    if (searchQuery) clauses.push(searchQuery);
-    if (input.agency && input.agency !== 'ALL') clauses.push({agency:input.agency});
-    if (input.status && input.status !== 'ALL') clauses.push({status:input.status});
-    const query = { $and: clauses };
+    // Avoid nested $and/$or + regex expressions which Base44 rejects as
+    // malformed query objects. Filter/merge bounded recent records in memory.
+    const query = { created_date: { $gte: since, $lte: until } };
     const [activeRead, archivedRead] = await Promise.all([
       readWithRetry('Call records', () => base44.asServiceRole.entities.DispatchCall.filter(query,'-time_received',pageSize+1,offsets.active), []),
       readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.filter(query,'-time_received',pageSize+1,offsets.archived), []),
     ]);
     // Never advance a paging cursor past an unavailable source.
     if (activeRead.error || archivedRead.error) throw new Error(activeRead.error || archivedRead.error);
+    const matchesFilters = (row:any) => {
+      const timestamp = callTimestamp(row);
+      if(timestamp < Date.parse(since) || timestamp > Date.parse(until)) return false;
+      if (input.agency && input.agency !== 'ALL' && row.agency !== input.agency) return false;
+      if (input.status && input.status !== 'ALL' && row.status !== input.status) return false;
+      if (!search) return true;
+      return ['call_id','bps_reference','agency_cad_number','incident','location','original_call_id']
+        .some(field => String(row[field]||'').toLowerCase().includes(search.toLowerCase()))
+        || (addressPattern && new RegExp(addressPattern,'i').test(String(row.location||'')));
+    };
     const candidates = [
-      ...(activeRead.data || []).map((row:any) => ({row,source:'active'})),
-      ...(archivedRead.data || []).map((row:any) => ({row,source:'archived'})),
+      ...(activeRead.data || []).filter(matchesFilters).map((row:any) => ({row,source:'active'})),
+      ...(archivedRead.data || []).filter(matchesFilters).map((row:any) => ({row,source:'archived'})),
     ].sort((a,b) => callTimestamp(b.row) - callTimestamp(a.row) || (a.source === b.source ? 0 : a.source === 'active' ? -1 : 1));
     const selected:any[] = [];
     const consumed = {active:0,archived:0};

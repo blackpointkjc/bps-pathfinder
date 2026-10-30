@@ -19,6 +19,7 @@ Deno.serve(async req => {
   }
   const since = new Date(Date.now()-90*86400000).toISOString();
   const pattern = addressHistoryPattern(address);
+  const matcher = pattern ? new RegExp(pattern, 'i') : null;
   if (!propertyId && !pattern) return Response.json({error:'Select a numbered street address or managed property to check call history.'}, {status:400});
   const rows:any[]=[]; const errors:string[]=[]; let truncated=false;
   const read=async(entity:string,query:any,kind:string)=>{
@@ -36,16 +37,16 @@ Deno.serve(async req => {
   const reads:Promise<void>[]=[];
   if(propertyId) reads.push(read('PropertyAlert',{propertyId,created_date:{$gte:since}},'property'));
   if(pattern) {
-    const query={location:{$regex:pattern,$options:'i'},$or:[
-      {time_received:{$gte:since}},
-      {$and:[{$or:[{time_received:null},{time_received:''},{time_received:{$exists:false}}]},{created_date:{$gte:since}}]}
-    ]};
-    reads.push(read('DispatchCall',query,'call'),read('CallHistory',query,'history'));
+    // Base44 can reject Mongo-style nested regex/$or query combinations
+    // with HTTP 400. Read a bounded recent window and match locally.
+    reads.push(read('DispatchCall',{created_date:{$gte:since}},'call'),
+      read('CallHistory',{created_date:{$gte:since}},'history'));
   }
   await Promise.all(reads);
   if (errors.length === reads.length) return Response.json({error:'Call history sources are unavailable. No call count could be verified.'}, {status:503});
   const identities=new Set<string>(); const fingerprints=new Set<string>(); const calls:any[]=[];
   for(const r of rows) {
+    if (r._kind !== 'property' && matcher && !matcher.test(clean(r.callLocation||r.location))) continue;
     if(r.is_test || ['test','false_alarm'].includes(String(r.lifecycle_status||'').toLowerCase())) continue;
     const time=r.callTime||r.time_received||r.created_date;
     if(!time||Date.parse(time)<Date.parse(since)) continue;

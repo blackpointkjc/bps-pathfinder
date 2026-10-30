@@ -4,7 +4,7 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const CACHE_KEY = 'bps-cad-active-calls-v6';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
-const MEMORY_DEDUPE_MS = 3_000;
+const MEMORY_DEDUPE_MS = 12_000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
@@ -144,7 +144,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
     } catch (error) {
       primaryError = error;
       if (Number(error?.status || error?.response?.status) === 429 || /429|rate limit|too many requests/i.test(String(error?.message || error?.response?.data?.error || ''))) {
-        requestBackoffUntil = Date.now() + 20_000;
+        requestBackoffUntil = Date.now() + 60_000;
         if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows);
         const cached = readLastGoodCalls();
         if (cached.length) return cached;
