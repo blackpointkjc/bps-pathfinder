@@ -294,6 +294,25 @@
     },
     "vehicle_vin": {
       "type": "string"
+    },
+    "persons": {
+      "type": "array",
+      "description": "Structured incident parties including linked property rent-roll resident IDs",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "resident_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Linked property rent-roll resident IDs from structured parties"
+    },
+    "vehicle_record_id": {
+      "type": "string",
+      "description": "Property-registered vehicle ID linked to incident"
     }
   },
   "required": [

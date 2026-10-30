@@ -23,6 +23,7 @@ import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import VehicleFields from '@/components/reports/VehicleFields';
+import PropertyResidentPicker from '@/components/reports/PropertyResidentPicker';
 import RecordsCheckButton from '@/components/reports/RecordsCheckButton';
 import {vehicleSummary} from '@/lib/vehicleForm';
 import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
@@ -63,6 +64,7 @@ export default function IncidentReports() {
   });
   const [editingTodoId, setEditingTodoId] = useState(null);
   const [historyOfficerEmail, setHistoryOfficerEmail] = useState('self');
+  const [rentRollPartyRole,setRentRollPartyRole]=useState('Reporting Party');
   const [formData, setFormData] = useState({
     incident_date: format(new Date(), 'yyyy-MM-dd'),
     incident_time: format(new Date(), 'HH:mm'),
@@ -421,6 +423,7 @@ Provide:
         attached_officer_ids: attachedOfficerIds,
         attached_officer_emails: attachedOfficerEmails,
         attached_officer_names: attachedOfficerNames,
+        resident_ids:[...new Set((Array.isArray(data.persons)?data.persons:[]).map(person=>person.resident_id).filter(Boolean))],
         report_type: data.report_type || 'original',
         location: locationToSubmit,
         incident_time: isDraft ? (data.incident_time || "00:00") : data.incident_time,
@@ -1482,6 +1485,15 @@ Provide:
                     rows={6}
                   />
                 </div>
+                <div className="space-y-3 rounded-xl border border-cyan-700/50 bg-[#10233a] p-3"><h3 className="text-sm font-black text-cyan-100">Link property resident to incident report</h3><p className="text-xs text-slate-300">Select the incident property above. Find a resident by name, apartment or registered vehicle, then attach that person as a structured reporting party, witness, complainant, victim or subject.</p><label className="block text-xs font-semibold text-white">Person’s role in this incident<select value={rentRollPartyRole} onChange={e=>setRentRollPartyRole(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-500 bg-slate-950 px-3 text-white">{['Reporting Party','Witness','Complainant','Victim','Suspect','Other'].map(role=><option key={role} value={role}>{role}</option>)}</select></label><PropertyResidentPicker site={formData.location} label="Search resident and registered vehicle at selected incident property" onSelect={(person,vehicle)=>{
+                  const parts=String(person.full_name||'').trim().split(/\s+/);const first=parts.shift()||'',last=parts.join(' ');
+                  const newParty={role:rentRollPartyRole,first_name:first,last_name:last,resident_id:person.id,resident_site:formData.location,unit_number:person.unit_number||'',building:person.building||'',lease_status_at_report:person.lease_status||'',description:`Property rent-roll resident · Unit ${person.unit_number||'unknown'}${person.building?' · Building '+person.building:''}`};
+                  setFormData(current=>{
+                    const others=(current.persons||[]).filter(p=>!(p.resident_id===person.id&&p.role===rentRollPartyRole));
+                    return {...current,persons:[...others,newParty],
+                      ...(vehicle?{vehicle_record_id:vehicle.id,vehicle_plate:vehicle.plate||'',vehicle_state:vehicle.state||'VA',vehicle_year:vehicle.year||'',vehicle_make:vehicle.make||'',vehicle_model:vehicle.model||'',vehicle_color:vehicle.color||'',vehicle_vin:vehicle.vin||'',suspect_vehicle:vehicleSummary({vehicle_plate:vehicle.plate,vehicle_state:vehicle.state,vehicle_year:vehicle.year,vehicle_make:vehicle.make,vehicle_model:vehicle.model,vehicle_color:vehicle.color})}:{})};
+                  });
+                }}/></div>
                 <StructuredPeopleEditor
                   title="Persons Involved"
                   value={formData.persons || []}

@@ -16,8 +16,17 @@ export default function AdminPromotions(){
  const [roster,setRoster]=useState([]),[form,setForm]=useState(starting),[preview,setPreview]=useState(null),[history,setHistory]=useState([]);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(''),[confirm,setConfirm]=useState(false),[complete,setComplete]=useState(null);
  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
- const request=async payload=>{const response=await base44.functions.invoke('managePromotions',payload),result=response?.data||response||{};
-   if(result.error)throw Object.assign(new Error(result.error),{result});return result;};
+ const request=async payload=>{
+   try{
+     const response=await base44.functions.invoke('managePromotions',payload),result=response?.data||response||{};
+     if(result.error)throw Object.assign(new Error(result.error),{result});return result;
+   }catch(error){
+     const details=error?.response?.data||error?.data||error?.result||{};
+     const message=details.error||details.message||error?.message||'Command request failed';
+     throw Object.assign(new Error(String(message).includes('status code 400')?
+       'Invalid promotion details: choose an actual change to the officer rank or command assignment, and a valid higher-ranking supervisor.':message),{result:details});
+   }
+ };
  const reload=async()=>{
   setLoading(true);setError('');
   try{
@@ -73,11 +82,11 @@ export default function AdminPromotions(){
   </form>
   <section className={`${block} space-y-3`}><h2 className="text-sm font-black uppercase tracking-wide text-cyan-200">2 · Review & approve</h2>
   {!preview&&<p className="rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-400">Choose an officer and preview the changes before an administrator may approve them. Nothing changes during preview.</p>}
-  {preview&&<div className="space-y-3"><div className="rounded-lg border border-amber-600 bg-amber-950/20 p-3"><h3 className="font-black text-amber-200">Formal command preview</h3><p className="mt-2 text-xs">{preview.preview.officer.name}: <b>{preview.preview.before.rank} → {preview.preview.after.rank}</b></p><p className="text-xs">Unit {preview.preview.before.unit_number||'—'} → {preview.preview.after.unit_number}</p><p className="text-xs">Platoon {preview.preview.before.platoon||'—'} → {preview.preview.after.platoon}</p><p className="text-xs">Reporting supervisor: {preview.preview.after.supervisor||'Company command'}</p><p className="text-xs">Rank pay baseline: ${Number(preview.preview.after.pay_rate||0).toFixed(2)}/hr</p></div>
+  {preview&&<div className="space-y-3">{preview.preview.no_changes&&<p role="status" className="rounded-lg border border-amber-600 bg-amber-950/40 p-3 text-xs text-amber-200">No changes selected. Choose a higher rank, a different reporting supervisor/platoon, or enable a valid change-of-command transfer. No update or announcement will be submitted until something actually changes.</p>}<div className="rounded-lg border border-amber-600 bg-amber-950/20 p-3"><h3 className="font-black text-amber-200">Formal command preview</h3><p className="mt-2 text-xs">{preview.preview.officer.name}: <b>{preview.preview.before.rank} → {preview.preview.after.rank}</b></p><p className="text-xs">Unit {preview.preview.before.unit_number||'—'} → {preview.preview.after.unit_number}</p><p className="text-xs">Platoon {preview.preview.before.platoon||'—'} → {preview.preview.after.platoon}</p><p className="text-xs">Reporting supervisor: {preview.preview.after.supervisor||'Company command'}</p><p className="text-xs">Rank pay baseline: ${Number(preview.preview.after.pay_rate||0).toFixed(2)}/hr</p></div>
   <div className="rounded border border-slate-700 p-3 text-xs"><b>Affected platoon members: {preview.preview.transfers.length}</b>{preview.preview.transfers.length>0&&<div className="mt-2 max-h-40 space-y-1 overflow-auto">{preview.preview.transfers.map(u=><div key={u.id}>{nameOf(u)} · {u.platoon} · formerly reporting to {u.supervisor_name||'Unassigned'}</div>)}</div>}</div>
   <p className="flex items-start gap-2 text-xs text-amber-200"><Megaphone className="h-4 w-4 shrink-0"/>Approval publishes an URGENT company-wide announcement visible in Pathfinder and sends the affected officer(s) command notifications.</p>
   <label className="flex items-start gap-2 rounded border border-amber-600 p-3 text-xs"><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)} className="mt-0.5"/><span>I am authorized to approve this formal promotion/command change, and I reviewed the affected officers, rank, and pay adjustment.</span></label>
-  <button type="button" onClick={apply} disabled={!confirm||busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-3 text-sm font-black text-slate-950 disabled:opacity-40"><ShieldCheck className="h-4 w-4"/>Approve, update ranks & announce company-wide</button></div>}
+  <button type="button" onClick={apply} disabled={!confirm||busy||preview.preview.no_changes} className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-3 text-sm font-black text-slate-950 disabled:opacity-40"><ShieldCheck className="h-4 w-4"/>Approve, update ranks & announce company-wide</button></div>}
   {complete&&<div role="status" className="rounded border border-emerald-700 p-3 text-sm text-emerald-100"><b>Command update:</b> {complete.success?'Completed':'Review required'} · {complete.transferred||0} platoon members reassigned. {complete.announcement_id?'Urgent announcement published.':'Announcement pending.'}{complete.warnings?.length>0&&<p className="mt-2 text-xs text-amber-300">{complete.warnings.join(' · ')}</p>}</div>}
   {error&&<div role="alert" className="flex gap-2 rounded-lg border border-red-600 bg-red-950/30 p-3 text-xs text-red-100"><AlertTriangle className="h-5 w-5 shrink-0"/>{error}</div>}
   </section></div>

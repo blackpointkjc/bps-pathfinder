@@ -117,7 +117,7 @@ function changePlan(users:any[],input:any){
  const affectedPlatoon=proposed==='Major'?oversight:platoon;
  const transfers=transfer?users.filter(u=>isEmployee(u)&&u.id!==officer.id&&u.platoon===affectedPlatoon&&rankLevel(u.rank)>rankLevel(proposed)&&u.supervisor_id!==officer.id):[];
  if(transfers.length>150)throw new Error('Command transfer exceeds 150 officers. Use platoon balance to resolve the roster first.');
- if(!promoted&&!transfer&&oldRank===proposed&&trim(officer.supervisor_id)===superId&&trim(officer.platoon)===platoon&&trim(officer.oversight_platoon)===oversight)throw new Error('No promotion or chain-of-command change selected.');
+ const noChanges=!promoted&&!transfer&&oldRank===proposed&&trim(officer.supervisor_id)===superId&&trim(officer.platoon)===platoon&&trim(officer.oversight_platoon)===oversight;
  const assignedUnit=nextUnitNumber(proposed,users,officer.id);
  const existingUnit=Number(officer.unit_number);
  const series=RANK_SERIES[proposed];
@@ -132,10 +132,10 @@ function changePlan(users:any[],input:any){
  const roles=new Set((officer.additional_roles||[]).map((role:string)=>trim(role)));
  if(supervisorRank(proposed)){roles.add('supervisor');updates.additional_roles=[...roles];}
  const reason=trim(input.reason,800);
- return {officer,supervisor,updates,transfers,promoted,reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10),
+ return {officer,supervisor,updates,transfers,promoted,noChanges,reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10),
    preview:{officer:safeOfficer(officer),before:{rank:officer.rank,unit_number:officer.unit_number,platoon:officer.platoon,supervisor:officer.supervisor_name||''},
      after:{rank:proposed,unit_number,platoon,oversight_platoon:oversight,supervisor:updates.supervisor_name,pay_rate:pay,supervisor_role:updates.is_supervisor},
-     affected_platoon:affectedPlatoon,transfer:transfer,transfers:transfers.map(u=>safeOfficer(u)),reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10)}};
+     no_changes:noChanges,affected_platoon:affectedPlatoon,transfer:transfer,transfers:transfers.map(u=>safeOfficer(u)),reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10)}};
 }
 Deno.serve(async req=>{
  try{
@@ -157,6 +157,7 @@ Deno.serve(async req=>{
   try{plan=changePlan(users,input);}catch(error:any){return fail(error.message||'Invalid command promotion');}
   const current=await version(users);
   if(action==='preview')return Response.json({preview:plan.preview,version:current});
+  if(plan.noChanges)return fail('Select a different rank, platoon supervisor, or a change-of-command transfer before approving. This officer already has the requested assignment.',400);
   if(input.version!==current)return fail('Personnel changed since preview. Review the updated roster before approving.',409);
   if(input.confirm!==true)return fail('Explicit command approval is required.',400);
   const requestId=trim(input.request_id,80);
