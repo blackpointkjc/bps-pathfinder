@@ -12,8 +12,13 @@ const history = (user:any, action:string, notes:string) => ({actor:clean(user.em
 // than by the user's assigned_locations array. Cache only this site's names,
 // never resident data; users still authenticate on every function request.
 const clientSiteCache = new Map<string,{expires:number,names:string[]}>();
+const localDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const activeLocation=(location:any)=>location?.active!==false&&
+  !['inactive','closed','terminated','expired'].includes(clean(location?.status).toLowerCase())&&
+  (!clean(location?.contract_end_date)||clean(location.contract_end_date).slice(0,10)>=localDay());
 
 Deno.serve(async req => {
+  let currentAction='';
   try {
     const sdk = createClientFromRequest(req);
     const user = await sdk.auth.me().catch(()=>null);
@@ -25,31 +30,40 @@ Deno.serve(async req => {
     const officer = !client && (supervisor||['officer','dispatch','admin'].includes(user.role)||['officer','dispatch','cad_access'].some(role=>roles.has(role)));
     if(!client && !officer) return fail('Parking records access required',403);
     const entities = sdk.asServiceRole.entities;
+    let locationSnapshot:any[]|null=null;
+    const getLocations=async()=>{
+      if(locationSnapshot)return locationSnapshot;
+      try{const locations=await entities.Location.list('site_name',750);
+        if(!Array.isArray(locations))throw Error('Property directory returned invalid data');
+        if(locations.length>=750)throw Error('Property directory is too large to verify active sites safely');
+        locationSnapshot=locations;
+        return locations;
+      }catch(error:any){console.warn('Parking active property lookup failed',String(error?.message||error));
+        throw Error('Active property directory is temporarily unavailable. Retry opening Parking or Rent Roll.');}
+    };
     const assignedNames=[...(Array.isArray(user.assigned_locations)?user.assigned_locations:[]),
       ...(Array.isArray(user.assigned_sites)?user.assigned_sites:[]),
       ...(user.assigned_location?[user.assigned_location]:[])].map(value=>clean(value)).filter(Boolean);
     if(client&&user.email){
       const email=clean(user.email).toLowerCase();
-      const cached=clientSiteCache.get(email);
-      let named:string[]=[];
-      if(cached&&cached.expires>Date.now())named=cached.names;
-      else{
-        try{
-          const locations=await entities.Location.filter({assigned_client_email:email},'site_name',100);
-          named=(locations||[]).filter((loc:any)=>clean(loc.assigned_client_email).toLowerCase()===email)
-            .map((loc:any)=>clean(loc.site_name)).filter(Boolean);
-          clientSiteCache.set(email,{names:named,expires:Date.now()+120_000});
-          if(clientSiteCache.size>300)clientSiteCache.delete(clientSiteCache.keys().next().value as string);
-        }catch(error){console.warn('Client site-email lookup unavailable',String((error as Error)?.message||error));}
-      }
-      assignedNames.push(...named);
+      const locations=await getLocations();
+      assignedNames.push(...locations.filter((location:any)=>activeLocation(location)&&
+        clean(location.assigned_client_email).toLowerCase()===email).map((location:any)=>clean(location.site_name)));
     }
     const sites=new Set(assignedNames.map(siteKey).filter(Boolean));
     const scope = (selected:unknown) => !!siteKey(selected) && (!client || sites.has(siteKey(selected)));
     const data = await req.json().catch(()=>({}));
     const action = clean(data.action);
+    currentAction=action;
     const site = clean(data.site_name||data.location);
-    const sitePermitted = () => scope(site) ? null : fail('Property not assigned or not selected',403);
+    const sitePermitted = async () => {
+      if(!scope(site))return fail('Property not assigned or not selected',403);
+      const locations=await getLocations();
+      const matched=locations.find((location:any)=>siteKey(location.site_name)===siteKey(site));
+      if(!matched)return fail('This property is not in the active property directory',404);
+      if(!activeLocation(matched))return fail('This property is inactive or its contract has ended. Parking and Rent Roll access is disabled.',403);
+      return null;
+    };
     const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','lease_start','lease_end','lease_id','building','resident_type','emergency_contact','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
     const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id','resident_verified','vehicle_record_id'];
     const siteRecords = async (entity:any,limit=200) => {
@@ -61,7 +75,8 @@ Deno.serve(async req => {
     if(action==='officer_tasks'){
       if(!officer)return fail('Officer access required',403);
       const returned=await entities.ParkingViolation.filter(admin?{status:'rejected'}:{officer_id:String(user.id)},'-created_date',120);
-      return Response.json({tasks:(returned||[]).filter((v:any)=>v.status==='rejected'&&v.supervisor_review_status==='returned').map((v:any)=>({
+      const allowed=new Set((await getLocations()).filter(activeLocation).map((loc:any)=>siteKey(loc.site_name)));
+      return Response.json({tasks:(returned||[]).filter((v:any)=>allowed.has(siteKey(v.location))&&v.status==='rejected'&&v.supervisor_review_status==='returned').map((v:any)=>({
         id:v.id,citation_number:v.citation_number,location:v.location,violation_date:v.violation_date,
         license_plate:v.license_plate,officer_id:v.officer_id,supervisor_notes:v.supervisor_notes,status:v.status,
       }))});
@@ -71,7 +86,8 @@ Deno.serve(async req => {
     if(action==='review_queue'){
       if(!supervisor)return fail('Supervisor approval access required',403);
       const pending=await entities.ParkingViolation.filter({status:'issued'},'-created_date',100);
-      return Response.json({reviews:(pending||[]).filter((v:any)=>v.supervisor_review_status!=='approved').map((v:any)=>({
+      const allowed=new Set((await getLocations()).filter(activeLocation).map((loc:any)=>siteKey(loc.site_name)));
+      return Response.json({reviews:(pending||[]).filter((v:any)=>allowed.has(siteKey(v.location))&&v.supervisor_review_status!=='approved').map((v:any)=>({
         id:v.id,citation_number:v.citation_number,location:v.location,violation_date:v.violation_date,
         license_plate:v.license_plate,violation_type:v.violation_type,officer_name:v.officer_name,
         status:v.status,supervisor_review_status:v.supervisor_review_status,
@@ -81,12 +97,10 @@ Deno.serve(async req => {
       // Property options are returned without resident PII. Always prefer a
       // verified active duty assignment in officer apps; otherwise let staff
       // choose a property explicitly before any resident search.
-      let options=[...new Map(assignedNames.map(name=>[siteKey(name),name])).values()];
-      if(officer&&!client){
-        try {const locations=await entities.Location.list('site_name',350);
-          options=[...new Map([...(locations||[]).map((loc:any)=>clean(loc.site_name)).filter(Boolean),...options].map(name=>[siteKey(name),name])).values()];}
-        catch(error){console.warn('Parking site list unavailable',String((error as Error)?.message||error));}
-      }
+      const activeDirectory=(await getLocations()).filter(activeLocation);
+      const assignedSet=new Set(assignedNames.map(siteKey));
+      const options=[...new Map(activeDirectory.filter((loc:any)=>!client||assignedSet.has(siteKey(loc.site_name)))
+        .map((loc:any)=>[siteKey(loc.site_name),clean(loc.site_name)]).filter(([key,value]:any)=>key&&value)).values()];
       let dutySite='';
       if(officer&&user.email){try{
         const shifts=await entities.TimeEntry.filter({officer_email:user.email},'-clock_in',10);
@@ -96,8 +110,8 @@ Deno.serve(async req => {
       }catch(error){console.warn('Parking duty property lookup unavailable',String((error as Error)?.message||error));}}
       return Response.json({sites:options,duty_site:dutySite,role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
     }
-    if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export','rent_roll','vehicle_save','resident_lookup'].includes(action)) {
-      const rejected=sitePermitted();if(rejected)return rejected;
+    if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export','rent_roll','vehicle_save','resident_lookup','import_residents'].includes(action)) {
+      const rejected=await sitePermitted();if(rejected)return rejected;
     }
     // Single property-scoped resident/vehicle registry shared by the client,
     // officers' parking workflow, and incident/trespass party selectors.
@@ -309,5 +323,12 @@ Deno.serve(async req => {
       return Response.json({success:true,violation:result});
     }
     return fail('Unknown parking action',400);
-  } catch(error:any){console.error('manageParkingRecords',String(error?.message||error));return fail('Parking records request failed',503);}
+  } catch(error:any){
+    const message=String(error?.message||error||'Unknown failure');
+    console.error('manageParkingRecords',currentAction||'unknown',message);
+    if(message.includes('Active property directory'))return fail(message,503);
+    if(/rate limit|too many requests|429|throttl/i.test(message))return fail('Parking and Rent Roll are temporarily rate limited. Retry after the API cooldown.',429);
+    if(/PropertyVehicle|PropertyResident|not found|entity.*does not exist/i.test(message))return fail('The property resident or vehicle registry could not load. Please retry or contact an administrator.',503);
+    return fail(`Unable to complete ${currentAction||'property records'} for this property. The server could not load the required records; retry or contact administration.`,503);
+  }
 });
