@@ -1,6 +1,76 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const valid = (value: unknown) => Number.isFinite(Number(value));
+// Every TomTom operation stays server-side. A key that is disabled or
+// exhausted can fail over to the secondary secret; OSRM remains available.
+async function fetchTomTomRoute(lat:number,lng:number,destLat:number,destLng:number,heading:number) {
+  const keys = [...new Set([Deno.env.get('TOMTOM_API_KEY'), Deno.env.get('TOMTOM_API_KEY_BACKUP')].filter(Boolean))];
+  if (!keys.length) return null;
+  const params = new URLSearchParams({
+    routeType: 'fastest', traffic: 'true', travelMode: 'car',
+    instructionsType: 'text', language: 'en-US', routeRepresentation: 'polyline',
+  });
+  if (Number.isFinite(heading)) params.set('vehicleHeading', String(Math.round(((heading%360)+360)%360)));
+  const path = `/routing/1/calculateRoute/${lat},${lng}:${destLat},${destLng}/json`;
+  for (const key of keys) {
+    const q = new URLSearchParams(params); q.set('key', key);
+    try {
+      const result = await fetch(`https://api.tomtom.com${path}?${q.toString()}`, {
+        headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000),
+      });
+      if (!result.ok) {
+        if ([401,403,408,429,500,502,503,504].includes(result.status)) continue;
+        return null;
+      }
+      const payload = await result.json();
+      const raw = payload.routes?.[0];
+      const leg = raw?.legs?.[0];
+      const pts = (leg?.points || []).filter((x:any)=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude));
+      const instructions = raw?.guidance?.instructions || [];
+      const meters = Number(raw?.summary?.lengthInMeters);
+      const seconds = Number(raw?.summary?.travelTimeInSeconds);
+      if (pts.length < 2 || !Number.isFinite(meters) || !Number.isFinite(seconds) || !instructions.length) return null;
+      // Translate TomTom guidance to the OSRM-compatible internal model. The
+      // existing step engine/voice prompts must continue to work without any
+      // browser-side TomTom SDK or new exposed keys.
+      const osmSteps = instructions.map((instruction:any, index:number) => {
+        const maneuver = String(instruction.maneuver || '').toUpperCase();
+        const kind = maneuver.includes('ARRIVE') ? 'arrive'
+          : maneuver.includes('DEPART') ? 'depart'
+          : maneuver.includes('ROUNDABOUT') ? 'roundabout'
+          : maneuver.includes('EXIT') ? 'off ramp'
+          : maneuver.includes('UTURN') ? 'turn'
+          : maneuver.includes('RAMP') ? 'on ramp'
+          : maneuver.includes('KEEP') || maneuver.includes('BEAR') ? 'fork'
+          : maneuver.includes('TURN') ? 'turn' : 'continue';
+        const modifier = maneuver.includes('UTURN') ? 'uturn'
+          : maneuver.includes('LEFT') ? (maneuver.includes('SHARP') ? 'sharp left' : maneuver.includes('BEAR') ? 'slight left' : 'left')
+          : maneuver.includes('RIGHT') ? (maneuver.includes('SHARP') ? 'sharp right' : maneuver.includes('BEAR') ? 'slight right' : 'right')
+          : 'straight';
+        const here = Number(instruction.routeOffsetInMeters) || 0;
+        const following = instructions[index+1];
+        const next = following ? Number(following.routeOffsetInMeters) : meters;
+        return {
+          name: String(instruction.street || instruction.roadNumbers?.[0] || ''),
+          ref: instruction.roadNumbers?.join(';') || '',
+          destinations: String(instruction.signpostText || ''),
+          distance: Math.max(0, (Number.isFinite(next) ? next : meters) - here),
+          duration: 0,
+          maneuver: { type: kind, modifier, exit: instruction.roundaboutExitNumber,
+            location: [Number(instruction.point?.longitude || pts[0].longitude), Number(instruction.point?.latitude || pts[0].latitude)] },
+          instruction: String(instruction.message || ''),
+        };
+      });
+      return {
+        geometry: { type: 'LineString', coordinates: pts.map((x:any)=>[x.longitude,x.latitude]) },
+        distance: meters, duration: seconds, legs: [{steps:osmSteps}],
+        provider: 'TomTom traffic-aware routing',
+      };
+    } catch { /* Key, network or provider failure: try backup or OSRM fallback */ }
+  }
+  return null;
+}
+
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
@@ -129,6 +199,8 @@ Deno.serve(async req => {
       ? Number.NaN
       : Number(body.origin_accuracy);
     const moving = Number(body.origin_speed_mph) >= 5;
+    const tomtom = await fetchTomTomRoute(lat, lng, destLat, destLng, moving ? originHeading : NaN);
+    if (tomtom) return Response.json({ success: true, route: tomtom, heading_constrained: moving && Number.isFinite(originHeading), provider: 'TomTom' });
     const query = new URLSearchParams({ overview: 'full', geometries: 'geojson', steps: 'true' });
     // On divided highways/interchanges, coordinate-only matching can snap to the
     // wrong carriageway or a nearby ramp. Constrain the origin by travel heading
