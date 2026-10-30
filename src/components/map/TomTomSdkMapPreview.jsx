@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Shield, MapPin } from 'lucide-react';
+import { X, Shield, MapPin, Crosshair, CloudSun } from 'lucide-react';
 import { appParams } from '@/lib/app-params';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -29,6 +29,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
   const callsRef=useRef(activeCalls);
+  const trafficRef=useRef({flow:null,incidents:null});
+  const [trafficVisible,setTrafficVisible]=useState(true);
+  const [trafficReady,setTrafficReady]=useState(false);
   const [ready,setReady]=useState(false);
   const [error,setError]=useState('');
   clickRef.current=onCallClick;
@@ -38,7 +41,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     let errorTimer;
     async function init(){
       try {
-        const [{TomTomMap}, {TomTomConfig}, maplibre]=await Promise.all([
+        const [{TomTomMap, TrafficFlowModule, TrafficIncidentsModule}, {TomTomConfig}, maplibre]=await Promise.all([
           import('@tomtom-org/maps-sdk/map'), import('@tomtom-org/maps-sdk/core'), import('maplibre-gl'),
         ]);
         if(cancelled || !elementRef.current) return;
@@ -48,7 +51,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         TomTomConfig.instance.put({commonBaseURL:proxy,language:'en-US'});
         maplibre.setWorkerUrl('/tomtom-sdk/maplibre-gl-worker.mjs');
         sdk=new TomTomMap({registerMapLibreWorker:false,
-          style:mapTheme==='night'?'streetDark':'streetLight',
+          style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['trafficFlow','trafficIncidents']},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
             ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:13},
           transformRequest:async request=>{
@@ -107,8 +110,19 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
               paint:{'circle-radius':10,'circle-color':'#f97316','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
           }
           setReady(true);
+          // The TomTom SDK owns real, live vector-tile traffic flow and incident
+          // overlays; no generated/random traffic on a patrol map.
+          Promise.all([
+            TrafficFlowModule.get(sdk,{visible:true}),
+            TrafficIncidentsModule.get(sdk,{visible:true,icons:{visible:true}}),
+          ]).then(([flow,incidents])=>{
+            if(cancelled)return;
+            trafficRef.current={flow,incidents};
+            setTrafficReady(true);
+          }).catch(e=>console.warn('TomTom live traffic modules unavailable:',e?.message||e));
         };
         map.on('load',dataInit);
+        map.on('style.load',dataInit);
         if(map.isStyleLoaded()) dataInit();
         const onMapError=e=>{
           if(!cancelled && !sdk.mapReady) setError('TomTom map resources could not load. The original CAD map is still available.');
@@ -119,8 +133,13 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       }catch(e){if(!cancelled)setError(`TomTom SDK could not start: ${e?.message||'Unknown error'}. Close to return to CAD.`);}
     }
     init();
-    return ()=>{cancelled=true;clearTimeout(errorTimer);try{sdkRef.current?.destroy?.();sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
+    return ()=>{cancelled=true;clearTimeout(errorTimer);trafficRef.current={flow:null,incidents:null};try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
   }, []);
+  useEffect(()=>{
+    if(!trafficReady)return;
+    trafficRef.current.flow?.setVisible(trafficVisible);
+    trafficRef.current.incidents?.setVisible(trafficVisible);
+  },[trafficVisible,trafficReady]);
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     if(!ready||!map)return;
@@ -139,7 +158,11 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   return createPortal(<div role="dialog" aria-modal="true" aria-label="TomTom SDK interactive map" className="fixed inset-0 z-[2147482900] flex flex-col bg-[#07101b] text-white" style={{paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
     <div className="flex shrink-0 items-center justify-between gap-3 border-b border-cyan-900 bg-[#0b1d2b] p-3">
       <div className="flex min-w-0 items-center gap-2"><Shield className="h-5 w-5 shrink-0 text-cyan-300"/><div className="min-w-0"><h2 className="truncate text-sm font-black">TomTom Maps SDK</h2><p className="truncate text-[10px] text-slate-300">Interactive map preview · CAD remains available underneath</p></div></div>
-      <button type="button" onClick={onClose} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-cyan-700 px-3 text-xs font-bold"><X size={17}/>Back to CAD</button>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button type="button" disabled={!trafficReady} onClick={()=>setTrafficVisible(v=>!v)} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold disabled:opacity-50" aria-pressed={trafficVisible} title="Toggle real TomTom traffic flow and road incidents"><CloudSun size={17}/>{trafficVisible?'Traffic on':'Traffic off'}</button>
+        <button type="button" onClick={()=>{const map=sdkRef.current?.mapLibreMap;if(map&&coords(currentLocation))map.flyTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:16});}} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold" title="Recenter TomTom map on your GPS"><Crosshair size={17}/><span className="hidden sm:inline">Recenter</span></button>
+        <button type="button" onClick={onClose} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-cyan-700 px-3 text-xs font-bold"><X size={17}/>Back to CAD</button>
+      </div>
     </div>
     <div className="relative min-h-0 flex-1">
       <div ref={elementRef} className="absolute inset-0" aria-label="TomTom interactive map"/>
