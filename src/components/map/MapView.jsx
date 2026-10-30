@@ -147,18 +147,12 @@ function MapViewportSync() {
             map.invalidateSize({ animate: false, pan: false });
         });
         const refresh = sizeObserver.refresh;
-        const recoverTiles = () => {
-            refresh();
-            try {
-                map.eachLayer(layer => {
-                    if (typeof layer?.redraw === 'function') layer.redraw();
-                });
-            } catch (_) {}
-        };
+        // Tile errors are handled by PathfinderTileLayer's provider fallback.
+        // The old global bps-map-tiles-failed listener force-redrew *every*
+        // tile layer on *every* map, causing visible blank/tile-flash loops.
         window.addEventListener('resize', refresh);
         window.addEventListener('pageshow', refresh);
         window.addEventListener('bps-operational-resume', refresh);
-        window.addEventListener('bps-map-tiles-failed', recoverTiles);
         refresh();
         settleTimer = window.setTimeout(refresh, 250);
 
@@ -167,7 +161,6 @@ function MapViewportSync() {
             window.removeEventListener('resize', refresh);
             window.removeEventListener('pageshow', refresh);
             window.removeEventListener('bps-operational-resume', refresh);
-            window.removeEventListener('bps-map-tiles-failed', recoverTiles);
             if (settleTimer) window.clearTimeout(settleTimer);
         };
     }, [map]);

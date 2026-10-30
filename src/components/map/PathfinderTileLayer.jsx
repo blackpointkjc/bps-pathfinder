@@ -2,6 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { TileLayer } from 'react-leaflet';
 
 const THEME_KEY = 'bps-map-theme';
+// Preserve a working tile provider through React map unmount/remount cycles.
+// Repeatedly trying a failing provider made the map alternate between two
+// different basemaps in the user's recording.
+const workingProviderByGroup = new Map();
 const CARTO_RASTER_KEY = 'cb1_2ias_1_14dba310e123052c62d832d9';
 const cartoRasterUrl = path => `https://{s}.basemaps.cartocdn.com/${path}?key=${CARTO_RASTER_KEY}`;
 
@@ -62,30 +66,34 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
   const effectiveTheme = theme || globalTheme;
   const providerGroup = satellite ? 'satellite' : effectiveTheme === 'night' ? 'night' : 'street';
   const providers = useMemo(() => PROVIDERS[providerGroup], [providerGroup]);
-  const [providerIndex, setProviderIndex] = useState(0);
-  const [, setTileErrors] = useState(0);
+  const [providerIndex, setProviderIndex] = useState(() => workingProviderByGroup.get(providerGroup) || 0);
+  const tileErrorCountRef = useRef(0);
+  const exhaustedNoticeRef = useRef(false);
   const loadedNoticeRef = useRef(false);
 
   useEffect(() => {
-    setProviderIndex(0);
-    setTileErrors(0);
+    setProviderIndex(workingProviderByGroup.get(providerGroup) || 0);
+    tileErrorCountRef.current = 0;
+    exhaustedNoticeRef.current = false;
     loadedNoticeRef.current = false;
   }, [providerGroup]);
 
   const provider = providers[Math.min(providerIndex, providers.length - 1)];
   const handleTileError = () => {
-    setTileErrors(errors => {
-      const next = errors + 1;
-      if (next >= 3 && providerIndex < providers.length - 1) {
-        setProviderIndex(index => Math.min(index + 1, providers.length - 1));
-        loadedNoticeRef.current = false;
-        return 0;
-      }
-      if (next >= 3 && providerIndex >= providers.length - 1) {
-        window.dispatchEvent(new CustomEvent('bps-map-tiles-failed', { detail: { providerGroup } }));
-      }
-      return next;
-    });
+    // Tile requests can fail together during a slow zoom/offline transition.
+    // Fallback once per provider and never redraw the whole map in response.
+    tileErrorCountRef.current += 1;
+    if (tileErrorCountRef.current < 6) return;
+    tileErrorCountRef.current = 0;
+    if (providerIndex < providers.length - 1) {
+      const next = providerIndex + 1;
+      workingProviderByGroup.set(providerGroup, next);
+      setProviderIndex(next);
+      loadedNoticeRef.current = false;
+    } else if (!exhaustedNoticeRef.current) {
+      exhaustedNoticeRef.current = true;
+      window.dispatchEvent(new CustomEvent('bps-map-tiles-failed', { detail: { providerGroup } }));
+    }
   };
 
   return (
@@ -106,6 +114,7 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
         eventHandlers={{
           tileerror: handleTileError,
           tileload: () => {
+            tileErrorCountRef.current = 0;
             if (loadedNoticeRef.current) return;
             loadedNoticeRef.current = true;
             window.dispatchEvent(new CustomEvent('bps-map-tiles-loaded', { detail: { providerGroup, provider: provider.id } }));

@@ -86,6 +86,10 @@ export default function Navigation() {
     const [activeCalls, setActiveCalls] = useState([]);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isLiveTracking, setIsLiveTracking] = useState(false);
+    // Free map by default: tracking a GPS marker should never commandeer the
+    // viewport while the officer is inspecting the area. Navigation / Recenter
+    // explicitly opt in to camera-follow.
+    const [followMyLocation, setFollowMyLocation] = useState(false);
     const [gpsQuality, setGpsQuality] = useState({ state: 'acquiring', accuracy: null });
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [heading, setHeading] = useState(null);
@@ -923,6 +927,7 @@ export default function Navigation() {
             setNavTurnDistanceFeet(Math.max(0, Math.round((Number(routeSteps[0]?.distance) || 0) * 3.28084)));
             setNavDistanceMiles(route.distance / 1609.344);
             setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
+            setFollowMyLocation(true);
             setIsNavigating(true);
             setRecentDestinations(rememberDestination(currentUser?.id, { ...destination, coords: [destLat, destLng] }));
             setShowCallSidebar(false);
@@ -1238,6 +1243,7 @@ export default function Navigation() {
         lastSpokenNavStepRef.current = -1;
         spokenNavPromptsRef.current.clear();
         setIsNavigating(false);
+        setFollowMyLocation(false);
         setNavDestination(null);
         setNavRoute([]);
         setNavSteps([]);
@@ -1254,6 +1260,7 @@ export default function Navigation() {
             toast.error('Unable to get your current location');
             return;
         }
+        setFollowMyLocation(true);
         setRecenterRevision(revision => revision + 1);
         setMapCenter([...fresh]);
         window.setTimeout(() => setMapCenter(null), 800);
@@ -1550,7 +1557,7 @@ export default function Navigation() {
                     mapCenter={mapCenter}
                     fitBounds={fitBounds}
                     isNavigating={isNavigating}
-                    gpsFollowEnabled={isLiveTracking && gpsQuality?.state === 'live'}
+                    gpsFollowEnabled={(isNavigating || followMyLocation) && isLiveTracking && gpsQuality?.state === 'live'}
                     recenterRevision={recenterRevision}
                     upcomingManeuverDistance={navTurnDistanceFeet}
                     baseMapType={jurisdictionFilters.baseMapType}
