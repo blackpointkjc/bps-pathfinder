@@ -65,8 +65,11 @@ Deno.serve(async (req) => {
       readWithRetry('Call records', () => base44.asServiceRole.entities.DispatchCall.filter(activeQuery,'-time_received',pageSize+1,offsets.active), []),
       readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.filter(archiveQuery,'-time_received',pageSize+1,offsets.archived), []),
     ]);
-    // Never advance a paging cursor past an unavailable source.
-    if (activeRead.error || archivedRead.error) throw new Error(activeRead.error || archivedRead.error);
+    // A broken historical archive must never hide healthy live CAD calls.
+    // Keep the available source on screen and identify any incomplete source.
+    // Only fail when both source reads failed; the browser can still recover
+    // verified live calls from its shared Dispatch cache in that case.
+    if (activeRead.error && archivedRead.error) throw new Error('Both active and archived call sources are temporarily unavailable.');
     // On first page only: if the historical creation-date index has no rows,
     // retry the call timestamp index once. Stay bounded at one page and carry
     // the chosen mode in the pagination cursor so subsequent pages align.
@@ -115,21 +118,27 @@ Deno.serve(async (req) => {
     const numbers = [...new Set(selected.map(({row})=>String(cadRef(row)||'')).filter(Boolean))];
     const callFilter = { call_id: { $in: ids } };
     // Only enrich this page. The former global reads fetched 8,000+ unrelated rows.
-    const [alertRead,assignmentRead,linkedRead,propertyLinksRead] = await Promise.all([
+    // Live CAD / Call History must paint quickly under Base44 API limits.
+    // Extra joins are optional. The full audit/enrichment path remains
+    // available with include_details:true, but default history returns the
+    // authoritative core records using no extra cross-entity roundtrips.
+    const includeDetails=input.include_details===true;
+    const emptyRead={data:[],error:''};
+    const [alertRead,assignmentRead,linkedRead,propertyLinksRead] = includeDetails ? await Promise.all([
       readWithRetry('Property alerts',()=>ids.length?base44.asServiceRole.entities.PropertyAlert.filter({callId:{$in:ids}},'-created_date',300):Promise.resolve([]),[]),
       readWithRetry('Call assignments',()=>ids.length?base44.asServiceRole.entities.CallAssignment.filter(callFilter,'-assigned_at',300):Promise.resolve([]),[]),
       readWithRetry('Linked reports',()=>ids.length?base44.asServiceRole.entities.ReportCallLink.filter({$or:[callFilter,{call_number:{$in:numbers}}]},'-linked_at',300):Promise.resolve([]),[]),
       readWithRetry('Manual property links',()=>ids.length?base44.asServiceRole.entities.PropertyCallLink.filter({$or:[callFilter,{archive_id:{$in:ids}}]},'-linked_at',300):Promise.resolve([]),[])
-    ]);
+    ]) : [emptyRead,emptyRead,emptyRead,emptyRead];
     const alerts:any[] = alertRead.data || [];
     const unitIds = [...new Set([
       ...(assignmentRead.data||[]).map((row:any)=>String(row.unit_id||'')),
       ...selected.flatMap(({row})=>Array.isArray(row.assigned_units)?row.assigned_units.map(String):[]),
     ].filter(Boolean))];
-    const unitRead = await readWithRetry('CAD units',()=>unitIds.length?base44.asServiceRole.entities.Unit.filter({id:{$in:unitIds}},'-last_update_at',300):Promise.resolve([]),[]);
+    const unitRead = includeDetails ? await readWithRetry('CAD units',()=>unitIds.length?base44.asServiceRole.entities.Unit.filter({id:{$in:unitIds}},'-last_update_at',300):Promise.resolve([]),[]) : emptyRead;
     const userIds = [...new Set([...unitIds,...(unitRead.data||[]).map((row:any)=>String(row.user_id||''))].filter(Boolean))];
     const emails = (unitRead.data||[]).map((row:any)=>String(row.user_email||row.email||'')).filter(Boolean);
-    const userRead = await readWithRetry('Assigned officers',()=>userIds.length?base44.asServiceRole.entities.User.filter({$or:[{id:{$in:userIds}},{email:{$in:emails}}]},'-updated_date',300):Promise.resolve([]),[]);
+    const userRead = includeDetails ? await readWithRetry('Assigned officers',()=>userIds.length?base44.asServiceRole.entities.User.filter({$or:[{id:{$in:userIds}},{email:{$in:emails}}]},'-updated_date',300):Promise.resolve([]),[]) : emptyRead;
     const hasMore = (activeRead.data||[]).length > consumed.active || (archivedRead.data||[]).length > consumed.archived;
     const nextCursor = hasMore ? {snapshot_at:snapshot,active:offsets.active+consumed.active,archived:offsets.archived+consumed.archived,active_mode:sourceMode.active,archived_mode:sourceMode.archived} : null;
     const linksByCall=new Map<string,any[]>();

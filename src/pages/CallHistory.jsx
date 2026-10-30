@@ -258,7 +258,7 @@ export default function CallHistory() {
             }
 
             const result = await withRequestTimeout(
-                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined, page_size:40, cursor:append?cursorRef.current:null}),
+                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, include_details:false, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined, page_size:40, cursor:append?cursorRef.current:null}),
                 15000,
                 'Call history request'
             );
@@ -329,7 +329,30 @@ export default function CallHistory() {
             setLastRefresh(new Date());
         } catch (e) {
             console.error('[HISTORY] feed load failed:', e);
-            setHistoryWarning('Call History service is unavailable or throttled. Previous records remain visible if already loaded; retry after the API cooldown.');
+            // A partial backend outage must not turn 34 verified dispatch
+            // calls into a false zero-row history. Recover via the shared
+            // active-call feed, which Dispatch Center already uses.
+            let recovered=readLastGoodCalls().filter(isVisibleActiveCall);
+            if(!recovered.length && !append){
+              try {recovered=(await withRequestTimeout(loadActiveDispatchCallRows(100),12000,'Verified CAD history fallback')).filter(isVisibleActiveCall);}
+              catch(error){console.warn('[HISTORY] Shared CAD fallback unavailable',error?.message||error);}
+            }
+            if(recovered.length && !searchRef.current.trim() && filtersRef.current.agency==='ALL' && filtersRef.current.status==='ALL'){
+              const current=referenceRowsRef.current;
+              const merged=new Map(current.map(item=>[String(item.original_call_id||item.id),item]));
+              for(const row of recovered){
+                const stamp=parseServerDate(row.time_received||row.created_date)?.getTime()||0;
+                if(fromDateRef.current&&stamp<new Date(fromDateRef.current+'T00:00:00').getTime())continue;
+                if(throughDateRef.current&&stamp>new Date(throughDateRef.current+'T23:59:59.999').getTime())continue;
+                const key=String(row.original_call_id||row.id);
+                merged.set(key,{...merged.get(key),...row,_source:'active',_historyFallback:true});
+              }
+              setRows([...merged.values()]);
+              setLastRefresh(new Date());
+              setHistoryWarning(`Showing ${recovered.length} verified current CAD calls while archived history is unavailable. Older records may be incomplete.`);
+            } else {
+              setHistoryWarning('Call History service is unavailable or throttled. Previous records remain visible if already loaded; retry after the API cooldown.');
+            }
             // This is not an empty history search result; leave an explicit
             // warning rather than silently displaying zero records.
             console.warn('Call History request failed:',e?.message||'Unknown error');
