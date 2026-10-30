@@ -30,23 +30,21 @@ const featureCollection = features => ({type:'FeatureCollection',features});
 // Use same-origin /functions, both in published and preview apps.
 const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
 
-/**
- * Opt-in interactive TomTom SDK renderer. Does not unmount or replace the
- * operational Leaflet CAD map. If the map proxy is inaccessible or WebGL fails,
- * officers close this view and keep the full-featured dispatch map unchanged.
- */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable}) {
+/** TomTom main CAD map, with automatic fallback to the original map on failure. */
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
   const callsRef=useRef(activeCalls);
   const userInteractedRef=useRef(false);
+  const mapClickEnabledRef=useRef(mapPickEnabled);
   const lastFollowAtRef=useRef(0);
   const onSelectPointRef=useRef(onSelectPoint);
   const onMapUnavailableRef=useRef(onMapUnavailable);
-  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination});
+  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
+  const terrainInitRef=useRef(false);
   const mapReadyRef=useRef(false);
   const cleanupRef=useRef(null);
   const tileErrorsRef=useRef(0);
@@ -59,7 +57,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   clickRef.current=onCallClick;
   onSelectPointRef.current=onSelectPoint;
   onMapUnavailableRef.current=onMapUnavailable;
-  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination};
+  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin};
+  mapClickEnabledRef.current=mapPickEnabled;
   // A traffic style reload creates new sources. Immediately repopulate them
   // from the latest CAD snapshot instead of waiting for the next GPS update.
   const syncCadData=(map)=>{
@@ -67,11 +66,15 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const snapshot=cadDataRef.current;
     const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
     callsRef.current=calls;
-    map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id}))));
+    map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42)}))));
     const units=(snapshot.otherUnits||[]).filter(unit=>mapped(unit.latitude,unit.longitude));
-    map.getSource('pathfinder-units')?.setData(featureCollection(units.map((unit,i)=>marker(unit.id||i,unit.latitude,unit.longitude))));
+    map.getSource('pathfinder-units')?.setData(featureCollection(units.map((unit,i)=>marker(unit.id||i,unit.latitude,unit.longitude,{label:String(unit.unit_number||unit.unitName||unit.name||'Officer').slice(0,35)}))));
     map.getSource('pathfinder-self')?.setData(featureCollection(coords(snapshot.currentLocation)?[marker('self',snapshot.currentLocation[0],snapshot.currentLocation[1])]:[]));
     map.getSource('pathfinder-destination')?.setData(featureCollection(snapshot.destination && coords(snapshot.destination.coords)?[marker('destination',snapshot.destination.coords[0],snapshot.destination.coords[1])]:[]));
+    const pins=(snapshot.searchPins||[]).filter(pin=>coords(pin?.coords));
+    map.getSource('pathfinder-search-results')?.setData(featureCollection(pins.map((pin,index)=>marker(pin.id||`search-${index}`,pin.coords[0],pin.coords[1],{title:String(pin.name||pin.address||'Destination').slice(0,70)}))));
+    const chosen=snapshot.selectedPin;
+    map.getSource('pathfinder-selected-point')?.setData(featureCollection(chosen&&coords(chosen.coords)?[marker('selected',chosen.coords[0],chosen.coords[1])]:[]));
     const points=(snapshot.route||[]).filter(coords).map(point=>[Number(point[1]),Number(point[0])]);
     map.getSource('pathfinder-route')?.setData(featureCollection(points.length>=2?[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]:[]));
   };
@@ -81,7 +84,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     let errorTimer;
     async function init(){
       try {
-        const [{TomTomMap, TrafficFlowModule, TrafficIncidentsModule}, {TomTomConfig}, maplibre]=await Promise.all([
+        const [{TomTomMap, BaseMapModule, TerrainModule, TrafficFlowModule, TrafficIncidentsModule}, {TomTomConfig}, maplibre]=await Promise.all([
           import('@tomtom-org/maps-sdk/map'), import('@tomtom-org/maps-sdk/core'), import('maplibre-gl'),
         ]);
         if(cancelled || !elementRef.current) return;
@@ -121,7 +124,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         TomTomConfig.instance.put({commonBaseURL:proxy,language:'en-US'});
         maplibre.setWorkerUrl(workerURL());
         sdk=new TomTomMap({registerMapLibreWorker:false,
-          style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['trafficFlow','trafficIncidents']},
+          style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['terrain','trafficFlow','trafficIncidents']},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
             ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:13},
           // MapLibre's transformRequest MUST be synchronous; an async callback
@@ -181,6 +184,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addSource('pathfinder-calls',{type:'geojson',data:featureCollection([])});
             map.addLayer({id:'pathfinder-calls-dot',type:'circle',source:'pathfinder-calls',
               paint:{'circle-radius':8,'circle-color':'#ff334b','circle-stroke-width':2,'circle-stroke-color':'#fff'}});
+            map.addLayer({id:'pathfinder-calls-label',type:'symbol',source:'pathfinder-calls',
+              layout:{'text-field':['get','label'],'text-size':11,'text-offset':[0,1.6],'text-optional':true},
+              paint:{'text-color':'#ffffff','text-halo-color':'#7f1025','text-halo-width':2}});
             map.on('click','pathfinder-calls-dot',event=>{
               const id=event.features?.[0]?.properties?.id;
               const current=(callsRef.current||[]).find(call=>String(call.id)===String(id));
@@ -191,6 +197,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addSource('pathfinder-units',{type:'geojson',data:featureCollection([])});
             map.addLayer({id:'pathfinder-units-dot',type:'circle',source:'pathfinder-units',
               paint:{'circle-radius':7,'circle-color':'#0ea5e9','circle-stroke-width':2,'circle-stroke-color':'#fff'}});
+            map.addLayer({id:'pathfinder-units-label',type:'symbol',source:'pathfinder-units',
+              layout:{'text-field':['get','label'],'text-size':11,'text-offset':[0,1.55],'text-optional':true},
+              paint:{'text-color':'#fff','text-halo-color':'#075985','text-halo-width':2}});
           }
           if(!map.getSource('pathfinder-self')){
             map.addSource('pathfinder-self',{type:'geojson',data:featureCollection([])});
@@ -207,9 +216,36 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addLayer({id:'pathfinder-destination-dot',type:'circle',source:'pathfinder-destination',
               paint:{'circle-radius':10,'circle-color':'#f97316','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
           }
+          if(!map.getSource('pathfinder-search-results')){
+            map.addSource('pathfinder-search-results',{type:'geojson',data:featureCollection([])});
+            map.addLayer({id:'pathfinder-search-results-dot',type:'circle',source:'pathfinder-search-results',
+              paint:{'circle-radius':8,'circle-color':'#facc15','circle-stroke-color':'#111827','circle-stroke-width':2}});
+            map.on('click','pathfinder-search-results-dot',event=>{
+              const feature=event.features?.[0];
+              if(feature?.geometry?.coordinates)onSelectPointRef.current?.([feature.geometry.coordinates[1],feature.geometry.coordinates[0]]);
+            });
+          }
+          if(!map.getSource('pathfinder-selected-point')){
+            map.addSource('pathfinder-selected-point',{type:'geojson',data:featureCollection([])});
+            map.addLayer({id:'pathfinder-selected-point-dot',type:'circle',source:'pathfinder-selected-point',
+              paint:{'circle-radius':12,'circle-color':'#f97316','circle-stroke-width':3,'circle-stroke-color':'#ffffff'}});
+          }
           syncCadData(map);
           mapReadyRef.current=true;
           setReady(true);
+          // Built-in TomTom 3D buildings and real elevation/terrain are part
+          // of the standard Maps SDK. The enhanced-landmarks preview is not
+          // required to enable these stable layers.
+          if(!terrainInitRef.current){
+            terrainInitRef.current=true;
+            Promise.allSettled([
+              BaseMapModule.get(sdk,{groups:{buildings3D:{visible:true}}}),
+              TerrainModule.get(sdk,{hillshade:{visible:true,method:'multidirectional'},elevation:{visible:true,exaggeration:1.15}}),
+            ]).then(results=>{
+              for(const result of results) if(result.status==='rejected')
+                console.warn('TomTom 3D feature unavailable:',result.reason?.message||'provider unavailable');
+            });
+          }
           // Re-running TrafficFlowModule.get on every style.load can cause
           // repeated style reloads, lost CAD layers, and visible flickering.
           if(trafficInitRef.current) return;
@@ -228,7 +264,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         map.on('style.load',dataInit);
         map.on('click', event=>{
           const features=map.queryRenderedFeatures(event.point,{layers:['pathfinder-calls-dot']});
-          if(!features.length)onSelectPointRef.current?.([event.lngLat.lat,event.lngLat.lng]);
+          if(!features.length && mapClickEnabledRef.current)onSelectPointRef.current?.([event.lngLat.lat,event.lngLat.lng]);
         });
         map.on('dragstart',()=>{userInteractedRef.current=true;});
         if(map.isStyleLoaded()) dataInit();
@@ -254,7 +290,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       }catch(e){if(!cancelled)setError(`TomTom SDK could not start: ${e?.message||'Unknown error'}. Close to return to CAD.`);}
     }
     init();
-    return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
+    return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;terrainInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
   }, []);
   useEffect(()=>{
     if(!trafficReady)return;
@@ -264,17 +300,23 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     if(ready&&map)syncCadData(map);
-  },[ready,currentLocation,activeCalls,otherUnits,route,destination]);
+  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin]);
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
-    if (!ready || !map || !coords(currentLocation) || !navigation) return;
+    const driving=Boolean(navigation) || Number(speedMph)>=5;
+    if (!ready || !map || !coords(currentLocation) || !driving) return;
     const now=Date.now();
     if(now-lastFollowAtRef.current<700)return;
     lastFollowAtRef.current=now;
     const bearing=Number.isFinite(Number(heading)) ? Number(heading) : map.getBearing();
     map.easeTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:Math.max(map.getZoom(),16),pitch:55,bearing,duration:650,essential:true});
-  },[ready,currentLocation,heading,navigation?.instruction]);
-  const surface = <div role={embedded ? 'region' : 'dialog'} aria-modal="true" aria-label="TomTom SDK interactive map" className={embedded ? 'absolute inset-0 flex h-full w-full flex-col overflow-hidden bg-[#07101b] text-white' : 'fixed inset-0 z-[2147482900] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#07101b] text-white'} style={embedded ? {height:'100%',minHeight:0,width:'100%'} : {height:'100dvh',minHeight:'100dvh',width:'100vw',paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
+  },[ready,currentLocation,heading,navigation?.instruction,speedMph]);
+  useEffect(()=>{
+    if(!ready || !recenterRevision)return;
+    const map=sdkRef.current?.mapLibreMap;
+    if(map && coords(currentLocation))map.flyTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:16,duration:550});
+  },[ready,recenterRevision]);
+  const surface = <div role={embedded ? 'region' : 'dialog'} aria-modal={embedded ? undefined : 'true'} aria-label="TomTom SDK interactive map" className={embedded ? 'absolute inset-0 flex h-full w-full flex-col overflow-hidden bg-[#07101b] text-white' : 'fixed inset-0 z-[2147482900] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#07101b] text-white'} style={embedded ? {height:'100%',minHeight:0,width:'100%'} : {height:'100dvh',minHeight:'100dvh',width:'100vw',paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
     {!embedded && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-900 bg-[#0b1d2b] p-2 sm:flex-nowrap sm:gap-3 sm:p-3">
       <div className="flex min-w-0 items-center gap-2"><Shield className="h-5 w-5 shrink-0 text-cyan-300"/><div className="min-w-0"><h2 className="truncate text-sm font-black">TomTom Maps SDK</h2><p className="truncate text-[10px] text-slate-300">Interactive map preview · CAD remains available underneath</p></div></div>
       <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">

@@ -1663,6 +1663,11 @@ export default function Navigation() {
                       route={navRoute}
                       destination={navDestination}
                       heading={heading}
+                      speedMph={speed}
+                      recenterRevision={recenterRevision}
+                      selectedPin={mapSelectedDestination}
+                      searchPins={showAddressSearch ? addressResults : []}
+                      mapPickEnabled={mapPickMode}
                       mapTheme={mapTheme}
                       navigation={isNavigating && activeNavStep ? {instruction:formatInstruction(activeNavStep), distance:navDistanceLabel, eta:navEtaLabel, provider:navRouteProvider} : null}
                       onMapUnavailable={()=>setTomTomMainMapFailed(true)}
