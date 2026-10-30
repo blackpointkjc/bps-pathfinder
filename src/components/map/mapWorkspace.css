@@ -142,3 +142,32 @@
 .pf-map-tool-panel .pf-layer-swatch.police {background:#173e6c!important;border-color:#5796d3!important;}.pf-map-tool-panel .pf-layer-swatch.police:after {background:#9acfff;}
 .pf-map-tool-panel .pf-layer-swatch.rescue {background:#105647!important;border-color:#48aa93!important;}.pf-map-tool-panel .pf-layer-swatch.rescue:after {background:#8de9d0;}
 .pf-map-tool-panel .pf-layer-swatch.jail {background:#443c63!important;border-color:#9688bc!important;}.pf-map-tool-panel .pf-layer-swatch.jail:after {background:#d0c2f4;}
+
+/* Keep destination search in the right-hand map lane; speed and GPS readouts
+   occupy the upper-left corner. Do not cover either with the search form. */
+.pf-navigation-workspace .pf-map-search-panel {
+  left: auto;
+  right: 82px;
+  bottom: auto;
+  width: min(520px, calc(100% - 275px));
+  max-width: none;
+  max-height: min(52dvh, 440px);
+  min-width: 0;
+  overscroll-behavior: contain;
+  background: transparent;
+}
+.pf-navigation-workspace .pf-map-search-panel input {min-width: 0;}
+@media (max-width: 767px) {
+  .pf-navigation-workspace .pf-map-search-panel {
+    left: 9px;
+    right: 62px;
+    width: auto;
+    max-height: min(45dvh, 380px);
+    /* On phones the speed display takes the left-side lane. Place the search
+       panel beneath it instead of letting controls overlap the speed readout. */
+    transform: translateY(172px);
+  }
+  .pf-navigation-workspace .pf-map-search-panel.pf-search-routing {transform: none;}
+  .pf-navigation-workspace .pf-map-search-panel form {min-width: 0;}
+  .pf-navigation-workspace .pf-map-search-panel form button {flex-shrink: 0; padding-inline: 8px;}
+}
