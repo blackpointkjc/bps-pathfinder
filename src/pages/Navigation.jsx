@@ -7,7 +7,7 @@ import { readRecentDestinations, rememberDestination } from '@/lib/recentDestina
 import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
 import { observeElementSize } from '@/lib/observeElementSize';
 import LiveMapToolbar from '@/components/map/LiveMapToolbar';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
@@ -36,6 +36,8 @@ import { lookupNavigationDestinations, lookupNavigationPoint } from '@/lib/navig
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
+
+const TomTomSdkMapPreview = lazy(() => import('@/components/map/TomTomSdkMapPreview'));
 
 const validPosition = (lat, lng) => [lat,lng].every(value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !(Number(lat) === 0 && Number(lng) === 0);
 const liveSpeedMph = value => {
@@ -165,6 +167,7 @@ export default function Navigation() {
     const [selectedCall, setSelectedCall] = useState(null);
     const [callDistrict, setCallDistrict] = useState(null);
     const [showHeatmap, setShowHeatmap] = useState(false);
+    const [showTomTomSdkPreview, setShowTomTomSdkPreview] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [unmappedCalls, setUnmappedCalls] = useState([]);
     const [showUnmapped, setShowUnmapped] = useState(false);
@@ -1569,6 +1572,14 @@ export default function Navigation() {
                             active: mapTheme === 'night',
                         },
                         {
+                            key: 'tomtom-sdk',
+                            onClick: () => setShowTomTomSdkPreview(true),
+                            title: 'Open TomTom Maps SDK interactive map (preview)',
+                            icon: <Layers className="h-4 w-4" />,
+                            active: showTomTomSdkPreview,
+                            disabled: !isOnline,
+                        },
+                        {
                             key: 'tomtom-traffic',
                             onClick: () => setShowTomTomTraffic(value => !value),
                             title: showTomTomTraffic ? 'Hide TomTom route traffic' : 'Show TomTom route traffic',
@@ -1847,6 +1858,19 @@ export default function Navigation() {
                     </AnimatePresence>
                 </div>
             )}
+
+            {showTomTomSdkPreview && <Suspense fallback={<div role="status" className="fixed inset-0 z-[2147482900] flex items-center justify-center bg-slate-950 text-white">Loading TomTom Maps SDK…</div>}>
+                <TomTomSdkMapPreview
+                    onClose={() => setShowTomTomSdkPreview(false)}
+                    currentLocation={currentLocation}
+                    activeCalls={activeCalls}
+                    otherUnits={mapVisibleUnits}
+                    route={navRoute}
+                    destination={navDestination}
+                    mapTheme={mapTheme}
+                    onCallClick={call => { setShowTomTomSdkPreview(false); setSelectedCall(call); setShowCallSidebar(true); }}
+                />
+            </Suspense>}
 
             <MapToolDock actions={mapToolActions} panel={mapToolsPanel} onPanelChange={panel=>{
               setMapToolsPanel(panel); if(panel){setShowCallSidebar(false);setShowAddressSearch(false);setMapPickMode(false);}
