@@ -1948,6 +1948,7 @@ export default function Navigation() {
                             </div>
 
                             {/* Description / Narrative */}
+                            <AddressCallHistory address={selectedCall.location} excludeCallId={selectedCall.id} />
                             {selectedCall.description && (
                                 <div className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-3">
                                     <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">Narrative</div>
