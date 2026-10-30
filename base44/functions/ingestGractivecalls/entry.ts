@@ -1,3 +1,4 @@
+import { fetchCadSource } from './sourceFetch.ts';
 import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
@@ -309,18 +310,9 @@ async function websiteCallId(row: { agency: string; time_received: string; incid
 
 async function fetchLiveWebsiteCalls() {
   const url = `${GRAC_WEBSITE_URL}?bpspf_live=${Date.now()}-${crypto.randomUUID()}`;
-  const response = await fetch(url, {
-    cache: 'no-store',
-    headers: {
-      Accept: 'text/html',
-      'User-Agent': 'BPS-Pathfinder-CAD/4.2',
-      'Cache-Control': 'no-cache, no-store, max-age=0',
-      Pragma: 'no-cache',
-    },
-    signal: AbortSignal.timeout(6_000),
-  });
-  if (!response.ok) throw new Error(`GRAC website returned HTTP ${response.status}`);
-  const html = await response.text();
+  const result = await fetchCadSource(url, GRAC_WEBSITE_URL, 'text/html');
+  const html = result.text;
+  console.info('CAD website source', JSON.stringify({cache_age_seconds:result.cacheAgeSeconds,fetched_at:result.fetchedAt}));
   const calls: any[] = [];
   for (const rowMatch of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
     const cells = [...rowMatch[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(match => decodeHtmlText(match[1]));
@@ -356,19 +348,9 @@ async function fetchLiveWebsiteCalls() {
 }
 
 async function fetchLiveApiCalls() {
-  const liveSourceUrl = `${GRAC_API_URL}?bpspf=${Date.now()}-${crypto.randomUUID()}`;
-  const response = await fetch(liveSourceUrl, {
-    cache: 'no-store',
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'BPS-Pathfinder-CAD/4.3',
-      'Cache-Control': 'no-cache, no-store, max-age=0',
-      Pragma: 'no-cache',
-    },
-    signal: AbortSignal.timeout(6_000),
-  });
-  if (!response.ok) throw new Error(`GRAC API returned HTTP ${response.status}`);
-  const payload = await response.json();
+  const result = await fetchCadSource(GRAC_API_URL, GRAC_API_URL, 'application/json');
+  const payload = JSON.parse(result.text);
+  console.info('CAD API source', JSON.stringify({cache_age_seconds:result.cacheAgeSeconds,fetched_at:result.fetchedAt}));
   if (!Array.isArray(payload)) throw new Error('Unexpected GRAC API response');
   return payload.map(normalizeCall).filter(Boolean) as any[];
 }
@@ -396,7 +378,13 @@ function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[]) {
     if (!web) {
       // The API can lag behind the website. Enrich website rows, never union
       // disappeared API-only incidents back into a successful live table.
-      if (websiteCalls.length) continue;
+      const stamp = new Date(api.time_received || 0).getTime();
+      const newestWebsiteStamp = websiteCalls.reduce((latest, row) => Math.max(latest, new Date(row.time_received || 0).getTime() || 0), 0);
+      // A cached HTML table cannot veto a newer JSON incident. Limit additions to
+      // the operational hour and nonterminal statuses; never revive old API-only
+      // history simply because it is missing from the website.
+      if (websiteCalls.length && !(stamp >= newestWebsiteStamp && stamp <= Date.now() + 120000
+        && Date.now() - stamp <= 3600000 && !['Cleared','Cancelled','Canceled','Closed'].includes(String(api.status || '')))) continue;
       byKey.set(key, { ...api, source_channel: api.source_channel || 'grac_api' });
       continue;
     }
@@ -1011,7 +999,7 @@ function chooseCanonical(records: any[]) {
 }
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 30_000;
+const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 15_000;
 
 async function acquireIngestionLease(base44: any) {
   const token = crypto.randomUUID();
@@ -1296,6 +1284,13 @@ Deno.serve(async (req) => {
     const websiteIncoming = websiteResult.status === 'fulfilled' ? websiteResult.value : [];
     const apiIncoming = apiResult.status === 'fulfilled' ? apiResult.value : [];
     const sourceObservedAt = new Date().toISOString();
+    console.info('CAD source poll', JSON.stringify({
+      observed_at:sourceObservedAt, website_rows:websiteIncoming.length, api_rows:apiIncoming.length,
+      website_error:websiteResult.status==='rejected'?String(websiteResult.reason?.message||websiteResult.reason):'',
+      api_error:apiResult.status==='rejected'?String(apiResult.reason?.message||apiResult.reason):'',
+      website_latest:websiteIncoming.reduce((v,row)=>String(row.time_received||'')>v?String(row.time_received):v,''),
+      api_latest:apiIncoming.reduce((v,row)=>String(row.time_received||'')>v?String(row.time_received):v,''),
+    }));
     const latestWebsiteReceived = websiteIncoming.reduce((latest: string, call: any) => {
       const value = String(call?.time_received || '');
       return !latest || new Date(value).getTime() > new Date(latest).getTime() ? value : latest;

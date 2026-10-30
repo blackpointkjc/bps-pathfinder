@@ -41,7 +41,7 @@ export default function CadSourceSyncMonitor({ user }) {
     // Tick frequently enough to retry a collided server lease within seconds.
     // cadCallFeed and the backend lease keep this from turning into duplicate writes;
     // command screens should not wait a minute to discover a property call.
-    const timer = window.setInterval(sync, 30_000);
+    const timer = window.setInterval(sync, 15_000);
     const resume = () => { if (navigator.onLine) void sync(); };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);
