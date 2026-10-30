@@ -1750,7 +1750,7 @@ export default function Navigation() {
             </div>
 
             {isNavigating && navDestination && (
-                <div style={{ top: toolbarHeight + 12 }} className="pointer-events-auto absolute left-3 right-3 z-[1215] md:right-auto md:w-[560px]">
+                <div style={{ top: toolbarHeight + 12 }} className="pf-route-guidance pointer-events-auto absolute left-3 right-3 z-[1215] md:right-auto md:w-[560px]">
                     <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#06100d] shadow-[0_22px_70px_rgba(0,0,.72)]">
                         {routePreviewOnly && <div role="status" className="border-b border-amber-600/50 bg-amber-950 px-4 py-2 text-xs font-semibold text-amber-200">Route preview · Live GPS is not available. Directions will not advance automatically until GPS is enabled.</div>}
                         {(routing || navOffRoute) && (
@@ -1791,7 +1791,7 @@ export default function Navigation() {
                             <button type="button" onClick={stopInAppNavigation} className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500 bg-red-950 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
                         </div>
                     </div>
-                    <div className="mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
+                    <div className="pf-route-speed mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                             <div className="border-b border-slate-200 px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
                                 <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? 'N/A'}{roadSpeedLimit != null && <span className="ml-1 text-[10px] font-black">MPH</span>}{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div><div className="mt-1 text-[9px] font-medium leading-tight text-slate-600" title={roadSpeedLimitSource || roadSpeedLimitStatus}>{roadSpeedLimitRoad || roadSpeedLimitStatus}</div>
@@ -1805,7 +1805,7 @@ export default function Navigation() {
             )}
 
             {!isNavigating && currentLocation && (gpsQuality?.state === 'live' || Number(speed) > 0) && (
-                <div style={{ top: toolbarHeight + 12 }} className="pointer-events-none absolute left-3 z-[1214]">
+                <div style={{ top: toolbarHeight + 12 }} className="pf-idle-speed pointer-events-none absolute left-3 z-[1214]">
                     <div className="w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
                         <div className="border-b border-slate-200 px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
@@ -1823,7 +1823,7 @@ export default function Navigation() {
             {mapPickMode && <div style={{ top: toolbarHeight + 8 }} className="pointer-events-none absolute left-3 right-24 z-[1220] rounded-lg bg-emerald-950/95 p-3 text-sm text-emerald-100" role="status">Tap the map to drop a pin. Drag to move the map. Tap Pick Point again to cancel.</div>}
             {/* Street address search and destination routing */}
             {showAddressSearch && !mapPickMode && (
-                <div style={{ top: toolbarHeight + (isNavigating ? 380 : 12) }} className={`pf-map-search-panel pointer-events-auto absolute z-[1220] overflow-x-hidden overflow-y-auto rounded-xl ${isNavigating ? 'pf-search-routing' : ''}`}>
+                <div style={{ top: toolbarHeight + 12 }} className={`pf-map-search-panel pointer-events-auto absolute z-[1220] overflow-x-hidden overflow-y-auto rounded-xl ${isNavigating ? 'pf-search-routing' : ''}`}>
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input
@@ -1838,11 +1838,11 @@ export default function Navigation() {
                             <Search className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'SEARCH'}
                         </button>
                     </form>
-                    <label className="mt-2 block rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
-                        <span className="block font-semibold">Starting address (optional when GPS is available)</span>
+                    <details className="pf-manual-origin mt-2 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
+                        <summary className="cursor-pointer font-semibold">No GPS? Enter a starting address</summary>
                         <input value={manualOriginQuery} onChange={event => setManualOriginQuery(event.target.value)} placeholder="Enter your starting address if GPS is unavailable" className="mt-1 h-10 w-full rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500" />
                         <span className="mt-1 block text-[10px] text-slate-400">No GPS? Enter a starting address, select any destination, then tap Navigate Here for a TomTom route preview. Live driving updates require device GPS.</span>
-                    </label>
+                    </details>
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         <button type="button" onClick={() => showHomeLocation()} disabled={addressSearching || isNavigating}
                             className="flex items-center justify-center gap-1.5 rounded-lg border border-cyan-600/50 bg-cyan-950/70 px-3 py-2 text-[10px] font-black text-cyan-100 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-40">
