@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { listDirectoryLocations } from '@/lib/appDirectory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,14 @@ export default function RecordsAssistant() {
   const [warrantMatches, setWarrantMatches] = useState(0);
   const [warrantStatusText, setWarrantStatusText] = useState('');
   const [personName, setPersonName] = useState('');
+  const [siteNames,setSiteNames]=useState([]);
+  const [site,setSite]=useState('');
+  const [residentMatches,setResidentMatches]=useState([]);
+  useEffect(()=>{let mounted=true;listDirectoryLocations('site_name').then(list=>{
+    if(!mounted)return;
+    const options=[...new Set((list||[]).map(item=>item.site_name||item.name).filter(Boolean))];
+    setSiteNames(options);
+  }).catch(()=>{});return()=>{mounted=false;};},[]);
   const [courtLevel, setCourtLevel] = useState('All Court Levels');
   const [courtName, setCourtName] = useState('');
   const [caseNumber, setCaseNumber] = useState('');
@@ -53,6 +62,17 @@ export default function RecordsAssistant() {
       if (data.error) throw new Error(data.error);
       const returnedResults = data.results || [];
       setResults(returnedResults);
+      setResidentMatches([]);
+      if(site){
+        try{
+          const registryResult=await base44.functions.invoke('manageParkingRecords',{action:'records_check',site_name:site,query:effectiveQuery});
+          const registry=registryResult?.data||registryResult||{};
+          if(!registry.error){
+            setResidentMatches(registry.matches||[]);
+            if((registry.matches||[]).length)announceVoice(`Pathfinder internal records check found ${registry.matches.length} matching resident or property parking records.`,{dedupeMs:1500});
+          }
+        }catch(error){console.warn('Resident registry lookup unavailable:',error?.message||error)}
+      }
       setSearchedSources(data.searched_sources || 0);
       setTotalMatches(data.total_matches || 0);
       setWarrantMatches(data.warrant_matches || 0);
@@ -112,6 +132,9 @@ export default function RecordsAssistant() {
                 </div>
               </div>
             )}
+            <label className="mb-3 block text-xs font-semibold text-slate-300">Property registry to include in person / vehicle check
+              <select aria-label="Search resident property registry" value={site} onChange={e=>setSite(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white sm:max-w-md"><option value="">Company records only</option>{siteNames.map(name=><option key={name} value={name}>{name}</option>)}</select>
+            </label>
             <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row">
               {searchType !== 'person' && (
                 <div className="relative flex-1">
@@ -162,6 +185,7 @@ export default function RecordsAssistant() {
           </div>
         )}
 
+        {residentMatches.length>0&&<section className="rounded-lg border border-emerald-700/60 bg-emerald-950/20 p-3 text-sm"><h2 className="font-bold text-emerald-200">Property resident and vehicle records · {residentMatches.length}</h2><p className="mt-1 text-xs text-slate-400">Internal property registry; no government registration or DMV verification</p>{residentMatches.map((row,i)=><div key={`${row.source}-${row.id}-${i}`} className="mt-2 border-t border-emerald-900/40 pt-2"><b>{row.full_name||row.citation_number||row.vehicle_plate||row.license_plate}</b> · {row.source} · {row.unit_number?`Unit ${row.unit_number} · `:''}{row.vehicle_plate||row.license_plate||''} {row.vehicle_state||''} {row.lease_status||row.status||''}</div>)}</section>}
         <div className="grid gap-3">
           {visible.map(item => {
             const isBolo = item.entity === 'BOLOAlert' || item.source === 'BOLO / Alerts';

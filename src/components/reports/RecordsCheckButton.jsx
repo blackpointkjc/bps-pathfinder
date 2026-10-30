@@ -11,8 +11,20 @@ export default function RecordsCheckButton({name='',plate='',site='',compact=fal
    const payload=(await base44.functions.invoke('searchCompanyRecords',{query,search_type:plate?'vehicle':'person',entities:['ParkingViolation','TrespassingNotice','MDTrespassNotice','IncidentReport','BOLOAlert']}));
    const data=payload?.data||payload;
    if(data?.error)throw Error(data.error);
-   const matches=data.results||[];
-   setReport({matches,total:data.total_matches??matches.length});
+   let residentMatches=[];
+   if(site){
+     const registryResult=await base44.functions.invoke('manageParkingRecords',{action:'records_check',site_name:site,query});
+     const registry=registryResult?.data||registryResult||{};
+     if(registry?.error)throw Error(registry.error);
+     residentMatches=(registry.matches||[]).map(row=>({
+       ...row,source:row.source,entity:row.source==='Property resident registry'?'PropertyResident':'ParkingViolation',
+       label:row.full_name||row.citation_number||row.vehicle_plate||row.license_plate,
+       summary:row.source==='Property resident registry'?`Unit ${row.unit_number||'unknown'} · ${row.lease_status||'unknown'} · Vehicle ${row.vehicle_plate||'not registered'}`:
+         `Prior ${row.violation_type||'parking'} record · ${row.date||''}`,
+     }));
+   }
+   const matches=[...residentMatches,...(data.results||[])];
+   setReport({matches,total:matches.length});
    announceRecordSearch(matches,{searchType:plate?'vehicle':'person',warrantMatches:0,warrantStatusText:''});
    if(!matches.length&&typeof window!=='undefined'&&window.speechSynthesis){
     // Only a local record search result; never announce a person is legally cleared.
