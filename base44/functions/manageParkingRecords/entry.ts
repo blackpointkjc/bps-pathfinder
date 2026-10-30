@@ -33,6 +33,16 @@ Deno.serve(async req => {
       const rows = await entity.filter({site_name:site},'-created_date',limit);
       return rows.filter((row:any)=>siteKey(row.site_name)===siteKey(site));
     };
+    // Returned parking notices are officer correction tasks. Restrict this
+    // overview to the issuing officer, unless the caller is a full admin.
+    if(action==='officer_tasks'){
+      if(!officer)return fail('Officer access required',403);
+      const returned=await entities.ParkingViolation.filter(admin?{status:'rejected'}:{officer_id:String(user.id)},'-created_date',120);
+      return Response.json({tasks:(returned||[]).filter((v:any)=>v.status==='rejected'&&v.supervisor_review_status==='returned').map((v:any)=>({
+        id:v.id,citation_number:v.citation_number,location:v.location,violation_date:v.violation_date,
+        license_plate:v.license_plate,officer_id:v.officer_id,supervisor_notes:v.supervisor_notes,status:v.status,
+      }))});
+    }
     // Supervisor Action Items can display parking approvals without loading
     // resident PII or scanning every property's vehicle registry.
     if(action==='review_queue'){
