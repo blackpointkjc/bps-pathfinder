@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
     const snapshotMs = Math.min(Date.now(), Date.parse(cursor.snapshot_at || '') || Date.now());
     const snapshot = new Date(snapshotMs).toISOString();
     const since = new Date(Math.max(snapshotMs - 90 * 86400000, Math.min(snapshotMs, Date.parse(input.since || '') || 0))).toISOString();
+    const until = new Date(Math.min(snapshotMs, Date.parse(input.until || '') || snapshotMs)).toISOString();
     const offsets = {
       active: Math.max(0, Math.floor(Number(cursor.active) || 0)),
       archived: Math.max(0, Math.floor(Number(cursor.archived) || 0)),
@@ -49,10 +50,10 @@ Deno.serve(async (req) => {
     const clauses:any[] = [
       { created_date: { $lte: snapshot } },
       { $or: [
-        { time_received: { $gte: since, $lte: snapshot } },
+        { time_received: { $gte: since, $lte: until } },
         { $and: [
           { $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] },
-          { created_date: { $gte: since } },
+          { created_date: { $gte: since, $lte: until } },
         ] },
       ] },
     ];

@@ -77,6 +77,8 @@ export default function CallHistory() {
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState(()=>new URLSearchParams(window.location.search).get('q')||'');
     const searchRef=useRef(search);searchRef.current=search;
+    const [throughDate, setThroughDate] = useState('');
+    const throughDateRef = useRef(throughDate); throughDateRef.current = throughDate;
     const [fromDate, setFromDate] = useState('');
     const fromDateRef = useRef(fromDate); fromDateRef.current = fromDate;
     const [agencyFilter, setAgencyFilter] = useState('ALL');
@@ -236,7 +238,7 @@ export default function CallHistory() {
               .catch(error=>console.warn('[HISTORY] Property boundaries unavailable',error?.message));
 
             const result = await withRequestTimeout(
-                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, page_size:75, cursor:append?cursorRef.current:null}),
+                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined, page_size:75, cursor:append?cursorRef.current:null}),
                 15000,
                 'Call history request'
             );
@@ -494,7 +496,7 @@ export default function CallHistory() {
 
     return (
         <div className="min-h-full bg-[#07111d] p-2 font-mono text-white md:p-3">
-            <form onSubmit={event=>{event.preventDefault();handleRefresh();}} className="mb-3 flex flex-wrap gap-2"><input aria-label="Search all CAD history" value={search} onChange={e=>setSearch(e.target.value)} placeholder="CAD / BPS number, incident or address" className="min-h-10 min-w-48 flex-1 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/><input type="date" aria-label="History start date" value={fromDate} onChange={event=>setFromDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/><button type="submit" disabled={refreshing} className="rounded bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">{refreshing?'Searching…':'Search active & archived calls'}</button></form>
+            <form onSubmit={event=>{event.preventDefault();handleRefresh();}} className="mb-3 flex flex-wrap gap-2"><input aria-label="Search all CAD history" value={search} onChange={e=>setSearch(e.target.value)} placeholder="CAD / BPS number, incident or address" className="min-h-10 min-w-48 flex-1 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/><label className="text-xs text-slate-300">From <input type="date" aria-label="History start date" value={fromDate} onChange={event=>setFromDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><label className="text-xs text-slate-300">Through <input type="date" aria-label="History end date" value={throughDate} onChange={event=>setThroughDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><button type="submit" disabled={refreshing} className="rounded bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">{refreshing?'Searching…':'Search active & archived calls'}</button></form>
             {/* Header */}
             <div className="flex flex-col gap-3 rounded-2xl border border-[#2b4258] bg-[#0a1623] p-3 shadow-xl lg:flex-row lg:items-center">
                 <div className="flex min-w-0 items-center gap-3">
