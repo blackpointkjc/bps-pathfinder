@@ -30,6 +30,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const clickRef=useRef(onCallClick);
   const callsRef=useRef(activeCalls);
   const trafficRef=useRef({flow:null,incidents:null});
+  const trafficInitRef=useRef(false);
+  const mapReadyRef=useRef(false);
   const [trafficVisible,setTrafficVisible]=useState(true);
   const [trafficReady,setTrafficReady]=useState(false);
   const [ready,setReady]=useState(false);
@@ -113,9 +115,13 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             map.addLayer({id:'pathfinder-destination-dot',type:'circle',source:'pathfinder-destination',
               paint:{'circle-radius':10,'circle-color':'#f97316','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
           }
+          mapReadyRef.current=true;
           setReady(true);
-          // The TomTom SDK owns real, live vector-tile traffic flow and incident
-          // overlays; no generated/random traffic on a patrol map.
+          // Re-running TrafficFlowModule.get on every style.load can cause
+          // repeated style reloads, lost CAD layers, and visible flickering.
+          if(trafficInitRef.current) return;
+          trafficInitRef.current=true;
+          // The TomTom SDK owns real vector traffic-flow/incident overlays.
           Promise.all([
             TrafficFlowModule.get(sdk,{visible:true}),
             TrafficIncidentsModule.get(sdk,{visible:true,icons:{visible:true}}),
@@ -129,7 +135,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         map.on('style.load',dataInit);
         if(map.isStyleLoaded()) dataInit();
         const onMapError=e=>{
-          if(!cancelled && !sdk.mapReady) setError('TomTom map resources could not load. The original CAD map is still available.');
+          if(!cancelled && !mapReadyRef.current) setError('TomTom map resources could not load. The original CAD map is still available.');
           console.warn('[TomTom SDK map]',e?.error?.code||e?.error?.message||'Map resource unavailable');
         };
         map.on('error',onMapError);
@@ -137,7 +143,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       }catch(e){if(!cancelled)setError(`TomTom SDK could not start: ${e?.message||'Unknown error'}. Close to return to CAD.`);}
     }
     init();
-    return ()=>{cancelled=true;clearTimeout(errorTimer);trafficRef.current={flow:null,incidents:null};try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
+    return ()=>{cancelled=true;clearTimeout(errorTimer);trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
   }, []);
   useEffect(()=>{
     if(!trafficReady)return;
