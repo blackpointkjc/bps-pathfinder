@@ -166,6 +166,68 @@
         "type": "string"
       },
       "description": "Backup officer IDs from the linked call"
+    },
+    "vehicle_year": {
+      "type": "string"
+    },
+    "vehicle_vin": {
+      "type": "string"
+    },
+    "unit_number": {
+      "type": "string"
+    },
+    "subject_name": {
+      "type": "string"
+    },
+    "subject_dob": {
+      "type": "string"
+    },
+    "resident_id": {
+      "type": "string"
+    },
+    "resident_verified": {
+      "type": "boolean"
+    },
+    "client_notes": {
+      "type": "string"
+    },
+    "client_review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "acknowledged",
+        "disputed",
+        "resolved"
+      ],
+      "default": "pending"
+    },
+    "supervisor_notes": {
+      "type": "string"
+    },
+    "supervisor_review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "returned"
+      ],
+      "default": "pending"
+    },
+    "approval_history": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "fine_due_date": {
+      "type": "string"
+    },
+    "officer_name": {
+      "type": "string"
     }
   },
   "required": [

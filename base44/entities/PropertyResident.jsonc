@@ -1,0 +1,73 @@
+{
+  "name": "PropertyResident",
+  "type": "object",
+  "properties": {
+    "site_name": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "unit_number": {
+      "type": "string"
+    },
+    "lease_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pending",
+        "former"
+      ],
+      "default": "active"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "vehicle_plate": {
+      "type": "string"
+    },
+    "vehicle_state": {
+      "type": "string"
+    },
+    "vehicle_year": {
+      "type": "string"
+    },
+    "vehicle_make": {
+      "type": "string"
+    },
+    "vehicle_model": {
+      "type": "string"
+    },
+    "vehicle_color": {
+      "type": "string"
+    },
+    "vehicle_vin": {
+      "type": "string"
+    },
+    "updated_by": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "registered_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "site_name",
+    "full_name"
+  ],
+  "rls": {
+    "read": false,
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}

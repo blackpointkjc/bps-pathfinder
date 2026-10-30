@@ -273,6 +273,27 @@
     "supplement_number": {
       "type": "number",
       "description": "Sequential supplement number for the original incident report"
+    },
+    "vehicle_year": {
+      "type": "string"
+    },
+    "vehicle_make": {
+      "type": "string"
+    },
+    "vehicle_model": {
+      "type": "string"
+    },
+    "vehicle_color": {
+      "type": "string"
+    },
+    "vehicle_plate": {
+      "type": "string"
+    },
+    "vehicle_state": {
+      "type": "string"
+    },
+    "vehicle_vin": {
+      "type": "string"
     }
   },
   "required": [

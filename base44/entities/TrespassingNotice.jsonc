@@ -152,6 +152,27 @@
     "id_photo": {
       "type": "string",
       "description": "Photo of subject's ID"
+    },
+    "vehicle_year": {
+      "type": "string"
+    },
+    "vehicle_make": {
+      "type": "string"
+    },
+    "vehicle_model": {
+      "type": "string"
+    },
+    "vehicle_color": {
+      "type": "string"
+    },
+    "vehicle_plate": {
+      "type": "string"
+    },
+    "vehicle_state": {
+      "type": "string"
+    },
+    "vehicle_vin": {
+      "type": "string"
     }
   },
   "required": [

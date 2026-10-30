@@ -1,0 +1,50 @@
+{
+  "name": "PropertyParkingRule",
+  "type": "object",
+  "properties": {
+    "site_name": {
+      "type": "string"
+    },
+    "violation_type": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "fine_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "warning_only": {
+      "type": "boolean",
+      "default": false
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "updated_by": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "site_name",
+    "violation_type",
+    "label"
+  ],
+  "rls": {
+    "read": false,
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
