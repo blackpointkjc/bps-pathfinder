@@ -65,6 +65,54 @@ async function lookupVirginiaPostedLimit(lat: number, lng: number, heading: numb
   return best ? { speed_limit_mph: Math.round(best.mph), road_name: best.name || requestedRoad, source: 'Virginia DOT posted speed limits', estimated: false, matched_distance_m: Math.round(best.dist) } : null;
 }
 
+// The broader road catalog requires a privately configured TomTom API key.
+// Snap the officer's actual recent GPS segment; do not derive a legal speed
+// from road class, average traffic speed, or a fictional GPS coordinate.
+async function lookupTomTomPostedLimit(
+  lat: number, lng: number, priorLat: number, priorLng: number, requestedRoad: string,
+) {
+  const key = Deno.env.get('TOMTOM_API_KEY') || '';
+  if (!key || !valid(priorLat) || !valid(priorLng)) return null;
+  const mLat = 111320 * (lat - priorLat);
+  const mLng = 111320 * Math.cos(lat * Math.PI / 180) * (lng - priorLng);
+  const distance = Math.hypot(mLat, mLng);
+  // Two genuine GPS points are mandatory. Ignore stationary/noisy fixes and
+  // device teleportation; these could match the wrong street or carriageway.
+  if (distance < 12 || distance > 1200) return null;
+  const params = new URLSearchParams({
+    key,
+    points: `${priorLng},${priorLat};${lng},${lat}`,
+    fields: '{route{properties{speedLimits{value,unit,type},address{roadName}}}}',
+    vehicleType: 'PassengerCar', measurementSystem: 'imperial',
+  });
+  const response = await fetch(`https://api.tomtom.com/snapToRoads/1?${params}`, {
+    signal: AbortSignal.timeout(4500),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const payload = await response.json().catch(() => null);
+  const route = Array.isArray(payload?.route) ? payload.route : [];
+  const wanted = normalizeRoad(requestedRoad);
+  for (const part of [...route].reverse()) {
+    const props = part?.properties || {};
+    const candidateRoad = String(props.address?.roadName || '');
+    const actual = normalizeRoad(candidateRoad);
+    // With a named route, do not take a nearby named highway's posted limit.
+    if (wanted && actual && actual !== wanted && !actual.includes(wanted) && !wanted.includes(actual)) continue;
+    const limits = Array.isArray(props.speedLimits) ? props.speedLimits : [props.speedLimits];
+    for (const limit of limits) {
+      if (!limit || String(limit.type || 'Maximum').toLowerCase() !== 'maximum') continue;
+      const value = Number(limit.value);
+      const unit = String(limit.unit || '').toLowerCase();
+      const mph = unit === 'mph' ? value : unit === 'kmph' || unit === 'kph' || unit === 'km/h' ? value * 0.621371 : NaN;
+      if (Number.isFinite(mph) && mph >= 10 && mph <= 90) return {
+        speed_limit_mph: Math.round(mph), road_name: candidateRoad || requestedRoad,
+        source: 'TomTom road-matched speed limit', estimated: false,
+      };
+    }
+  }
+  return null;
+}
+
 // Reduce provider throttling during fleet tracking. This cache is private to
 // the warm backend instance; it never stores officer identity or routes.
 const speedLimitCache = new Map<string, { until: number; payload: Record<string, unknown> }>();
@@ -125,11 +173,15 @@ Deno.serve(async req => {
     const cached = cachedSpeedLimit(cacheKey);
     if (cached) return Response.json({ success: true, ...cached });
 
-    // Prefer the maintained state dataset where coverage exists. The public
-    // OSM map endpoint has a shared request budget and may issue HTTP 429;
-    // do not request it unnecessarily or repeatedly retry a throttle response.
+    // Prefer verified state records. On roads with no state inventory entry,
+    // the optional commercial road-matching catalog covers city/county streets
+    // where a speed limit is available. Without credentials, fall back to OSM.
     const virginia = await lookupVirginiaPostedLimit(lat, lng, heading, requestedRoad).catch(() => null);
     if (virginia) return Response.json({ success: true, ...storeSpeedLimit(cacheKey, virginia) });
+    const priorLat = Number(body.previous_latitude);
+    const priorLng = Number(body.previous_longitude);
+    const tomtom = await lookupTomTomPostedLimit(lat, lng, priorLat, priorLng, requestedRoad).catch(() => null);
+    if (tomtom) return Response.json({ success: true, ...storeSpeedLimit(cacheKey, tomtom) });
 
     if (Date.now() < osmBackoffUntil) return Response.json({ success: true,
       ...storeSpeedLimit(cacheKey, { speed_limit_mph: null, road_name: requestedRoad,

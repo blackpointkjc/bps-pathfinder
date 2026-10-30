@@ -1050,6 +1050,8 @@ export default function Navigation() {
             // the carriageway; avoid filtering out a correctly mapped road.
             heading: Number(speed) >= 12 ? heading : null,
             speed_mph: Number(speed) || 0,
+            previous_latitude: Number.isFinite(previous.lat) ? previous.lat : null,
+            previous_longitude: Number.isFinite(previous.lng) ? previous.lng : null,
             accuracy: gpsQuality?.accuracy ?? null,
         }), 10000, 'Road speed limit').then(response => {
             if (requestSeq !== speedLimitRequestSeqRef.current) return;
