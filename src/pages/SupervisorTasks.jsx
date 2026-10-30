@@ -51,7 +51,12 @@ export default function SupervisorTasks() {
   });
   const parkingReviews=parkingQueue.reviews||[];
   const items = useMemo(() => buildSupervisorActionItems(payload), [payload]);
-  const summary = useMemo(() => summarizeActionItems(items), [items]);
+  const baseSummary=useMemo(()=>summarizeActionItems(items),[items]);
+  const summary=useMemo(()=>({...baseSummary,
+    total:baseSummary.total+parkingReviews.length,
+    urgent:baseSummary.urgent+parkingReviews.length,
+    byGroup:{...baseSummary.byGroup,reports:(baseSummary.byGroup.reports||0)+parkingReviews.length},
+  }),[baseSummary,parkingReviews.length]);
 
   const visibleItems = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -95,7 +100,7 @@ export default function SupervisorTasks() {
   return (
     <div className="min-h-screen bg-[#070d17] p-3 pb-10 text-white sm:p-4">
       <div className="mx-auto max-w-[1500px] space-y-4">
-        {parkingReviews.length>0&&<section className="rounded-xl border border-amber-500/40 bg-[#132236] p-4">
+        {parkingReviews.length>0&&(group==='all'||group==='reports')&&<section className="rounded-xl border border-amber-500/40 bg-[#132236] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-base font-black text-amber-200">Parking approval tasks ({parkingReviews.length})</h2><p className="mt-1 text-xs text-slate-400">Issued notices awaiting supervisor approval or return with correction notes.</p></div><button type="button" className="rounded-lg border border-cyan-600 px-3 py-2 text-xs font-bold" disabled={parkingFetching} onClick={()=>refreshParking()}>Refresh parking tasks</button></div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">{parkingReviews.slice(0,15).map(review=><button type="button" key={review.id} className="rounded-lg border border-slate-600 p-3 text-left hover:border-amber-500" onClick={()=>navigate(`${createPageUrl('SupervisorCenter')}?section=command&tool=parking`)}><div className="text-sm font-bold text-white">{review.citation_number||'Parking notice'} · {review.license_plate||'No plate'}</div><div className="mt-1 text-xs text-slate-300">{review.location} · {review.violation_date} · {review.violation_type}</div><div className="mt-1 text-[11px] text-amber-200">Open Parking Review to approve or return</div></button>)}</div>
         </section>}
