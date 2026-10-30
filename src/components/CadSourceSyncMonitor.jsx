@@ -38,10 +38,10 @@ export default function CadSourceSyncMonitor({ user }) {
     };
     // Let the signed-in page load before beginning expensive source ingestion.
     const first = window.setTimeout(sync, 3_000);
-    // Tick frequently enough to retry a collided server lease within seconds.
-    // cadCallFeed and the backend lease keep this from turning into duplicate writes;
-    // command screens should not wait a minute to discover a property call.
-    const timer = window.setInterval(sync, 15_000);
+    // Upstream ingestion is expensive and already protected by a server-side
+    // scheduled workflow. A 30s foreground fallback plus realtime CAD events
+    // avoids four source polls per minute on every signed-in command session.
+    const timer = window.setInterval(sync, 30_000);
     const resume = () => { if (navigator.onLine) void sync(); };
     window.addEventListener('online', resume);
     window.addEventListener('focus', resume);
