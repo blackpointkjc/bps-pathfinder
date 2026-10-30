@@ -246,8 +246,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             setResourceStatus('TomTom street tiles available');
           }catch(e){
             if(!cancelled){
-              setResourceStatus(`TomTom tile connection failed: ${e?.message || 'network error'}`);
-              setError('TomTom map resource check failed. Back to CAD uses the original map.');
+              setResourceStatus(`TomTom tile check pending: ${e?.message || 'network error'}`);
             }
           }
         })();
@@ -258,7 +257,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         sdk=new TomTomMap({registerMapLibreWorker:false,
           style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['terrain','trafficFlow','trafficIncidents']},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
-            ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:13},
+            ? [Number(currentLocation[1]),Number(currentLocation[0])] : [-77.436,37.541],zoom:14.5,pitch:42},
           // MapLibre's transformRequest MUST be synchronous; an async callback
           // returns a Promise instead of RequestParameters and breaks tiles.
           transformRequest:request=>{
@@ -426,10 +425,20 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         };
         map.on('error',onMapError);
         map.on('sourcedata', event=>{if(event.isSourceLoaded)tileErrorsRef.current=0;});
+        // Loading 3D terrain can temporarily replace map layers and clear
+        // queryRenderedFeatures() while style tiles are being re-fetched.
+        // Never switch officers back to Leaflet just because terrain/traffic
+        // was still loading at 18 seconds. Only a fatal init error or the
+        // user's explicit backup-map choice should replace TomTom.
         errorTimer=window.setTimeout(()=>{
           if(cancelled)return;
-          const rendered=map.isStyleLoaded() && map.queryRenderedFeatures().length>0;
-          if(!rendered){setError('TomTom map has not rendered street features.'); if(embedded)onMapUnavailableRef.current?.();}
+          let rendered=false;
+          try{rendered=map.isStyleLoaded() && map.queryRenderedFeatures().length>0;}catch{}
+          if(!rendered){
+            map.resize();
+            map.triggerRepaint();
+            setResourceStatus('TomTom 3D map is loading or rebuilding; CAD backup remains in Map Tools.');
+          }
         },18000);
       }catch(e){if(!cancelled){setError(`TomTom map could not start: ${e?.message||'Unknown error'}.`);if(embedded)onMapUnavailableRef.current?.();}}
     }
