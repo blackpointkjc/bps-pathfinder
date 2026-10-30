@@ -1,22 +1,27 @@
+import { ArrowLeft, Maximize2, Minimize2, RefreshCw, LocateFixed } from 'lucide-react';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
+
 export default function LiveMapToolbar({ user, status, saving, onStatusChange, onBack, onRecenter, gpsLabel, gpsActive, online, speed, unitCount, callCount, unassignedCount, fullscreen, onToggleFullscreen, onRefreshCalls, callsRefreshing, callsStatus, criticalCount }) {
-    return <header aria-label="Live Map controls" className="live-map-toolbar pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-700 bg-[#0a1220]/95 px-2 py-1 text-white backdrop-blur">
-        <button type="button" onClick={onBack} className="flex h-7 shrink-0 items-center gap-1.5 text-xs font-bold"><span aria-hidden="true">←</span> Live Map</button>
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[9px]">
-            <button type="button" onClick={onRecenter} className={`min-w-0 text-left font-semibold ${gpsActive ? 'text-emerald-300' : 'text-amber-300'}`} title="Request a GPS fix and center the map">{gpsLabel}</button>
-            <span className={online ? 'text-blue-300' : 'text-red-300'}>{online ? 'Connected' : 'Offline'}</span>
-            <span className="whitespace-nowrap text-slate-300">{Math.max(0,Math.round(Number(speed) || 0))} mph</span>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 text-[9px] font-semibold text-slate-400">
-            <span>{unitCount} units</span><span>{callCount} calls</span>
-            {unassignedCount > 0 && <span className="text-red-300">{unassignedCount} unassigned</span>}
-        </div>
-        <button type="button" aria-pressed={fullscreen} onClick={onToggleFullscreen} className="ml-auto min-h-11 rounded-lg border border-cyan-600 px-3 text-xs font-bold text-cyan-100">{fullscreen ? 'Exit full screen' : 'Full screen map'}</button>
-        <button type="button" disabled={callsRefreshing} onClick={onRefreshCalls} className="min-h-11 rounded-lg border border-slate-500 px-3 text-xs font-bold disabled:opacity-50">{callsRefreshing ? 'Refreshing calls…' : 'Refresh calls'}</button>
-        <span role="status" className="text-xs text-slate-300">{callsStatus}{criticalCount > 0 ? ' · ' + criticalCount + ' critical' : ''}</span>
-        <button type="button" className="min-h-11 rounded-lg border border-slate-500 px-3 text-xs font-bold" onClick={()=>window.dispatchEvent(new Event('bps-open-offline-maps'))}>Offline maps</button>
-        <OfficerDistressButton currentUser={user} />
-        <OfficerDutyStatusControl user={user} status={status} saving={saving} onChange={onStatusChange} inline />
-    </header>;
+  return <header aria-label="Live Map controls" className="pf-map-header">
+    <div className="pf-map-heading">
+      <button type="button" className="pf-icon-button" onClick={onBack} aria-label="Return to command board" title="Command board"><ArrowLeft size={17}/></button>
+      <div><h1>Live map</h1><span className="pf-map-subtitle">{callCount} calls <span>·</span> {unitCount} {unitCount===1?'unit':'units'}</span></div>
+      {criticalCount>0 && <span className="pf-map-critical">{criticalCount} critical</span>}
+    </div>
+    <div className="pf-map-telemetry">
+      <span className={'pf-connection-dot '+(online?'is-online':'is-offline')}/><span>{online?'Connected':'Offline'}</span>
+      <span className="pf-telemetry-divider"/>
+      <button type="button" onClick={onRecenter} title={gpsLabel} className={gpsActive?'pf-gps-ready':'pf-gps-warning'}><LocateFixed size={13}/>{gpsActive?'GPS active':'GPS unavailable'}</button>
+      <span className="pf-map-speed">{Math.max(0,Math.round(Number(speed)||0))} mph</span>
+      {unassignedCount>0 && <span className="pf-map-unassigned">{unassignedCount} unassigned</span>}
+    </div>
+    <div className="pf-map-header-actions">
+      <span className="pf-map-sync" role="status" title={callsStatus}>{callsRefreshing?'Updating…':callsStatus?.startsWith('Calls checked')?'Up to date':callsStatus}</span>
+      <OfficerDutyStatusControl user={user} status={status} saving={saving} onChange={onStatusChange} compact/>
+      <button type="button" className="pf-icon-button" disabled={callsRefreshing} onClick={onRefreshCalls} title="Refresh calls" aria-label="Refresh calls"><RefreshCw size={16} className={callsRefreshing?'animate-spin':''}/></button>
+      <button type="button" className="pf-icon-button" aria-pressed={fullscreen} onClick={onToggleFullscreen} title={fullscreen?'Exit full screen':'Full screen'} aria-label={fullscreen?'Exit full screen':'Full screen map'}>{fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
+      <OfficerDistressButton currentUser={user} compact/>
+    </div>
+  </header>;
 }
