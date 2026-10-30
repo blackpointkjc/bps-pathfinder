@@ -16,7 +16,7 @@ function normalizedText(value) {
 }
 
 function filterVisibleActiveCalls(rows = []) {
-  return (rows || []).filter(isVisibleActiveCall);
+  return (rows || []).filter(call => isVisibleActiveCall(call));
 }
 
 function preferCall(current, candidate) {

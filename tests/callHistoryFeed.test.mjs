@@ -116,6 +116,14 @@ assert.equal(result.data.count,1);
 records.DispatchCall.push({...prior,id:'original-prior'});
 result=await addressHistory({address:'3000 Griffin Avenue, Richmond, VA'});
 assert.equal(result.data.count,1); // active/archive copies are one call
+let browserFeedSource = await readFile('src/lib/activeDispatchCalls.js','utf8');
+browserFeedSource = browserFeedSource.replace("../../base44/functions/_shared/callFeedPolicy.js",new URL('../base44/functions/_shared/callFeedPolicy.js',import.meta.url).href)
+ .replace("import { base44 } from '@/api/base44Client';","const base44 = {};")
+ .replace("import { withRequestTimeout } from '@/lib/requestTimeout';","const withRequestTimeout = task => task;");
+const browserFeed = await import('data:text/javascript;base64,'+Buffer.from(browserFeedSource).toString('base64'));
+assert.equal(browserFeed.dedupeOperationalCalls([live]).length,1);
+assert.equal(browserFeed.dedupeOperationalCalls([live,{...live,id:'another-agency',agency:'HPD'}]).length,2);
+assert.equal(browserFeed.dedupeOperationalCalls([{...live,agency_cad_number:'123'},{...live,id:'another-call',agency_cad_number:'456'}]).length,2);
 const liveFeed = await loadHandler('base44/functions/getActiveDispatchCalls/entry.ts');
 records.DispatchCall.push(live, {...live,id:'oldImported',time_received:new Date(now-3*86400000).toISOString()}, {...live,id:'future',time_received:new Date(now+600000).toISOString()});
 const liveResult = await liveFeed({limit:100});
