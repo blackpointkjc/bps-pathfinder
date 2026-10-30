@@ -35,7 +35,8 @@ export default function Schedule() {
     enabled: !!user?.email,
     staleTime: 60000,
     refetchOnMount: true,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: 60000,
   });
   useEffect(() => {
     if (!user?.id) return;
@@ -47,8 +48,17 @@ export default function Schedule() {
         queryClient.invalidateQueries({ queryKey: ['myScheduleData'] });
       }, 800);
     };
-    const stops = ['CallOut', 'Schedule'].map(name => base44.entities[name].subscribe(refresh));
-    return () => { clearTimeout(timer); stops.forEach(stop => typeof stop === 'function' && stop()); };
+    const stops = ['CallOut', 'Schedule', 'ScheduleWeekStatus'].map(name => base44.entities[name].subscribe(refresh));
+    window.addEventListener('bps-data-changed', refresh);
+    window.addEventListener('bps-operational-resume', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearTimeout(timer);
+      stops.forEach(stop => typeof stop === 'function' && stop());
+      window.removeEventListener('bps-data-changed', refresh);
+      window.removeEventListener('bps-operational-resume', refresh);
+      window.removeEventListener('focus', refresh);
+    };
   }, [user?.id, queryClient]);
   const payrollPeriods = scheduleData.payrollPeriods || [];
   const schedules = scheduleData.schedules || [];
@@ -230,7 +240,7 @@ export default function Schedule() {
       dateStr >= item.week_start_date && dateStr <= item.week_end_date
     );
     if (!status?.is_ready) return false;
-    return !(status.unpublished_officer_emails || []).includes(user.email);
+    return !(status.unpublished_officer_emails || []).some(email => String(email).trim().toLowerCase() === String(user.email).trim().toLowerCase());
   }, [allWeekStatuses, user?.email]);
 
   const visibleSchedules = React.useMemo(() => {

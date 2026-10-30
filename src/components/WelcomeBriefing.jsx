@@ -459,7 +459,13 @@ export default function WelcomeBriefing({ user }) {
   const go = page => {
     // Navigation from inside the briefing must not acknowledge or dismiss it.
     // Keep this as SPA navigation so the briefing remains mounted and visible.
-    navigate(createPageUrl(page));
+    const centerRoutes = {
+      DispatchCenter: '/CADCenter?section=live&tool=dispatch',
+      Schedule: '/OfficerCenter?section=today&tool=myschedule',
+      Announcements: '/OfficerCenter?section=today&tool=announcements',
+      SupervisorTasks: '/SupervisorCenter?section=command&tool=tasks',
+    };
+    navigate(centerRoutes[page] || createPageUrl(page));
   };
 
   const startSession = async () => {

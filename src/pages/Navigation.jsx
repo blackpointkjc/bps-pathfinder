@@ -1682,7 +1682,7 @@ export default function Navigation() {
             {mapPickMode && <div style={{ top: toolbarHeight + 8 }} className="pointer-events-none absolute left-3 right-24 z-[1220] rounded-lg bg-emerald-950/95 p-3 text-sm text-emerald-100" role="status">Tap the map to drop a pin. Drag to move the map. Tap Pick Point again to cancel.</div>}
             {/* Street address search and destination routing */}
             {showAddressSearch && !mapPickMode && (
-                <div style={{ top: toolbarHeight + (isNavigating ? 250 : 12) }} className="pf-map-search-panel absolute bottom-3 left-3 right-16 z-[1220] max-w-[560px] overflow-y-auto pointer-events-auto">
+                <div style={{ top: toolbarHeight + (isNavigating ? 380 : 12) }} className="pf-map-search-panel pointer-events-auto absolute z-[1220] overflow-x-hidden overflow-y-auto rounded-xl">
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input

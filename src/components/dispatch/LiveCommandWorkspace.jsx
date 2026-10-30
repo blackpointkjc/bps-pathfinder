@@ -28,7 +28,6 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
   ].map(metric=><button type="button" key={metric.id} onClick={()=>metric.id==='resources'?setUtilityPanel('resources'):setFocus(metric.id)} aria-pressed={metric.id!=='resources'&&focus===metric.id} className="rounded-sm border-l-4 border-y border-r border-slate-700 border-l-cyan-700 bg-[#101e2d] px-3 py-2 text-left transition hover:border-slate-500 aria-pressed:border-cyan-600 aria-pressed:bg-cyan-950/20"><span className="text-xs font-medium text-slate-400">{metric.label}</span><strong className={'mt-1 block text-2xl font-black '+metric.color}>{metric.value}</strong><span className="mt-1 block text-xs text-slate-500">{metric.detail}</span></button>)}</div>
   <nav aria-label="Command Board tools" className="mb-3 flex flex-wrap gap-2">
    <button type="button" onClick={()=>setUtilityPanel('duty')} className="min-h-11 rounded-lg border border-cyan-700 bg-slate-900 px-4 py-2 text-sm font-semibold">My duty &amp; location</button>
-   <button type="button" onClick={()=>setUtilityPanel('resources')} className="min-h-11 rounded-lg border border-cyan-700 bg-slate-900 px-4 py-2 text-sm font-semibold">Unit status &amp; resources</button>
   </nav>
   <div className="grid min-w-0 grid-cols-1 gap-2">
    <section className="min-w-0 overflow-hidden rounded-sm border border-cyan-900/70 bg-[#0a1421]" aria-label="Live incident queue">

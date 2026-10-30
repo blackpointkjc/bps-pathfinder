@@ -8,7 +8,7 @@ import UnitDutyBoard from '@/components/dispatch/UnitDutyBoard';
 function UnitStatusPage() {
     const { users, calls, loading, manualRefresh, rateLimited } = useDashboardData();
     const [units, setUnits] = useState(users);
-    useEffect(() => { setUnits(users); }, [users]);
+    useEffect(() => { setUnits(users.map(person => ({ ...person, platoon: person.platoon || person.oversight_platoon || null }))); }, [users]);
     useEffect(() => subscribeOfficerLocationChanges(event => setUnits(rows => applyOfficerLocationEvent(rows, event))), []);
     return <div className="min-h-full bg-[#07111d] p-3 text-white sm:p-5">
         <WorkspaceHeader eyebrow="CAD / Personnel" title="Officer Status" description="Live duty state and assignments, organized by the company rank structure." metrics={[

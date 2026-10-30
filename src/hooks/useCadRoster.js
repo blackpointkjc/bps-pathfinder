@@ -6,7 +6,7 @@ export function mergeCadRoster(directory=[],live=[]) {
  const byEmail=new Map(live.map(p=>[String(p.email||p.officer_email||'').toLowerCase(),p]));
  const joined=directory.filter(isOperationalOfficer).map(p=>{
   const status=byEmail.get(String(p.email).toLowerCase());
-  return {...p,...status,email:p.email,rank:p.rank||status?.rank,last_name:p.last_name||status?.last_name,platoon:p.platoon,profile_photo_url:p.profile_photo_url||status?.profile_photo_url,status:status?.status||p.status||'Out of Service'};
+  return {...p,...status,email:p.email,rank:p.rank||status?.rank,last_name:p.last_name||status?.last_name,platoon:p.platoon||p.oversight_platoon||status?.platoon||status?.oversight_platoon||null,profile_photo_url:p.profile_photo_url||status?.profile_photo_url,status:status?.status||p.status||'Out of Service'};
  });
  const known=new Set(joined.map(p=>p.email.toLowerCase()));
  return [...joined,...live.filter(p=>!known.has(String(p.email||p.officer_email||'').toLowerCase())&&isOperationalOfficer({...p,email:p.email||p.officer_email})).map(p=>({...p,email:p.email||p.officer_email,status:p.status||'Out of Service'}))];

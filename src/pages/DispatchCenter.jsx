@@ -793,7 +793,7 @@ export default function DispatchCenter({embedded=false}) {
             </div>
 
             {showDispatchLog && (
-                <section className="absolute inset-0 z-[130] flex min-h-0 flex-col overflow-hidden bg-[#060b12]" aria-label="Dispatcher Shift Log">
+                <section className="relative z-[130] flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden bg-[#060b12]" aria-label="Dispatcher Shift Log">
                     <div className="flex flex-none items-center gap-3 border-b border-blue-900/70 bg-[#08111d] px-4 py-3">
                         <ClipboardList className="h-4 w-4 text-blue-300" />
                         <div>
@@ -811,6 +811,7 @@ export default function DispatchCenter({embedded=false}) {
             )}
 
 
+            {!showDispatchLog && <>
             {/* ══ COMMAND STATUS STRIP ══ */}
             <div className="dispatch-kpis grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
                 {[
@@ -1114,6 +1115,7 @@ export default function DispatchCenter({embedded=false}) {
                 <button type="button" className="cad-status-scroll-button shrink-0 border-l border-[#26384c] px-2 text-cyan-200 lg:hidden" aria-label="Scroll CAD status right" onClick={() => statusBarRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}><ChevronRight className="h-4 w-4" /></button>
             </div>
 
+            </>}
             {/* Messaging Panel */}
             <MessagingPanel
                 currentUser={currentUser}
