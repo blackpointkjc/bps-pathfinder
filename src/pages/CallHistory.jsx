@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
 import { withRequestTimeout } from '@/lib/requestTimeout';
+import { loadActiveDispatchCallRows, readLastGoodCalls } from '@/lib/activeDispatchCalls';
 import { findPropertyMatch, monitoredPropertiesFromLocations } from '@/utils/alertUtils';
 import {createReportCallLink} from '@/lib/reportCallLinking';
 
@@ -256,6 +257,26 @@ export default function CallHistory() {
             if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
             if (payload.error) throw new Error(payload.error);
             let feedRows = Array.isArray(payload.rows) ? payload.rows : [];
+            let liveFeedRecovered = false;
+            // The archived-history query can return a misleading empty page
+            // while the operational CAD board has verified current calls.
+            // Recover those calls from the SAME shared feed as Dispatch Center,
+            // never invent records or silently claim the archive is complete.
+            if(!append && !feedRows.length && !searchRef.current.trim()
+                && filtersRef.current.agency==='ALL' && filtersRef.current.status==='ALL'
+                && !fromDateRef.current && !throughDateRef.current){
+              let currentCalls = readLastGoodCalls().filter(isVisibleActiveCall);
+              if(!currentCalls.length){
+                try{
+                  currentCalls = (await withRequestTimeout(loadActiveDispatchCallRows(100),12000,'Live CAD history recovery'))
+                    .filter(isVisibleActiveCall);
+                }catch(error){console.warn('[HISTORY] Live CAD fallback unavailable',error?.message||error);}
+              }
+              if(currentCalls.length){
+                feedRows = currentCalls.map(call=>({...call,_source:'active',_historyFallback:true}));
+                liveFeedRecovered=true;
+              }
+            }
             // Independently classify the current CAD rows by live property geometry.
             // This makes Call History update immediately even if PropertyAlert
             // persistence is briefly delayed by ingestion or rate limiting.
@@ -263,7 +284,9 @@ export default function CallHistory() {
             cursorRef.current = payload.next_cursor || null;
             setNextCursor(cursorRef.current);
             pagesLoadedRef.current = append ? pagesLoadedRef.current + 1 : 1;
-            setHistoryWarning((payload.warnings || []).length ? 'Some related details could not be loaded. Refresh to retry.' : '');
+            setHistoryWarning(liveFeedRecovered
+                ? 'Showing verified live CAD calls. The historical archive feed returned no records; archive details may be incomplete.'
+                : (payload.warnings || []).length ? 'Some related details could not be loaded. Refresh to retry.' : '');
             setLoading(false);
 
             // Collapse active/archive copies by the original CAD entity id while
