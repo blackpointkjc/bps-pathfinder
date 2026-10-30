@@ -132,6 +132,17 @@ export function publishLiveLocation(fix) {
     source: String(fix.source || 'browser_geolocation'),
   };
   const derived = movementMetrics(latestFix, candidate);
+  // Reject an isolated physically impossible leap from a previously precise fix.
+  // A single bad GNSS point must not move the officer marker several blocks.
+  // Allow immediate switch to a newer external GNSS source and natural recovery
+  // when the last fix is old; never make an old position permanent.
+  const elapsedSeconds = latestFix ? (candidate.timestamp - latestFix.timestamp) / 1000 : Infinity;
+  if (latestFix && candidate.source === latestFix.source
+      && elapsedSeconds > 0 && elapsedSeconds < 20
+      && latestFix.accuracy <= 50 && candidate.accuracy <= 50
+      && derived.distance > 100 + elapsedSeconds * 55 + latestFix.accuracy + candidate.accuracy) {
+    return;
+  }
   if (candidate.speed === null || !Number.isFinite(Number(candidate.speed))) candidate.speed = derived.speed ?? 0;
   if (!Number.isFinite(Number(candidate.heading)) && Number(candidate.speed) >= 2) candidate.heading = derived.heading;
 
