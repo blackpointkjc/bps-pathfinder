@@ -22,18 +22,28 @@ Deno.serve(async (req) => {
 
     if (!cleanFields.length) return Response.json({ error: 'Add report details before review' }, { status: 400 });
 
-    // Credit-free deterministic professionalization. The previous InvokeLLM call
-    // spent integration credits on every report review; this rule-based pass
-    // cleans casing, spacing, sentence punctuation, and standalone "I" without
-    // an LLM and never invents or omits facts. The response contract is unchanged.
-    const professionalizeParagraph = (text: string) => {
-      const clean = String(text || '')
-        .replace(/[ \t]+/g, ' ')
-        .replace(/\b[iI]\b/g, 'I')
-        .replace(/([.!?])\s*/g, '$1 ')
-        .replace(/(^|[.!?]\s+)([a-z])/g, (_m, p1: string, p2: string) => p1 + p2.toUpperCase())
-        .trim();
-      return clean && !/[.!?]$/.test(clean) ? `${clean}.` : clean;
+    // Sentence-case clean-up for narrative text, without rewriting names,
+    // vehicle plates, acronyms or other reported facts. Preserve hard line
+    // breaks, bullet structure and paragraph spacing. Do not lowercase words:
+    // proper nouns and agency abbreviations must retain their original case.
+    const professionalizeParagraph = (value: string) => {
+      const lines=String(value||'').replace(/\r\n?/g,'\n').split('\n');
+      return lines.map(raw=>{
+        const line=raw.replace(/[ \t]+/g,' ').trim();
+        if(!line)return '';
+        const bullet=/^(?:[-*•]|\d+[.)])\s+/.test(line);
+        // Only a standalone first-person pronoun receives forced uppercase.
+        let formatted=line.replace(/\bi\b/g,'I');
+        formatted=formatted.replace(/(^|[.!?]\s+|[:;]\s+)([a-z])/g,
+          (_m,separator:string,letter:string)=>separator+letter.toUpperCase());
+        // Preserve abbreviations and report references; capitalize the first
+        // alphabetic character after an optional bullet/number prefix.
+        if(bullet)formatted=formatted.replace(/^((?:[-*•]|\d+[.)])\s+)([a-z])/,
+          (_m,prefix:string,letter:string)=>prefix+letter.toUpperCase());
+        else formatted=formatted.replace(/^([a-z])/,letter=>letter.toUpperCase());
+        if(!bullet&&/[\p{L}\p{N}]$/u.test(formatted))formatted+='.';
+        return formatted;
+      }).join('\n').trim();
     };
 
     const output = cleanFields.map((f: any) => ({
