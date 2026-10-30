@@ -39,7 +39,7 @@ Deno.serve(async req => {
       // without specifying a site first.
       return Response.json({sites:client?[...sites]:[],role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
     }
-    if (['overview','residents','rules','violations','resident_save','rule_save','issue','review','records_check','export'].includes(action)) {
+    if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export'].includes(action)) {
       const rejected=sitePermitted();if(rejected)return rejected;
     }
     if (action==='overview' || action==='residents' || action==='records_check') {
@@ -102,9 +102,26 @@ Deno.serve(async req => {
       entry.fine_amount=entry.warning_issued?0:Number(rule?.fine_amount||0);
       entry.status='issued';entry.supervisor_review_status='pending';entry.client_review_status='pending';entry.client_visible=true;
       entry.officer_name=clean(user.full_name||`${user.first_name||''} ${user.last_name||''}`.trim()||user.email);
+      entry.officer_id=String(user.id);
       entry.approval_history=[history(user,'issued',entry.description||'Officer submitted parking notice')];
       const result=await entities.ParkingViolation.create(entry);
       return Response.json({success:true,violation:result});
+    }
+    if(action==='resubmit'){
+      if(!officer)return fail('Officer report access required',403);
+      const id=clean(data.id);
+      const original=await entities.ParkingViolation.get(id);
+      if(!original||!scope(original.location)||siteKey(original.location)!==siteKey(site))return fail('Notice not found at site',404);
+      if(original.status!=='rejected'&&original.supervisor_review_status!=='returned')return fail('Only returned notices can be resubmitted');
+      if(!admin && String(original.officer_id||original.created_by_id||original.created_by||'')!==String(user.id)
+        && clean(original.created_by).toLowerCase()!==clean(user.email).toLowerCase())return fail('Only the issuing officer or an administrator may edit this notice',403);
+      const input=data.violation||{};
+      const patch:any={};for(const field of parkingFields){if(input[field]!==undefined)patch[field]=typeof input[field]==='string'?clean(input[field],field==='description'?2200:300):input[field];}
+      if(patch.license_plate)patch.license_plate=plateKey(patch.license_plate);
+      patch.location=original.location;patch.citation_number=original.citation_number;
+      patch.fine_amount=original.fine_amount;patch.status='issued';patch.supervisor_review_status='pending';patch.was_rejected=true;
+      patch.approval_history=[...(Array.isArray(original.approval_history)?original.approval_history:[]),history(user,'resubmitted',patch.description||'Officer revised returned parking notice')].slice(-60);
+      return Response.json({success:true,violation:await entities.ParkingViolation.update(id,patch)});
     }
     if(action==='violations'||action==='export'){
       const since=action==='export'?new Date(Date.now()-30*86400000).toISOString().slice(0,10):'';

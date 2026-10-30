@@ -228,6 +228,10 @@
     },
     "officer_name": {
       "type": "string"
+    },
+    "officer_id": {
+      "type": "string",
+      "description": "Authenticated officer who originally issued the ticket"
     }
   },
   "required": [
