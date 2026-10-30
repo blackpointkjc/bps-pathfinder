@@ -42,7 +42,7 @@ function print30Day(items,site){
 
 export default function ParkingRecords({mode='officer'}){
  const client=mode==='client', admin=mode==='admin', supervisor=mode==='supervisor'||admin;
- const [site,setSite]=useState(''),[sites,setSites]=useState([]),[tab,setTab]=useState(client?'violations':'new'),[data,setData]=useState({violations:[],rules:[],residents:[]}),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [site,setSite]=useState(''),[sites,setSites]=useState([]),[tab,setTab]=useState(client||supervisor?'violations':'new'),[data,setData]=useState({violations:[],rules:[],residents:[]}),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [ticket,setTicket]=useState(blankTicket),[resident,setResident]=useState(blankResident),[residentId,setResidentId]=useState(''),[rule,setRule]=useState({label:'',violation_type:'no_permit',fine_amount:0,warning_only:false,active:true,description:''}),[ruleId,setRuleId]=useState('');
  const [search,setSearch]=useState(''),[reviewNotes,setReviewNotes]=useState(''),[statusFilter,setStatusFilter]=useState('all'),[photoUploading,setPhotoUploading]=useState(false),[editingTicketId,setEditingTicketId]=useState('');
  const action=async (name,payload={})=>{
