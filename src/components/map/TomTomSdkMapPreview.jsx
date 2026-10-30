@@ -33,6 +33,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
   const mapReadyRef=useRef(false);
+  const tileErrorsRef=useRef(0);
   const [trafficVisible,setTrafficVisible]=useState(true);
   const [trafficReady,setTrafficReady]=useState(false);
   const [ready,setReady]=useState(false);
@@ -153,11 +154,22 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         map.on('style.load',dataInit);
         if(map.isStyleLoaded()) dataInit();
         const onMapError=e=>{
-          if(!cancelled && !mapReadyRef.current) setError('TomTom map resources could not load. The original CAD map is still available.');
-          console.warn('[TomTom SDK map]',e?.error?.code||e?.error?.message||'Map resource unavailable');
+          if(cancelled)return;
+          tileErrorsRef.current++;
+          const status=Number(e?.error?.status||e?.error?.statusCode||0);
+          if(!mapReadyRef.current || tileErrorsRef.current>=3)
+            setError(status===401||status===403
+              ? 'TomTom map resources were denied. Your original CAD map is still available.'
+              : 'TomTom map tiles did not load correctly. Back to CAD remains available.');
+          console.warn('[TomTom SDK map]',status||e?.error?.code||'Map resource error');
         };
         map.on('error',onMapError);
-        errorTimer=window.setTimeout(()=>{if(!cancelled&&!map.isStyleLoaded())setError('TomTom map did not finish loading. Close this window to use the standard CAD map.');},16000);
+        map.on('sourcedata', event=>{if(event.isSourceLoaded)tileErrorsRef.current=0;});
+        errorTimer=window.setTimeout(()=>{
+          if(cancelled)return;
+          const rendered=map.isStyleLoaded() && map.queryRenderedFeatures().length>0;
+          if(!rendered)setError('TomTom map has not rendered street features. Back to CAD uses the original working map.');
+        },18000);
       }catch(e){if(!cancelled)setError(`TomTom SDK could not start: ${e?.message||'Unknown error'}. Close to return to CAD.`);}
     }
     init();
