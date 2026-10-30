@@ -14,7 +14,7 @@ import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import { projectOntoRoute } from '@/lib/navigationGeometry';
 import {
-    Layers, Map as MapIcon, MapPin, Users,
+    Layers, MapPin, Users,
     Eye, EyeOff, Crosshair, Flame, X, AlertTriangle, Navigation2, Square, Search,
     ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Volume2, VolumeX, LocateFixed, Home
 } from 'lucide-react';
@@ -1711,7 +1711,7 @@ export default function Navigation() {
                     }}
                 >
                     <OfficerDistressMarker autoCenter={false} />
-                </MapView>
+                </MapView>}
             </div>
 
             <div ref={toolbarRef} className="absolute left-0 right-0 top-0 z-[1010]">
@@ -1762,7 +1762,7 @@ export default function Navigation() {
                                 <div><div className="text-base font-black text-white">{navDurationMinutes} min</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{navDistanceMiles.toFixed(1)} mi left</div></div>
                                 <div className="hidden min-w-0 sm:block"><div className="max-w-[185px] truncate text-xs font-black text-white">{navDestination.name}</div><div className="text-[9px] font-black uppercase tracking-wide text-slate-500">Destination</div></div>
                             </div>
-                            <button type="button" onClick={() => setShowTomTomSdkPreview(true)} className="flex min-h-10 shrink-0 items-center gap-1 rounded-full border border-cyan-600 bg-cyan-950 px-2.5 text-[10px] font-bold text-cyan-100" title="Open TomTom interactive turn-by-turn driving map"><MapIcon className="h-4 w-4" />TomTom Map</button>
+
                             <button type="button" onClick={toggleNavigationVoice} className={`flex h-10 w-10 items-center justify-center rounded-full border ${navVoiceMuted ? 'border-slate-600 bg-slate-900 text-slate-400' : 'border-emerald-500 bg-emerald-950 text-emerald-200'}`} title={navVoiceMuted ? 'Turn navigation voice on' : 'Mute navigation voice'}>{navVoiceMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
                             <button type="button" onClick={recenter} className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-500 bg-blue-950 text-blue-200" title="Recenter navigation"><LocateFixed className="h-4 w-4" /></button>
                             <button type="button" onClick={stopInAppNavigation} className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500 bg-red-950 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
@@ -1939,20 +1939,6 @@ export default function Navigation() {
                     </AnimatePresence>
                 </div>
             )}
-
-            {showTomTomSdkPreview && <Suspense fallback={<div role="status" className="fixed inset-0 z-[2147482900] flex items-center justify-center bg-slate-950 text-white">Loading TomTom Maps SDK…</div>}>
-                <TomTomSdkMapPreview
-                    onClose={() => setShowTomTomSdkPreview(false)}
-                    currentLocation={currentLocation}
-                    activeCalls={activeCalls}
-                    otherUnits={mapVisibleUnits}
-                    route={navRoute}
-                    destination={navDestination}
-                    mapTheme={mapTheme}
-                    navigation={isNavigating && activeNavStep ? { instruction: formatInstruction(activeNavStep), distance: navDistanceLabel, then: nextNavStep ? formatInstruction(nextNavStep) : '', eta: navEtaLabel, provider: navRouteProvider } : null}
-                    onCallClick={call => { setShowTomTomSdkPreview(false); setSelectedCall(call); setShowCallSidebar(true); }}
-                />
-            </Suspense>}
 
             <MapToolDock actions={mapToolActions} panel={mapToolsPanel} onPanelChange={panel=>{
               setMapToolsPanel(panel); if(panel){setShowCallSidebar(false);setShowAddressSearch(false);setMapPickMode(false);}
