@@ -1,27 +1,9 @@
+import { facilityMapIcon } from '@/lib/facilityMapIcon';
 import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Shield, MapPin } from 'lucide-react';
 
-const ccpdIcon = new L.DivIcon({
-    className: 'custom-marker',
-    html: `
-        <div style="
-            width: 32px;
-            height: 32px;
-            background: #1E40AF;
-            border: 2px solid white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        ">🚓</div>
-    `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16]
-});
+const ccpdIcon = facilityMapIcon('police');
 
 export default function CCPDStation({ showStations = true, onNavigateToStation }) {
     if (!showStations) return null;

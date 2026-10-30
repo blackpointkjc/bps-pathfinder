@@ -1,18 +1,8 @@
+import { facilityMapIcon } from '@/lib/facilityMapIcon';
 import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 
-const policeStationIcon = new L.DivIcon({
-    className: 'custom-marker',
-    html: `
-        <svg width="32" height="32" viewBox="0 0 32 32">
-            <circle cx="16" cy="16" r="14" fill="#1E40AF" stroke="white" stroke-width="2"/>
-            <text x="16" y="21" font-size="11" text-anchor="middle" font-family="Arial" fill="white" font-weight="bold">PD</text>
-        </svg>
-    `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16]
-});
+const policeStationIcon = facilityMapIcon('police');
 
 const POLICE_STATIONS = {
     henrico: [

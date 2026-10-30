@@ -47,7 +47,7 @@ export default function DisplayPreferences({ userId }) {
     <Popover modal>
       <PopoverTrigger asChild>
         <button type="button" className="pf-display-trigger" aria-label="Display settings: text size, contrast and spacing" title="Display settings">
-          <span aria-hidden="true">A− / A+</span>
+          <span aria-hidden="true">Aa</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} aria-label="Display settings" className="pf-display-panel bg-slate-900 text-white border-slate-600 w-[min(400px,calc(100vw-24px))] max-h-[min(760px,calc(100dvh-90px))] overflow-y-auto space-y-4">

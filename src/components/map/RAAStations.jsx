@@ -1,29 +1,9 @@
+import { facilityMapIcon } from '@/lib/facilityMapIcon';
 import { Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Ambulance, MapPin } from 'lucide-react';
 
-const createRAAIcon = () => {
-    return new L.DivIcon({
-        className: 'custom-raa-marker',
-        html: `
-            <div style="
-                width: 32px;
-                height: 32px;
-                background: #10B981;
-                border: 2px solid white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            ">🚑</div>
-        `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16]
-    });
-};
+const createRAAIcon = () => facilityMapIcon('rescue');
 
 const raaStations = [
     { name: 'Headquarters', address: '2400 Hermitage Rd, Richmond, VA 23220', lat: 37.56514, lng: -77.46171 },

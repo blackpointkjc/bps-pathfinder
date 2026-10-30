@@ -53,7 +53,7 @@ export function CadAudioToggle() {
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-slate-950/95 p-0 text-xs font-bold text-white shadow-sm transition hover:bg-slate-900 xl:h-auto xl:w-auto xl:gap-2 xl:px-3 xl:py-2"
     >
       {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-amber-300" />}
-      <span className="hidden xl:inline">{audioEnabled ? 'CAD AUDIO ON' : 'QUIET MODE'}</span>
+      <span className="hidden xl:inline">{audioEnabled ? 'Audio on' : 'Quiet'}</span>
     </button>
   );
 }

@@ -1,4 +1,6 @@
-import MapIconFilters from '@/components/map/MapIconFilters';
+import MapToolDock from '@/components/map/MapToolDock';
+import MapCallPanel from '@/components/map/MapCallPanel';
+import '@/components/map/mapWorkspace.css';
 import { createPortal } from 'react-dom';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { readRecentDestinations, rememberDestination } from '@/lib/recentDestinations';
@@ -219,6 +221,7 @@ export default function Navigation() {
     const flashSelfAssignedEnroute = String(unitStatus || currentUser?.status || '').trim().toLowerCase() === 'enroute'
         && selfAssignedToCall;
 
+    const [mapToolsPanel, setMapToolsPanel] = useState(null);
     const [jurisdictionFilters, setJurisdictionFilters] = useState(() => {
         const defaults = {baseMapType:'street',showPoliceStations:true,showFireStations:true,
           showRescueStations:true,showEMS:true,showJails:true,
@@ -1451,6 +1454,87 @@ export default function Navigation() {
         return unit?.unit_number || unit?.full_name?.split(' ')[0] || 'UNIT';
     };
 
+    const mapToolActions = [
+                        {
+                            key: 'fitunits',
+                            onClick: fitAllUnits,
+                            title: 'Zoom out to show ALL units on the map',
+                            icon: <Users className="h-4 w-4" />,
+                            active: false,
+                            disabled: mapVisibleUnits.length === 0,
+                        },
+                        {
+                            key: 'recenter',
+                            onClick: recenter,
+                            title: 'Center on my current location',
+                            icon: <Crosshair className="h-4 w-4" />,
+                            active: isLiveTracking,
+                        },
+                        {
+                            key: 'search',
+                            onClick: () => {
+                                setMapToolsPanel(null); setShowCallSidebar(false); setShowAddressSearch(open => !open);
+                                if (showAddressSearch) {
+                                    setAddressResults([]);
+                                    setAddressQuery('');
+                                    setMapPickMode(false);
+                                    setMapSelectedDestination(null);
+                                }
+                            },
+                            title: showAddressSearch ? 'Close address search' : 'Search for a destination',
+                            icon: showAddressSearch ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />,
+                            active: showAddressSearch,
+                        },
+                        {
+                            key: 'home',
+                            onClick: () => {setMapToolsPanel(null);setShowCallSidebar(false);showHomeLocation();},
+                            title: 'Navigate to my saved Home address',
+                            icon: <Home className="h-4 w-4" />,
+                            active: mapSelectedDestination?.label === 'Home',
+                            disabled: isNavigating,
+                        },
+                        {
+                            key: 'pick',
+                            onClick: () => {
+                                setMapToolsPanel(null); setShowAddressSearch(true);
+                                destinationRequestRef.current += 1;
+                            setAddressSearching(false);
+                            setMapSelectedDestination(null);
+                            setShowCallSidebar(false);
+                            setShowUnmapped(false);
+                            setMapPickMode(enabled => !enabled);
+                                setAddressResults([]);
+                                setAddressSearchError('');
+                            },
+                            title: mapPickMode ? 'Cancel map destination selection' : 'Pick a destination directly on the map',
+                            icon: <MapPin className="h-4 w-4" />,
+                            active: mapPickMode,
+                            disabled: isNavigating,
+                        },
+                        {
+                            key: 'calls',
+                            onClick: () => setShowActiveCalls(visible => !visible),
+                            title: showActiveCalls ? 'Hide calls from map' : 'Show calls on map',
+                            icon: showActiveCalls ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />,
+                            active: showActiveCalls,
+                        },
+                        {
+                            key: 'theme',
+                            onClick: () => setMapTheme(mapTheme === 'night' ? 'day' : 'night'),
+                            title: mapTheme === 'night' ? 'Use day map' : 'Use night map',
+                            icon: <Layers className="h-4 w-4" />,
+                            active: mapTheme === 'night',
+                        },
+                        {
+                            key: 'heatmap',
+                            onClick: () => setShowHeatmap(visible => !visible),
+                            title: showHeatmap ? 'Hide call heatmap' : 'Show call heatmap',
+                            icon: <Flame className="h-4 w-4" />,
+                            active: showHeatmap,
+                            disabled: activeCalls.length === 0,
+                        },
+                    ];
+
     const mapContent = (
         <div style={mapFullscreen ? { position: "fixed", inset: 0, zIndex: 2147483000, height: "100dvh", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } : undefined} className="pf-navigation-workspace relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#07101a]">
 
@@ -1487,7 +1571,7 @@ export default function Navigation() {
                     showHeatmap={showHeatmap}
                     allCalls={activeCalls}
                     onCallClick={(call) => {
-                        setSelectedCall(call); setShowCallSidebar(true); setCallSidebarCollapsed(false); setCallDistrict(null);
+                        setMapToolsPanel(null); setShowAddressSearch(false); setSelectedCall(call); setShowCallSidebar(true); setCallSidebarCollapsed(false); setCallDistrict(null);
                         if (call.latitude && call.longitude) lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
                     }}
                 >
@@ -1504,7 +1588,7 @@ export default function Navigation() {
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
                     gpsLabel={isLiveTracking ? `GPS · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS · last known / unavailable'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
-                <div className="absolute right-2 top-full mt-2"><MapIconFilters filters={jurisdictionFilters} onChange={changeMapIconFilters}/></div>
+
             </div>
 
             {isNavigating && navDestination && (
@@ -1576,7 +1660,7 @@ export default function Navigation() {
             {mapPickMode && <div style={{ top: toolbarHeight + 8 }} className="pointer-events-none absolute left-3 right-24 z-[1220] rounded-lg bg-emerald-950/95 p-3 text-sm text-emerald-100" role="status">Tap the map to drop a pin. Drag to move the map. Tap Pick Point again to cancel.</div>}
             {/* Street address search and destination routing */}
             {showAddressSearch && !mapPickMode && (
-                <div style={{ top: toolbarHeight + (isNavigating ? 250 : 12) }} className="absolute bottom-3 left-1/2 z-[1220] w-[min(92vw,560px)] -translate-x-1/2 overflow-y-auto pointer-events-auto">
+                <div style={{ top: toolbarHeight + (isNavigating ? 250 : 12) }} className="pf-map-search-panel absolute bottom-3 left-3 right-16 z-[1220] max-w-[560px] overflow-y-auto pointer-events-auto">
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input
@@ -1711,301 +1795,20 @@ export default function Navigation() {
                 </div>
             )}
 
-            {/* ══ RIGHT MAP TOOLBAR ══ */}
-            <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                style={{ top: toolbarHeight + 40 }} className="absolute right-3 z-[1210] pointer-events-auto"
-            >
-                <div className="flex flex-col overflow-hidden rounded-xl border border-[#31475e] bg-[#07111f]/95 shadow-2xl backdrop-blur-md">
-                    {[
-                        {
-                            key: 'fitunits',
-                            onClick: fitAllUnits,
-                            title: 'Zoom out to show ALL units on the map',
-                            icon: <Users className="h-4 w-4" />,
-                            active: false,
-                            disabled: mapVisibleUnits.length === 0,
-                        },
-                        {
-                            key: 'recenter',
-                            onClick: recenter,
-                            title: 'Center on my current location',
-                            icon: <Crosshair className="h-4 w-4" />,
-                            active: isLiveTracking,
-                        },
-                        {
-                            key: 'search',
-                            onClick: () => {
-                                setShowAddressSearch(open => !open);
-                                if (showAddressSearch) {
-                                    setAddressResults([]);
-                                    setAddressQuery('');
-                                    setMapPickMode(false);
-                                    setMapSelectedDestination(null);
-                                }
-                            },
-                            title: showAddressSearch ? 'Close address search' : 'Search for a destination',
-                            icon: showAddressSearch ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />,
-                            active: showAddressSearch,
-                        },
-                        {
-                            key: 'home',
-                            onClick: showHomeLocation,
-                            title: 'Navigate to my saved Home address',
-                            icon: <Home className="h-4 w-4" />,
-                            active: mapSelectedDestination?.label === 'Home',
-                            disabled: isNavigating,
-                        },
-                        {
-                            key: 'pick',
-                            onClick: () => {
-                                setShowAddressSearch(true);
-                                destinationRequestRef.current += 1;
-                            setAddressSearching(false);
-                            setMapSelectedDestination(null);
-                            setShowCallSidebar(false);
-                            setShowUnmapped(false);
-                            setMapPickMode(enabled => !enabled);
-                                setAddressResults([]);
-                                setAddressSearchError('');
-                            },
-                            title: mapPickMode ? 'Cancel map destination selection' : 'Pick a destination directly on the map',
-                            icon: <MapPin className="h-4 w-4" />,
-                            active: mapPickMode,
-                            disabled: isNavigating,
-                        },
-                        {
-                            key: 'calls',
-                            onClick: () => setShowActiveCalls(visible => !visible),
-                            title: showActiveCalls ? 'Hide calls from map' : 'Show calls on map',
-                            icon: showActiveCalls ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />,
-                            active: showActiveCalls,
-                        },
-                        {
-                            key: 'theme',
-                            onClick: () => setMapTheme(mapTheme === 'night' ? 'day' : 'night'),
-                            title: mapTheme === 'night' ? 'Use day map' : 'Use night map',
-                            icon: <Layers className="h-4 w-4" />,
-                            active: mapTheme === 'night',
-                        },
-                        {
-                            key: 'heatmap',
-                            onClick: () => setShowHeatmap(visible => !visible),
-                            title: showHeatmap ? 'Hide call heatmap' : 'Show call heatmap',
-                            icon: <Flame className="h-4 w-4" />,
-                            active: showHeatmap,
-                            disabled: activeCalls.length === 0,
-                        },
-                    ].map((button, index, controls) => (
-                        <button
-                            key={button.key}
-                            type="button"
-                            onPointerDown={(event) => { event.stopPropagation(); }}
-                            onMouseDown={(event) => { event.stopPropagation(); }}
-                            onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                button.onClick?.();
-                            }}
-                            title={button.title}
-                            aria-label={button.title}
-                            aria-pressed={button.active}
-                            disabled={button.disabled}
-                            className={`flex min-h-11 w-[76px] flex-col items-center justify-center gap-0.5 px-1 py-1 transition-colors ${
-                                index < controls.length - 1 ? 'border-b border-[#263c52]' : ''
-                            } ${
-                                button.active
-                                    ? 'bg-[#153b65] text-[#8cc7ff]'
-                                    : 'bg-transparent text-slate-300 hover:bg-[#142336] hover:text-white'
-                            } disabled:cursor-not-allowed disabled:opacity-30`}
-                        >
-                            {button.icon}
-                            <span className="max-w-full text-center text-[9px] font-bold leading-tight">{({ fitunits: 'All Units', recenter: 'My GPS', search: 'Search', home: 'Home', pick: 'Pick Point', calls: 'Calls', theme: 'Map Style', heatmap: 'Heatmap' })[button.key] || button.key}</span>
-                        </button>
-                    ))}
-                </div>
-            </motion.div>
+            <MapToolDock actions={mapToolActions} panel={mapToolsPanel} onPanelChange={panel=>{
+              setMapToolsPanel(panel); if(panel){setShowCallSidebar(false);setShowAddressSearch(false);setMapPickMode(false);}
+            }} filters={jurisdictionFilters} onFiltersChange={changeMapIconFilters} top={toolbarHeight+12}/>
 
-            {/* ══ CALL DETAIL SIDEBAR ══ */}
-            <AnimatePresence>
-                {showCallSidebar && selectedCall && (
-                    <motion.div
-                        initial={{ opacity: 0, x: 320 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 320 }}
-                        transition={{ duration: 0.2 }}
-                        style={{ top: toolbarHeight + 8 }} className={`absolute bottom-2 right-0 z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
-                    >
-                        {/* Header / collapsed edge tab */}
-                        <div className={`flex-none flex items-center border-b border-[#1e2d4a] bg-[#0d1220] ${callSidebarCollapsed ? 'flex-col gap-2 px-1 py-3' : 'justify-between px-3 py-3'}`}>
-                            {callSidebarCollapsed ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setCallSidebarCollapsed(false)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#31506d] bg-[#13263a] text-[#8cc7ff] hover:bg-[#19334e]"
-                                    title="Open call details"
-                                    aria-label="Open call details"
-                                >
-                                    <ChevronLeft className="h-5 w-5" />
-                                </button>
-                            ) : (
-                                <>
-                                    <div className="flex min-w-0 items-center gap-2">
-                                        <div className="h-2 w-2 flex-shrink-0 rounded-full bg-[#f5a623]" />
-                                        <span className="truncate text-xs font-bold tracking-widest text-white font-mono">Call detail</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => setCallSidebarCollapsed(true)}
-                                            className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-[#1e2d4a] hover:text-white"
-                                            title="Collapse call details"
-                                            aria-label="Collapse call details"
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </button>
-                                        <button onClick={() => setShowCallSidebar(false)}
-                                            className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-[#1e2d4a] hover:text-white transition-colors"
-                                            title="Close call details"
-                                            aria-label="Close call details">
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {!callSidebarCollapsed && <>
-                        {/* Action Bar - Show on Map + Assign */}
-                        <div className="flex-none flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-[#1e2d4a] bg-[#0a0e1a]">
-                            <button
-                                onClick={() => {
-                                    if (selectedCall.latitude && selectedCall.longitude) {
-                                        setMapCenter([selectedCall.latitude, selectedCall.longitude]);
-                                        setShowActiveCalls(true);
-                                    }
-                                }}
-                                className="px-3 py-1 rounded border border-blue-500/40 text-blue-400 text-[9px] font-mono font-bold hover:bg-blue-500/10 transition-all"
-                            >
-                                📍 SHOW ON MAP
-                            </button>
-                            <button
-                                onClick={startInAppNavigation}
-                                disabled={routing || !selectedCall.latitude || !selectedCall.longitude}
-                                className="px-3 py-1 rounded border border-green-500/40 text-green-400 text-[9px] font-mono font-bold hover:bg-green-500/10 transition-all disabled:opacity-40"
-                            >
-                                {routing ? 'ROUTING...' : '🧭 START GPS'}
-                            </button>
-                            <button type="button" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(validPosition(selectedCall.latitude, selectedCall.longitude) ? `${selectedCall.latitude},${selectedCall.longitude}` : (selectedCall.location || ''))}&travelmode=driving`, '_blank', 'noopener,noreferrer')} className="px-2 py-1 rounded border border-emerald-500/40 text-emerald-300 text-[9px] font-mono font-bold hover:bg-emerald-500/10">Google Maps</button>
-                            <button onClick={openInAppStreetView} disabled={!selectedCall.latitude || !selectedCall.longitude}
-                                className="px-2 py-1 rounded border border-purple-500/40 text-purple-300 text-[9px] font-mono font-bold hover:bg-purple-500/10 disabled:opacity-40">
-                                STREET VIEW
-                            </button>
-                            {selectedCall.assigned_units?.includes(currentUser?.id) ? (
-                                <>
-                                    <span className="text-[9px] font-mono text-green-400 font-bold flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> YOU ARE ASSIGNED
-                                    </span>
-                                    <button onClick={handleSelfUnassign} disabled={assigning}
-                                        className="ml-auto px-3 py-1 rounded border border-red-500/40 text-red-400 text-[9px] font-mono font-bold hover:bg-red-500/10 transition-all disabled:opacity-50">
-                                        UNASSIGN ME
-                                    </button>
-                                </>
-                            ) : (
-                                <button onClick={handleSelfAssign} disabled={assigning}
-                                    className="flex-1 py-2 rounded border border-[#f5a623]/50 bg-[#f5a623]/10 text-[#f5a623] text-[10px] font-mono font-bold hover:bg-[#f5a623]/20 transition-all disabled:opacity-50">
-                                    {assigning ? 'ASSIGNING...' : '⚡ ASSIGN ME TO THIS CALL'}
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Call ID / Priority bar */}
-                        <div className="flex-none flex items-center gap-2 px-4 py-2 bg-[#111827] border-b border-[#1e2d4a]">
-                            <span className={`text-[9px] px-2 py-1 rounded font-bold font-mono ${PRIORITY_COLORS[selectedCall.priority] || 'bg-slate-700 text-white'}`}>
-                                {(selectedCall.priority || 'LOW').toUpperCase()}
-                            </span>
-                            <span className="text-[10px] font-mono text-slate-400">
-                                        #{selectedCall.id?.slice(-8).toUpperCase()}
-                                    </span>
-                            <span className="ml-auto text-[9px] font-mono text-slate-500">{selectedCall.status}</span>
-                        </div>
-
-                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#07111f] p-3 font-mono">
-                            {/* Incident */}
-                            <div>
-                                <div className="text-[#f5a623] font-bold text-base leading-tight">{selectedCall.incident}</div>
-                                <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-slate-400">
-                                    <MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />
-                                    <span>{selectedCall.location}</span>
-                                </div>
-                            </div>
-
-                            {/* Grid Data */}
-                            <div className="grid grid-cols-2 gap-2">
-                                {[
-                                    { label: 'AGENCY', value: selectedCall.agency || '—' },
-                                    { label: 'DISTRICT', value: callDistrict !== null ? callDistrict : (selectedCall.zone || '—') },
-                                    { label: 'TIME RCV', value: selectedCall.time_received ? `${formatEasternTime(selectedCall.time_received)} ET` : '—' },
-                                    { label: 'CALLER', value: selectedCall.caller_name || '—' },
-                                ].map(({ label, value }) => (
-                                    <div key={label} className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-2">
-                                        <div className="text-[8px] text-slate-500 mb-0.5">{label}</div>
-                                        <div className="text-white text-[10px] font-bold truncate">{value}</div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Description / Narrative */}
-                            <AddressCallHistory address={selectedCall.location} excludeCallId={selectedCall.id} />
-                            {selectedCall.description && (
-                                <div className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-3">
-                                    <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">Narrative</div>
-                                    <div className="text-slate-300 text-[10px] leading-relaxed">{selectedCall.description}</div>
-                                </div>
-                            )}
-
-                            {/* AI Summary */}
-                            {selectedCall.ai_summary && (
-                                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
-                                    <div className="text-[8px] text-blue-400 mb-1.5 tracking-widest">AI analysis</div>
-                                    <div className="text-blue-200 text-[10px] leading-relaxed">{selectedCall.ai_summary}</div>
-                                </div>
-                            )}
-
-                            {/* Assigned Units */}
-                            {/* Assigned Units */}
-                             {selectedCall.assigned_units?.length > 0 && (
-                                <div className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-3">
-                                    <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">Assigned units</div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {selectedCall.assigned_units.map((uid, i) => (
-                                            <span key={i} className="text-[9px] px-2 py-1 bg-blue-900/30 border border-blue-500/30 rounded text-blue-300 font-bold">
-                                                {getUnitNumberFromId(uid)}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Hazards */}
-                            {selectedCall.hazards && (
-                                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                                    <div className="text-[8px] text-red-400 mb-1.5 tracking-widest">⚠ HAZARDS</div>
-                                    <div className="text-red-200 text-[10px]">{selectedCall.hazards}</div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Field Unit Console */}
-                        <div className="max-h-[36%] flex-none overflow-y-auto border-t border-[#1e2d4a] bg-[#081522] p-3">
-                            <div className="text-[9px] font-mono text-[#f5a623] font-bold tracking-widest mb-2">Field unit console</div>
-                            <FieldCallActions call={selectedCall} />
-                        </div>
-                        </>}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {showCallSidebar && selectedCall && <MapCallPanel
+              call={selectedCall} currentUser={currentUser} district={callDistrict}
+              collapsed={callSidebarCollapsed} onCollapse={setCallSidebarCollapsed}
+              onClose={()=>setShowCallSidebar(false)} top={toolbarHeight+12}
+              onLocate={()=>{if(validPosition(selectedCall.latitude,selectedCall.longitude)){setMapCenter([Number(selectedCall.latitude),Number(selectedCall.longitude)]);setShowActiveCalls(true);}}}
+              onNavigate={()=>{setShowCallSidebar(false);startInAppNavigation();}} routing={routing} assigning={assigning}
+              onAssign={handleSelfAssign} onUnassign={handleSelfUnassign} onStreetView={openInAppStreetView}
+              onExternalMap={()=>window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(validPosition(selectedCall.latitude,selectedCall.longitude)?selectedCall.latitude+','+selectedCall.longitude:selectedCall.location||'')+'&travelmode=driving','_blank','noopener,noreferrer')}
+              unitLabel={getUnitNumberFromId}
+            />}
 
             {streetViewUrl && (
                 <div className="fixed inset-0 z-[99990] flex items-center justify-center bg-black/75 p-3 sm:p-6" onClick={() => setStreetViewUrl('')}>

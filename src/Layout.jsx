@@ -1,4 +1,4 @@
-import OfflineWorkPanel from '@/components/OfflineWorkPanel';
+import '@/components/map/mapWorkspace.css';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import HeaderClock from '@/components/HeaderClock';
 import { isOperationalOutage } from '@/lib/operationalOutages';
@@ -1631,13 +1631,13 @@ export default function Layout({ children, currentPageName }) {
             <span className="sm:hidden">Main</span>
             <span className="hidden sm:inline">{userHomeLabel}</span>
           </Link>
-          <div className="hidden min-w-0 md:block">
+          <div className="pf-header-context hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-[#7791aa]">
-          <OfflineWorkPanel user={user} /><DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
+          <DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
           <button
             type="button"
             onClick={() => navigate(createPageUrl('SystemStatus'))}
@@ -1646,7 +1646,7 @@ export default function Layout({ children, currentPageName }) {
             aria-label="Open Pathfinder system status"
           >
             <Activity className="h-3.5 w-3.5" />
-            <span>{criticalOutage ? 'SYSTEM OUTAGE' : 'SYSTEM STATUS'}</span>
+            <span>{criticalOutage ? 'Outage' : 'System'}</span>
             {outages.length > 0 && <span className="rounded-full bg-black/25 px-1.5 py-0.5 text-[8px]">{outages.length}</span>}
           </button>
           <div ref={gpsMenuRef} className={allowedCenters(user).includes('student') ? 'hidden' : 'relative'}>
@@ -1659,7 +1659,7 @@ export default function Layout({ children, currentPageName }) {
               aria-expanded={gpsMenuOpen}
             >
               <Radio className={`h-3.5 w-3.5 ${externalGps.connecting ? 'animate-pulse' : ''}`} />
-              <span className="hidden md:inline">GPS {externalGps.connecting ? 'CONNECTING' : externalGps.connected ? 'EXTERNAL' : 'DEVICE'}</span>
+              <span className="hidden md:inline">{externalGps.connecting ? 'Connecting' : externalGps.connected ? 'External GPS' : 'Device GPS'}</span>
               <span className="md:hidden">GPS</span>
               <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -1786,7 +1786,7 @@ export default function Layout({ children, currentPageName }) {
             aria-label="Refresh Pathfinder and load the newest update"
           >
             <RotateCw className={`h-3.5 w-3.5 ${refreshingApp ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{refreshingApp ? 'Refreshing' : 'Refresh App'}</span>
+            <span className="hidden sm:inline">{refreshingApp ? 'Refreshing' : 'Refresh'}</span>
           </button>
           <HeaderClock />
 
