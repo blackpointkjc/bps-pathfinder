@@ -49,15 +49,6 @@
     },
     "violation_type": {
       "type": "string",
-      "enum": [
-        "no_permit",
-        "expired_permit",
-        "unauthorized_area",
-        "fire_lane",
-        "handicap_violation",
-        "blocking_traffic",
-        "other"
-      ],
       "description": "Type of violation"
     },
     "repeat_offender": {
