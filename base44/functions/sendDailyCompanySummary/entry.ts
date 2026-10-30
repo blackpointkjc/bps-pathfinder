@@ -88,6 +88,16 @@ async function orderedBatches<T>(tasks:(()=>Promise<T>)[],width=4):Promise<T[]>{
   }
   return result;
 }
+async function safeFilter(base44:any,entityName:string,filter:any,sort:string,issues:string[],limit=5000){
+  try{
+    const entity=base44.asServiceRole.entities?.[entityName];
+    if(!entity?.filter)throw Error('Database filter unavailable');
+    const rows=await entity.filter(filter,sort,limit);
+    if(!Array.isArray(rows))throw Error('Invalid rows');
+    if(rows.length>=limit)issues.push(entityName+' reached its monthly row limit');
+    return rows;
+  }catch(error:any){issues.push(entityName+': '+String(error?.message||'unavailable'));return []}
+}
 async function safeList(base44: any, entityName: string, sort?: string, limit = 5000, issues: string[] = []) {
   try {
     const entity = base44.asServiceRole.entities?.[entityName];
@@ -486,6 +496,11 @@ Deno.serve(async (req) => {
     }
 
     const sourceIssues: string[]=[];
+    const nextMonthDate=new Date(Date.UTC(now.year,now.month,1)).toISOString().slice(0,10);
+    const utcStart=new Date(Date.parse(now.monthStart+'T00:00:00Z')-6*3600000).toISOString();
+    const utcEnd=new Date(Date.parse(nextMonthDate+'T00:00:00Z')+6*3600000).toISOString();
+    const utc=(field:string)=>({[field]:{$gte:utcStart,$lt:utcEnd}});
+    const date=(field:string)=>({[field]:{$gte:now.monthStart,$lt:nextMonthDate}});
     const [
       users, metricData, reportTodos, trainingAssignments, trainingModules,
       trainingCompletions, certificationAlerts, dailyReports, shiftBids,
@@ -499,18 +514,18 @@ Deno.serve(async (req) => {
       () => safeList(base44, 'TrainingModule', 'title', 5000, sourceIssues),
       () => safeList(base44, 'TrainingCompletion', '-completed_date', 5000, sourceIssues),
       () => safeList(base44, 'CertificationAlert', 'expiration_date', 5000, sourceIssues),
-      () => safeList(base44, 'DailyActivityReport', '-report_date', 5000, sourceIssues),
-      () => safeList(base44, 'ShiftBid', '-created_date', 5000, sourceIssues),
-      () => safeList(base44, 'QRScanEvent', '-scanned_at', 5000, sourceIssues),
+      () => safeFilter(base44, 'DailyActivityReport', date('report_date'), '-report_date', sourceIssues),
+      () => safeFilter(base44, 'ShiftBid', utc('created_date'), '-created_date', sourceIssues),
+      () => safeFilter(base44, 'QRScanEvent', utc('scanned_at'), '-scanned_at', sourceIssues),
       () => safeList(base44, 'QRCheckpoint', 'property_site', 5000, sourceIssues),
-      () => safeList(base44, 'CallOut', '-call_out_date', 5000, sourceIssues),
+      () => safeFilter(base44, 'CallOut', date('call_out_date'), '-call_out_date', sourceIssues),
       () => safeList(base44, 'JobDutyRule', 'property_site', 5000, sourceIssues),
       () => safeList(base44, 'Location', 'site_name', 5000, sourceIssues),
-      () => safeList(base44, 'ClientFeedback', '-feedback_date', 5000, sourceIssues),
-      () => safeList(base44, 'PerformanceReview', '-review_date', 5000, sourceIssues),
-      () => safeList(base44, 'PropertyAlert', '-created_date', 5000, sourceIssues),
-      () => safeList(base44, 'CallPerformanceDecision', '-created_date', 5000, sourceIssues),
-      () => safeList(base44, 'DutyAttendanceAdjustment', '-created_date', 5000, sourceIssues),
+      () => safeFilter(base44, 'ClientFeedback', date('feedback_date'), '-feedback_date', sourceIssues),
+      () => safeFilter(base44, 'PerformanceReview', date('review_date'), '-review_date', sourceIssues),
+      () => safeFilter(base44, 'PropertyAlert', utc('created_date'), '-created_date', sourceIssues),
+      () => safeFilter(base44, 'CallPerformanceDecision', utc('created_date'), '-created_date', sourceIssues),
+      () => safeFilter(base44, 'DutyAttendanceAdjustment', date('item_date'), '-created_date', sourceIssues),
     ],4);
 
     // Missing/time-limited sources must never be silently treated as an

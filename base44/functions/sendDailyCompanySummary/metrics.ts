@@ -155,6 +155,24 @@ async function safeList(base44: any, entityName: string, sort?: string, limit = 
   }
 }
 
+async function scopedRows(base44:any,entityName:string,query:any,sort:string,limit:number,issues:string[]){
+  try{
+    const entity=base44.asServiceRole.entities?.[entityName];
+    if(!entity?.filter)throw Error('Database filter unavailable');
+    const rows=await entity.filter(query,sort,limit);
+    if(!Array.isArray(rows))throw Error('Invalid records response');
+    if(rows.length>=limit)issues.push(entityName+' reached its monthly row limit');
+    return rows;
+  }catch(error:any){issues.push(entityName+': '+String(error?.message||'unavailable'));return []}
+}
+function monthWindow(){
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+  const y=Number(parts.find(x=>x.type==='year')?.value),m=Number(parts.find(x=>x.type==='month')?.value);
+  const start=`${y}-${String(m).padStart(2,'0')}-01`;
+  const next=new Date(Date.UTC(y,m,1)).toISOString().slice(0,10);
+  return {start,next,utcStart:new Date(Date.parse(start+'T00:00:00Z')-6*3600000).toISOString(),
+    utcNext:new Date(Date.parse(next+'T00:00:00Z')+6*3600000).toISOString()};
+}
 async function orderedBatches(tasks:(()=>Promise<any[]>)[],width=3){
   const result:any[]=[];
   for(let offset=0;offset<tasks.length;offset+=width){
@@ -165,19 +183,22 @@ async function orderedBatches(tasks:(()=>Promise<any[]>)[],width=3){
 }
 export async function loadPerformanceMetricData(base44: any) {
   const issues: string[]=[];
+  const w=monthWindow();
+  const utc=(field:string)=>({[field]:{$gte:w.utcStart,$lt:w.utcNext}});
+  const date=(field:string)=>({[field]:{$gte:w.start,$lt:w.next}});
   const [
     teams, outlook, timeEntries, schedules, incidents, commendations,
     complaints, inspections, writeUps,
   ] = await orderedBatches([
     () => safeList(base44, 'MicrosoftTeamsIdentity', '-updated_at', 2000, issues),
     () => safeList(base44, 'OutlookMailboxLink', '-last_verified_at', 2000, issues),
-    () => safeList(base44, 'TimeEntry', '-clock_in', 5000, issues),
-    () => safeList(base44, 'Schedule', '-shift_date', 5000, issues),
-    () => safeList(base44, 'IncidentReport', '-incident_date', 5000, issues),
-    () => safeList(base44, 'Commendation', '-commendation_date', 5000, issues),
-    () => safeList(base44, 'Complaint', '-complaint_date', 5000, issues),
-    () => safeList(base44, 'InspectionReport', '-inspection_date', 5000, issues),
-    () => safeList(base44, 'WriteUpReport', '-report_date', 5000, issues),
+    () => scopedRows(base44, 'TimeEntry', utc('clock_in'), '-clock_in', 5000, issues),
+    () => scopedRows(base44, 'Schedule', date('shift_date'), '-shift_date', 5000, issues),
+    () => scopedRows(base44, 'IncidentReport', date('incident_date'), '-incident_date', 5000, issues),
+    () => scopedRows(base44, 'Commendation', date('commendation_date'), '-commendation_date', 5000, issues),
+    () => scopedRows(base44, 'Complaint', date('complaint_date'), '-complaint_date', 5000, issues),
+    () => scopedRows(base44, 'InspectionReport', date('inspection_date'), '-inspection_date', 5000, issues),
+    () => scopedRows(base44, 'WriteUpReport', date('report_date'), '-report_date', 5000, issues),
   ],3);
 
   return { teams, outlook, timeEntries, schedules, incidents, commendations, complaints, inspections, writeUps, _source_errors:issues };
