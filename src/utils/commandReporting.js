@@ -1,5 +1,6 @@
 import { isOutOfOffice } from './outOfOffice.js';
 import { normalizeRank, rankLevel } from './rankPolicy.js';
+import { previewAutomaticSupervisor } from './automaticReporting.js';
 export const compareCommandPersonnel = (a,b) => {
  const hired = p => Number.isFinite(Date.parse(p?.hire_date)) ? Date.parse(p.hire_date) : Infinity;
  const order = (hired(a)-hired(b)) || (Number.isFinite(a?.command_seniority_order)&&Number.isFinite(b?.command_seniority_order) ? a.command_seniority_order-b.command_seniority_order : 0);
@@ -17,19 +18,10 @@ export const commandRank = person => {
 };
 export const majorPlatoon = person => ['A','B'].includes(person?.oversight_platoon) ? person.oversight_platoon : ['A','B'].includes(person?.platoon) ? person.platoon : '';
 const activePerson = person => !person.termination_date && String(person.employment_status || '').toLowerCase() !== 'terminated';
-export function platoonCommander(letter, users = []) {
- const members = users.filter(person => activePerson(person) && !isOutOfOffice(person) && person.platoon === letter && !COMMAND_TIERS.includes(commandRank(person)) && rankLevel(person.rank) < 999).sort(comparePersonnel);
- const chosen = members.find(person => normalizeRank(person.rank) === 'Captain') || members[0];
- if (chosen) return chosen;
- const permanent = users.filter(person => activePerson(person) && person.platoon === letter && !COMMAND_TIERS.includes(commandRank(person))).sort(comparePersonnel)[0];
- const seen = new Set();
- let parent = users.find(user => user.id === permanent?.supervisor_id);
- while (parent && !seen.has(parent.id)) {
-  seen.add(parent.id);
-  if (activePerson(parent) && !isOutOfOffice(parent) && (parent.platoon === letter || (commandRank(parent) === 'Major' && majorPlatoon(parent) === letter) || ['Lt Colonel','Colonel'].includes(commandRank(parent)))) return parent;
-  parent = users.find(user => user.id === parent.supervisor_id);
- }
- return users.filter(user => activePerson(user) && !isOutOfOffice(user) && commandRank(user) === 'Major' && majorPlatoon(user) === letter).sort(comparePersonnel)[0] || null;
+export function platoonCommander(letter, users = [], region = '') {
+  if(!letter||letter==='Command'||!region)return null;
+  const selected=activePlatoonCommand(letter,users,region);
+  return users.find(person=>String(person.id)===String(selected.id))||null;
 }
 // Read-only command position. Company command never fills a Platoon seat.
 // Highest available operational rank, then smallest issued badge number,
@@ -51,25 +43,24 @@ export function activePlatoonCommand(letter, users = [], region = '') {
  return {id:person.id,platoon:letter,region,status:acting?'acting':'active',name:[person.rank,person.last_name||person.first_name].filter(Boolean).join(' '),first_name:person.first_name||'',last_name:person.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:person.rank,badge_number:person.badge_number||'',unit_number:person.unit_number||'',profile_photo_url:person.profile_photo_original_url||person.profile_photo_url||'',work_email:person.work_email||person.email||'',mobile_phone:person.mobile_phone||'',subdivision:person.subdivision||'',substation:person.substation||'',assigned_site_name:person.assigned_site_name||''};
 }
 export function platoonCommandLabel(person, users = []) {
- return ['A','B'].filter(letter => platoonCommander(letter, users)?.id === person?.id).map(letter =>
-  `Platoon ${letter} Commander${person.platoon === letter && normalizeRank(person.rank) === 'Captain' && !isOutOfOffice(person) ? '' : ' (Acting)'}`
- ).join(' · ');
+ const platoon=String(person?.platoon||'').trim(),region=String(person?.division||'').trim();
+ if(!platoon||platoon==='Command'||!region)return '';
+ const commander=platoonCommander(platoon,users,region);
+ if(commander?.id!==person?.id)return '';
+ return `${platoon.startsWith('Platoon ')?platoon:`Platoon ${platoon}`} Commander${normalizeRank(person.rank)==='Captain'?'':' (Acting)'}`;
 }
-export const assignmentLabel = (person, users = []) => platoonCommandLabel(person, users) || (COMMAND_TIERS.includes(commandRank(person)) ? 'Command' : ['A','B'].includes(person?.platoon) ? `Platoon ${person.platoon}` : 'Unassigned');
+export const assignmentLabel = (person, users = []) => platoonCommandLabel(person, users)
+ || (COMMAND_TIERS.includes(commandRank(person)) ? 'Company Command' : person?.platoon&&person.platoon!=='Command' ? `${String(person.platoon).startsWith('Platoon ')?person.platoon:`Platoon ${person.platoon}`}` : 'Unassigned');
 function baseReportingSupervisors(person, users = []) {
-  if (commandRank(person) === 'Major') return users.filter(user => user.id !== person.id && commandRank(user) === 'Lt Colonel' && !user.termination_date && user.employment_status !== 'terminated').sort(comparePersonnel);
-  const active = users.filter(activePerson);
-  const commander = ['A','B'].includes(person?.platoon) ? platoonCommander(person.platoon, active) : null;
-  if (commander?.id === person?.id) {
-    const majors = active.filter(user => user.id !== person.id && commandRank(user) === 'Major' && majorPlatoon(user) === person.platoon).sort(comparePersonnel);
-    if (majors.length) return majors;
-    return active.filter(user => user.id === person.supervisor_id && COMMAND_TIERS.includes(commandRank(user)));
-  }
-  if (commander && !COMMAND_TIERS.includes(commandRank(person))) {
-    const assigned = active.find(user => user.id === person.supervisor_id && user.platoon === person.platoon && !COMMAND_TIERS.includes(commandRank(user)) && rankLevel(user.rank) < rankLevel(person.rank));
-    return assigned ? [assigned] : [commander];
-  }
-  return active.filter(user => user.id === person?.supervisor_id);
+ const rank=rankLevel(person.rank),active=users.filter(activePerson);
+ if(COMMAND_TIERS.includes(commandRank(person))){
+   if(commandRank(person)==='Colonel')return [];
+   if(commandRank(person)==='Lt Colonel')return active.filter(p=>commandRank(p)==='Colonel').sort(comparePersonnel).slice(0,1);
+   return active.filter(p=>commandRank(p)==='Lt Colonel').sort(comparePersonnel).slice(0,1);
+ }
+ if(rank<3||rank>=999)return [];
+ const supervisor=previewAutomaticSupervisor(person,active);
+ return supervisor?[supervisor]:[];
 }
 export function reportingSupervisors(person, users = []) {
  const seen = new Set([person?.id]);
@@ -155,7 +146,7 @@ export function siteReportingChains(references = [], users = []) {
   return {reference,levels,incomplete,actingFor};
  });
 }
-export const oversightLabel = person => commandRank(person) === 'Major' ? (majorPlatoon(person) ? `Oversees Platoon ${majorPlatoon(person)}` : 'Platoon oversight unassigned') : 'Shared Command';
+export const oversightLabel = person => COMMAND_TIERS.includes(commandRank(person)) ? 'Company Command' : 'Regional Platoon';
 
 // The site's saved assignment is authoritative; never infer a primary owner.
 export function primarySiteReportingChain(references = [], users = []) {
