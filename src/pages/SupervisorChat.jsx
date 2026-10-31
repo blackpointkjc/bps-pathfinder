@@ -27,23 +27,25 @@ export default function SupervisorChat() {
     queryFn: () => base44.auth.me(),
   });
 
+  const allAccess = user?.role === 'admin' || (user?.additional_roles || []).includes('full_access');
   const senderName = user?.first_name && user?.last_name 
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'Unknown';
 
-  const { data: localMessages = [] } = useQuery({
-    queryKey: ['supervisorChatMessages'],
-    queryFn: () => base44.entities.SupervisorChatMessage.list('-created_date', 500),
-    enabled: !!user?.id,
-    refetchInterval: 60000,
-    refetchOnWindowFocus: true,
-    initialData: [],
+  const { data: scopedChat = {} } = useQuery({
+    queryKey: ['supervisorScopedChat',user?.id],
+    queryFn: async () => {
+      const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'chat'});
+      const result=response?.data||response||{};
+      if(result.error||result.success!==true)throw new Error(result.error||'Scoped supervisor chat unavailable');
+      return result;
+    }, enabled: !!user?.id && hasSupervisorAccess(user), staleTime:10000, refetchInterval:60000,
   });
-
+  const localMessages=scopedChat.rows||[];
   const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
-    enabled: !!user?.id && !!teamsConfig?.enabled && hasSupervisorAccess(user),
+    enabled: !!user?.id && !!teamsConfig?.enabled && hasSupervisorAccess(user) && allAccess,
     refetchInterval: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -80,42 +82,22 @@ export default function SupervisorChat() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['chatDirectory'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getChatDirectory', {});
-      return result?.data?.users || result?.users || [];
-    },
-    initialData: [],
-  });
+  const allUsers=scopedChat.officers||[];
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ data, mentions }) => {
       // Pathfinder is the source of availability for this private chat. Microsoft
       // Teams is an optional mirror and must never prevent supervisors from talking.
-      const created = await base44.entities.SupervisorChatMessage.create({
-        ...data,
-        message_source: 'pathfinder',
-      });
-
-      if (created?.id && mentions.length) {
-        await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
-          message_id: created.id,
-          chat_type: 'supervisor',
-          page: 'SupervisorChat',
-          recipient_email: mention.email,
-          recipient_name: mention.label,
-          sender_name: data.sender_name,
-          message: data.message,
-          read: false,
-        }).catch(() => null)));
-      }
+      const response = await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'chat',action:'create',data,mentions});
+      const payload=response?.data||response||{};
+      if(payload.error||payload.success!==true)throw new Error(payload.error||'Unable to send chat');
+      const created=payload.record;
 
       let teamsMessage = null;
       let teamsError = '';
       try {
         const target = teamsConfig || await getTeamsSyncConfig('supervisor_chat');
-        if (target?.enabled) {
+        if (target?.enabled && allAccess) {
           teamsMessage = await sendTeamChannelMessage(user?.id, data.message, target, 'supervisor_chat');
           if (teamsMessage?.id && created?.id) {
             await base44.entities.SupervisorChatMessage.update(created.id, {
@@ -136,7 +118,7 @@ export default function SupervisorChat() {
       return { created, teamsMessage, teamsError };
     },
     onSuccess: async ({ teamsMessage, teamsError }) => {
-      queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisorScopedChat'] });
       const row = normalizeTeamsChannelMessage(teamsMessage);
       if (row) {
         queryClient.setQueryData(
@@ -244,7 +226,7 @@ export default function SupervisorChat() {
       return Boolean(String(msg?.message || '').trim());
     };
     (localMessages || []).slice().reverse().filter(isHumanChat).forEach(add);
-    (liveTeamsMessages || []).filter(isHumanChat).forEach(add);
+    if (allAccess) (liveTeamsMessages || []).filter(isHumanChat).forEach(add);
     return [...merged.values()].sort((a, b) => new Date(a.created_date || a.teams_created_at || 0) - new Date(b.created_date || b.teams_created_at || 0));
   })();
 
@@ -283,8 +265,8 @@ export default function SupervisorChat() {
             </div>
           </CardHeader>
 
-          <div className="flex items-center gap-2 border-b border-slate-800 bg-[#0a1320] px-4 py-2 text-[11px] font-bold text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-400" />Pathfinder private chat is active{teamsConfig?.enabled ? ' · Teams mirror connected' : ' · Teams mirror optional'}</div>
-          {(teamsSyncError || liveTeamsError) && (
+          <div className="flex items-center gap-2 border-b border-slate-800 bg-[#0a1320] px-4 py-2 text-[11px] font-bold text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-400" />Your assigned platoon and operating-area chat is active{allAccess && teamsConfig?.enabled ? ' · Teams mirror connected' : ''}</div>
+          {allAccess && (teamsSyncError || liveTeamsError) && (
             <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-[#101725] px-4 py-2 text-[10px] text-slate-500">
               <span>{needsMicrosoftConnection ? 'Connect Microsoft 365 to load and mirror the Supervisors Chat channel.' : 'Microsoft Teams mirror could not refresh. Pathfinder chat continues normally.'}</span>
               {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-blue-600 px-2.5 py-1.5 font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}

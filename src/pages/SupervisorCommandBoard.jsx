@@ -39,7 +39,9 @@ export default function SupervisorCommandBoard() {
   const board = payload.board || [];
   const activeCalls = payload.active_calls || [];
   const overdue = useMemo(()=>board.filter(row=>row.overdue),[board]);
-  const sessionByEmail = useMemo(()=>new Map((workforce.signed_in_units || []).map(row=>[String(row.officer_email||'').toLowerCase(),row])),[workforce.signed_in_units]);
+  const permittedEmails = useMemo(()=>new Set(payload.visible_officer_emails||[]),[payload.visible_officer_emails]);
+  const scopedSignedInUnits = useMemo(()=>(workforce.signed_in_units||[]).filter(row=>permittedEmails.has(String(row.officer_email||'').toLowerCase())),[workforce.signed_in_units,permittedEmails]);
+  const sessionByEmail = useMemo(()=>new Map(scopedSignedInUnits.map(row=>[String(row.officer_email||'').toLowerCase(),row])),[scopedSignedInUnits]);
   const refreshBoard = () => { refetch(); refetchWorkforce(); };
 
   const escalate = async row => {
@@ -83,7 +85,7 @@ export default function SupervisorCommandBoard() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Active Calls</div><div className="mt-1 text-3xl font-black text-cyan-300">{activeCalls.length}</div></div>
-        <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Signed-In Units</div><div className="mt-1 text-3xl font-black">{workforce.counts?.signed_in ?? workforce.signed_in_units?.length ?? 0}</div></div>
+        <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Signed-In Units</div><div className="mt-1 text-3xl font-black">{scopedSignedInUnits.length}</div></div>
         <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Active Assignments</div><div className="mt-1 text-3xl font-black">{board.length}</div></div>
         <div className={`rounded-xl border p-4 ${overdue.length?'border-red-600 bg-red-950/30':'border-slate-700 bg-[#0b1725]'}`}><div className="text-xs font-bold uppercase text-slate-500">Welfare Overdue</div><div className={overdue.length?'mt-1 text-3xl font-black text-red-300':'mt-1 text-3xl font-black'}>{overdue.length}</div></div>
         <div className="rounded-xl border border-slate-700 bg-[#0b1725] p-4"><div className="text-xs font-bold uppercase text-slate-500">Pending Acknowledgement</div><div className="mt-1 text-3xl font-black text-amber-300">{board.filter(row=>row.assignment_status==='pending').length}</div></div>
