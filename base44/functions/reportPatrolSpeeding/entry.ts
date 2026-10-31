@@ -108,12 +108,41 @@ export default async function(req:Request):Promise<Response>{
         ...fields
       });
     }
+    // Supervisor Operations displays WorkQueueState, not the general Task list.
+    // Keep the linked review visible in the assigned supervisor's Action Items.
+    const queueKey='patrol-speeding:'+eventId;
+    const queueTitle='Patrol speed review · '+label(officer);
+    const queueDetail=[
+      (record.road_name||'Road not recorded'),
+      Number(record.max_speed_mph).toFixed(1)+' mph in '+record.speed_limit_mph+' mph zone',
+      Math.round(record.duration_seconds)+' sec',
+      Number(record.distance_miles).toFixed(3)+' mi GPS-measured'
+    ].join(' · ');
+    const queues=asRows(await api.asServiceRole.entities.WorkQueueState.filter({
+      task_key:queueKey,queue_role:'supervisor'
+    },'-created_date',2));
+    if(queues.length)await api.asServiceRole.entities.WorkQueueState.update(queues[0].id,{
+      title:queueTitle,
+      source_location:queueDetail,
+      last_seen_at:new Date().toISOString()
+    });
+    else await api.asServiceRole.entities.WorkQueueState.create({
+      task_key:queueKey,queue_role:'supervisor',status:'open',
+      title:queueTitle,person:label(officer),officer_email:officer.email,
+      source_kind:'patrol_speeding',source_id:record.id,
+      source_location:queueDetail,
+      assigned_to_id:supervisor?.id||'',assigned_to_email:supervisor?.email||'',
+      assigned_to_name:supervisor?label(supervisor):'Command review needed',
+      assigned_at:new Date().toISOString(),assignment_basis:supervisor?'direct_chain':'unassigned',
+      last_seen_at:new Date().toISOString()
+    });
     let taskId=str(record.task_id);
     const description=taskDescription(record,officer,supervisor);
     const task={
       title:'GPS speeding review · '+label(officer)+' · '+record.max_speed_mph+' mph / '+record.speed_limit_mph+' mph limit',
       description,status:'open',priority:'high',
       assigned_to:supervisor?.id||'',assigned_name:supervisor?label(supervisor):'Command review needed',
+      due_date:new Date(Date.now()+24*3600000).toISOString(),
       related_type:'general',related_id:record.id,related_name:label(officer),
       notes:'Automatically generated GPS speed exception; supervisor must verify evidence before any action.'
     };

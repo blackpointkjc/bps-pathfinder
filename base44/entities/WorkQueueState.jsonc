@@ -99,6 +99,10 @@
     "absence_assignee_id": {
       "type": "string",
       "description": "Automatically assigned temporary owner"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Subject employee email for authorized supervisor scoping"
     }
   },
   "required": [

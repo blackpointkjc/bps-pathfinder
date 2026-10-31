@@ -80,7 +80,7 @@ export default function SupervisorActionItem({ item, groupLabel, showAssignee, o
             disabled={completing}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 text-xs font-black text-emerald-100 transition hover:bg-emerald-500/25 disabled:cursor-wait disabled:opacity-60"
           >
-            <CheckCircle2 className="h-4 w-4" />{completing ? 'Saving…' : 'Mark contacted'}
+            <CheckCircle2 className="h-4 w-4" />{completing ? 'Saving…' : item.complete?.kind==='patrol_speeding' ? 'Mark reviewed' : 'Mark contacted'}
           </button>
           {item.tool && (
             <Link to={createPageUrl(item.tool.page)} className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-700 bg-[#101f31] px-3 text-[11px] font-bold text-slate-200 transition hover:border-cyan-500/50 hover:text-white">

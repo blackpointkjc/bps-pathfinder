@@ -19,10 +19,12 @@ const GROUP_BY_KIND = {
   review: 'reviews',
   review_follow_up: 'reviews',
   missed_clock_in: 'live',
+  patrol_speeding: 'live',
 };
 
 const PRIORITY_BY_KIND = {
   missed_clock_in: 'critical',
+  patrol_speeding: 'high',
   report_review: 'high',
   complaint: 'high',
   writeup: 'high',

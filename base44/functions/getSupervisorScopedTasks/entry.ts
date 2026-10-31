@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
         const sourceEmail=normalized(assignedState.officer_email || assignedState.source_officer_email);
         if (sourceEmail) {
           const owner = await base44.asServiceRole.entities.User.filter({email:sourceEmail},'-updated_date',1).catch(()=>[]);
-          if (!owner[0] || !withinSupervisorArea(me,owner[0])) return Response.json({error:'Task is outside your assigned platoon and operating area.'},{status:403});
+          if (!owner[0] || (normalized(assignedState.source_kind)!=='patrol_speeding' && !withinSupervisorArea(me,owner[0]))) return Response.json({error:'Task is outside your assigned platoon and operating area.'},{status:403});
         } else {
           const people = await base44.asServiceRole.entities.User.list('-updated_date',1000);
           const person = normalized(assignedState.person);
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
         status:'completed',
         completed_at:completedAt,
         completed_by:me.email || String(me.id),
-        completion_note:'Supervisor contacted officer',
+        completion_note:normalized(assignedState?.source_kind)==='patrol_speeding'?'Supervisor reviewed GPS patrol-speed exception':'Supervisor contacted officer',
         last_seen_at:completedAt,
       };
       const existingSupervisor = (supervisorStates || []).filter((state:any) => String(state.task_key) === taskKey);
@@ -462,7 +462,8 @@ Deno.serve(async (req) => {
       fullAccess || (ownedByMe(row) && assignedByEmail(row)));
     const queueTasks = (supervisorStates || [])
       .filter((state:any) => normalized(state.status) === 'open')
-      .filter((state:any) => fullAccess || (ownedByMe(state) && assignedByEmail(state)));
+      .filter((state:any) => fullAccess || (ownedByMe(state) &&
+        (normalized(state.source_kind)==='patrol_speeding' || assignedByEmail(state))));
 
 
     return Response.json({
