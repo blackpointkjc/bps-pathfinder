@@ -13,17 +13,18 @@ async function rotate(){
   try{if(localStorage.getItem(KEY)===today)return;}catch{}
   updating=true;
   try{
+    // Synchronously drop stale personnel snapshots before React mounts. The
+    // CacheStorage deletion below is asynchronous, but must not let the page
+    // start with yesterday's in-memory officer directory.
+    invalidateAppDirectory();
+    queryClientInstance.removeQueries({type:'inactive'});
+    queryClientInstance.invalidateQueries({refetchType:'none'});
     // Browser CacheStorage is restricted to the current origin. Do not clear
     // third-party caches, authentication, or offline draft databases.
     if('caches' in window){
       const names=await caches.keys();
       await Promise.all(names.filter(name=>name.startsWith('pathfinder-offline-shell-')||name.startsWith('pathfinder-map-tiles-')).map(name=>caches.delete(name)));
     }
-    invalidateAppDirectory();
-    // Retain live mounted observers; mark their query data stale without
-    // provoking a company-wide burst of requests during active CAD.
-    queryClientInstance.removeQueries({type:'inactive'});
-    queryClientInstance.invalidateQueries({refetchType:'none'});
     try{
       localStorage.removeItem('pathfinder-offline-prime-v1');
       for(let index=localStorage.length-1;index>=0;index--){
