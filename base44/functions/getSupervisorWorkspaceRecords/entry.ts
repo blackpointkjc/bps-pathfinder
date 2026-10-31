@@ -32,7 +32,7 @@ const activePlatoonCommand=(people:any[],platoon:string,region:string)=>{
  const chosen=eligible[0];
  if(!chosen)return {platoon,region,status:'unassigned',name:'No active platoon leader',role:'Platoon Command Vacant'};
  const acting=level(chosen.rank)!==3;
- return {id:chosen.id,platoon,region,status:acting?'acting':'active',name:commandName(chosen),first_name:chosen.first_name||'',last_name:chosen.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:chosen.rank,badge_number:chosen.badge_number||'',unit_number:chosen.unit_number||'',profile_photo_url:chosen.profile_photo_original_url||chosen.profile_photo_url||'',work_email:chosen.work_email||chosen.email||'',mobile_phone:chosen.mobile_phone||'',subdivision:chosen.subdivision||'',substation:chosen.substation||'',assigned_site_name:chosen.assigned_site_name||''};
+ return {id:chosen.id,platoon,region,status:acting?'acting':'active',name:commandName(chosen),first_name:chosen.first_name||'',last_name:chosen.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:chosen.rank,badge_number:chosen.badge_number||'',unit_number:chosen.unit_number||'',profile_photo_url:String(chosen.profile_photo_url||'').length<=150000?chosen.profile_photo_url||'':'',work_email:chosen.work_email||chosen.email||'',mobile_phone:chosen.mobile_phone||'',subdivision:chosen.subdivision||'',substation:chosen.substation||'',assigned_site_name:chosen.assigned_site_name||''};
 };
 
 const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',force:'UseOfForceReport',callouts:'CallOut',handovers:'SupervisorShiftHandover',duty:'DutySupervisorAssignment',chat:'SupervisorChatMessage'};
@@ -42,6 +42,16 @@ Deno.serve(async(req)=>{
   if(!me)return Response.json({error:'Sign in required'},{status:401});
   if(!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
   const body=await req.json().catch(()=>({})),kind=n(body.kind),entity=entities[kind];
+  if(kind==='portrait'){
+    const photoId=String(body.id||'');
+    if(!photoId)return Response.json({error:'Officer ID required'},{status:400});
+    const subject=await sdk.asServiceRole.entities.User.get(photoId);
+    if(!subject)return Response.json({error:'Officer not found'},{status:404});
+    const samePlatoon=n(me.division)===n(subject.division)&&n(me.oversight_platoon||me.platoon)===n(subject.platoon);
+    if(!admin(me) && String(me.id)!==photoId && !samePlatoon && !area(me,subject))
+      return Response.json({error:'Officer portrait is outside your authorized platoon'},{status:403});
+    return Response.json({success:true,id:subject.id,photo_url:subject.profile_photo_original_url||subject.profile_photo_url||''});
+  }
   if(!entity && kind!=='personnel')return Response.json({error:'Unknown supervisor record type'},{status:400});
   if(kind==='personnel'){
     // Fast path: do not fetch every client Location or report collection. Do
@@ -60,7 +70,7 @@ Deno.serve(async(req)=>{
     const commands=visible.map(p=>activePlatoonCommand(staff,p.platoon,p.region));
     const company=admin(me)?staff.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
     const selected=[...new Map([...allowed,...company].map((p:any)=>[String(p.id),p])).values()];
-    const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:p.mobile_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',profile_photo_url:level(p.rank)<=2?(p.profile_photo_url||''):''}));
+    const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:p.mobile_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
     return Response.json({success:true,officers,platoon_commands:commands,platoons:visible,regions:[...new Set(visible.map(p=>p.region))]});
   }
   const [users,sites,rows]=await Promise.all([
