@@ -3,6 +3,7 @@ let activeReader = null;
 let generation = 0;
 let lineBuffer = '';
 let lastMotion = { speed: 0, heading: null };
+let lastDataNoticeAt = 0;
 
 function coordinate(value, hemisphere, degreeDigits) {
   const raw = String(value || '').trim();
@@ -127,6 +128,10 @@ async function readLoop(port, localGeneration) {
         while (activePort === port && localGeneration === generation) {
           const { value, done } = await reader.read();
           if (done) break;
+          if (value?.byteLength && Date.now() - lastDataNoticeAt > 5000) {
+            lastDataNoticeAt = Date.now();
+            self.postMessage({ type: 'data' });
+          }
           lineBuffer += decoder.decode(value, { stream: true });
           const lines = lineBuffer.split(/\r?\n/);
           lineBuffer = lines.pop() || '';
