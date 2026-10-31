@@ -42,11 +42,11 @@ const contactEmail = person => {
 };
 const composeUrl = person => `${createPageUrl('OutlookMail')}?compose=1&to=${encodeURIComponent(contactEmail(person))}`;
 
-function PersonCard({ person, users, onOpen, compact = false }) {
+function PersonCard({ person, users, onOpen, onPhotoOpen, compact = false }) {
   const supervisorText = reportingLabel(person, users, displayName);
   return <button type="button" onClick={()=>onOpen?.(person)} className={`w-full rounded-xl border border-slate-700 bg-slate-950/95 text-left shadow-lg shadow-black/20 transition hover:border-blue-500/70 hover:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${compact ? 'max-w-[310px] p-3' : 'max-w-[360px] p-4'}`}>
     <div className="flex items-start gap-3">
-      {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className={`${compact?'h-12 w-12':'h-14 w-14'} shrink-0 rounded-full border border-slate-700 object-cover`}/> : <div className={`flex ${compact?'h-12 w-12':'h-14 w-14'} shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-black`}>{person.first_name?.[0]}{person.last_name?.[0]}</div>}
+      {person.profile_photo_url ? <img src={person.profile_photo_url} alt="Click to enlarge officer portrait" onClick={event=>{event.stopPropagation();onPhotoOpen?.(person);}} className={`${compact?'h-12 w-12':'h-14 w-14'} shrink-0 cursor-zoom-in rounded-full border border-slate-700 object-cover`}/> : <div className={`flex ${compact?'h-12 w-12':'h-14 w-14'} shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-black`}>{person.first_name?.[0]}{person.last_name?.[0]}</div>}
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
           <div className="min-w-0"><div className="break-words text-base font-black leading-5 text-white">{displayName(person)}</div>{isOutOfOffice(person) && <div className="mt-1 text-xs text-amber-300">Out of office · returns {new Date(person.out_of_office_return).toLocaleString()}</div>}<div className="mt-1 text-xs text-slate-400">Unit {person.unit_number || '—'} · {orgPathLabel(person) || 'Organization unassigned'}</div></div>
@@ -79,8 +79,8 @@ function OrgTreeNode({ person, branch, allUsers, onOpen }) {
   </div>;
 }
 
-function CommandTree({ users, allUsers, onOpen }) {
-  return <CommandRankTiers users={users} renderPerson={person=><PersonCard person={person} users={allUsers} onOpen={onOpen}/>}/>;
+function CommandTree({ users, allUsers, onOpen, onPhotoOpen }) {
+  return <CommandRankTiers users={users} renderPerson={person=><PersonCard person={person} users={allUsers} onOpen={onOpen} onPhotoOpen={onPhotoOpen}/>}/>;
 }
 
 function AreaMember({ person, onOpen, onPhotoOpen }) {
@@ -229,7 +229,7 @@ export default function RankStructure(){
     {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>setPrintRequested(true)} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
     {isAdmin && <section className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5">
       <button type="button" aria-expanded={companyExpanded} onClick={()=>setCompanyExpanded(value=>!value)} className="flex w-full items-center justify-between gap-3 text-left"><span className="flex items-center gap-2 text-lg font-black text-white"><Shield className="h-5 w-5 text-amber-300"/>Company Command</span><span className="text-xs font-semibold text-amber-200">{companyExpanded?'Minimize':'Expand'}</span></button>
-      {companyExpanded&&<div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson}/></div>}
+      {companyExpanded&&<div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson} onPhotoOpen={setPhotoPerson}/></div>}
     </section>}
     <FocusedRankFlow users={active} commands={commands} platoonDefinitions={structureData.platoons} regionsDirectory={structureData.regions} viewer={user} onOpen={setSelectedPerson} onPhotoOpen={setPhotoPerson}/>
     <OfficerDialog person={selectedPerson} users={active} open={!!selectedPerson} onPhotoOpen={person=>setPhotoPerson(person)} onOpenChange={open=>{if(!open)setSelectedPerson(null)}}/>
