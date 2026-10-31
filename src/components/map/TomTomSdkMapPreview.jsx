@@ -171,6 +171,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const onSelectFacilityRef=useRef(onSelectFacility);
   const onMapUnavailableRef=useRef(onMapUnavailable);
   const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence});
+  const layerSnapshotRef=useRef({});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficInitRef=useRef(false);
   const terrainInitRef=useRef(false);
@@ -198,16 +199,29 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const syncCadData=(map)=>{
     if(!map || !map.getSource('pathfinder-calls'))return;
     const snapshot=cadDataRef.current;
-    const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
-    callsRef.current=calls;
-    map.getSource('pathfinder-calls')?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
-    // Same visibility/privacy checks as the original Leaflet officer layer;
-    // use freshest valid live, coarse, or last-known coordinate.
-    const units=(snapshot.otherUnits||[]).map(unit=>({unit,position:unitPosition(unit)})).filter(row=>row.position);
-    map.getSource('pathfinder-units')?.setData(featureCollection(units.map(({unit,position},i)=>
-      marker(unit.id||i,position.latitude,position.longitude,{
-        icon:unitShieldIcon(unit),label:String(unit.unit_number||unit.unitName||unit.name||'Officer').slice(0,35)
-      }))));
+    // The GPS marker updates every few seconds. Do not rebuild hundreds of CAD
+    // icons and unit features unless those collections or their map source
+    // actually changed (e.g. a theme/style reload).
+    const previous=layerSnapshotRef.current;
+    const callSource=map.getSource('pathfinder-calls');
+    if (snapshot.activeCalls!==previous.calls || callSource!==previous.callSource) {
+      const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
+      callsRef.current=calls;
+      callSource?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
+      previous.calls=snapshot.activeCalls;
+      previous.callSource=callSource;
+    }
+    const unitSource=map.getSource('pathfinder-units');
+    const unitsChanged=snapshot.otherUnits!==previous.units || unitSource!==previous.unitSource;
+    const units=unitsChanged ? (snapshot.otherUnits||[]).map(unit=>({unit,position:unitPosition(unit)})).filter(row=>row.position) : [];
+    if (unitsChanged) {
+      unitSource?.setData(featureCollection(units.map(({unit,position},i)=>
+        marker(unit.id||i,position.latitude,position.longitude,{
+          icon:unitShieldIcon(unit),label:String(unit.unit_number||unit.unitName||unit.name||'Officer').slice(0,35)
+        }))));
+      previous.units=snapshot.otherUnits;
+      previous.unitSource=unitSource;
+    }
     if(fitMarkers && !markerFitRef.current && units.length && map.getZoom){
       markerFitRef.current=true;
       const coordsArray=units.map(({position})=>[Number(position.longitude),Number(position.latitude)]);
@@ -224,6 +238,12 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     map.getSource('pathfinder-search-results')?.setData(featureCollection(pins.map((pin,index)=>marker(pin.id||`search-${index}`,pin.coords[0],pin.coords[1],{title:String(pin.name||pin.address||'Destination').slice(0,70)}))));
     const chosen=snapshot.selectedPin;
     map.getSource('pathfinder-selected-point')?.setData(featureCollection(chosen&&coords(chosen.coords)?[marker('selected',chosen.coords[0],chosen.coords[1])]:[]));
+    const facilitySource=map.getSource('pathfinder-facilities');
+    if (snapshot.facilityFilters!==previous.facilityFilters
+        || snapshot.showPoliceStations!==previous.showPoliceStations
+        || snapshot.showFireStations!==previous.showFireStations
+        || snapshot.showJails!==previous.showJails
+        || facilitySource!==previous.facilitySource) {
     const facilities=[];
     if(snapshot.showPoliceStations){
       for(const station of Object.values(POLICE_STATIONS).flat())
@@ -241,6 +261,12 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     map.getSource('pathfinder-facilities')?.setData(featureCollection(shown.map((facility,index)=>
       marker(`facility-${index}`,facility.coords[0],facility.coords[1],{key:index,icon:`bps-facility-${facility.kind}`,
       label:String(facility.name||facility.kind).slice(0,70)}))));
+      previous.facilityFilters=snapshot.facilityFilters;
+      previous.showPoliceStations=snapshot.showPoliceStations;
+      previous.showFireStations=snapshot.showFireStations;
+      previous.showJails=snapshot.showJails;
+      previous.facilitySource=facilitySource;
+    }
     const points=(snapshot.route||[]).filter(coords).map(point=>[Number(point[1]),Number(point[0])]);
     map.getSource('pathfinder-route')?.setData(featureCollection(points.length>=2?[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]:[]));
     const boundary=geofenceFeature(snapshot.geofence);
