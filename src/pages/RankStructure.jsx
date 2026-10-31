@@ -1,7 +1,7 @@
 import { useAvailabilityClock } from '@/hooks/useAvailabilityClock';
 import { isOutOfOffice } from '@/utils/outOfOffice';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { withinPersonnelOversightScope, orgPathLabel } from '@/lib/orgStructure';
+import { withinPersonnelOversightScope, orgPathLabel, officerOrgContext } from '@/lib/orgStructure';
 import PersonnelPrintRoster from '@/components/PersonnelPrintRoster';
 import CommandRankTiers from '@/components/CommandRankTiers';
 import { reportingLabel, reportingSupervisors, oversightLabel, assignmentLabel, actingCommandLabel, platoonCommander, majorPlatoon } from '@/utils/commandReporting';
@@ -13,7 +13,7 @@ import { Shield, GitBranch, Mail, Phone, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/lib/AuthContext';
@@ -111,7 +111,7 @@ function FocusedRankFlow({ users, viewer, commands = [], onOpen }) {
   const divisions=distinct([...platoonPeople.filter(person=>person.division===region).map(person=>person.subdivision),...(!companyAccess&&viewer?.subdivision?[viewer.subdivision]:[])]);
   const division=companyAccess?(divisions.includes(chosenDivision)?chosenDivision:divisions[0]||''):viewer?.subdivision||'';
   const divisionPeople=platoonPeople.filter(person=>person.division===region&&person.subdivision===division);
-  const substations=distinct([...divisionPeople.map(person=>person.substation),...(!companyAccess&&!viewerSenior&&viewer?.substation?[viewer.substation]:[])]);
+  const substations=distinct([...divisionPeople.map(person=>person.substation||'Not assigned to a substation'),...(!companyAccess&&!viewerSenior&&viewer?.substation?[viewer.substation]:[])]);
   const visibleStations=companyAccess||viewerSenior?substations:substations.filter(name=>name===viewer?.substation);
   const leadership=divisionPeople.filter(person=>!person.substation).sort(comparePersonnel);
   const commander=commands.find(entry=>entry.platoon===platoon)||null;
@@ -138,7 +138,7 @@ function FocusedRankFlow({ users, viewer, commands = [], onOpen }) {
       {!visibleStations.length?<div className="mx-auto max-w-lg rounded-xl border border-dashed border-slate-700 p-7 text-center text-sm text-slate-400">No substations with authorized personnel are assigned to this Division.</div>:
       <div className={`grid items-start gap-4 ${visibleStations.length>1?'lg:grid-cols-2':''}`}>
         {visibleStations.map(station=>{
-          const members=divisionPeople.filter(person=>person.substation===station).sort(comparePersonnel);
+          const members=divisionPeople.filter(person=>(person.substation||'Not assigned to a substation')===station).sort(comparePersonnel);
           const ranks=distinct(members.map(person=>person.rank)).sort((a,b)=>RANKS.indexOf(a)-RANKS.indexOf(b));
           return <div key={station} className="min-w-0 overflow-hidden rounded-2xl border border-emerald-700/40 bg-[#0b2031]" data-substation={station}>
             <div className="flex items-center justify-between gap-2 border-b border-emerald-700/30 bg-emerald-950/20 px-4 py-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Substation</div><h4 className="mt-0.5 text-lg font-black text-white">{station}</h4></div><span className="rounded-full border border-emerald-800 px-2 py-1 text-xs font-bold text-emerald-200">{members.length} officers</span></div>
@@ -154,14 +154,22 @@ export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
   const { user } = useAuth();
-  const {data:rosterData={officers:[],commands:[]}}=useQuery({queryKey:['allUsersRank',user?.id,user?.rank,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation],queryFn:async()=>{
+  const {data:rosterData={officers:[],commands:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({queryKey:['allUsersRank',user?.id,user?.rank,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation],queryFn:async()=>{
     if (!hasSupervisorAccess(user)) {
-      const all=await listDirectoryUsers('last_name',1000);
+      const [all,locations]=await Promise.all([listDirectoryUsers('last_name',1000),listDirectoryLocations('site_name',1000).catch(()=>[])]);
+      // The old chart only read personnel.substation, although a large part
+      // of the operational roster is assigned through client site locations.
+      // Resolve missing fields using the already authorized site's hierarchy;
+      // never make a site-derived inference for supervisor accounts.
+      const officers=all.map(person=>{
+        const org=officerOrgContext(person,locations);
+        return {...person,division:org.division||person.division,subdivision:org.subdivision||person.subdivision,substation:org.substation||person.substation,assigned_site_name:org.site_name};
+      });
       const commands=['A','B'].map(platoon=>{
         const person=platoonCommander(platoon,all);
         return person?{platoon,status:person.rank==='Captain'?'active':'acting',name:displayName(person),role:person.rank==='Captain'?'Platoon Commander':'Acting Platoon Commander',unit_number:person.unit_number||''}:{platoon,status:'unassigned',name:'No active commander assigned'};
       });
-      return {officers:all,commands};
+      return {officers,commands};
     }
     const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'});
     const data=response?.data||response||{};
@@ -173,10 +181,16 @@ export default function RankStructure(){
   const roles=rolesOf(user);
   const allowed=hasSupervisorAccess(user)||roles.has('officer')||roles.has('cad_access');
   const availabilityTick=useAvailabilityClock();
-  const active=useMemo(()=>users.filter(person=>isOperational(person)&&!isOutOfOffice(person) && (!hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,user?.id,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
+  // An officer on approved leave is still assigned to their substation.
+  // The command card uses availability, but assignment rosters must not
+  // silently remove people merely because they're off duty or on leave.
+  const active=useMemo(()=>users.filter(person=>isOperational(person) && (!hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,user?.id,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
 
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
+    {rosterError && <div role="alert" className="rounded-xl border border-red-500/50 bg-red-950/30 p-4 text-sm text-red-100">Officer assignments could not load: {rosterError.message}. <button type="button" className="ml-2 underline font-bold" onClick={()=>refetchRoster()}>Retry roster</button></div>}
+    {!rosterError && (rosterLoading || rosterFetching && !users.length) && <div role="status" className="rounded-xl border border-cyan-800 bg-slate-900 p-4 text-sm text-cyan-200">Loading assigned personnel and active platoon command…</div>}
+    {!rosterLoading && !rosterError && !active.length && <div role="status" className="rounded-xl border border-amber-700 bg-amber-950/25 p-4 text-sm text-amber-100">No assigned lower-ranking officers are currently visible in your authorized platoon and area. Check officer Region, Division, Platoon and Substation assignments in Manage Officers.</div>}
     <PersonnelPrintRoster users={active} contactEmail={contactEmail}/>
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Active Platoon Command is displayed first, directly above the operating Division and its Substation branches. Select a state or Division without crowding the chart.</p></div></div></div>
 
