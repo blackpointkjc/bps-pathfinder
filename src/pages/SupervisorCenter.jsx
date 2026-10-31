@@ -100,7 +100,7 @@ export default function SupervisorCenter({ embedded = false }) {
   return <UnifiedCenter
     eyebrow="Field Leadership"
     title="Supervisor Center"
-    description="Supervisor command, scheduling, field oversight and personnel workflows."
+    description="Lower-rank personnel oversight within your assigned platoon and operating area."
     sections={SECTIONS}
     defaultSection="overview"
     queryParam={embedded ? 'supervisor_section' : 'section'}

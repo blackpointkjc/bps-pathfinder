@@ -115,7 +115,7 @@ export default function SupervisorTasks() {
               <div>
                 <h1 className="text-xl font-black leading-tight text-white">Supervisor Action Items</h1>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  Only actions assigned to your account and within your Platoon, Region, Division and Substation oversight.
+                  Only actions assigned to you for lower-ranking officers in your Platoon and authorized Division or Substation.
                 </p>
               </div>
             </div>

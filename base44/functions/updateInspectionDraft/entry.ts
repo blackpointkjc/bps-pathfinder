@@ -35,7 +35,10 @@ Deno.serve(async (req) => {
       const candidates=await base44.asServiceRole.entities.User.filter({email:existing.officer_email},'-updated_date',1).catch(()=>[]);
       const officer=candidates[0];
       const n=v=>String(v||'').trim().toLowerCase();
+      const chain=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
+      const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'');return chain.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
       const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(user.rank));
+      if(level(user.rank)<0 || level(officer?.rank)<=level(user.rank))return Response.json({error:'Inspection target must be a lower-ranking officer'},{status:403});
       if(!officer||!['a','b'].includes(platoon)||n(officer.platoon)!==platoon
         ||!n(user.division)||!n(user.subdivision)||n(officer.division)!==n(user.division)||n(officer.subdivision)!==n(user.subdivision)
         ||(!senior&&(!n(user.substation)||n(officer.substation)!==n(user.substation))))
