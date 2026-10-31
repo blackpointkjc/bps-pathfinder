@@ -4,18 +4,19 @@ import { loadBrowserContext, checkDestination } from '../../shared/browserContex
 // Browserless shared-fleet US-West (San Francisco) endpoint. Do not switch
 // to chrome-us-east: it requires a private/enterprise fleet token.
 const HOST = 'https://production-sfo.browserless.io';
+const BQL_ENDPOINT = HOST + '/chromium/bql';
 // Browserless caps the actual session lifetime by account plan.
-// Try longer tiers first; Free plans fall back to ~105 seconds.
+// Use a Free-plan-compatible initial link. Longer plans can be negotiated separately.
 const SESSION_TIERS = [
-  { viewer: 3300000, reconnect: 3360000 },
-  { viewer: 1620000, reconnect: 1680000 },
+  { viewer: 90000, reconnect: 115000 },
   { viewer: 780000, reconnect: 840000 },
-  { viewer: 100000, reconnect: 110000 },
+  { viewer: 1620000, reconnect: 1680000 },
+  { viewer: 3300000, reconnect: 3360000 },
 ];
 const asRows = (data:any) => Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
 function verifiedReconnectEndpoint(raw:string, token:string):string {
   const parsed=new URL(raw);
-  if(parsed.origin!==HOST || !parsed.pathname.includes('/bql/')) throw new Error('Browser reconnect endpoint was rejected');
+  if(parsed.origin!==HOST || !/\/chromium\/bql\//.test(parsed.pathname)) throw new Error('Browser reconnect endpoint was rejected');
   parsed.searchParams.set('token',token);
   return parsed.href;
 }
@@ -49,7 +50,7 @@ export default async function (req: Request): Promise<Response> {
       if (context.user.role !== 'admin') return Response.json({error:'Admin role required to test the browser engine.'},{status:403});
       if (!configured) return Response.json({reachable:false, error:'Browserless credential not configured.'});
       try {
-        const health = await fetch(HOST + '/chrome/bql?token=' + encodeURIComponent(Deno.env.get('BROWSERLESS_TOKEN')!.trim()), {
+        const health = await fetch(BQL_ENDPOINT + '?token=' + encodeURIComponent(Deno.env.get('BROWSERLESS_TOKEN')!.trim()), {
           method:'POST', headers:{'Content-Type':'application/json'},
           body:JSON.stringify({query:'mutation BrowserHealth { goto(url: "https://example.com", waitUntil: domContentLoaded) { status } }'}),
           signal:AbortSignal.timeout(15000)
@@ -122,20 +123,26 @@ export default async function (req: Request): Promise<Response> {
     const viewportHeight = Math.max(400, Math.min(950, Math.round(Number(body.viewport_height)||760)));
     let selected:any=null;
     let failure='The provider did not start the Chrome session.';
-    for (const tier of SESSION_TIERS) {
+    for (const tier of SESSION_TIERS.slice(0, 1)) {
       const query=sessionMutation(target.href,tier.viewer,tier.reconnect,isAdmin,viewportWidth,viewportHeight,true);
       try {
-        const response=await fetch(HOST+'/chrome/bql?token='+encodeURIComponent(token),{
+        const response=await fetch(BQL_ENDPOINT+'?token='+encodeURIComponent(token),{
           method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({query,variables:{url:target.href}}),signal:AbortSignal.timeout(27000)
         });
-        const json=await response.json().catch(()=>({}));
+        const bodyText=await response.text();
+        let json:any={};
+        try {json=JSON.parse(bodyText);}catch {}
+        const safeDiagnostic = String(gqlError(json) || json?.message || json?.error || bodyText || '')
+          .replace(/token=[^\s&"']+/gi, 'token=[redacted]')
+          .replace(/2VXm34bXPFAh2Dc851fb23d9a0f20109c850c80808f6358b8/gi, '[redacted]')
+          .slice(0,180);
         const problem=gqlError(json);
         if (response.ok && !problem && json?.data?.liveURL?.liveURL && json?.data?.reconnect?.browserQLEndpoint) {
           selected={tier,json};
           break;
         }
-        failure=problem||('Remote Chrome returned HTTP '+response.status);
+        failure=problem||('Browserless HTTP '+response.status+(safeDiagnostic ? ': '+safeDiagnostic : ''));
         // A lower-tier timeout may work when this token's plan disallows the
         // larger reconnect or live URL lifetime. Do not retry unrelated failures.
         if (!/exceed|maximum|session duration|timeout.*allowed|allowed.*timeout|plan limit/i.test(failure)) break;
@@ -144,7 +151,7 @@ export default async function (req: Request): Promise<Response> {
         break;
       }
     }
-    if (!selected) return Response.json({error:'Remote Chrome could not start. '+failure.slice(0,150),code:'BROWSER_PROVIDER_ERROR'},{status:502});
+    if (!selected) return Response.json({error:'Remote browser launch failed. '+failure.slice(0,230),code:'BROWSER_PROVIDER_ERROR'},{status:502});
     const viewer=selected.json.data.liveURL.liveURL;
     const reconnect=selected.json.data.reconnect.browserQLEndpoint;
     if(typeof viewer!=='string' || !viewer.startsWith(HOST+'/')) return Response.json({error:'Browser viewer link was rejected.'},{status:502});
