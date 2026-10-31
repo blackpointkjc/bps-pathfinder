@@ -32,8 +32,7 @@ function sessionMutation(url:string, liveMs:number, idleMs:number, admin:boolean
     ' liveURL(detached:true, interactable:'+String(admin)+', showBrowserInterface:'+String(admin)+', type:jpeg, quality:85, captureScale:1, resizable:true, timeout:'+liveMs+') { liveURL timeout }',
     ' reconnect(timeout:'+idleMs+') { browserQLEndpoint }',
     '}'
-  ].join('
-');
+  ].join('\n');
 }
 
 
