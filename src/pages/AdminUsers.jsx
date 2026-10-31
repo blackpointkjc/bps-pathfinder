@@ -1,4 +1,3 @@
-import { canManageWebsiteRestrictions } from '@/lib/browserOwner';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { accessLabel } from '@/utils/accountLabels';
 import { isOutOfOffice } from '@/utils/outOfOffice';
@@ -685,7 +684,7 @@ export default function AdminUsers({ embedded = false }) {
       />
 
       <div className="space-y-4">
-       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-4"><div><h1 className="text-2xl font-bold text-white">Accounts & Access</h1><p className="mt-1 text-sm text-slate-400">Manage staff access and pending accounts. Client accounts are managed under Client Accounts.</p></div><div className="flex gap-2">{canManageWebsiteRestrictions(user) && <Button variant="outline" onClick={() => navigate(`${createPageUrl('AdminBrowserControl')}?browser_tool=profiles`)}>Browser access</Button>}<Button variant="outline" disabled={checkingAnniversaries} onClick={checkAnniversariesAndBirthdays}>Anniversary announcements</Button><Button onClick={()=>{resetCreateForm();setShowCreateDialog(true);}}><Plus className="mr-2 h-4 w-4"/>Create account</Button></div></header>
+       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-4"><div><h1 className="text-2xl font-bold text-white">Accounts & Access</h1><p className="mt-1 text-sm text-slate-400">Manage staff access and pending accounts. Client accounts are managed under Client Accounts.</p></div><div className="flex gap-2"><Button variant="outline" disabled={checkingAnniversaries} onClick={checkAnniversariesAndBirthdays}>Anniversary announcements</Button><Button onClick={()=>{resetCreateForm();setShowCreateDialog(true);}}><Plus className="mr-2 h-4 w-4"/>Create account</Button></div></header>
        <div className="grid items-end gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3 md:grid-cols-[minmax(0,1fr)_200px_auto]"><label className="text-xs text-slate-400">Search accounts<Input value={accountSearch} onChange={event=>setAccountSearch(event.target.value)} placeholder="Name, rank, unit or email" className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Access role<select value={accountRole} onChange={event=>setAccountRole(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white">{['all','admin','officer','supervisor','hr','trainer','student','support_staff','fleet_manager'].map(role=><option key={role} value={role}>{role==='all'?'All roles':accessLabel(role)}</option>)}</select></label><Button variant="outline" onClick={()=>setActiveTab('pending')}>Pending onboarding ({pendingUsers.length})</Button></div>
 
         {error && (

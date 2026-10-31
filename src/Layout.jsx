@@ -1,4 +1,3 @@
-import { canManageWebsiteRestrictions } from '@/lib/browserOwner';
 import '@/components/map/mapWorkspace.css';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import HeaderClock from '@/components/HeaderClock';
@@ -190,9 +189,6 @@ const CENTER_CONFIG = {
         ['Admin Dashboard', 'AdminDashboard', Gauge],
         ['Company Analytics', 'AdminAnalytics', BarChart3],
         ['Location Tracker', 'AdminLocationTracker', MapPin],
-      ]},
-      { label: 'Corporate Browser', items: [
-        ['Website Restrictions', 'AdminBrowserControl', Globe],
       ]},
       { label: 'People & Accounts', items: [
         ['Personnel & Command','AdminOfficerManagement',Users],
@@ -527,11 +523,8 @@ function canAccessPage(user, pageName) {
   if (clientIdentity) return pageName === 'ClientCenter' || (PAGE_TO_CENTERS[pageName] || []).includes('client') && !(PAGE_TO_CENTERS[pageName] || []).some(center => center !== 'client');
   const studentAccess = normalizedRoles(user).has('student');
   if (studentAccess) return pageName === 'StudentPortal';
-  // The managed corporate browser is available to every staff role; clients and
-  // students were already excluded above.
-  if (pageName === 'CorporateBrowser') return true;
-  // Browser-policy administration is separate from employee browsing access.
-  if (pageName === 'AdminBrowserControl') return canManageWebsiteRestrictions(user);
+  // Corporate browsing is suspended for every account, including admin.
+  if (pageName === 'CorporateBrowser' || pageName === 'AdminBrowserControl') return false;
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
   if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || normalizedRoles(user).has('full_access');
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
@@ -1611,11 +1604,6 @@ export default function Layout({ children, currentPageName }) {
             <span className="sm:hidden">Main</span>
             <span className="hidden sm:inline">{userHomeLabel}</span>
           </Link>
-          {!allowedCenters(user).every(center => center === 'client' || center === 'student') && <nav aria-label="Corporate Internet Browser" className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
-            {canManageWebsiteRestrictions(user) && <Link to={`${createPageUrl('AdminBrowserControl')}?browser_tool=lists`} aria-label="Manage website restrictions" title="Manage allowed and blocked websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'AdminBrowserControl' ? 'border-amber-400 bg-amber-900/40 text-white' : 'border-[#605132] bg-[#302718] text-amber-100 hover:border-amber-400'}`}>
-              <ShieldCheck className="h-4 w-4" /><span className="hidden lg:inline">Website Restrictions</span><span className="hidden sm:inline lg:hidden">Web Controls</span>
-            </Link>}
-          </nav>}
           {!['AdminCenter','CorporateBrowser','AdminBrowserControl','AdminReports'].includes(currentPageName) && <div className="pf-header-context hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
