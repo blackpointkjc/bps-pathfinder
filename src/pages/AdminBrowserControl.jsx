@@ -1,3 +1,4 @@
+import { canManageWebsiteRestrictions } from '@/lib/browserOwner';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -31,12 +32,14 @@ export default function AdminBrowserControl() {
 
   const { data: browserEngine, isLoading: browserEngineLoading, refetch: refreshBrowserEngine } = useQuery({
     queryKey: ['browserRemoteEngineStatus'],
+    enabled: canManageWebsiteRestrictions(reviewer),
     queryFn: async () => (await base44.functions.invoke('browserRemoteSession', {action:'status'})).data,
     staleTime: 30000,
   });
 
   const { data: pendingCount = 0 } = useQuery({
     queryKey: ['browserPendingCount'],
+    enabled: canManageWebsiteRestrictions(reviewer),
     queryFn: () => base44.entities.BrowserAccessRequest.count({ status: 'pending' }),
     staleTime: 30000,
   });
@@ -47,6 +50,8 @@ export default function AdminBrowserControl() {
     window.history.replaceState({}, '', `${window.location.pathname}?${next.toString()}`);
   }, [active]);
 
+  if (!reviewer) return <div className="min-h-screen bg-[#071321] p-8 text-sm text-slate-300">Verifying browser administration access…</div>;
+  if (!canManageWebsiteRestrictions(reviewer)) return <div className="min-h-screen bg-[#071321] p-8 text-sm text-amber-200">Website Restrictions is restricted to Colonel Hiers' authorized administrator account.</div>;
   return (
     <div className="min-h-full space-y-3 bg-slate-950 p-4 text-white md:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-4">

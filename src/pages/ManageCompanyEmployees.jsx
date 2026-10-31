@@ -1,3 +1,4 @@
+import { canManageWebsiteRestrictions } from '@/lib/browserOwner';
 import { canAccessAccounting } from '@/lib/accountingAccess';
 import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
@@ -621,7 +622,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       {canManageEmployees && <section className="mb-4 rounded-xl border border-cyan-800/60 bg-slate-900 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-base font-bold text-white">Corporate Internet Browser Access</h2><p className="text-xs text-slate-400">Review and assign approved browsing profiles alongside employee accounts.</p></div>
-          {isSystemAdmin && <Link to={createPageUrl('AdminBrowserControl') + '?browser_tool=profiles'} className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-xs font-semibold text-cyan-100">Browser control center</Link>}
+          {canManageWebsiteRestrictions(user) && <Link to={createPageUrl('AdminBrowserControl') + '?browser_tool=profiles'} className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-xs font-semibold text-cyan-100">Browser control center</Link>}
         </div>
         <p className="mt-2 text-xs text-slate-300">Browser access is automatically based on each employee's existing account roles. Only the Admin account role bypasses mandatory restrictions. Supervisor, HR and Full Access use Limited Business Access; Officer uses Work Research; other employees default to Strict Search Only. No separate employee assignment is required.</p>}
       </section>}

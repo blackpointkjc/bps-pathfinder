@@ -95,14 +95,14 @@ export default function CorporateBrowser() {
   if (loadingPolicy || !user?.id) return <div className="flex min-h-[calc(100dvh-130px)] items-center justify-center bg-[#081321] text-slate-200"><div className="flex items-center gap-3 text-sm"><Loader2 className="h-5 w-5 animate-spin text-cyan-300"/>Opening secure browser…</div></div>;
   return <div className="flex min-h-[calc(100dvh-130px)] w-full flex-col bg-[#050e1a] p-0 text-[#e2e8f0]">
     <div ref={viewerContainerRef} className="flex min-h-0 w-full flex-1 flex-col overflow-hidden border-0 bg-[#091523]">
-      {page.kind!=='site' && <div className="flex min-h-[43px] items-end gap-1 overflow-x-auto border-b border-[#bdc6d2] bg-[#dee4ed] px-2 pt-1.5" role="tablist" aria-label="Browser tabs">
+      {!admin && page.kind!=='site' && <div className="flex min-h-[43px] items-end gap-1 overflow-x-auto border-b border-[#bdc6d2] bg-[#dee4ed] px-2 pt-1.5" role="tablist" aria-label="Browser tabs">
         {tabs.map(item=><div key={item.id} role="tab" aria-selected={activeId===item.id} className={`flex h-9 min-w-[125px] max-w-[225px] flex-1 items-center gap-2 rounded-t-xl px-3 text-[12px] ${activeId===item.id?'bg-white text-[#202124]':'bg-[#ccd5e1] text-[#414c5a] hover:bg-[#e7ecf3]'}`}>
           <button type="button" onClick={()=>setActiveId(item.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left"><Globe2 className="h-4 w-4 shrink-0 text-[#64748b]"/><span className="truncate">{item.title}</span></button>
           <button type="button" onClick={()=>closeTab(item.id)} aria-label={'Close '+item.title} className="rounded p-1 hover:bg-[#b9c3d1]"><X className="h-3.5 w-3.5"/></button>
         </div>)}
         <button type="button" onClick={addTab} aria-label="New tab" title="New tab" className="mb-1 rounded-full p-2 hover:bg-[#cbd5e1]"><Plus className="h-4 w-4"/></button>
       </div>}
-      {page.kind!=='site' && <div className="flex items-center gap-1 border-b border-[#e2e8f0] bg-white px-2 py-2 sm:gap-2 sm:px-3">
+      {!admin && page.kind!=='site' && <div className="flex items-center gap-1 border-b border-[#e2e8f0] bg-white px-2 py-2 sm:gap-2 sm:px-3">
         <button type="button" aria-label="Back" title="Back" disabled={tab.index===0} onClick={()=>goHistory(-1)} className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-30"><ArrowLeft className="h-4 w-4"/></button>
         <button type="button" aria-label="Forward" title="Forward" disabled={tab.index>=tab.history.length-1} onClick={()=>goHistory(1)} className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-30"><ArrowRight className="h-4 w-4"/></button>
         <button type="button" aria-label="Reload" title="Reload" onClick={()=>{setReload(n=>n+1);refreshPolicy();if(page.kind==='search')doSearch(page.query);}} className="rounded-full p-2 hover:bg-slate-100"><RotateCw className="h-4 w-4"/></button>
@@ -114,11 +114,11 @@ export default function CorporateBrowser() {
         </form>
         <button type="button" onClick={()=>navigate(omnibox)} disabled={busy||loadingPolicy} className="rounded-full bg-[#1a73e8] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:'Go'}</button>
       </div>}
-      {page.kind!=='site' && <nav className="flex flex-wrap items-center gap-2 border-b border-[#d7e2ec] bg-[#f8fafc] px-3 py-1.5 text-[11px] sm:gap-4" aria-label="Approved bookmarks">
+      {!admin && page.kind!=='site' && <nav className="flex flex-wrap items-center gap-2 border-b border-[#d7e2ec] bg-[#f8fafc] px-3 py-1.5 text-[11px] sm:gap-4" aria-label="Approved bookmarks">
         <span className="hidden items-center gap-1 font-bold text-slate-500 sm:inline-flex"><BookOpen className="h-3.5 w-3.5"/>Research shortcuts</span>
         {[['VA Courts','https://www.vacourts.gov'],['Virginia.gov','https://www.virginia.gov'],['USA.gov','https://www.usa.gov'],['IRS.gov','https://www.irs.gov']].map(([label,url])=><button type="button" key={url} onClick={()=>visit(url)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"><Landmark className="h-3 w-3"/>{label}</button>)}
       </nav>}
-      {page.kind!=='site' && <div className="flex items-center justify-between gap-2 border-b border-[#e5e7eb] bg-[#fafbfc] px-4 py-1.5 text-[11px] text-[#5f6368]">
+      {!admin && page.kind!=='site' && <div className="flex items-center justify-between gap-2 border-b border-[#e5e7eb] bg-[#fafbfc] px-4 py-1.5 text-[11px] text-[#5f6368]">
         <span className="truncate">{loadingPolicy?'Checking your access…':`${admin ? 'Google Search in Chrome' : 'Public internet search'} · ${profileLabel(policy?.profile)}`}</span>
         <span className="inline-flex shrink-0 items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-[#188038]"/>Pathfinder policy</span>
       </div>}

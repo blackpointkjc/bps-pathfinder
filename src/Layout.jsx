@@ -1,3 +1,4 @@
+import { canManageWebsiteRestrictions } from '@/lib/browserOwner';
 import '@/components/map/mapWorkspace.css';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import HeaderClock from '@/components/HeaderClock';
@@ -419,10 +420,7 @@ function hasFullAccess(user) {
 
 // Browser restriction management is reserved for actual system Admin accounts.
 // The broader Full Access role must NOT grant policy administration.
-function canManageWebsiteRestrictions(user) {
-  return user?.role === 'admin' && user?.user_type !== 'client' &&
-    !(user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');
-}
+
 
 const HIDDEN_PROPERTY_ALERT_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 const normalizedCallStatus = value => String(value || '').trim().toLowerCase();
