@@ -1,5 +1,6 @@
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { orgPathLabel, withinPersonnelOversightScope, buildOrgTree } from '@/lib/orgStructure';
+import { orgPathLabel, withinPersonnelOversightScope } from '@/lib/orgStructure';
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -52,7 +53,7 @@ export default function DivisionDirectory() {
 
     return allUsers
       .filter(u => {
-        if (!withinPersonnelOversightScope(user || {}, u)) return false;
+        if (hasSupervisorAccess(user) && !withinPersonnelOversightScope(user || {}, u)) return false;
         // Operational directory never exposes client, student, or pending accounts.
         const roles = new Set([u.role, ...(u.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
         const userType = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();

@@ -100,7 +100,7 @@ export default function RankStructure(){
   const roles=rolesOf(user);
   const allowed=hasSupervisorAccess(user)||roles.has('officer')||roles.has('cad_access');
   const availabilityTick=useAvailabilityClock();
-  const active=useMemo(()=>users.filter(person=>isOperational(person)&&!isOutOfOffice(person) && withinPersonnelOversightScope(user, person)).sort(comparePersonnel),[users,user?.id,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
+  const active=useMemo(()=>users.filter(person=>isOperational(person)&&!isOutOfOffice(person) && (!hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,user?.id,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
 
   const oversightGroups = useMemo(() => {
     const groups = new Map();
