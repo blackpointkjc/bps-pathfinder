@@ -91,38 +91,50 @@ function AreaMember({ person, onOpen }) {
   </button>;
 }
 
-function PlatoonBranch({ letter, users, onOpen }) {
-  const members = users.filter(person => !COMMAND_RANKS.has(person.rank) && (letter === 'Unassigned' ? !['A','B'].includes(person.platoon) : person.platoon === letter)).sort(comparePersonnel);
-  const regions = new Map();
-  for (const person of members) {
-    const regionName = person.division || 'Region not assigned';
-    const divisionName = person.subdivision || 'Operating division not assigned';
-    const stationName = person.substation || '';
-    if (!regions.has(regionName)) regions.set(regionName, new Map());
-    const divisions = regions.get(regionName);
-    if (!divisions.has(divisionName)) divisions.set(divisionName, { leadership: [], substations: new Map() });
-    const division = divisions.get(divisionName);
-    if (!stationName) division.leadership.push(person);
-    else {
-      if (!division.substations.has(stationName)) division.substations.set(stationName, []);
-      division.substations.get(stationName).push(person);
-    }
-  }
-  const sorted = entries => [...entries].sort(([a],[b])=>a.localeCompare(b));
-  return <section className="min-w-0 overflow-hidden rounded-2xl border border-[#29445f] bg-[#0b1725]">
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#29445f] bg-gradient-to-r from-[#0b3255] to-[#0a1828] px-4 py-4"><div className="flex items-center gap-2"><GitBranch className="h-5 w-5 text-cyan-300"/><h2 className="text-lg font-black tracking-wide text-white">{letter === 'Unassigned' ? 'Unassigned Platoon' : `PLATOON ${letter}`}</h2></div><span className="rounded-full border border-cyan-800 bg-cyan-950/50 px-3 py-1 text-xs font-bold text-cyan-200">{members.length} personnel</span></div>
-    <div className="space-y-3 p-3 sm:p-4">
-      {!members.length && <p className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-sm text-slate-400">No personnel assigned.</p>}
-      {sorted(regions).map(([regionName, divisions]) => <details key={regionName} open className="group min-w-0 rounded-xl border border-slate-700 bg-slate-900/55">
-        <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm font-black text-white"><span>REGION · {regionName}</span><span className="text-xs font-semibold text-slate-400">{[...divisions.values()].reduce((sum,division)=>sum+division.leadership.length+[...division.substations.values()].reduce((count,list)=>count+list.length,0),0)} personnel</span></summary>
-        <div className="space-y-3 border-t border-slate-700 p-3">{sorted(divisions).map(([divisionName, groups]) => <details key={divisionName} open className="rounded-xl border border-slate-700 bg-[#07111f]/90">
-          <summary className="cursor-pointer border-b border-slate-700 px-4 py-3 text-sm font-black text-cyan-200">DIVISION · {divisionName}</summary>
-          <div className="space-y-4 p-3">
-            {!!groups.leadership.length && <div><h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-300">Division & Platoon Leadership</h4><div className="grid gap-2 sm:grid-cols-2">{groups.leadership.sort(comparePersonnel).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>}
-            {sorted(groups.substations).map(([stationName, personnel]) => <div key={stationName} className="rounded-lg border border-slate-700/70 bg-slate-900/50 p-3"><h4 className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-emerald-300"><span>SUBSTATION · {stationName}</span><span>{personnel.length}</span></h4><div className="grid gap-2 sm:grid-cols-2">{personnel.sort(comparePersonnel).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>)}
-          </div>
-        </details>)}</div>
-      </details>)}
+// A focused chain-of-command board. Even with many states, only the chosen
+// platoon + region + division + substation is expanded on screen at once.
+function FocusedRankFlow({ users, viewer, onOpen }) {
+  const roles = new Set([viewer?.role,...(viewer?.additional_roles||[])].map(value => String(value||'').toLowerCase()));
+  const companyAccess = roles.has('admin') || roles.has('full_access');
+  const fixedSubstation = !companyAccess && ['first sergeant','sergeant','corporal'].includes(String(viewer?.rank||'').toLowerCase());
+  const [chosenPlatoon,setChosenPlatoon] = useState(() => viewer?.oversight_platoon || viewer?.platoon || 'A');
+  const [chosenRegion,setChosenRegion] = useState(() => viewer?.division || '');
+  const [chosenDivision,setChosenDivision] = useState(() => viewer?.subdivision || '');
+  const [chosenStation,setChosenStation] = useState(() => viewer?.substation || '');
+  const distinct = values => [...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const platoons = distinct(users.map(person => person.platoon)).filter(value => ['A','B'].includes(value));
+  const platoon = companyAccess ? (platoons.includes(chosenPlatoon)?chosenPlatoon:platoons[0]||'A') : viewer?.oversight_platoon || viewer?.platoon || chosenPlatoon;
+  const platoonPeople = users.filter(person => person.platoon === platoon);
+  const regions=distinct(platoonPeople.map(person=>person.division));
+  const region=regions.includes(chosenRegion)?chosenRegion:(regions.includes(viewer?.division)?viewer.division:regions[0]||'');
+  const divisions=distinct(platoonPeople.filter(person=>person.division===region).map(person=>person.subdivision));
+  const division=divisions.includes(chosenDivision)?chosenDivision:(divisions.includes(viewer?.subdivision)?viewer.subdivision:divisions[0]||'');
+  const divisionPeople=platoonPeople.filter(person=>person.division===region&&person.subdivision===division);
+  const substations=distinct(divisionPeople.map(person=>person.substation));
+  const selectedStation = fixedSubstation ? viewer?.substation || '' : substations.includes(chosenStation)?chosenStation:(substations[0]||'');
+  const divisionLeaders=divisionPeople.filter(person=>!person.substation).sort(comparePersonnel);
+  const stationPeople=divisionPeople.filter(person=>person.substation===selectedStation).sort(comparePersonnel);
+  const rankSections = [...new Map(stationPeople.map(person=>[person.rank,person.rank])).keys()].sort((a,b)=>RANKS.indexOf(a)-RANKS.indexOf(b));
+  const control='h-10 w-full rounded-xl border border-slate-700 bg-[#0d1b2c] px-3 text-sm font-semibold text-white outline-none focus:border-cyan-500';
+  return <section className="overflow-hidden rounded-3xl border border-slate-700 bg-[#0b1625] shadow-2xl">
+    <div className="border-b border-slate-700 bg-gradient-to-r from-[#122b40] via-[#101f32] to-[#0b1625] p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-400">Organization Navigator</div><h2 className="mt-1 text-xl font-black text-white">Chain of Command</h2></div><span className="rounded-full border border-cyan-800 bg-cyan-950/40 px-3 py-1 text-xs font-bold text-cyan-200">{stationPeople.length} assigned personnel</span></div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="min-w-0 text-xs font-bold text-slate-300">Platoon<select className={`mt-1 ${control}`} value={platoon} disabled={!companyAccess} onChange={event=>{setChosenPlatoon(event.target.value);setChosenRegion('');setChosenDivision('');setChosenStation('');}}>{(platoons.length?platoons:[platoon]).map(name=><option key={name} value={name}>Platoon {name}</option>)}</select></label>
+        <label className="min-w-0 text-xs font-bold text-slate-300">Region / State<select className={`mt-1 ${control}`} value={region} disabled={!companyAccess} onChange={event=>{setChosenRegion(event.target.value);setChosenDivision('');setChosenStation('');}}>{regions.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+        <label className="min-w-0 text-xs font-bold text-slate-300">Division<select className={`mt-1 ${control}`} value={division} disabled={!companyAccess} onChange={event=>{setChosenDivision(event.target.value);setChosenStation('');}}>{divisions.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+        <label className="min-w-0 text-xs font-bold text-slate-300">Substation<select className={`mt-1 ${control}`} value={selectedStation} disabled={fixedSubstation} onChange={event=>setChosenStation(event.target.value)}>{!substations.length&&<option value="">No assigned substation</option>}{substations.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+      </div>
+    </div>
+    <div className="mx-auto max-w-4xl p-4 sm:p-6">
+      <div className="mx-auto max-w-lg rounded-2xl border border-cyan-700/40 bg-[#12283e] px-4 py-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Operating Command</div><div className="mt-1 text-lg font-black text-white">Platoon {platoon}</div><div className="mt-1 text-xs text-slate-400">{region||'Unassigned region'} · {division||'Unassigned division'}</div></div>
+      <div className="mx-auto h-7 w-px bg-cyan-700"/>
+      {divisionLeaders.length>0&&<div className="rounded-2xl border border-amber-600/25 bg-[#131d2b] p-4"><div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-black text-amber-200">Division Leadership</h3><span className="text-xs text-slate-400">{divisionLeaders.length}</span></div><div className="grid gap-2 sm:grid-cols-2">{divisionLeaders.map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>}
+      {divisionLeaders.length>0&&<div className="mx-auto h-7 w-px bg-cyan-700"/>}
+      <div className="rounded-2xl border border-emerald-700/35 bg-[#0c2030] p-4 sm:p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Assigned Substation</div><h3 className="mt-1 text-lg font-black text-white">{selectedStation||'No substation assigned'}</h3></div><span className="text-xs font-semibold text-slate-400">{stationPeople.length} personnel</span></div>
+        {!stationPeople.length?<p className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">No lower-ranking personnel assigned to this substation.</p>:
+        <div className="space-y-4">{rankSections.map(rank=><div key={rank}><div className="mb-2 flex items-center gap-2"><span className="rounded-md bg-cyan-900/40 px-2 py-1 text-[10px] font-black uppercase text-cyan-200">{rank}</span><div className="h-px flex-1 bg-slate-700"/></div><div className="grid gap-2 sm:grid-cols-2">{stationPeople.filter(person=>person.rank===rank).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>)}</div>}
+      </div>
     </div>
   </section>;
 }
@@ -140,15 +152,11 @@ export default function RankStructure(){
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
     <PersonnelPrintRoster users={active} contactEmail={contactEmail}/>
-    <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Command leadership above. Personnel are organized by Platoon → Region → Division → Substation, with division leadership shown separately.</p></div></div></div>
+    <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Select a platoon and operating area to view one clear command chain. Additional states and substations stay organized in the navigator instead of repeating across the page.</p></div></div></div>
 
     {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>window.print()} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
-    <section className="rounded-2xl border border-amber-500/30 bg-amber-950/10 p-4"><div className="mb-4 text-center"><div className="text-xs font-black uppercase tracking-[.25em] text-amber-300">Shared Command</div><div className="mt-1 text-sm text-slate-400">Colonel → Lt Colonels → Majors. Majors share reporting to both Lt Colonels and oversee an assigned platoon.</div></div><CommandTree users={active} allUsers={active} onOpen={setSelectedPerson}/></section>
-
-    <div className="relative py-3"><div className="mx-auto h-8 w-px bg-amber-500/50"/><div className="mx-auto h-px w-1/2 bg-amber-500/40"/><div className="grid grid-cols-2"><div className="mx-auto h-7 w-px bg-amber-500/40"/><div className="mx-auto h-7 w-px bg-amber-500/40"/></div></div>
-
-    <div className="grid items-start gap-5 xl:grid-cols-2"><PlatoonBranch letter="A" users={active} onOpen={setSelectedPerson}/><PlatoonBranch letter="B" users={active} onOpen={setSelectedPerson}/></div>
-    {active.some(person => !COMMAND_RANKS.has(person.rank) && !['A','B'].includes(person.platoon)) && <PlatoonBranch letter="Unassigned" users={active} onOpen={setSelectedPerson}/>}
+    {['admin','full_access'].some(role => role===user?.role||roles.has(role)) && <details className="rounded-2xl border border-amber-500/30 bg-amber-950/10 p-4"><summary className="cursor-pointer text-sm font-black text-amber-200">Company Command Leadership</summary><div className="mt-4"><CommandTree users={active} allUsers={active} onOpen={setSelectedPerson}/></div></details>}
+    <FocusedRankFlow users={active} viewer={user} onOpen={setSelectedPerson}/>
     <OfficerDialog person={selectedPerson} users={active} open={!!selectedPerson} onPhotoOpen={person=>setPhotoPerson(person)} onOpenChange={open=>{if(!open)setSelectedPerson(null)}}/>
     <Dialog open={!!photoPerson} onOpenChange={open=>{if(!open)setPhotoPerson(null)}}><DialogContent className="max-w-4xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Full photo — {photoPerson ? displayName(photoPerson) : "Officer"}</DialogTitle></DialogHeader>{photoPerson?.profile_photo_url && <img src={photoPerson.profile_photo_url} alt="Full original officer photograph" className="max-h-[78vh] w-full object-contain" />}</DialogContent></Dialog>
   </div></div>;
