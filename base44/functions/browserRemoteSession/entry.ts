@@ -30,7 +30,7 @@ function sessionMutation(url:string, liveMs:number, idleMs:number, admin:boolean
       ' viewport(width: '+width+', height: '+height+', deviceScaleFactor: 1) { width height }',
       ' goto(url:$url, waitUntil:domContentLoaded) { status }',
     ] : []),
-    ' liveURL(detached:true, interactable:'+String(admin)+', showBrowserInterface:'+String(admin)+', type:jpeg, quality:85, captureScale:1, resizable:true, timeout:'+liveMs+') { liveURL timeout }',
+    ' liveURL(detached:true, interactable:'+String(admin)+', showBrowserInterface:false, type:jpeg, quality:85, captureScale:1, resizable:true, timeout:'+liveMs+') { liveURL timeout }',
     ' reconnect(timeout:'+idleMs+') { browserQLEndpoint }',
     '}'
   ].join('\n');
@@ -60,6 +60,55 @@ export default async function (req: Request): Promise<Response> {
         return Response.json({reachable:passed, http_status:health.status, website_status:payload?.data?.goto?.status || null,
           error:passed?'':Array.isArray(payload?.errors)?String(payload.errors[0]?.message||'').slice(0,180):'Chrome health request failed.'});
       } catch (_error) {return Response.json({reachable:false,error:'The provider could not complete the live browser test.'});}
+    }
+    if (body.action === 'navigate') {
+      const sessionId=String(body.session_id||'');
+      if(!/^[0-9a-f-]{36}$/i.test(sessionId)) return Response.json({error:'Invalid browser session.'},{status:400});
+      const sessions=asRows(await api.asServiceRole.entities.BrowserRemoteSession.filter({
+        session_id:sessionId,user_id:context.user.id,active:true
+      },'-created_date',1));
+      const saved=sessions[0];
+      if(!saved) return Response.json({error:'Your browser session has expired.',code:'SESSION_EXPIRED'},{status:410});
+      const admin=context.user.role==='admin';
+      if(!admin) return Response.json({error:'Interactive address navigation requires an authorized administrator browser session.',code:'ROLE_GATEWAY_REQUIRED'},{status:403});
+      let destination:URL;
+      try {destination=new URL(String(body.url||''));}
+      catch {return Response.json({error:'Enter a valid website address.'},{status:400});}
+      if(!['https:','http:'].includes(destination.protocol) || destination.username || destination.password)
+        return Response.json({error:'Only normal websites can be opened.'},{status:400});
+      const decision=checkDestination(context,destination.href);
+      if(!decision.allowed) return Response.json({error:decision.reason,code:'BLOCKED_BY_POLICY'},{status:403});
+      const token=Deno.env.get('BROWSERLESS_TOKEN')?.trim();
+      if(!token)return Response.json({error:'Remote Chrome is not configured.'},{status:503});
+      let endpoint:string;
+      try{endpoint=verifiedReconnectEndpoint(String(saved.reconnect_endpoint),token);}
+      catch{return Response.json({error:'The remote browser session is no longer available.',code:'SESSION_EXPIRED'},{status:410});}
+      const intended=Math.max(80000,Math.min(3300000,Number(saved.plan_window_ms)||90000));
+      const query=[
+        'mutation PathfinderNavigate($url:String!) {',
+        ' goto(url:$url, waitUntil:domContentLoaded) { status }',
+        ' liveURL(detached:true, interactable:true, showBrowserInterface:false, type:jpeg, quality:85, captureScale:1, resizable:true, timeout:'+intended+') { liveURL timeout }',
+        ' reconnect(timeout:'+Math.min(3360000,intended+25000)+') { browserQLEndpoint }',
+        '}'
+      ].join('\\n');
+      try {
+        const result=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({query,variables:{url:destination.href}}),signal:AbortSignal.timeout(27000)});
+        const json=await result.json().catch(()=>({}));
+        const viewer=json?.data?.liveURL?.liveURL;
+        const reconnect=json?.data?.reconnect?.browserQLEndpoint;
+        if(!result.ok || gqlError(json) || typeof viewer!=='string' || !viewer.startsWith(HOST+'/') || !reconnect)
+          return Response.json({error:'Remote Chrome could not navigate in the existing session.',code:'SESSION_EXPIRED'},{status:410});
+        const expires=Math.max(1000,Number(json.data.liveURL.timeout)||intended);
+        await api.asServiceRole.entities.BrowserRemoteSession.update(saved.id,{
+          reconnect_endpoint:reconnect,viewer_expires_at:new Date(Date.now()+expires).toISOString(),
+          last_renewed_at:new Date().toISOString()
+        });
+        return Response.json({viewer_url:viewer,session_id:sessionId,url:destination.href,
+          expires_in_ms:expires,view_only:false,reused_session:true},{headers:{'Cache-Control':'no-store'}});
+      }catch {
+        return Response.json({error:'Remote Chrome connection expired. Start a new session.',code:'SESSION_EXPIRED'},{status:410});
+      }
     }
     if (body.action === 'renew') {
       const sessionId=String(body.session_id||'');
