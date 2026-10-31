@@ -33,6 +33,27 @@ Deno.serve(async(req)=>{
    const email=n(r.officer_email||r.employee_email),id=String(r.officer_id||r.employee_id||'');
    return (email&&emails.has(email))||(id&&ids.has(id));
   };
+  const action=n(body.action||'list');
+  if(action!=='list'){
+   if(!['inspections','writeups','force'].includes(kind)||!['create','update','delete'].includes(action))
+     return Response.json({error:'Unsupported supervisor record action'},{status:400});
+   if(action==='delete'&&kind!=='force')return Response.json({error:'Deletion is not supported for these reports'},{status:403});
+   const id=String(body.id||''),data=body.data||{};
+   if(action!=='create'&&!id)return Response.json({error:'Record ID required'},{status:400});
+   const existing=action==='create'?null:await sdk.asServiceRole.entities[entity].get(id);
+   if(action!=='create'&&(!existing||!visible(existing)))return Response.json({error:'Record is outside your assigned platoon and area'},{status:403});
+   const sourceEmail=n(data.officer_email||existing?.officer_email);
+   const target=people.find((p:any)=>[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).includes(sourceEmail));
+   if(!admin(me)&&(!target||!sourceEmail))return Response.json({error:'Select an officer in your assigned platoon and area'},{status:403});
+   if(!admin(me)&&action!=='create'&&n(data.officer_email)!==n(existing.officer_email))
+     return Response.json({error:'The officer on an existing report cannot be reassigned'},{status:403});
+   let result:any;
+   if(action==='delete'){await sdk.asServiceRole.entities[entity].delete(id);result={id,deleted:true};}
+   else if(action==='create')result=await sdk.asServiceRole.entities[entity].create(data);
+   else result=await sdk.asServiceRole.entities[entity].update(id,data);
+   await sdk.asServiceRole.entities.AuditLog.create({entity_type:entity,entity_id:String(result?.id||id),action,actor_id:String(me.id),actor_name:String(me.email||''),timestamp:new Date().toISOString(),description:`Scoped supervisor ${action}: ${kind}`}).catch(()=>null);
+   return Response.json({success:true,record:result});
+  }
   return Response.json({success:true,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,platoon:p.platoon,division:p.division,subdivision:p.subdivision,substation:p.substation,unit_number:p.unit_number})),locations:locations.map((p:any)=>({id:p.id,site_name:p.site_name,division:p.division,subdivision:p.subdivision,substation:p.substation}))});
  }catch(error:any){console.error('Scoped supervisor records failed',error);return Response.json({error:'Unable to load supervisor records safely; retry.'},{status:503});}
 });

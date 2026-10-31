@@ -62,7 +62,7 @@ export default function SupervisorUseOfForce() {
   const reports = scoped.rows || [];
 
   const createReportMutation = useMutation({
-    mutationFn: (data) => base44.entities.UseOfForceReport.create(data),
+    mutationFn: (data) => base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'force',action:'create',data}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supervisorScopedForceReports"] });
       toast.success(
@@ -73,7 +73,7 @@ export default function SupervisorUseOfForce() {
   });
 
   const updateReportMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.UseOfForceReport.update(id, data),
+    mutationFn: ({ id, data }) => base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'force',action:'update',id,data}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supervisorScopedForceReports"] });
       toast.success("Report updated successfully");
@@ -82,7 +82,7 @@ export default function SupervisorUseOfForce() {
   });
 
   const deleteReportMutation = useMutation({
-    mutationFn: (id) => base44.entities.UseOfForceReport.delete(id),
+    mutationFn: (id) => base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'force',action:'delete',id}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supervisorScopedForceReports"] });
       toast.success("Report deleted successfully");

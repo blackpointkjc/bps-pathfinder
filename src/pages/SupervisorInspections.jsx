@@ -60,7 +60,7 @@ export default function SupervisorInspections() {
   const saveInspectionMutation = useMutation({
     mutationFn: ({ id, data }) => id
       ? base44.functions.invoke('updateInspectionDraft', { inspection_id: id, inspection: data })
-      : base44.entities.InspectionReport.create(data),
+      : base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'inspections',action:'create',data}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supervisorScopedInspections'] });
       setShowForm(false);

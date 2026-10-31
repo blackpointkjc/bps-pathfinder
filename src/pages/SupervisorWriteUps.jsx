@@ -82,7 +82,7 @@ export default function SupervisorWriteUps() {
   }, [writeUps]);
 
   const createWriteUpMutation = useMutation({
-    mutationFn: (data) => base44.entities.WriteUpReport.create(data),
+    mutationFn: (data) => base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'writeups',action:'create',data}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supervisorScopedWriteUps'] });
       setShowForm(false);
@@ -108,7 +108,7 @@ export default function SupervisorWriteUps() {
   });
 
   const updateWriteUpMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.WriteUpReport.update(id, data),
+    mutationFn: ({ id, data }) => base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'writeups',action:'update',id,data}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supervisorScopedWriteUps'] });
       setShowForm(false);
