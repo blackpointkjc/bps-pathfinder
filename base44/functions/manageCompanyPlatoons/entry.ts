@@ -24,13 +24,14 @@ Deno.serve(async(req)=>{
     return Response.json({success:true});
   }
   const data=body.data||{};
-  const name=trim(data.name??original?.name);
+  // Preserve historic 'A'/'B' officer assignments when admins type 'Platoon A'.
+  const name=trim(data.name??original?.name).replace(/^platoon\s+/i,'');
   const region=trim(data.region??original?.region);
   if(!name||!region||name.length>80||region.length>120)return Response.json({error:'A valid platoon name and region are required'},{status:400});
   const regions=await sdk.asServiceRole.entities.Division.list('division_name',1000);
   if(!(regions||[]).some((r:any)=>key(r.division_name)===key(region)&&(r.division_level==='region'||(!r.division_level&&r.is_subdivision!==true))&&r.active!==false))
     return Response.json({error:'Create or activate this Region in Company Structure before assigning platoons'},{status:400});
-  if((rows||[]).some((r:any)=>r.id!==id&&key(r.name)===key(name)&&key(r.region)===key(region)))
+  if((rows||[]).some((r:any)=>r.id!==id&&key(r.name).replace(/^platoon\s+/,'')===key(name)&&key(r.region)===key(region)))
     return Response.json({error:'This platoon already exists within the selected Region'},{status:409});
   if(action==='update'&&(key(original.name)!==key(name)||key(original.region)!==key(region))){
     const personnel=await sdk.asServiceRole.entities.User.list('-updated_date',1000);
