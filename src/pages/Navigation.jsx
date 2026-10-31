@@ -27,7 +27,7 @@ import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import { getLiveLocation, startLiveLocationTracking, locationQuality, requestBestLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
-import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
+import { announceNavigationInstruction, stopVoice, cancelPatrolSpeedVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime } from '@/lib/easternTime';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
@@ -1348,6 +1348,7 @@ export default function Navigation() {
         setNavVoiceMuted(current => {
             const next = !current;
             try { localStorage.setItem('bps:navigation-voice-muted', next ? '1' : '0'); } catch {}
+            if (next && currentUser?.role === 'admin') cancelPatrolSpeedVoice();
             if (!next) spokenNavPromptsRef.current.clear();
             return next;
         });

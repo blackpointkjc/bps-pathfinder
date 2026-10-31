@@ -29,7 +29,7 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
     return shouldAnnouncePatrolSpeedWarning({
       isAdmin:c.isAdmin,
       quiet:!isVoiceEnabled(),
-      navMuted:c.navVoiceMuted
+      navMuted:c.navVoiceMuted || (typeof localStorage !== 'undefined' && localStorage.getItem('bps:navigation-voice-muted') === '1')
     });
   };
   const report=(event,completed=false)=>{
