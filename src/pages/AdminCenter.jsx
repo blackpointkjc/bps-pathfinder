@@ -53,13 +53,14 @@ import { isClientAccount } from '@/lib/directoryUtils';
 import { setClientPreviewId } from '@/utils/clientPreview';
 import { setOfficerPreviewId } from '@/utils/officerPreview';
 
-const SupervisorScheduleWorkspace = lazy(() => import(''@/components/SupervisorScheduleWorkspace''));
-const SchedulingWorkspace = lazy(() => import(''@/components/admin/workspaces/SchedulingWorkspace''));
-const AssetsWorkspace = lazy(() => import(''@/components/admin/workspaces/AssetsWorkspace''));
-const AdminOperationsWorkbench = lazy(() => import(''@/components/AdminOperationsWorkbench''));
-const UnifiedCenter = lazy(() => import(''@/components/UnifiedCenter''));
-const AdminUserPreviewPicker = lazy(() => import(''@/components/AdminUserPreviewPicker''));
-const CenterToolSection = lazy(() => import(''@/components/CenterToolSection''));
+
+const SupervisorScheduleWorkspace = lazy(() => import('@/components/SupervisorScheduleWorkspace'));
+const SchedulingWorkspace = lazy(() => import('@/components/admin/workspaces/SchedulingWorkspace'));
+const AssetsWorkspace = lazy(() => import('@/components/admin/workspaces/AssetsWorkspace'));
+const AdminOperationsWorkbench = lazy(() => import('@/components/AdminOperationsWorkbench'));
+const UnifiedCenter = lazy(() => import('@/components/UnifiedCenter'));
+const AdminUserPreviewPicker = lazy(() => import('@/components/AdminUserPreviewPicker'));
+const CenterToolSection = lazy(() => import('@/components/CenterToolSection'));
 
 const MASTER_SECTIONS = [
   { id: 'admin', label: 'Administration', description: 'Administration-only command, scheduling, personnel, reports and system controls', icon: Settings },
