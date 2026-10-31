@@ -40,13 +40,33 @@ Deno.serve(async req => {
     let locationSnapshot:any[]|null=null;
     const getLocations=async()=>{
       if(locationSnapshot)return locationSnapshot;
-      try{const locations=await entities.Location.list('site_name',750);
-        if(!Array.isArray(locations))throw Error('Property directory returned invalid data');
-        if(locations.length>=750)throw Error('Property directory is too large to verify active sites safely');
-        locationSnapshot=locations;
-        return locations;
-      }catch(error:any){console.warn('Parking active property lookup failed',String(error?.message||error));
-        throw Error('Active property directory is temporarily unavailable. Retry opening Parking or Rent Roll.');}
+      // Small, paged reads avoid the brittle single 750-row directory request.
+      // A transient 429/5xx is retried before reporting a degraded directory.
+      const full:any[]=[];
+      try {
+        for(let skip=0;skip<4000;skip+=200){
+          let rows:any[]|null=null;
+          for(let attempt=0;attempt<3;attempt++){
+            try {
+              const result=await entities.Location.list('site_name',200,skip);
+              if(!Array.isArray(result))throw Error('Location page format invalid');
+              rows=result;break;
+            }catch(error){
+              if(attempt===2)throw error;
+              await new Promise(resolve=>setTimeout(resolve,350*(attempt+1)));
+            }
+          }
+          if(!rows)throw Error('Location directory page missing');
+          full.push(...rows);
+          if(rows.length<200)break;
+          if(skip===3800)throw Error('Active property directory exceeded the safe pagination limit');
+        }
+        locationSnapshot=[...new Map(full.filter(row=>row?.id).map(row=>[String(row.id),row])).values()];
+        return locationSnapshot;
+      }catch(error:any){
+        console.warn('Parking directory read failed after retries',String(error?.message||error));
+        throw Error('Property directory temporarily unavailable. Your records were not changed. Retry loading this property.');
+      }
     };
     const reviewerArea = (person:any) => {
       if(admin)return true;
