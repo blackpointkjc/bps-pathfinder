@@ -32,7 +32,7 @@ const activePlatoonCommand=(people:any[],platoon:string,region:string)=>{
  const chosen=eligible[0];
  if(!chosen)return {platoon,region,status:'unassigned',name:'No active platoon leader',role:'Platoon Command Vacant'};
  const acting=level(chosen.rank)!==3;
- return {id:chosen.id,platoon,region,status:acting?'acting':'active',name:commandName(chosen),first_name:chosen.first_name||'',last_name:chosen.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:chosen.rank,badge_number:chosen.badge_number||'',unit_number:chosen.unit_number||'',profile_photo_url:chosen.profile_photo_original_url||chosen.profile_photo_url||'',work_email:chosen.work_email||chosen.email||'',mobile_phone:chosen.mobile_phone||'',subdivision:chosen.subdivision||'',substation:chosen.substation||''};
+ return {id:chosen.id,platoon,region,status:acting?'acting':'active',name:commandName(chosen),first_name:chosen.first_name||'',last_name:chosen.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:chosen.rank,badge_number:chosen.badge_number||'',unit_number:chosen.unit_number||'',profile_photo_url:chosen.profile_photo_original_url||chosen.profile_photo_url||'',work_email:chosen.work_email||chosen.email||'',mobile_phone:chosen.mobile_phone||'',subdivision:chosen.subdivision||'',substation:chosen.substation||'',assigned_site_name:chosen.assigned_site_name||''};
 };
 
 const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',force:'UseOfForceReport',callouts:'CallOut',handovers:'SupervisorShiftHandover',duty:'DutySupervisorAssignment',chat:'SupervisorChatMessage'};
