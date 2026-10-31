@@ -830,58 +830,40 @@ export default function Navigation() {
         } finally { setGpsRecovering(false); }
     };
 
-    const getFreshDeviceLocation = async () => {
+    const getFreshDeviceLocation = async ({ quick = false } = {}) => {
+        // One bounded GPS acquisition only. The former 15s wait followed by
+        // another 15s high-accuracy attempt made Navigate Here feel frozen.
         const receiver = getExternalGpsStatus();
-        if (receiver.connected || receiver.connecting || receiver.portGranted) {
-            await startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
-            const antennaFix = getLiveLocation(30_000);
-            if (antennaFix?.source === 'external_serial' && locationQuality(antennaFix).state === 'live') {
-                const coords = [antennaFix.latitude, antennaFix.longitude];
-                setCurrentLocation(coords);
-                setGpsQuality(locationQuality(antennaFix));
-                setGpsFixSource('external_serial');
-                setIsLiveTracking(true);
-                return coords;
-            }
+        const recent = getLiveLocation(15_000);
+        if (recent && locationQuality(recent).state === 'live') {
+            setCurrentLocation([recent.latitude, recent.longitude]);
+            setIsLiveTracking(true);
+            setGpsQuality(locationQuality(recent));
+            setGpsFixSource(String(recent.source || ''));
+            return [recent.latitude, recent.longitude];
         }
-        setGpsQuality(previous => ({ ...previous, state: 'acquiring' }));
+        if (receiver.portGranted || receiver.connected || receiver.connecting) {
+            // Receiver reconnection runs independently; never block routing on
+            // USB hardware recovery or incorrectly treat a stale fix as live.
+            void startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
+        }
+        const budgetMs = quick ? 2400 : 6500;
         try {
-            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: 100 });
-            const fresh = [fix.latitude, fix.longitude];
+            const fix = await waitForLiveLocation({ maxAgeMs: 12000, timeoutMs: budgetMs, maxAccuracyMeters: 100 });
             const quality = locationQuality(fix);
             setGpsQuality(quality);
-            setCurrentLocation(fresh);
-            if (fix.heading !== null) setHeading(fix.heading);
+            setCurrentLocation([fix.latitude, fix.longitude]);
+            setGpsFixSource(String(fix.source || ''));
+            if (fix.heading != null) setHeading(fix.heading);
             setSpeed(Math.round(liveSpeedMph(fix.speed)));
             setIsLiveTracking(quality.state === 'live');
-            return quality.state === 'live' ? fresh : null;
-        } catch (liveError) {
-            try {
-                const best = await requestBestLiveLocation({ timeoutMs: 15000, targetAccuracyMeters: 50 });
-                const quality = locationQuality(best);
-                setGpsQuality(quality);
-                if (!best) return null;
-                const fresh = [best.latitude, best.longitude];
-                setCurrentLocation(fresh);
-                if (best.heading !== null) setHeading(best.heading);
-                setSpeed(Math.round(liveSpeedMph(best.speed)));
-                setIsLiveTracking(quality.state === 'live');
-                return quality.state === 'live' ? fresh : null;
-            } catch (deviceError) {
-                const fallback = getLiveLocation(30000);
-                const fallbackQuality = locationQuality(fallback);
-                setGpsQuality(fallbackQuality);
-                if (fallback) {
-                    setCurrentLocation([fallback.latitude, fallback.longitude]);
-                    setIsLiveTracking(fallbackQuality.state === 'live');
-                } else {
-                    setIsLiveTracking(false);
-                }
-                console.warn('[NAV] precise GPS request failed:', deviceError?.message || liveError?.message);
-                // A coarse cached network location is never safe as the live
-                // departure point for vehicle directions.
-                return fallback && fallbackQuality.state === 'live' ? [fallback.latitude, fallback.longitude] : null;
-            }
+            return quality.state === 'live' ? [fix.latitude, fix.longitude] : null;
+        } catch (error) {
+            const fallback = getLiveLocation(15000);
+            const quality = locationQuality(fallback);
+            setGpsQuality(quality);
+            setIsLiveTracking(quality.state === 'live');
+            return fallback && quality.state === 'live' ? [fallback.latitude, fallback.longitude] : null;
         }
     };
 
@@ -916,7 +898,7 @@ export default function Navigation() {
                 || (options.reroute && isLiveTracking && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
                 || (recentFix && validPosition(recentFix.latitude, recentFix.longitude) ? [recentFix.latitude, recentFix.longitude] : null)
                 || (recentFix && currentLocation && validPosition(currentLocation[0], currentLocation[1]) ? currentLocation : null)
-                || await getFreshDeviceLocation();
+                || (manualOriginQuery.trim().length >= 3 ? null : await getFreshDeviceLocation({ quick: true }));
             let previewOnly = false;
             if (!freshLocation && manualOriginQuery.trim().length >= 3) {
                 const origins = await withRequestTimeout(lookupNavigationDestinations(manualOriginQuery.trim(), null), 12000, 'Starting address lookup');
@@ -943,42 +925,39 @@ export default function Navigation() {
             const plainRoutePath = `${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
             let route = null;
             let routeProvider = '';
-            // Server-side routing avoids browser CORS/network policies that were
-            // causing Search to finish and simply return to GO without starting.
-            try {
+            // Fastest valid route wins: server TomTom and browser OSRM race.
+            // Slow TomTom credentials/providers must not hold an officer's
+            // navigation for 12s plus serial 7s fallback requests.
+            const serverRoute = async () => {
                 const routed = await withRequestTimeout(base44.functions.invoke('routeNavigation', {
-                    origin_lat: lat,
-                    origin_lng: lng,
-                    dest_lat: destLat,
-                    dest_lng: destLng,
-                    origin_heading: originHeading,
-                    origin_accuracy: originAccuracy,
+                    origin_lat: lat, origin_lng: lng, dest_lat: destLat, dest_lng: destLng,
+                    origin_heading: originHeading, origin_accuracy: originAccuracy,
                     origin_speed_mph: originSpeed,
-                }), 12_000, 'Navigation route');
+                }), 8500, 'Navigation route');
                 const payload = routed?.data || routed || {};
-                if (payload?.route?.geometry?.coordinates?.length > 1) {
-                    route = payload.route;
-                    routeProvider = payload.provider === 'TomTom' || String(route.provider || '').includes('TomTom')
-                        ? 'TomTom' : 'Fallback routing';
-                }
-            } catch (serverRouteError) {
-                console.warn('[NAV] Server route failed; trying browser providers:', serverRouteError?.message || serverRouteError);
-            }
-            if (!route) {
-                const browserPaths = routePath === plainRoutePath ? [plainRoutePath] : [routePath, plainRoutePath];
-                for (const path of browserPaths) {
-                    if (route) break;
-                    for (const host of ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/']) {
-                        try {
-                            const response = await fetch(`${host}${path}`, { signal: AbortSignal.timeout(7000) });
-                            if (!response.ok) continue;
-                            const data = await response.json();
-                            if (data.routes?.[0]?.geometry?.coordinates?.length > 1) { route = data.routes[0]; routeProvider = 'Fallback routing'; break; }
-                        } catch (serviceError) {
-                            console.warn('[NAV] Browser route provider failed:', serviceError?.message || serviceError);
-                        }
-                    }
-                }
+                if (!payload.route?.geometry?.coordinates?.length || payload.route.geometry.coordinates.length < 2) throw new Error('Server route unavailable');
+                return { route: payload.route, provider: payload.provider === 'TomTom' ? 'TomTom' : 'Fallback routing' };
+            };
+            const browserRoute = async () => {
+                const urls = [
+                    `https://router.project-osrm.org/route/v1/driving/${plainRoutePath}`,
+                    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${plainRoutePath}`,
+                ];
+                const attempts = urls.map(async url => {
+                    const response = await fetch(url, { signal: AbortSignal.timeout(6500) });
+                    if (!response.ok) throw new Error(`Routing provider ${response.status}`);
+                    const data = await response.json();
+                    if (!data.routes?.[0]?.geometry?.coordinates?.length || data.routes[0].geometry.coordinates.length < 2) throw new Error('No drivable route returned');
+                    return { route: data.routes[0], provider: 'Fallback routing' };
+                });
+                return Promise.any(attempts);
+            };
+            try {
+                const winner = await Promise.any([serverRoute(), browserRoute()]);
+                route = winner.route;
+                routeProvider = winner.provider;
+            } catch (routingError) {
+                console.warn('[NAV] Routing providers unavailable:', routingError?.message || routingError);
             }
             if (!route) throw new Error('In-app routing is unavailable. Open driving directions in Google Maps below.');
             setNavRouteProvider(String(route.provider || '').includes('TomTom') ? 'TomTom' : 'Fallback');
@@ -1036,7 +1015,7 @@ export default function Navigation() {
             setFitBounds(null);
             setMapCenter(null);
             // A route preview without live position must never change CAD duty status.
-            if (!previewOnly && shouldSetDispatchEnroute(options, currentUser)) await handleStatusChange('Enroute');
+            if (!previewOnly && shouldSetDispatchEnroute(options, currentUser)) void handleStatusChange('Enroute');
             if (previewOnly) toast.success('Route preview ready. Enable precise GPS for live turn-by-turn tracking.');
             else if (options.reroute) toast.success('Route updated from your current position');
             else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
