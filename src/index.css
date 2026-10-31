@@ -1798,3 +1798,24 @@ option,
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* Patrol GPS speed safety: black numerals on yellow (>5 mph over) and
+   alternating red/white (>10 mph over). Reduced-motion keeps clear static colors. */
+@keyframes pf-patrol-speed-yellow {
+  0%, 49% { background-color:#ffdb3d; border-color:#111827; }
+  50%, 100% { background-color:#fff5a0; border-color:#ffba00; }
+}
+@keyframes pf-patrol-speed-red {
+  0%, 49% { background-color:#ff4848; border-color:#ffffff; }
+  50%, 100% { background-color:#ffffff; border-color:#df1010; }
+}
+.pf-speed-flag-warning { animation:pf-patrol-speed-yellow .82s steps(1,end) infinite; }
+.pf-speed-flag-critical { animation:pf-patrol-speed-red .58s steps(1,end) infinite; }
+.pf-speed-flag-warning, .pf-speed-flag-critical { color:#080b10!important; border-width:3px!important; }
+.pf-speed-flag-warning > div, .pf-speed-flag-critical > div { background:transparent!important; }
+.pf-speed-flag-warning *, .pf-speed-flag-critical * { color:#080b10!important; }
+@media (prefers-reduced-motion: reduce) {
+  .pf-speed-flag-warning, .pf-speed-flag-critical { animation:none; }
+  .pf-speed-flag-warning { background:#ffdb3d!important; }
+  .pf-speed-flag-critical { background:#ff4848!important; }
+}

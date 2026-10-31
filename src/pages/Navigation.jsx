@@ -6,6 +6,7 @@ import { readRecentDestinations, rememberDestination } from '@/lib/recentDestina
 import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
 import { observeElementSize } from '@/lib/observeElementSize';
 import LiveMapToolbar from '@/components/map/LiveMapToolbar';
+import usePatrolSpeeding from '@/components/usePatrolSpeeding';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -101,6 +102,7 @@ export default function Navigation() {
     const [heading, setHeading] = useState(null);
     const [speed, setSpeed] = useState(0);
     const [roadSpeedLimit, setRoadSpeedLimit] = useState(null);
+    const [roadSpeedLimitAt, setRoadSpeedLimitAt] = useState(0);
     const [roadSpeedLimitEstimated, setRoadSpeedLimitEstimated] = useState(false);
     const [roadSpeedLimitSource, setRoadSpeedLimitSource] = useState('');
     const [roadSpeedLimitRoad, setRoadSpeedLimitRoad] = useState('');
@@ -231,6 +233,13 @@ export default function Navigation() {
     const [callsError, setCallsError] = useState('');
     const [callsCheckedAt, setCallsCheckedAt] = useState(null);
 
+    const patrolSpeedMonitor=usePatrolSpeeding({
+        user:currentUser,limit:roadSpeedLimit,limitAt:roadSpeedLimitAt,
+        road:roadSpeedLimitRoad,source:roadSpeedLimitSource,
+        estimated:roadSpeedLimitEstimated,
+    });
+    const patrolSpeedClass=patrolSpeedMonitor.level==='critical'?'pf-speed-flag-critical'
+        :patrolSpeedMonitor.level==='warning'?'pf-speed-flag-warning':'';
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const homeAddress = profileHomeAddress(currentUser);
@@ -1103,6 +1112,7 @@ export default function Navigation() {
         if (!accurate || !currentLocation || !validPosition(currentLocation[0], currentLocation[1])) {
             speedLimitRequestSeqRef.current += 1;
             setRoadSpeedLimit(null);
+            setRoadSpeedLimitAt(0);
             setRoadSpeedLimitSource('');
             setRoadSpeedLimitRoad('');
             setRoadSpeedLimitStatus(isLiveTracking ? 'GPS accuracy insufficient' : 'GPS signal unavailable');
@@ -1132,6 +1142,7 @@ export default function Navigation() {
         }
         if (roadChanged || distance > 90) {
             setRoadSpeedLimit(routeLimit);
+            setRoadSpeedLimitAt(routeLimit!=null?Date.now():0);
             setRoadSpeedLimitRoad('');
             setRoadSpeedLimitSource(routeLimit != null ? 'TomTom legal route speed limit' : '');
         }
@@ -1165,6 +1176,7 @@ export default function Navigation() {
             }
             const hasLimit = verified || routeLimit != null;
             setRoadSpeedLimit(hasLimit ? (verified ? Math.round(limit) : routeLimit) : null);
+            setRoadSpeedLimitAt(hasLimit?Date.now():0);
             setRoadSpeedLimitSource(verified ? String(payload.source || '') : routeLimit != null ? 'TomTom legal route speed limit' : '');
             setRoadSpeedLimitRoad(hasLimit ? String(payload.road_name || '') : '');
             setRoadSpeedLimitEstimated(payload.estimated === true);
@@ -1853,7 +1865,7 @@ export default function Navigation() {
                             <button type="button" onClick={stopInAppNavigation} className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500 bg-red-950 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
                         </div>
                     </div>
-                    <div className="pf-route-speed mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
+                    <div className={`pf-route-speed ${patrolSpeedClass} mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]`}>
                             <div className="border-b border-slate-200 px-3 py-2 text-center">
                                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
                                 <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? 'N/A'}{roadSpeedLimit != null && <span className="ml-1 text-[10px] font-black">MPH</span>}{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div><div className="mt-1 text-[9px] font-medium leading-tight text-slate-600" title={roadSpeedLimitSource || roadSpeedLimitStatus}>{roadSpeedLimitRoad || roadSpeedLimitStatus}</div>
@@ -1868,7 +1880,7 @@ export default function Navigation() {
 
             {!isNavigating && currentLocation && (gpsQuality?.state === 'live' || Number(speed) > 0) && (
                 <div style={{ top: toolbarHeight + 12 }} className="pf-idle-speed pointer-events-none absolute left-3 z-[1214]">
-                    <div className="w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]">
+                    <div className={`w-[148px] ${patrolSpeedClass} overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]`}>
                         <div className="border-b border-slate-200 px-3 py-2 text-center">
                             <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
                             <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? 'N/A'}{roadSpeedLimit != null && <span className="ml-1 text-[10px] font-black">MPH</span>}{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div><div className="mt-1 text-[9px] font-medium leading-tight text-slate-600" title={roadSpeedLimitSource || roadSpeedLimitStatus}>{roadSpeedLimitRoad || roadSpeedLimitStatus}</div>
@@ -1882,6 +1894,8 @@ export default function Navigation() {
             )}
 
 
+            {patrolSpeedMonitor.level==='critical' && <div role="status" aria-live="polite" className="sr-only">Critical speeding warning: more than ten miles per hour over the mapped speed limit.</div>}
+            {patrolSpeedMonitor.level==='warning' && <div role="status" aria-live="polite" className="sr-only">Speed warning: more than five miles per hour over the mapped speed limit.</div>}
             {mapPickMode && <div style={{ top: toolbarHeight + 8 }} className="pointer-events-none absolute left-3 right-24 z-[1220] rounded-lg bg-emerald-950/95 p-3 text-sm text-emerald-100" role="status">Tap the map to drop a pin. Drag to move the map. Tap Pick Point again to cancel.</div>}
             {/* Street address search and destination routing */}
             {showAddressSearch && !mapPickMode && (
