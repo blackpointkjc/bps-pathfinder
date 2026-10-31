@@ -4,7 +4,6 @@ import { useState,useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { invalidateAppDirectory } from '@/lib/appDirectory';
-import { createPageUrl } from '@/utils';
 import { rankLevel } from '@/utils/rankPolicy';
 import { toast } from 'sonner';
 const field='mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 p-2 text-sm text-white';
@@ -16,11 +15,10 @@ export default function OfficerCommandControls({officer={},users=[]}){
  const lock=locks[0];
  const [lockMessage,setLockMessage]=useState('Please contact your supervisor for assistance.');
  const [platoon,setPlatoon]=useState(officer.platoon||'');
- const [parent,setParent]=useState(officer.supervisor_id||'');
  const [reason,setReason]=useState('');
  const [busy,setBusy]=useState(false);
  const [feedback,setFeedback]=useState(''),[actionError,setActionError]=useState(false),[currentStatus,setCurrentStatus]=useState(officer.status||'Out of Service');
- useEffect(()=>{setPlatoon(officer.platoon||'');setParent(officer.supervisor_id||'');setCurrentStatus(officer.status||'Out of Service');},[officer.id,officer.platoon,officer.oversight_platoon,officer.supervisor_id,officer.status]);
+ useEffect(()=>{setPlatoon(officer.platoon||'');setCurrentStatus(officer.status||'Out of Service');},[officer.id,officer.platoon,officer.oversight_platoon,officer.supervisor_id,officer.status]);
  const fail=message=>{setActionError(true);setFeedback(message);toast.error(message);};
  const [pendingAction,setPendingAction]=useState(null);
  const command=rankLevel(officer.rank)<=2;
@@ -39,7 +37,6 @@ export default function OfficerCommandControls({officer={},users=[]}){
   ...users.filter(p=>String(p.division||'').trim().toLowerCase()===region&&p.platoon&&p.platoon!=='Command').map(p=>p.platoon),
   ...(platoon&&!command?[platoon]:[]),
  ])].sort();
- const eligible=users.filter(p=>p.id!==officer.id&&!p.termination_date&&rankLevel(p.rank)<rankLevel(officer.rank)&&p.platoon===platoon&&String(p.division||'').toLowerCase()===region);
  const run=async(name,data)=>{
   if(busy)return false;
   setBusy(true);setActionError(false);setFeedback('Saving '+(name==='updateUser'?'command assignment':name==='forceUserSignOut'?'session action':'CAD restriction')+'…');
@@ -55,11 +52,8 @@ export default function OfficerCommandControls({officer={},users=[]}){
   }catch(error){fail(error.response?.data?.error||error.message);return false;}finally{setBusy(false);}
  };
  const save=()=>{
-  const supervisor=eligible.find(p=>p.id===parent);
-  if(parent&&!supervisor)return fail('Select an eligible higher-ranking supervisor in this regional Platoon.');
-  if(!command&&platoon&&!platoonOptions.includes(platoon))return fail('Create the regional Platoon before assigning this officer.');
-  const next=users.find(p=>p.id===supervisor?.supervisor_id);
-  run('updateUser',{userId:officer.id,updates:{next_level_supervisor_id:next?.id||'',next_level_supervisor_email:next?.email||'',next_level_supervisor_name:next?label(next):'',platoon:command?'Command':platoon,supervisor_id:supervisor?.id||'',supervisor_email:supervisor?.email||'',supervisor_name:supervisor?label(supervisor):'',...(command?{oversight_platoon:''}:{})}});
+  if(!command&&platoon&&!platoonOptions.includes(platoon))return fail('The selected Platoon must exist in this Region.');
+  run('updateUser',{userId:officer.id,updates:{platoon:command?'Command':platoon,...(command?{oversight_platoon:''}:{})}});
  };
  const toggleLock=async()=>{
   if(busy||actor?.role!=='admin')return;
@@ -79,9 +73,8 @@ export default function OfficerCommandControls({officer={},users=[]}){
  return <div className="grid items-start gap-4 xl:grid-cols-2" aria-busy={busy}>
  {feedback&&<div role={actionError?'alert':'status'} className={'rounded-lg border p-3 text-sm xl:col-span-2 '+(actionError?'border-red-600 bg-red-950 text-red-100':'border-cyan-600 bg-cyan-950 text-cyan-100')}>{feedback}</div>}
   <section className="rounded-xl border border-slate-700 bg-slate-900 p-4"><h3 className="font-bold">Platoon & chain of command</h3><div className="mt-3 grid gap-3 sm:grid-cols-2">
-   <label className="text-xs text-slate-400">Regional Platoon <span className="text-cyan-300">· {officer.division||'Assign Region first'}</span><select aria-label="Regional platoon assignment" className={field} value={command?'Command':platoon} disabled={command||!region} onChange={event=>{setPlatoon(event.target.value);setParent('');}}><option value="">Unassigned</option>{command?<option value="Command">Company Command</option>:platoonOptions.map(name=><option key={name} value={name}>{name.startsWith('Platoon ')?name:`Platoon ${name}`}</option>)}</select>{!command&&!platoonOptions.length&&<span className="mt-1 block text-amber-300">This Region has no Platoons yet. Create one in Company Structure.</span>}{platoonError&&<span className="mt-1 block text-red-300">{platoonError.message}</span>}</label>
-   <div className="flex items-center"><a className="rounded-md border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-950" href={createPageUrl('AdminDivisions')}>Create Region / Platoon</a></div>
-   <label className="text-xs text-slate-400">Permanent supervisor<select className={field} value={parent} onChange={event=>setParent(event.target.value)}><option value="">Unassigned / top of command</option>{eligible.map(p=><option key={p.id} value={p.id}>{label(p)}</option>)}</select></label>
+   <label className="text-xs text-slate-400">Regional Platoon <span className="text-cyan-300">· {officer.division||'Assign Region first'}</span><select aria-label="Regional platoon assignment" className={field} value={command?'Command':platoon} disabled={command||!region} onChange={event=>setPlatoon(event.target.value)}><option value="">Unassigned</option>{command?<option value="Command">Company Command</option>:platoonOptions.map(name=><option key={name} value={name}>{name.startsWith('Platoon ')?name:`Platoon ${name}`}</option>)}</select>{!command&&!platoonOptions.length&&<span className="mt-1 block text-amber-300">This Region has no Platoons yet. Create one in Company Structure.</span>}{platoonError&&<span className="mt-1 block text-red-300">{platoonError.message}</span>}</label>
+   <p className="text-xs text-cyan-300 sm:col-span-2">Reporting supervisor is selected automatically from the nearest higher rank in this regional Platoon. When multiple supervisors qualify, Pathfinder balances their direct reports, using badge number as the final tie-breaker.</p>
   </div><button type="button" disabled={busy} onClick={save} className="mt-3 rounded-lg bg-cyan-700 px-3 py-2 text-sm font-bold">{busy?'Saving…':'Save command assignment'}</button></section>
   <section className="rounded-xl border border-slate-700 bg-slate-900 p-4"><h3 className="font-bold">CAD duty controls</h3><p className="mt-2 text-sm text-slate-300">Current status: {currentStatus}</p><label className="mt-3 block text-xs text-slate-400">Reason for status restriction<input className={field} value={reason} onChange={event=>setReason(event.target.value)} placeholder="Reason for supervisor override"/></label><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={()=>{if(!reason.trim())return fail('Enter a reason before restricting this officer.');run('forceOfficerStatus',{officer_id:officer.id,action:'force_oos',reason:reason.trim()});}} className="rounded-lg border border-red-700 px-3 py-2 text-sm text-red-200 disabled:opacity-40">{busy?'Processing…':'Restrict to Out of Service'}</button><button type="button" disabled={busy} onClick={()=>run('forceOfficerStatus',{officer_id:officer.id,action:'release'})} className="rounded-lg border border-slate-600 px-3 py-2 text-sm">{busy?'Processing…':'Release CAD restriction'}</button></div><p className="mt-2 text-xs text-slate-400">Absence dates and acting coverage are managed directly below. Releasing a CAD restriction does not cancel approved leave.</p><details className="mt-3 border-t border-slate-700 pt-3"><summary className="cursor-pointer text-xs font-bold text-slate-300">Account & session controls</summary><p className="mt-2 text-xs text-slate-400">Enter a reason before forcing sign-out or locking an account.</p><label className="mt-2 block text-xs text-slate-400">Reason for account or session action<input className={field} value={reason} onChange={event=>setReason(event.target.value)} placeholder="Required reason for account action" /></label>{actor?.role==='admin'&&<label className="mt-2 block text-xs text-slate-400">Message shown at login<input className={field} value={lockMessage} onChange={event=>setLockMessage(event.target.value)}/></label>}<div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={()=>{if(!reason.trim())return fail('Enter a reason for forced sign-out.');setPendingAction('signout');}} className="rounded border border-amber-700 px-3 py-2 text-xs text-amber-200">Force sign out</button>{actor?.role==='admin'&&<button type="button" disabled={busy} onClick={toggleLock} className="rounded border border-red-700 px-3 py-2 text-xs text-red-200">{lock?.locked?'Unlock account':'Lock account'}</button>}{actor?.role!=='admin'&&<p className="w-full text-xs text-amber-300">Only a Pathfinder administrator can lock or unlock accounts.</p>}</div>{!reason.trim()&&<p className="mt-2 text-xs text-amber-300">A reason is required before you can complete either action.</p>}{pendingAction&&<div role="dialog" aria-label="Confirm account action" className="mt-3 rounded-lg border border-amber-600 bg-slate-950 p-3"><p className="text-sm text-white">{pendingAction==='signout'?'Force sign out':pendingAction==='lock'?'Lock account':'Unlock account'} for {label(officer)}?</p><p className="mt-1 text-xs text-slate-300">{pendingAction==='signout'?'This ends the Pathfinder session.':pendingAction==='lock'?'This blocks access to Pathfinder.':'This restores access to Pathfinder.'}</p><div className="mt-3 flex gap-2"><button type="button" disabled={busy} onClick={()=>setPendingAction(null)} className="rounded border border-slate-500 px-3 py-2 text-sm text-white">Cancel</button><button type="button" disabled={busy} onClick={async()=>{if(pendingAction==='signout'){const ok=await run('forceUserSignOut',{user_id:officer.id,reason:reason.trim()});if(ok)setPendingAction(null);}else await executeLock();}} className="rounded bg-amber-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy?'Processing…':'Confirm action'}</button></div></div>}</details></section>
   <OfficerVehicleDefault key={officer.id} officer={officer}/>
