@@ -19,6 +19,13 @@ export async function loadBrowserContext(base44, user) {
       String(liveProfile.email || '').trim().toLowerCase() !== String(user.email || '').trim().toLowerCase()) {
     throw new Error('Cannot verify the current employee profile for corporate browser access.');
   }
+  // AUP is validated server-side too: direct function calls cannot bypass
+  // the first-login acknowledgment gate by navigating to a browser route.
+  const accepted = await read(() => base44.asServiceRole.entities.AcceptableUseAcknowledgment.filter({
+    user_id: liveProfile.id, policy_version: '2026-10-31-v1', status: 'approved'
+  }, {limit: 1}), 'Acceptable use acknowledgment');
+  const receipts = Array.isArray(accepted) ? accepted : (accepted?.items || []);
+  if (!receipts.length) throw new Error('Accept the Pathfinder Corporate Computer & Internet Use Policy before browsing.');
   const staff = {
     ...liveProfile,
     role: liveProfile.role || 'user',
