@@ -3,6 +3,7 @@ import { leaveTimeLabel } from '@/utils/leaveTimeLabel';
 import { approvedLeaveConflicts } from '@/utils/scheduleLeave';
 import { clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { comparePersonnel } from '@/utils/rankPolicy';
+import { buildOrgTree } from '@/lib/orgStructure';
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
   });
   useEffect(()=>{onWeekChange?.(currentWeekOffset);},[currentWeekOffset,onWeekChange]);
   const [selectedDivision, setSelectedDivision] = useState("all");
+  const [selectedSubstation, setSelectedSubstation] = useState('all');
   const [selectedOfficerForPrint, setSelectedOfficerForPrint] = useState("");
   const [printStartDate, setPrintStartDate] = useState("");
   const [printEndDate, setPrintEndDate] = useState("");
@@ -654,6 +656,16 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
     return Array.from(emails).sort((a,b) => getOfficerName(a).localeCompare(getOfficerName(b)));
   }, [schedules, weekStart, getOfficerName]);
 
+  const companyTree = useMemo(() => buildOrgTree((divisions || []).filter(row => row.active !== false)), [divisions]);
+  const availableSubstations = useMemo(() => companyTree.flatMap(region => region.divisions
+    .filter(division => selectedDivision === 'all' || [division.name, region.name].includes(selectedDivision))
+    .flatMap(division => division.substations.map(substation => substation.name))), [companyTree, selectedDivision]);
+  const scheduleSiteMatches = location => {
+    if (selectedDivision !== 'all' && ![location?.division, location?.subdivision].includes(selectedDivision)) return false;
+    if (selectedSubstation !== 'all' && location?.substation !== selectedSubstation) return false;
+    return true;
+  };
+
   const weekDivisionalSchedules = useMemo(() => {
     if (!schedules) return [];
     
@@ -666,16 +678,16 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
       return shiftDate >= weekStartStr && shiftDate <= weekEndStr;
     });
 
-    if (selectedDivision === "all") {
+    if (selectedDivision === "all" && selectedSubstation === 'all') {
       return schedulesInRange;
     }
 
     return schedulesInRange.filter(s => {
       const locationSiteName = s.location.split(':')[0].trim();
       const location = locations?.find(l => l.site_name === locationSiteName);
-      return (location?.subdivision === selectedDivision || location?.division === selectedDivision) || !location;
+      return location ? scheduleSiteMatches(location) : selectedDivision === 'all' && selectedSubstation === 'all';
     });
-  }, [schedules, selectedDivision, locations, weekStart, weekEnd]);
+  }, [schedules, selectedDivision, selectedSubstation, locations, weekStart, weekEnd]);
 
   const timelineSchedules = useMemo(() => {
     if (!schedules) return [];
@@ -689,12 +701,12 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
         : shift.shift_date;
       if (shiftEndDate < rangeStart || shift.shift_date > rangeEnd) return false;
 
-      if (selectedDivision === 'all') return true;
+      if (selectedDivision === 'all' && selectedSubstation === 'all') return true;
       const locationSiteName = String(shift.location || '').split(':')[0].trim();
       const location = locations?.find((item) => item.site_name === locationSiteName);
-      return (location?.subdivision === selectedDivision || location?.division === selectedDivision) || !location;
+      return location ? scheduleSiteMatches(location) : selectedDivision === 'all' && selectedSubstation === 'all';
     });
-  }, [schedules, weekStart, weekEnd, selectedDivision, locations, shiftCrossesMidnight]);
+  }, [schedules, weekStart, weekEnd, selectedDivision, selectedSubstation, locations, shiftCrossesMidnight]);
 
   const timelineSegmentsByDate = useMemo(() => {
     const visibleDays = new Set(weekDays.map((day) => format(day, 'yyyy-MM-dd')));
@@ -771,7 +783,7 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
           locationSiteName.toLowerCase().includes(l.site_name.toLowerCase())
         );
       }
-      const subdivision = location?.subdivision || location?.division || 'Unassigned';
+      const subdivision = [location?.division, location?.subdivision, location?.substation].filter(Boolean).join(' › ') || 'Unassigned';
       
       if (!groups[subdivision]) {
         groups[subdivision] = {};
@@ -1390,7 +1402,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
           locationSiteName.toLowerCase().includes(l.site_name.toLowerCase())
         );
       }
-      const subdivisionName = location?.subdivision || location?.division || 'Unassigned';
+      const subdivisionName = [location?.division, location?.subdivision, location?.substation].filter(Boolean).join(' › ') || 'Unassigned';
       
       if (!printDivisionGroups[subdivisionName]) {
         printDivisionGroups[subdivisionName] = {};
@@ -1825,8 +1837,8 @@ Make sure all dates are in YYYY-MM-DD format.` ,
                 const sortedLocations = Object.keys(locationHoursSummary).sort((a, b) => {
                   const locA = locations?.find(l => l.site_name === a);
                   const locB = locations?.find(l => l.site_name === b);
-                  const subA = locA?.subdivision || locA?.division || 'Unassigned';
-                  const subB = locB?.subdivision || locB?.division || 'Unassigned';
+                  const subA = [locA?.division, locA?.subdivision, locA?.substation].filter(Boolean).join(' › ') || 'Unassigned';
+                  const subB = [locB?.division, locB?.subdivision, locB?.substation].filter(Boolean).join(' › ') || 'Unassigned';
                   if (subA !== subB) return subA.localeCompare(subB);
                   return a.localeCompare(b);
                 });
@@ -1840,7 +1852,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
                   const maxHours = loc?.max_hours_per_week || null;
                   const isOver = maxHours && hours > maxHours;
                   
-                  const subdivision = loc?.subdivision || loc?.division || 'Unassigned';
+                  const subdivision = [loc?.division, loc?.subdivision, loc?.substation].filter(Boolean).join(' › ') || 'Unassigned';
                   return '<tr>' +
                     '<td style="text-align:center;">' + (idx + 1) + '</td>' +
                     '<td>' + subdivision + '</td>' +
@@ -2622,23 +2634,17 @@ Return ONLY a JSON array of suggestion objects with this structure:
               </div>
 
               <div className="min-w-0">
-                <Label className="mb-1 block text-[10px] text-slate-400">Division</Label>
-                <select
-                  value={selectedDivision}
-                  onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="all">All Divisions</option>
-                  {divisions
-                    ?.filter(d => !d.is_subdivision && d.active !== false)
-                    .map((div) => (
-                      <option key={div.id} value={div.division_name}>{div.division_name}</option>
-                    ))}
-                  {divisions
-                    ?.filter(d => d.is_subdivision && d.active !== false)
-                    .map((div) => (
-                      <option key={div.id} value={div.subdivision || div.division_name}>{div.parent_division ? `${div.parent_division} → ` : ''}{div.subdivision || div.division_name}</option>
-                    ))}
+                <Label className="mb-1 block text-[10px] text-slate-400">Region / Division</Label>
+                <select value={selectedDivision} onChange={event => {setSelectedDivision(event.target.value);setSelectedSubstation('all');}} className="flex h-9 w-full rounded-md border border-input bg-white px-3 text-sm text-slate-900">
+                  <option value="all">All regions and divisions</option>
+                  {companyTree.map(region => <React.Fragment key={region.name}><option value={region.name}>Region: {region.name}</option>{region.divisions.map(division => <option key={division.name} value={division.name}>{region.name} → {division.name}</option>)}</React.Fragment>)}
+                </select>
+              </div>
+              <div className="min-w-0">
+                <Label className="mb-1 block text-[10px] text-slate-400">Site Substation</Label>
+                <select value={selectedSubstation} onChange={event => setSelectedSubstation(event.target.value)} className="flex h-9 w-full rounded-md border border-input bg-white px-3 text-sm text-slate-900">
+                  <option value="all">All substations</option>
+                  {[...new Set(availableSubstations)].sort().map(name => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
 
