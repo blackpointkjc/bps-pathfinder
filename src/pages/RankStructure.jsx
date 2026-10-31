@@ -4,7 +4,7 @@ import { comparePersonnel } from '@/utils/rankPolicy';
 import { withinPersonnelOversightScope, orgPathLabel } from '@/lib/orgStructure';
 import PersonnelPrintRoster from '@/components/PersonnelPrintRoster';
 import CommandRankTiers from '@/components/CommandRankTiers';
-import { reportingLabel, reportingSupervisors, oversightLabel, assignmentLabel, actingCommandLabel } from '@/utils/commandReporting';
+import { reportingLabel, reportingSupervisors, oversightLabel, assignmentLabel, actingCommandLabel, platoonCommander, majorPlatoon } from '@/utils/commandReporting';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -94,48 +94,58 @@ function AreaMember({ person, onOpen }) {
 
 // A focused chain-of-command board. Even with many states, only the chosen
 // platoon + region + division + substation is expanded on screen at once.
-function FocusedRankFlow({ users, viewer, onOpen }) {
-  const roles = new Set([viewer?.role,...(viewer?.additional_roles||[])].map(value => String(value||'').toLowerCase()));
+function FocusedRankFlow({ users, viewer, commands = [], onOpen }) {
+  const roles = new Set([viewer?.role,...(viewer?.additional_roles||[])].map(value=>String(value||'').toLowerCase()));
   const companyAccess = roles.has('admin') || roles.has('full_access');
-  const fixedSubstation = !companyAccess && ['first sergeant','sergeant','corporal'].includes(String(viewer?.rank||'').toLowerCase());
-  const [chosenPlatoon,setChosenPlatoon] = useState(() => viewer?.oversight_platoon || viewer?.platoon || 'A');
-  const [chosenRegion,setChosenRegion] = useState(() => viewer?.division || '');
-  const [chosenDivision,setChosenDivision] = useState(() => viewer?.subdivision || '');
-  const [chosenStation,setChosenStation] = useState(() => viewer?.substation || '');
-  const distinct = values => [...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
-  const platoons = distinct(users.map(person => person.platoon)).filter(value => ['A','B'].includes(value));
-  const platoon = companyAccess ? (platoons.includes(chosenPlatoon)?chosenPlatoon:platoons[0]||'A') : viewer?.oversight_platoon || viewer?.platoon || chosenPlatoon;
-  const platoonPeople = users.filter(person => person.platoon === platoon);
-  const regions=distinct(platoonPeople.map(person=>person.division));
-  const region=regions.includes(chosenRegion)?chosenRegion:(regions.includes(viewer?.division)?viewer.division:regions[0]||'');
-  const divisions=distinct(platoonPeople.filter(person=>person.division===region).map(person=>person.subdivision));
-  const division=divisions.includes(chosenDivision)?chosenDivision:(divisions.includes(viewer?.subdivision)?viewer.subdivision:divisions[0]||'');
+  const viewerSenior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(String(viewer?.rank||'').toLowerCase());
+  const [chosenPlatoon,setChosenPlatoon]=useState(()=>viewer?.oversight_platoon||viewer?.platoon||'A');
+  const [chosenRegion,setChosenRegion]=useState(()=>viewer?.division||'');
+  const [chosenDivision,setChosenDivision]=useState(()=>viewer?.subdivision||'');
+  const distinct=values=>[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const platoons=distinct([...users.map(person=>person.platoon),...commands.map(command=>command.platoon)]).filter(name=>['A','B'].includes(name));
+  const fixedPlatoon=viewer?.oversight_platoon||viewer?.platoon||'';
+  const platoon=companyAccess?(platoons.includes(chosenPlatoon)?chosenPlatoon:platoons[0]||'A'):fixedPlatoon;
+  const platoonPeople=users.filter(person=>person.platoon===platoon);
+  const regions=distinct([...platoonPeople.map(person=>person.division),...(!companyAccess&&viewer?.division?[viewer.division]:[])]);
+  const region=companyAccess?(regions.includes(chosenRegion)?chosenRegion:regions[0]||''):viewer?.division||'';
+  const divisions=distinct([...platoonPeople.filter(person=>person.division===region).map(person=>person.subdivision),...(!companyAccess&&viewer?.subdivision?[viewer.subdivision]:[])]);
+  const division=companyAccess?(divisions.includes(chosenDivision)?chosenDivision:divisions[0]||''):viewer?.subdivision||'';
   const divisionPeople=platoonPeople.filter(person=>person.division===region&&person.subdivision===division);
-  const substations=distinct(divisionPeople.map(person=>person.substation));
-  const selectedStation = fixedSubstation ? viewer?.substation || '' : substations.includes(chosenStation)?chosenStation:(substations[0]||'');
-  const divisionLeaders=divisionPeople.filter(person=>!person.substation).sort(comparePersonnel);
-  const stationPeople=divisionPeople.filter(person=>person.substation===selectedStation).sort(comparePersonnel);
-  const rankSections = [...new Map(stationPeople.map(person=>[person.rank,person.rank])).keys()].sort((a,b)=>RANKS.indexOf(a)-RANKS.indexOf(b));
-  const control='h-10 w-full rounded-xl border border-slate-700 bg-[#0d1b2c] px-3 text-sm font-semibold text-white outline-none focus:border-cyan-500';
-  return <section className="overflow-hidden rounded-3xl border border-slate-700 bg-[#0b1625] shadow-2xl">
-    <div className="border-b border-slate-700 bg-gradient-to-r from-[#122b40] via-[#101f32] to-[#0b1625] p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-400">Organization Navigator</div><h2 className="mt-1 text-xl font-black text-white">Chain of Command</h2></div><span className="rounded-full border border-cyan-800 bg-cyan-950/40 px-3 py-1 text-xs font-bold text-cyan-200">{stationPeople.length} assigned personnel</span></div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="min-w-0 text-xs font-bold text-slate-300">Platoon<select className={`mt-1 ${control}`} value={platoon} disabled={!companyAccess} onChange={event=>{setChosenPlatoon(event.target.value);setChosenRegion('');setChosenDivision('');setChosenStation('');}}>{(platoons.length?platoons:[platoon]).map(name=><option key={name} value={name}>Platoon {name}</option>)}</select></label>
-        <label className="min-w-0 text-xs font-bold text-slate-300">Region / State<select className={`mt-1 ${control}`} value={region} disabled={!companyAccess} onChange={event=>{setChosenRegion(event.target.value);setChosenDivision('');setChosenStation('');}}>{regions.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
-        <label className="min-w-0 text-xs font-bold text-slate-300">Division<select className={`mt-1 ${control}`} value={division} disabled={!companyAccess} onChange={event=>{setChosenDivision(event.target.value);setChosenStation('');}}>{divisions.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
-        <label className="min-w-0 text-xs font-bold text-slate-300">Substation<select className={`mt-1 ${control}`} value={selectedStation} disabled={fixedSubstation} onChange={event=>setChosenStation(event.target.value)}>{!substations.length&&<option value="">No assigned substation</option>}{substations.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+  const substations=distinct([...divisionPeople.map(person=>person.substation),...(!companyAccess&&!viewerSenior&&viewer?.substation?[viewer.substation]:[])]);
+  const visibleStations=companyAccess||viewerSenior?substations:substations.filter(name=>name===viewer?.substation);
+  const leadership=divisionPeople.filter(person=>!person.substation).sort(comparePersonnel);
+  const commander=commands.find(entry=>entry.platoon===platoon)||null;
+  const fieldControl='mt-1 h-10 w-full rounded-lg border border-slate-700 bg-[#071726] px-3 text-sm font-semibold text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-80';
+  return <section className="overflow-hidden rounded-3xl border border-[#2a4459] bg-[#081625] shadow-2xl shadow-black/30">
+    <div className="border-b border-slate-700/70 bg-gradient-to-r from-[#112d44] via-[#0c2237] to-[#081625] p-4 md:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-400">Operational command chart</div><h2 className="mt-1 text-xl font-black text-white">Platoon Leadership & Substations</h2></div><span className="rounded-lg border border-cyan-900/70 bg-cyan-950/30 px-3 py-1.5 text-xs font-bold text-cyan-200">Platoon {platoon||'Unassigned'}</span></div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <label className="min-w-0 text-xs font-bold text-slate-300">Platoon<select aria-label="Select platoon" className={fieldControl} disabled={!companyAccess} value={platoon} onChange={e=>{setChosenPlatoon(e.target.value);setChosenRegion('');setChosenDivision('');}}>{(platoons.length?platoons:[platoon||'']).map(name=><option key={name} value={name}>Platoon {name||'Unassigned'}</option>)}</select></label>
+        <label className="min-w-0 text-xs font-bold text-slate-300">Region / State<select aria-label="Select region" className={fieldControl} disabled={!companyAccess} value={region} onChange={e=>{setChosenRegion(e.target.value);setChosenDivision('');}}>{!regions.length&&<option value="">Unassigned region</option>}{regions.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+        <label className="min-w-0 text-xs font-bold text-slate-300">Division<select aria-label="Select division" className={fieldControl} disabled={!companyAccess} value={division} onChange={e=>setChosenDivision(e.target.value)}>{!divisions.length&&<option value="">Unassigned division</option>}{divisions.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
       </div>
     </div>
-    <div className="mx-auto max-w-4xl p-4 sm:p-6">
-      <div className="mx-auto max-w-lg rounded-2xl border border-cyan-700/40 bg-[#12283e] px-4 py-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Operating Command</div><div className="mt-1 text-lg font-black text-white">Platoon {platoon}</div><div className="mt-1 text-xs text-slate-400">{region||'Unassigned region'} · {division||'Unassigned division'}</div></div>
-      <div className="mx-auto h-7 w-px bg-cyan-700"/>
-      {divisionLeaders.length>0&&<div className="rounded-2xl border border-amber-600/25 bg-[#131d2b] p-4"><div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-black text-amber-200">Division Leadership</h3><span className="text-xs text-slate-400">{divisionLeaders.length}</span></div><div className="grid gap-2 sm:grid-cols-2">{divisionLeaders.map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>}
-      {divisionLeaders.length>0&&<div className="mx-auto h-7 w-px bg-cyan-700"/>}
-      <div className="rounded-2xl border border-emerald-700/35 bg-[#0c2030] p-4 sm:p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Assigned Substation</div><h3 className="mt-1 text-lg font-black text-white">{selectedStation||'No substation assigned'}</h3></div><span className="text-xs font-semibold text-slate-400">{stationPeople.length} personnel</span></div>
-        {!stationPeople.length?<p className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">No lower-ranking personnel assigned to this substation.</p>:
-        <div className="space-y-4">{rankSections.map(rank=><div key={rank}><div className="mb-2 flex items-center gap-2"><span className="rounded-md bg-cyan-900/40 px-2 py-1 text-[10px] font-black uppercase text-cyan-200">{rank}</span><div className="h-px flex-1 bg-slate-700"/></div><div className="grid gap-2 sm:grid-cols-2">{stationPeople.filter(person=>person.rank===rank).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>)}</div>}
+    <div className="mx-auto max-w-6xl p-4 md:p-6">
+      <div className="mx-auto max-w-xl overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-b from-[#3b2b16] to-[#161f2c] shadow-lg shadow-amber-950/20" data-platoon-command={platoon}>
+        <div className="flex items-center justify-between gap-2 border-b border-amber-500/20 px-4 py-2.5"><span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-amber-200"><Shield className="h-4 w-4"/>Active Platoon Command</span><span className={`rounded-md border px-2 py-1 text-[10px] font-bold ${commander?.status==='active'?'border-emerald-600/50 bg-emerald-950/30 text-emerald-300':'border-amber-500/30 bg-amber-950/40 text-amber-200'}`}>{commander?.status==='active'?'COMMAND ASSIGNED':commander?.status==='acting'?'ACTING COMMAND':'UNASSIGNED'}</span></div>
+        <div className="px-5 py-5 text-center"><div className="text-2xl font-black leading-tight text-white">{commander?.name||'No active commander assigned'}</div><div className="mt-1 text-sm font-semibold text-amber-200">{commander?.role||'Platoon Command Vacant'}{commander?.unit_number?` · Unit ${commander.unit_number}`:''}</div><div className="mt-2 text-xs text-slate-400">Direct command oversight for Platoon {platoon||'—'}</div></div>
       </div>
+      <div className="mx-auto h-7 w-px bg-amber-500/60"/>
+      <div className="mx-auto max-w-3xl rounded-xl border border-slate-600 bg-[#10283b] px-4 py-3 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-cyan-300">Operating Division</div><div className="mt-1 text-base font-bold text-white">{division||'Division unassigned'}</div><div className="mt-0.5 text-xs text-slate-400">{region||'Region not assigned'} · Platoon {platoon||'—'}</div></div>
+      {!!leadership.length&&<><div className="mx-auto h-5 w-px bg-slate-600"/><div className="mx-auto max-w-3xl rounded-xl border border-slate-700 bg-[#101e30] p-3"><h3 className="mb-2 text-center text-xs font-black uppercase tracking-wider text-cyan-200">Division Leadership · Subordinate Ranks</h3><div className="grid gap-2 sm:grid-cols-2">{leadership.map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div></>}
+      <div className="mx-auto h-7 w-px bg-cyan-700/70"/>
+      <div className="mb-4 text-center"><h3 className="text-sm font-black uppercase tracking-widest text-emerald-300">Substation Branches</h3><p className="mt-1 text-xs text-slate-400">Reporting under the active Platoon Commander · officers shown by rank</p></div>
+      {!visibleStations.length?<div className="mx-auto max-w-lg rounded-xl border border-dashed border-slate-700 p-7 text-center text-sm text-slate-400">No substations with authorized personnel are assigned to this Division.</div>:
+      <div className={`grid items-start gap-4 ${visibleStations.length>1?'lg:grid-cols-2':''}`}>
+        {visibleStations.map(station=>{
+          const members=divisionPeople.filter(person=>person.substation===station).sort(comparePersonnel);
+          const ranks=distinct(members.map(person=>person.rank)).sort((a,b)=>RANKS.indexOf(a)-RANKS.indexOf(b));
+          return <div key={station} className="min-w-0 overflow-hidden rounded-2xl border border-emerald-700/40 bg-[#0b2031]" data-substation={station}>
+            <div className="flex items-center justify-between gap-2 border-b border-emerald-700/30 bg-emerald-950/20 px-4 py-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Substation</div><h4 className="mt-0.5 text-lg font-black text-white">{station}</h4></div><span className="rounded-full border border-emerald-800 px-2 py-1 text-xs font-bold text-emerald-200">{members.length} officers</span></div>
+            <div className="space-y-4 p-3 md:p-4">{ranks.map(rank=><div key={rank}><div className="mb-2 flex items-center gap-2"><span className="text-[10px] font-black uppercase tracking-wider text-slate-300">{rank}</span><div className="h-px flex-1 bg-slate-700"/></div><div className="space-y-2">{members.filter(person=>person.rank===rank).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>)}</div>
+          </div>;
+        })}
+      </div>}
     </div>
   </section>;
 }
@@ -144,13 +154,22 @@ export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
   const { user } = useAuth();
-  const {data:users=[]}=useQuery({queryKey:['allUsersRank',user?.id,user?.rank,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation],queryFn:async()=>{
-    if (!hasSupervisorAccess(user)) return listDirectoryUsers('last_name',1000);
+  const {data:rosterData={officers:[],commands:[]}}=useQuery({queryKey:['allUsersRank',user?.id,user?.rank,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation],queryFn:async()=>{
+    if (!hasSupervisorAccess(user)) {
+      const all=await listDirectoryUsers('last_name',1000);
+      const commands=['A','B'].map(platoon=>{
+        const person=platoonCommander(platoon,all);
+        return person?{platoon,status:person.rank==='Captain'?'active':'acting',name:displayName(person),role:person.rank==='Captain'?'Platoon Commander':'Acting Platoon Commander',unit_number:person.unit_number||''}:{platoon,status:'unassigned',name:'No active commander assigned'};
+      });
+      return {officers:all,commands};
+    }
     const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'});
     const data=response?.data||response||{};
     if(data.error||data.success!==true)throw new Error(data.error||'Scoped rank directory unavailable');
-    return data.officers||[];
+    return {officers:data.officers||[],commands:data.platoon_commands||[]};
   },enabled:!!user?.id,staleTime:60000,refetchOnWindowFocus:false});
+  const users=rosterData.officers||[];
+  const commands=rosterData.commands||[];
   const roles=rolesOf(user);
   const allowed=hasSupervisorAccess(user)||roles.has('officer')||roles.has('cad_access');
   const availabilityTick=useAvailabilityClock();
@@ -159,11 +178,11 @@ export default function RankStructure(){
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
     <PersonnelPrintRoster users={active} contactEmail={contactEmail}/>
-    <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Select a platoon and operating area to view one clear command chain. Additional states and substations stay organized in the navigator instead of repeating across the page.</p></div></div></div>
+    <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Active Platoon Command is displayed first, directly above the operating Division and its Substation branches. Select a state or Division without crowding the chart.</p></div></div></div>
 
     {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>window.print()} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
     {['admin','full_access'].some(role => role===user?.role||roles.has(role)) && <details className="rounded-2xl border border-amber-500/30 bg-amber-950/10 p-4"><summary className="cursor-pointer text-sm font-black text-amber-200">Company Command Leadership</summary><div className="mt-4"><CommandTree users={active} allUsers={active} onOpen={setSelectedPerson}/></div></details>}
-    <FocusedRankFlow users={active} viewer={user} onOpen={setSelectedPerson}/>
+    <FocusedRankFlow users={active} commands={commands} viewer={user} onOpen={setSelectedPerson}/>
     <OfficerDialog person={selectedPerson} users={active} open={!!selectedPerson} onPhotoOpen={person=>setPhotoPerson(person)} onOpenChange={open=>{if(!open)setSelectedPerson(null)}}/>
     <Dialog open={!!photoPerson} onOpenChange={open=>{if(!open)setPhotoPerson(null)}}><DialogContent className="max-w-4xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Full photo — {photoPerson ? displayName(photoPerson) : "Officer"}</DialogTitle></DialogHeader>{photoPerson?.profile_photo_url && <img src={photoPerson.profile_photo_url} alt="Full original officer photograph" className="max-h-[78vh] w-full object-contain" />}</DialogContent></Dialog>
   </div></div>;
