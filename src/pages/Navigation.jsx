@@ -1711,7 +1711,7 @@ export default function Navigation() {
                 {useTomTomMainMap && isOnline && !tomTomMainMapFailed ? (
                   <Suspense fallback={<div role="status" className="absolute inset-0 flex items-center justify-center bg-slate-950 text-sm text-white">Loading TomTom live map…</div>}>
                     <TomTomSdkMapPreview
-                      embedded
+                      embedded allowBlankMapFallback
                       currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
                       activeCalls={showActiveCalls ? activeCalls : []}
                       otherUnits={mapVisibleUnits}

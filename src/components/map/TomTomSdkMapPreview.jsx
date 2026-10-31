@@ -469,7 +469,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           if(!rendered){
             map.resize();
             map.triggerRepaint();
-            setResourceStatus('TomTom 3D map is loading or rebuilding; CAD backup remains in Map Tools.');
+            setResourceStatus('TomTom map tiles are unavailable; checking fast CAD map fallback.');
             // Read-only maps have a full GPS detail fallback. If a TomTom map
             // is genuinely blank after extended startup, don't leave an
             // officer's history hidden behind a white canvas indefinitely.
@@ -481,10 +481,10 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
                 let hasStreets=false;
                 try{hasStreets=map.isStyleLoaded()&&map.queryRenderedFeatures().length>0;}catch{}
                 if(!hasStreets){setError('TomTom map failed to render. Switching to detailed GPS map.');onMapUnavailableRef.current?.();}
-              },10000);
+              },3500);
             }
           }
-        },18000);
+        },8000);
       }catch(e){if(!cancelled){setError(`TomTom map could not start: ${e?.message||'Unknown error'}.`);if(embedded)onMapUnavailableRef.current?.();}}
     }
     init();

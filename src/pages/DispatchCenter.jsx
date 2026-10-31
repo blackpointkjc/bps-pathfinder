@@ -1094,7 +1094,7 @@ export default function DispatchCenter({embedded=false}) {
                             <div className="ml-auto flex items-center gap-2"><button type="button" onClick={()=>{setUseDispatchTomTom(x=>!x);setDispatchTomTomFailed(false)}} className="rounded border border-slate-600 px-2 py-1 text-[10px] text-slate-200">{useDispatchTomTom?'Backup map':'TomTom map'}</button><MapThemeToggle theme={mapTheme} onChange={setMapTheme} /><button onClick={() => setShowMap(false)} className="rounded border border-slate-700 px-3 py-1 text-[10px] font-bold text-slate-300 hover:bg-slate-800">CLOSE</button></div>
                         </div>
                         <div className="relative min-h-0 flex-1">
-                            {useDispatchTomTom && !dispatchTomTomFailed && navigator.onLine ? <TomTomSdkMapPreview embedded mapTheme={mapTheme} activeCalls={activeCalls} otherUnits={units} onCallClick={handleSelectCall} onMapUnavailable={()=>setDispatchTomTomFailed(true)}/> : <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
+                            {useDispatchTomTom && !dispatchTomTomFailed && navigator.onLine ? <TomTomSdkMapPreview embedded allowBlankMapFallback mapTheme={mapTheme} activeCalls={activeCalls} otherUnits={units} onCallClick={handleSelectCall} onMapUnavailable={()=>setDispatchTomTomFailed(true)}/> : <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
                                 <PathfinderTileLayer theme={mapTheme} />
                                 <ActiveCallMarkers calls={activeCalls} onCallClick={handleSelectCall} />
                                 <OtherUnitsLayer units={units} currentUserId={null} />
