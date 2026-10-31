@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, startOfDay, startOfWeek } from 'date-fns';
 import { base44 } from '@/api/base44Client';
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

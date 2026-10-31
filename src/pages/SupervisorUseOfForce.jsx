@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { getCurrentDirectoryUser, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
 export default function SupervisorUseOfForce() {
   const [showDialog, setShowDialog] = useState(false);

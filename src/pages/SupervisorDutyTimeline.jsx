@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { addDays, format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
-import { listDirectoryUsers } from '@/lib/appDirectory';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Printer, ShieldCheck } from 'lucide-react';

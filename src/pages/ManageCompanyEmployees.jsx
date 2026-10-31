@@ -3,7 +3,7 @@ import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
 import CommandRankTiers from '@/components/CommandRankTiers';
-import { reportingLabel, oversightLabel } from '@/utils/commandReporting';
+import { reportingLabel } from '@/utils/commandReporting';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";

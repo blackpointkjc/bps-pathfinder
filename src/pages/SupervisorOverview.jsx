@@ -6,8 +6,6 @@ import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { listDirectoryUsers, getCurrentDirectoryUser } from '@/lib/appDirectory';
-import { withinPersonnelOversightScope } from '@/lib/orgStructure';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 

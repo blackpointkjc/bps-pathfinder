@@ -1,6 +1,6 @@
 import { invalidateAppDirectory } from '@/lib/appDirectory';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { reportingLabel, oversightLabel } from '@/utils/commandReporting';
+import { reportingLabel } from '@/utils/commandReporting';
 import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

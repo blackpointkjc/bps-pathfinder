@@ -12,7 +12,7 @@ import { ClipboardCheck, Plus, UserCheck, CheckCircle, XCircle, Pencil } from "l
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
 export default function SupervisorInspections() {
   const [showForm, setShowForm] = useState(false);

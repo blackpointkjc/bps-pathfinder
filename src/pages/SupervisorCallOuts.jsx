@@ -1,7 +1,5 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { previewDisplayName } from '@/utils/previewIdentity';
-import { comparePersonnel } from '@/utils/rankPolicy';
-import { withinPersonnelOversightScope } from '@/lib/orgStructure';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
@@ -14,7 +12,6 @@ import { Plus, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { listDirectoryLocations, listSupervisorDirectoryOfficers, listDirectoryUsers } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorCallOuts() {

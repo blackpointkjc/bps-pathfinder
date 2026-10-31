@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorWriteUps() {

@@ -21,7 +21,6 @@ import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
 import SupervisorOverview from './SupervisorOverview';
-import CADCenter from './CADCenter';
 import SupervisorCommandBoard from './SupervisorCommandBoard';
 import { Radio } from 'lucide-react';
 

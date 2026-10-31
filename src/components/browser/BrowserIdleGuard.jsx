@@ -8,6 +8,11 @@ export default function BrowserIdleGuard({ minutes, children }) {
   const [locked, setLocked] = useState(false);
   const timer = useRef(null);
   const lastActivity = useRef(Date.now());
+  const lockedRef = useRef(false);
+
+  useEffect(() => {
+    lockedRef.current = locked;
+  }, [locked]);
 
   useEffect(() => {
     const arm = () => {
@@ -16,10 +21,7 @@ export default function BrowserIdleGuard({ minutes, children }) {
     };
     const touch = () => {
       lastActivity.current = Date.now();
-      setLocked(current => {
-        if (!current) arm();
-        return current;
-      });
+      if (!lockedRef.current) arm();
     };
     if (locked) {
       window.clearTimeout(timer.current);

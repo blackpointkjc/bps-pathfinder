@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CheckCircle, Plus, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const blank = () => ({
   shift_date: format(new Date(), 'yyyy-MM-dd'), shift_start:'', shift_end:'', incoming_supervisor_email:'', area:'',
