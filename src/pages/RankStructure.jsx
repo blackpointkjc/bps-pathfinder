@@ -92,12 +92,10 @@ function AreaMember({ person, onOpen, onPhotoOpen }) {
   </button>;
 }
 
-// A focused chain-of-command board. Even with many states, only the chosen
-// platoon + region + division + substation is expanded on screen at once.
+// A focused, rank-sorted command board for one regional platoon at a time.
 function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = [], regionsDirectory = [], onOpen, onPhotoOpen }) {
   const roles = new Set([viewer?.role,...(viewer?.additional_roles||[])].map(value=>String(value||'').toLowerCase()));
   const companyAccess = roles.has('admin') || roles.has('full_access');
-  const viewerSenior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(String(viewer?.rank||'').toLowerCase());
   const [chosenPlatoon,setChosenPlatoon]=useState(()=>viewer?.oversight_platoon||viewer?.platoon||'');
   const [chosenRegion,setChosenRegion]=useState(()=>viewer?.division||'');
   const distinct=values=>[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
@@ -110,10 +108,9 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
   const platoon=companyAccess?(platoons.includes(chosenPlatoon)?chosenPlatoon:platoons[0]||''):fixedPlatoon;
   const platoonPeople=users.filter(person=>person.division===region&&person.platoon===platoon);
   const commander=commands.find(entry=>entry.platoon===platoon&&entry.region===region)||null;
-  // One rank-ordered roster per regional platoon; postings are metadata, not branches.
+  // A continuous, single chain of command rather than rank-labeled blocks or station branches.
   const commandPhoto=commander?.profile_photo_url||'';
   const fieldPeople=platoonPeople.filter(person=>!COMMAND_RANKS.has(person.rank) && String(person.id)!==String(commander?.id)).sort(comparePersonnel);
-  const ranks=distinct(fieldPeople.map(person=>person.rank)).sort((a,b)=>RANKS.indexOf(a)-RANKS.indexOf(b));
   const fieldControl='mt-1 h-10 w-full rounded-lg border border-slate-700 bg-[#071726] px-3 text-sm font-semibold text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-80';
   return <section className="overflow-hidden rounded-3xl border border-[#2a4459] bg-[#081625] shadow-2xl shadow-black/30">
     <div className="border-b border-slate-700/70 bg-gradient-to-r from-[#112d44] via-[#0c2237] to-[#081625] p-4 md:p-5">
@@ -138,10 +135,12 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
         </div> : <div className="px-5 py-8 text-center"><p className="text-lg font-black text-white">No active Platoon Commander</p><p className="mt-2 text-xs text-slate-400">Assign personnel to this regional Platoon or review out-of-office status.</p></div>}
       </div>
       <div className="mx-auto h-8 w-px bg-amber-500/60"/>
-      <div className="mb-4 text-center"><h3 className="text-sm font-black uppercase tracking-widest text-emerald-300">Officer Rank Hierarchy</h3><p className="mt-1 text-xs text-slate-400">Personnel arranged by rank · current assignments shown on officer cards</p></div>
       {!fieldPeople.length?<div className="mx-auto max-w-lg rounded-xl border border-dashed border-slate-700 p-7 text-center text-sm text-slate-400">No officers are currently assigned to this platoon.</div>:
-      <div className="rounded-2xl border border-emerald-700/40 bg-[#0b2031] p-3 md:p-4 space-y-5">
-        {ranks.map(rank=><div key={rank}><div className="mb-3 flex items-center gap-2"><h4 className="text-xs font-black uppercase tracking-wider text-emerald-300">{rank}</h4><div className="h-px flex-1 bg-slate-700"/></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{fieldPeople.filter(person=>person.rank===rank).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen} onPhotoOpen={onPhotoOpen}/>)}</div></div>)}
+      <div className="mx-auto max-w-3xl" aria-label="Platoon chain of command">
+        {fieldPeople.map((person,index)=><div key={person.id} className="flex flex-col items-center">
+          <div className="w-full max-w-2xl"><AreaMember person={person} onOpen={onOpen} onPhotoOpen={onPhotoOpen}/></div>
+          {index<fieldPeople.length-1&&<div aria-hidden="true" className="h-5 w-px bg-emerald-700/70"/>}
+        </div>)}
       </div>}
     </div>
   </section>;
