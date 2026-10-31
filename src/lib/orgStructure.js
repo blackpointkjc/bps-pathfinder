@@ -4,6 +4,9 @@
 
 const text = value => String(value ?? '').trim();
 const lower = value => text(value).toLowerCase();
+const RANK_CHAIN = ['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
+const rankIndex = value => { const label=lower(value).replace(/[.]/g,'').replace(/\s+/g,' '); return RANK_CHAIN.indexOf(label==='lieutenant colonel'||label==='lt col'?'lt colonel':label); };
+export const supervisorOutranks = (viewer, officer) => rankIndex(viewer?.rank)>=0 && rankIndex(officer?.rank)>rankIndex(viewer?.rank);
 
 export const ORG_LEVELS = ['region', 'division', 'substation'];
 export const ALL_ORG = 'all';
@@ -152,6 +155,7 @@ export function officerOrgContext(user = {}, locations = []) {
 export function withinPersonnelOversightScope(viewer = {}, officer = {}) {
   const roles = new Set([viewer.role, ...(viewer.additional_roles || [])].map(lower));
   if (roles.has('admin') || roles.has('full_access')) return true;
+  if (!supervisorOutranks(viewer,officer)) return false;
   const platoon = text(viewer.oversight_platoon) || text(viewer.platoon);
   if (!['a','b'].includes(lower(platoon)) || lower(officer.platoon) !== lower(platoon)) return false;
   const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(lower(viewer.rank));

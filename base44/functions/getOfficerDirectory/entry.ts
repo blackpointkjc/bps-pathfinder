@@ -18,8 +18,11 @@ Deno.serve(async (req) => {
     const supervisor = roleSet.has('supervisor') || user.is_supervisor === true || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col','first sergeant','sergeant','corporal'].includes(String(user.rank || '').trim().toLowerCase());
     const allAccess = roleSet.has('admin') || roleSet.has('full_access');
     const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(String(user.rank || '').trim().toLowerCase());
+    const rankChain=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
+    const level=(value:any)=>{const raw=String(value||'').toLowerCase().trim().replace(/[.]/g,'');return rankChain.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
     const inScope = (person:any) => {
       if (allAccess || !supervisor) return true;
+      if(level(user.rank)<0||level(person.rank)<=level(user.rank))return false;
       const text = (value:any) => String(value || '').trim().toLowerCase();
       const assignedPlatoon = text(user.oversight_platoon || user.platoon);
       if (!['a','b'].includes(assignedPlatoon) || text(person.platoon) !== assignedPlatoon) return false;

@@ -6,7 +6,11 @@ const validCoord = (v: unknown) => v !== null && v !== undefined && String(v).tr
 // Duty/welfare records are scoped by assignment rank, not by a client-side
 // filter. Command rank Lieutenant+ sees its division; field supervisors see
 // only their own substation. Global emergency dispatch itself is unaffected.
+const orderedRanks = ['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
+const indexRank=(value:any)=>{const name=lower(value).replace(/[.]/g,'');return orderedRanks.indexOf(name==='lieutenant colonel'||name==='lt col'?'lt colonel':name);};
+const outranks=(viewer:any,person:any)=>indexRank(viewer.rank)>=0&&indexRank(person.rank)>indexRank(viewer.rank);
 const inSupervisorArea = (viewer:any, person:any) => {
+  if (!outranks(viewer,person)) return false;
   const supervisorPlatoon = lower(viewer.oversight_platoon || viewer.platoon);
   if (!['a','b'].includes(supervisorPlatoon) || lower(person.platoon) !== supervisorPlatoon) return false;
   const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(lower(viewer.rank));
