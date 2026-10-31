@@ -145,3 +145,17 @@ export function officerOrgContext(user = {}, locations = []) {
   const substation = text(user.substation) || text(site?.substation);
   return { division, subdivision, substation, site_name: text(site?.site_name), path: orgPathLabel({ division, subdivision, substation }) };
 }
+
+// Role-aware personnel visibility for supervisor directories/rosters. Admin
+// and Full Access retain company command access; unassigned supervisors do
+// not acquire company-wide officer visibility through an empty field.
+export function withinPersonnelOversightScope(viewer = {}, officer = {}) {
+  const roles = new Set([viewer.role, ...(viewer.additional_roles || [])].map(lower));
+  if (roles.has('admin') || roles.has('full_access')) return true;
+  const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(lower(viewer.rank));
+  if (!lower(viewer.division) || !lower(viewer.subdivision)) return false;
+  if (lower(viewer.division) !== lower(officer.division)
+      || lower(viewer.subdivision) !== lower(officer.subdivision)) return false;
+  if (senior) return true;
+  return Boolean(lower(viewer.substation) && lower(viewer.substation) === lower(officer.substation));
+}
