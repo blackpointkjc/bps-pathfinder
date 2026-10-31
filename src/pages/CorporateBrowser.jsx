@@ -6,13 +6,11 @@ import BrowserRequestDialog from '@/components/browser/BrowserRequestDialog';
 import BrowserIdleGuard from '@/components/browser/BrowserIdleGuard';
 import { profileLabel } from '@/lib/browserProfiles';
 
-const EMBED_DENIED = ['facebook.com','instagram.com','google.com','accounts.google.com','youtube.com','x.com','twitter.com','tiktok.com','netflix.com','spotify.com','amazon.com','bing.com','linkedin.com','reddit.com','apple.com','microsoft.com','outlook.com','icloud.com','paypal.com','bankofamerica.com'];
 const blank = id => ({ id, title: 'New tab', history: [{kind:'home'}], index:0 });
 const domainOf = raw => { try { return new URL(raw).hostname.toLowerCase().replace(/^www\./,''); } catch { return ''; } };
-const cannotEmbed = url => EMBED_DENIED.some(domain => {const host=domainOf(url); return host===domain || host.endsWith('.'+domain);});
 const validSite = entry => /^(https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[:/?!#]|$)/i.test(entry);
 const asUrl = text => /^https?:\/\//i.test(text) ? text : 'https://'+text;
-const titleFor = state => state.kind==='home'?'New tab':state.kind==='search'?'Search: '+state.query.slice(0,24):state.kind==='blocked'?'Access blocked':domainOf(state.url) || 'Website';
+const titleFor = state => state.kind==='home'?'New tab':state.kind==='search'?'Search: '+state.query.slice(0,24):state.kind==='blocked'?'Access blocked':state.kind==='engineUnavailable'?'Browser connection needed':domainOf(state.url) || 'Website';
 
 export default function CorporateBrowser() {
   const [tabs,setTabs] = useState([blank('initial')]);
@@ -33,6 +31,7 @@ export default function CorporateBrowser() {
   const admin=policy?.profile==='admin_access';
   const search=useMutation({mutationFn:async query=>(await base44.functions.invoke('browserSearch',{query})).data});
   const check=useMutation({mutationFn:async url=>(await base44.functions.invoke('browserAccessCheck',{url,source:'navigation'})).data});
+  const remote=useMutation({mutationFn:async url=>(await base44.functions.invoke('browserRemoteSession',{url})).data});
   const request=useMutation({mutationFn:async ({domain,justification})=>base44.entities.BrowserAccessRequest.create({
     user_email:user?.email||'', user_name:user?.full_name||user?.email||'',domain,justification,status:'pending',source:'search'
   })});
@@ -41,8 +40,11 @@ export default function CorporateBrowser() {
   const goHistory = change => { const index=tab.index+change;if(index<0||index>=tab.history.length)return;setTabs(list=>list.map(item=>item.id===activeId?{...item,index,title:titleFor(item.history[index])}:item));setError('');};
   const addTab = () => {const id='tab'+Date.now()+Math.random().toString(36).slice(2,6);setTabs(list=>[...list,blank(id)]);setActiveId(id);setOmnibox('');setError('');search.reset();};
   const closeTab = id => {const next=tabs.filter(item=>item.id!==id);if(!next.length){setTabs([blank('initial')]);setActiveId('initial');return;}setTabs(next);if(activeId===id)setActiveId(next[next.length-1].id);};
-  useEffect(()=>{setOmnibox(page.kind==='site'||page.kind==='blocked'?page.url:page.kind==='search'?page.query:'');},[activeId,tab.index]);
+  useEffect(()=>{setOmnibox(page.kind==='site'||page.kind==='blocked'||page.kind==='engineUnavailable'?page.url:page.kind==='search'?page.query:'');},[activeId,tab.index]);
   const doSearch = async query => {
+    // Administrator searches happen in real Google Search inside remote Chrome.
+    // Restricted staff keep the server-filtered public-web result viewer.
+    if (admin) return visit('https://www.google.com/search?q='+encodeURIComponent(query));
     setBusy(true);setError('');
     const tabId=activeId;
     const targetIndex=tab.index+1;
@@ -63,7 +65,14 @@ export default function CorporateBrowser() {
       const data=await check.mutateAsync(url.href);
       if(!data?.decision?.allowed){push({kind:'blocked',url:url.href,reason:data?.decision?.reason||'This site is restricted by your browsing profile.'});return;}
       if(data?.policy?.strict_search_only){push({kind:'blocked',url:url.href,reason:'Your HR role is set to Strict Search Only. Contact your administrator to change the policy for your existing role.'});return;}
-      push({kind:'site',url:url.href});
+      try {
+        const viewer=await remote.mutateAsync(url.href);
+        if (!viewer?.viewer_url) throw new Error('Remote Chrome did not return a viewer.');
+        push({kind:'site',url:url.href,viewer:viewer.viewer_url});
+      } catch(engineError) {
+        const msg=engineError?.response?.data?.error || engineError?.message || 'Remote Chrome service is unavailable.';
+        push({kind:'engineUnavailable',url:url.href,reason:msg});
+      }
     }catch(e){setError(e?.response?.data?.error||'Unable to verify this destination. Access was not granted.');}
     finally{setBusy(false);}
   };
@@ -91,7 +100,7 @@ export default function CorporateBrowser() {
         <button type="button" onClick={()=>navigate(omnibox)} disabled={busy||loadingPolicy} className="rounded-full bg-[#1a73e8] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:'Go'}</button>
       </div>
       <div className="flex items-center justify-between gap-2 border-b border-[#e5e7eb] bg-[#fafbfc] px-4 py-1.5 text-[11px] text-[#5f6368]">
-        <span className="truncate">{loadingPolicy?'Checking your access…':`Public internet search · ${profileLabel(policy?.profile)}`}</span>
+        <span className="truncate">{loadingPolicy?'Checking your access…':`${admin ? 'Google Search in Chrome' : 'Public web search'} · ${profileLabel(policy?.profile)}`}</span>
         <span className="inline-flex shrink-0 items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-[#188038]"/>Pathfinder policy</span>
       </div>
       <main className="min-h-[430px] flex-1 overflow-y-auto bg-white">
@@ -105,7 +114,7 @@ export default function CorporateBrowser() {
           <p className="mt-5 text-center text-xs text-[#5f6368]">Search the real web. Website access is based on your company role.</p>
         </div>}
         {page.kind==='search' && <div className="mx-auto w-full max-w-4xl px-5 py-7 sm:px-10">
-          <div className="border-b border-slate-200 pb-4"><h1 className="text-xl font-medium text-[#202124]">Search results for {page.query}</h1><p className="mt-1 text-xs text-[#70757a]">Live public internet search · {page.engine||'Bing'}</p></div>
+          <div className="border-b border-slate-200 pb-4"><h1 className="text-xl font-medium text-[#202124]">Search results for {page.query}</h1><p className="mt-1 text-xs text-[#70757a]">Live public internet search · {page.engine||'Web search'}</p></div>
           {busy && <div className="flex items-center gap-2 py-10 text-sm text-slate-500"><Loader2 className="h-5 w-5 animate-spin"/>Searching the web…</div>}
           {!busy && results.length===0 && !error && <p className="py-12 text-sm text-slate-500">No results returned. Try another search.</p>}
           {!busy && results.map((item,i)=> <article key={item.url+'-'+i} className="max-w-[740px] border-b border-slate-100 py-5">
@@ -116,9 +125,9 @@ export default function CorporateBrowser() {
           </article>)}
         </div>}
         {page.kind==='blocked' && <div className="mx-auto max-w-xl px-6 py-20 text-center"><AlertTriangle className="mx-auto h-12 w-12 text-amber-500"/><h1 className="mt-5 text-2xl font-semibold">Website access restricted</h1><p className="mt-3 break-words text-sm text-slate-600">{page.url}</p><p className="mt-3 text-sm text-slate-600">{page.reason}</p><div className="mt-6 flex justify-center gap-3"><button className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white" onClick={()=>setRequestDomain(domainOf(page.url))}>Request access</button><button className="rounded-lg border px-4 py-2 text-sm" onClick={()=>push({kind:'home'})}>New search</button></div></div>}
-        {page.kind==='site' && <div className="flex min-h-[500px] flex-col">
-          {cannotEmbed(page.url) ? <div className="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center px-6 py-16 text-center"><Globe2 className="h-14 w-14 text-[#64748b]"/><h1 className="mt-5 text-2xl font-semibold">In-app website viewing unavailable</h1><p className="mt-3 text-sm leading-6 text-slate-600">Your {profileLabel(policy?.profile)} role permits access to {domainOf(page.url)}. This website blocks embedded frames, and Pathfinder does not yet have a remote browser engine connected. This is not a restriction on your company role.</p><button type="button" onClick={()=>push({kind:'home'})} className="mt-6 rounded-full bg-[#1a73e8] px-5 py-3 text-sm font-semibold text-white">Back to browser homepage</button></div>
-          : <><div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600"><span>Viewing {domainOf(page.url)} inside Pathfinder</span></div><iframe key={page.url+'-'+reload} src={page.url} title={domainOf(page.url)} referrerPolicy="no-referrer" sandbox="allow-forms allow-scripts allow-same-origin allow-popups" className="min-h-[530px] w-full flex-1 border-0"/><p className="px-4 py-2 text-xs text-slate-500">If the website does not load here, it may prevent embedding. This browser does not redirect you to a separate tab.</p></>}
+        {page.kind==='engineUnavailable' && <div className="mx-auto flex max-w-xl flex-col items-center justify-center px-6 py-16 text-center"><Globe2 className="h-14 w-14 text-slate-500"/><h1 className="mt-5 text-2xl font-semibold">Chrome browser service not connected</h1><p className="mt-3 text-sm leading-6 text-slate-600">Your company profile permits this website. Pathfinder needs its remote Chrome browser service connected to display it fully inside the app.</p><p className="mt-3 rounded-lg bg-slate-100 p-3 text-xs text-slate-600">{page.reason}</p><button type="button" onClick={()=>visit(page.url)} className="mt-6 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white">Retry in-app browser</button></div>}
+        {page.kind==='site' && <div className="flex min-h-[530px] flex-1 flex-col bg-white">
+          <iframe key={page.viewer} src={page.viewer} title={'Interactive Google Chrome browser - '+domainOf(page.url)} allow="clipboard-read; clipboard-write" sandbox="allow-same-origin allow-scripts" className="min-h-[620px] w-full flex-1 border-0"/>
         </div>}
       </main>
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e2e8f0] bg-[#f8fafc] px-4 py-2 text-[11px] text-slate-500"><span>Internet browsing · Pathfinder</span><span>Full site enforcement requires a managed browser or web gateway</span></footer>
