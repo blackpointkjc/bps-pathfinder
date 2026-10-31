@@ -30,16 +30,28 @@ const CATEGORY_DOMAINS = {
     'reddit.com', 'linkedin.com', 'pinterest.com', 'tumblr.com', 'threads.net', 'discord.com',
     'telegram.org', 'whatsapp.com', 'wechat.com', 'quora.com', 'nextdoor.com', 'bsky.app',
     'mastodon.social', 'vk.com', 'flickr.com', 'imgur.com', '9gag.com', 'tinder.com',
+    'facebook.net', 'fb.com', 'fbcdn.net', 'messenger.com', 'instagram.net', 'cdninstagram.com',
+    'tiktokcdn.com', 'tiktokv.com', 'byteoversea.com', 'snapkit.com', 'snap.com',
+    'discord.gg', 'discordapp.com', 'discordapp.net', 'discord.media', 'redditmedia.com', 'redd.it',
   ],
   streaming: [
     'youtube.com', 'youtu.be', 'netflix.com', 'hulu.com', 'disneyplus.com', 'max.com',
     'hbomax.com', 'primevideo.com', 'peacocktv.com', 'twitch.tv', 'vimeo.com', 'dailymotion.com',
     'paramountplus.com', 'tubitv.com', 'plex.tv', 'roku.com', 'crunchyroll.com', 'fubo.tv',
     'sling.com', 'pluto.tv', 'kick.com',
+    'youtube-nocookie.com', 'youtubei.googleapis.com', 'googlevideo.com', 'ytimg.com', 'yt3.ggpht.com',
+    'youtube.googleapis.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be',
+    'netflix.net', 'nflxvideo.net', 'nflximg.net', 'nflxso.net', 'huluim.com',
+    'huluad.com', 'disney-plus.net', 'dssott.com', 'dssott.com', 'disneyplus.disney.com',
+    'primevideo.com', 'amazonvideo.com', 'aiv-cdn.net', 'twitchcdn.net', 'ttvnw.net',
+    'vimeocdn.com', 'vimeo.com', 'streamable.com', 'rumble.com', 'rumble.cloud',
+    'bilibili.com', 'dailymotion.com', 'cdn.jwplayer.com', 'jwplayer.com',
   ],
   music: [
     'spotify.com', 'music.apple.com', 'soundcloud.com', 'pandora.com', 'deezer.com',
     'tidal.com', 'iheart.com', 'audacy.com', 'last.fm', 'bandcamp.com', 'audiomack.com',
+    'scdn.co', 'spotifycdn.com', 'spotifycdn.net', 'audio-ak-spotify-com.akamaized.net',
+    'podcasts.apple.com', 'music.amazon.com', 'music.youtube.com',
   ],
   shopping: [
     'amazon.com', 'ebay.com', 'walmart.com', 'target.com', 'etsy.com', 'temu.com', 'shein.com',
@@ -58,6 +70,8 @@ const CATEGORY_DOMAINS = {
     'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'redtube.com', 'youporn.com',
     'onlyfans.com', 'chaturbate.com', 'stripchat.com', 'brazzers.com', 'literotica.com',
     'adultfriendfinder.com', 'spankbang.com', 'eporner.com', 'fapello.com',
+    'fansly.com', 'manyvids.com', 'bongacams.com', 'livejasmin.com', 'cam4.com',
+    'youjizz.com', 'tnaflix.com', 'tube8.com', 'beeg.com', 'rule34.xxx', 'nhentai.net',
   ],
   gambling: [
     'draftkings.com', 'fanduel.com', 'betmgm.com', 'caesars.com', 'bet365.com', 'bovada.lv',
@@ -124,6 +138,29 @@ export const RESEARCH_DOMAINS = [
   'github.com', 'gitlab.com', 'stackoverflow.com', 'developer.mozilla.org', 'python.org',
   'nodejs.org', 'npmjs.com', 'postgresql.org', 'mongodb.com', 'w3.org',
 ];
+
+// Non-negotiable company-wide categories: preloaded for ALL non-admin employees.
+// Explicit allowlist rules and temporary grants do not override these categories.
+// Use actual Admin role to maintain the Website Restrictions administration UI.
+export const MANDATORY_NON_ADMIN_CATEGORIES = Object.freeze([
+  'social', 'streaming', 'music', 'adult', 'gaming', 'gambling', 'dating',
+  'vpn_proxy', 'file_sharing', 'shopping', 'advertising', 'malicious',
+]);
+
+export const MANDATORY_NON_ADMIN_DOMAINS = Object.freeze([
+  ...CATEGORY_DOMAINS.social,
+  ...CATEGORY_DOMAINS.streaming,
+  ...CATEGORY_DOMAINS.music,
+  ...CATEGORY_DOMAINS.adult,
+  ...CATEGORY_DOMAINS.gaming,
+  ...CATEGORY_DOMAINS.gambling,
+  ...CATEGORY_DOMAINS.dating,
+  ...CATEGORY_DOMAINS.vpn_proxy,
+  ...CATEGORY_DOMAINS.file_sharing,
+  ...CATEGORY_DOMAINS.shopping,
+  ...CATEGORY_DOMAINS.advertising,
+  ...CATEGORY_DOMAINS.malicious,
+]);
 
 export const SEARCH_ENGINE_LABEL = 'Pathfinder Approved Search';
 
@@ -312,6 +349,15 @@ export function evaluateDomain({ domain, policy, siteRules = [], grants = [], us
     return { allowed: true, category, category_label: categoryLabel,
       reason: 'Unrestricted browsing permitted by the company Administrator/Full Access role.',
       basis: 'Company administrator role' };
+  }
+  // Mandatory categories are evaluated before individually approved sites,
+  // temporary requests, or the person's configurable role policy. This means
+  // non-admin users cannot bypass company-wide social/streaming/adult blocks.
+  // Admin profiles (including Full Access browsing roles) were handled above.
+  if (category && MANDATORY_NON_ADMIN_CATEGORIES.includes(category)) {
+    return {allowed:false,category,category_label:categoryLabel,
+      reason:`Company-wide internet restriction: ${categoryLabel} is unavailable for non-administrators.`,
+      basis:'Mandatory company restriction'};
   }
   if (blockRule) {
     return { allowed: false, category, category_label: categoryLabel, reason: blockRule.note || `This website is blocked by company policy (${target}).`, basis: 'Site blocklist' };
