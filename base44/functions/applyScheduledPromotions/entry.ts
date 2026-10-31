@@ -31,7 +31,7 @@ async function runOne(entities:any,event:any,clock:any){
   if(patch.supervisor_id){const supervisor=await entities.User.get(patch.supervisor_id);if(!isActive(supervisor))throw Error('Reporting supervisor is no longer an active employee');}
   await entities.User.update(user.id,patch);
   const after=await entities.User.get(user.id);
-  const check=['rank','unit_number','platoon','supervisor_id','role','profile_photo_url'];
+  const check=['rank','unit_number','platoon','supervisor_id','role','profile_photo_url','profile_photo_original_url'];
   if(check.some(key=>patch[key]!==undefined&&String(after[key]??'')!==String(patch[key]??'')))throw Error('Updated officer rank, access, photo or command could not be verified');
   if(!patch.additional_roles.every((role:string)=>(after.additional_roles||[]).includes(role)))throw Error('Scheduled access roles did not all persist');
   changed++;

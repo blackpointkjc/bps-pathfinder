@@ -117,8 +117,13 @@ function changePlan(users:any[],input:any){
  if(nextRoles.some((role:string)=>!PERMITTED_ROLES.includes(role)&&!existingRoles.includes(role)))throw new Error('The selected account role is not supported for personnel promotions.');
  if(nextSystemRole==='admin'&&!nextRoles.includes('full_access'))nextRoles.push('full_access');
  if(supervisorRank(proposed)&&!nextRoles.includes('supervisor'))nextRoles.push('supervisor');
- const nextPhoto=trim(input.profile_photo_url,2000);
- if(nextPhoto&&!/^https:\/\//i.test(nextPhoto))throw new Error('The scheduled portrait must be an uploaded HTTPS image.');
+ const nextPhoto=String(input.profile_photo_url||'').trim();
+ // Internal uploads are stored as data:image URLs by storeInternalFile.
+ // A 160/2000-character truncation broke every staged portrait and prevented
+ // promotion preview. Accept only supported image media, with a strict size.
+ if(nextPhoto && !/^https:\/\//i.test(nextPhoto) && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(nextPhoto))
+   throw new Error('Upload a JPG, PNG or WebP portrait before scheduling.');
+ if(nextPhoto.length>1_600_000)throw new Error('The staged portrait is too large. Upload a smaller image.');
  const effective=trim(input.effective_date,16);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(effective)||!Number.isFinite(Date.parse(effective+'T12:00:00Z')))
    throw new Error('Select a valid effective date.');
@@ -160,7 +165,7 @@ function changePlan(users:any[],input:any){
  updates.additional_roles=nextRoles;
  updates.dispatch_role=nextRoles.includes('dispatch');
  updates.is_supervisor=nextRoles.includes('supervisor');
- if(photoChanged)updates.profile_photo_url=nextPhoto;
+ if(photoChanged){updates.profile_photo_url=nextPhoto;updates.profile_photo_original_url=nextPhoto;}
  const reason=trim(input.reason,800);
  return {officer,supervisor,updates,transfers,promoted,noChanges,rolesChanged,photoChanged,reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10),
    preview:{officer:safeOfficer(officer),before:{rank:officer.rank,unit_number:officer.unit_number,platoon:officer.platoon,supervisor:officer.supervisor_name||''},
