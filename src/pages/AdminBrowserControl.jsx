@@ -26,6 +26,12 @@ export default function AdminBrowserControl() {
 
   const { data: reviewer } = useQuery({ queryKey: ['browserReviewer'], queryFn: () => base44.auth.me(), staleTime: 300000 });
 
+  const { data: browserEngine, isLoading: browserEngineLoading, refetch: refreshBrowserEngine } = useQuery({
+    queryKey: ['browserRemoteEngineStatus'],
+    queryFn: async () => (await base44.functions.invoke('browserRemoteSession', {action:'status'})).data,
+    staleTime: 30000,
+  });
+
   const { data: pendingCount = 0 } = useQuery({
     queryKey: ['browserPendingCount'],
     queryFn: () => base44.entities.BrowserAccessRequest.count({ status: 'pending' }),
@@ -58,6 +64,10 @@ export default function AdminBrowserControl() {
         </Link>
       </header>
 
+      <section className="rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold text-slate-100">Interactive Google Chrome browser engine: <span className={browserEngine?.configured ? 'text-emerald-300' : 'text-amber-300'}>{browserEngineLoading ? 'Checking…' : browserEngine?.configured ? 'Connected' : 'Not connected'}</span></div><button type="button" onClick={() => refreshBrowserEngine()} className="rounded border border-slate-500 px-3 py-1.5 text-slate-100">Check connection</button></div>
+        {!browserEngine?.configured && <p className="mt-2 text-slate-300">For websites that block ordinary embedding, Pathfinder uses an interactive remote Chrome session. Add the Browserless API token as <code className="text-cyan-300">BROWSERLESS_TOKEN</code> in this Base44 app's Secrets settings to enable it. The token remains on the server. Until it is configured, full interactive browsing cannot start. Restricted employee roles also require a policy-enforcing gateway before receiving unrestricted browser controls.</p>}
+      </section>
       <div className="sticky top-0 z-20 flex flex-wrap gap-1.5 rounded-xl border border-slate-800 bg-slate-950/95 px-2 py-2 backdrop-blur">
         {TOOLS.map(tool => (
           <button
@@ -83,7 +93,7 @@ export default function AdminBrowserControl() {
 
       {active === 'profiles' && (
         <div className="space-y-3">
-          <p className="rounded-xl border border-cyan-800 bg-slate-900 p-3 text-xs text-cyan-100">Browser profiles automatically follow the account roles already configured under HR → Manage Company Employees. Admin and Full Access roles have Administrator Access. Employees have Strict Search Only unless you create a policy for their existing role. No separate browser-user assignment is required.</p>
+          <p className="rounded-xl border border-cyan-800 bg-slate-900 p-3 text-xs text-cyan-100">Browser permissions follow the live profiles under HR → Manage Company Employees: Admin / Full Access → Administrator Access; Supervisor / HR → Limited Business Access; Officer → Officer Work Research; all others → Strict Search Only. Higher roles override lower roles automatically; no separate employee assignment is required.</p>
           <BrowserPolicyPanel />
         </div>
       )}
