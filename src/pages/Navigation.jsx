@@ -184,6 +184,11 @@ export default function Navigation() {
         setTomTomMainMapFailed(true);
         tomTomErrorCountRef.current+=1;
     };
+    const markTomTomReady=()=>{
+        // Reset exponential retry delay once the real TomTom base map is loaded.
+        tomTomErrorCountRef.current=0;
+        setTomTomRetryAt(0);
+    };
     useEffect(()=>{
         if(!useTomTomMainMap || !tomTomMainMapFailed || !isOnline)return undefined;
         // Bounded exponential backoff: 8s, 16s, 32s, then up to 2 minutes.
@@ -1802,6 +1807,7 @@ export default function Navigation() {
                       mapTheme={mapTheme}
                       navigation={isNavigating && activeNavStep ? {instruction:formatInstruction(activeNavStep), distance:navDistanceLabel, eta:navEtaLabel, provider:navRouteProvider} : null}
                       onMapUnavailable={markTomTomUnavailable}
+                      onMapReady={markTomTomReady}
                       onSelectPoint={coords=>{
                         setMapSelectedDestination({coords,name:`${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`,address:`${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`,label:'TomTom map location'});
                         setShowAddressSearch(true);

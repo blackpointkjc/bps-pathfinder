@@ -158,7 +158,7 @@ function registerCadIcons(map){
 const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,onMapReady,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false}) {
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
@@ -170,6 +170,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const onSelectPointRef=useRef(onSelectPoint);
   const onSelectFacilityRef=useRef(onSelectFacility);
   const onMapUnavailableRef=useRef(onMapUnavailable);
+  const onMapReadyRef=useRef(onMapReady);
   const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence});
   const layerSnapshotRef=useRef({});
   const trafficRef=useRef({flow:null,incidents:null});
@@ -194,6 +195,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   onSelectPointRef.current=onSelectPoint;
   onSelectFacilityRef.current=onSelectFacility;
   onMapUnavailableRef.current=onMapUnavailable;
+  onMapReadyRef.current=onMapReady;
   cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence};
   mapClickEnabledRef.current=mapPickEnabled;
   // A traffic style reload creates new sources. Immediately repopulate them
@@ -429,6 +431,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             perspectiveInitRef.current=true;
             map.easeTo({zoom:Math.max(15.5,map.getZoom()),pitch:50,duration:300,essential:true});
           }
+          if(!mapReadyRef.current)onMapReadyRef.current?.();
           mapReadyRef.current=true;
           setReady(true);
           // 3D terrain and TomTom overlay modules previously triggered
