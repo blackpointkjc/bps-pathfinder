@@ -11,6 +11,19 @@ function unwrap(value) {
 
 export async function loadBrowserContext(base44, user) {
   const read = (operation: () => Promise<any>, label: string) => withRateLimitRetry(operation, { attempts: 3, label });
+  // HR -> Manage Company Employees reads the User entity. Browser authorization
+  // must use that same live User profile, not the cached auth.me() role snapshot.
+  // Use the authenticated user's ID only; never accept a client-supplied ID/email.
+  const liveProfile = await read(() => base44.asServiceRole.entities.User.get(user.id), 'Browser current employee role');
+  if (!liveProfile || String(liveProfile.id) !== String(user.id) ||
+      String(liveProfile.email || '').trim().toLowerCase() !== String(user.email || '').trim().toLowerCase()) {
+    throw new Error('Cannot verify the current employee profile for corporate browser access.');
+  }
+  const staff = {
+    ...liveProfile,
+    role: liveProfile.role || 'user',
+    additional_roles: Array.isArray(liveProfile.additional_roles) ? liveProfile.additional_roles : [],
+  };
   const [policiesResult, rulesResult, grantsResult] = await Promise.all([
     read(() => base44.asServiceRole.entities.BrowserPolicy.filter({ active: true }, { limit: 100 }), 'BrowserPolicy read'),
     read(() => base44.asServiceRole.entities.BrowserSiteRule.filter({ active: true }, { limit: 200 }), 'BrowserSiteRule read'),
@@ -25,10 +38,10 @@ export async function loadBrowserContext(base44, user) {
     return new Date(item.expires_at).getTime() > now;
   });
 
-  const { policy, basis } = resolvePolicy(policies, user);
-  const summary = { ...policySummary(policy), basis };
+  const { policy, basis } = resolvePolicy(policies, staff);
+  const summary = { ...policySummary(policy), basis, role_source: 'Manage Company Employees user profile' };
 
-  return { user, policy, basis, summary, siteRules, grants };
+  return { user: staff, policy, basis, summary, siteRules, grants };
 }
 
 export function checkDestination(context, domainOrUrl) {
