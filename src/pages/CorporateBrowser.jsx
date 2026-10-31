@@ -36,7 +36,7 @@ export default function CorporateBrowser() {
   const request=useMutation({mutationFn:async ({domain,justification})=>base44.entities.BrowserAccessRequest.create({
     user_email:user?.email||'', user_name:user?.full_name||user?.email||'',domain,justification,status:'pending',source:'search'
   })});
-  const results=page.kind==='search' && page.query===search.data?.query ? (search.data.results||[]) : [];
+  const results=page.kind==='search' ? (page.results||[]) : [];
   const push = state => setTabs(list=>list.map(item=>item.id===activeId?{...item,history:[...item.history.slice(0,item.index+1),state],index:item.index+1,title:titleFor(state)}:item));
   const goHistory = change => { const index=tab.index+change;if(index<0||index>=tab.history.length)return;setTabs(list=>list.map(item=>item.id===activeId?{...item,index,title:titleFor(item.history[index])}:item));setError('');};
   const addTab = () => {const id='tab'+Date.now()+Math.random().toString(36).slice(2,6);setTabs(list=>[...list,blank(id)]);setActiveId(id);setOmnibox('');setError('');search.reset();};
@@ -44,8 +44,13 @@ export default function CorporateBrowser() {
   useEffect(()=>{setOmnibox(page.kind==='site'||page.kind==='blocked'?page.url:page.kind==='search'?page.query:'');},[activeId,tab.index]);
   const doSearch = async query => {
     setBusy(true);setError('');
-    push({kind:'search',query});
-    try {await search.mutateAsync(query);}
+    const tabId=activeId;
+    const targetIndex=tab.index+1;
+    push({kind:'search',query,results:[]});
+    try {
+      const response=await search.mutateAsync(query);
+      setTabs(list=>list.map(item=>item.id===tabId?{...item,history:item.history.map((entry,index)=>index===targetIndex&&entry.kind==='search'&&entry.query===query?{...entry,results:response.results||[],engine:response.engine||'Bing'}:entry)}:item));
+    }
     catch(e){setError(e?.response?.data?.error||e?.message||'Live web search is unavailable.');}
     finally{setBusy(false);}
   };
@@ -101,7 +106,7 @@ export default function CorporateBrowser() {
           <p className="mt-5 text-center text-xs text-[#5f6368]">Search the real web. Website access is based on your company role.</p>
         </div>}
         {page.kind==='search' && <div className="mx-auto w-full max-w-4xl px-5 py-7 sm:px-10">
-          <div className="border-b border-slate-200 pb-4"><h1 className="text-xl font-medium text-[#202124]">Search results for {page.query}</h1><p className="mt-1 text-xs text-[#70757a]">Live public internet search · {search.data?.engine||'Bing'}</p></div>
+          <div className="border-b border-slate-200 pb-4"><h1 className="text-xl font-medium text-[#202124]">Search results for {page.query}</h1><p className="mt-1 text-xs text-[#70757a]">Live public internet search · {page.engine||'Bing'}</p></div>
           {busy && <div className="flex items-center gap-2 py-10 text-sm text-slate-500"><Loader2 className="h-5 w-5 animate-spin"/>Searching the web…</div>}
           {!busy && results.length===0 && !error && <p className="py-12 text-sm text-slate-500">No results returned. Try another search.</p>}
           {!busy && results.map((item,i)=> <article key={item.url+'-'+i} className="max-w-[740px] border-b border-slate-100 py-5">
