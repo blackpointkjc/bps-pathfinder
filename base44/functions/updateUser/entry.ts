@@ -82,6 +82,8 @@ Deno.serve(async (req) => {
         if (companyRanks.includes(targetRank)) {
           updatePayload.platoon = 'Command';
           updatePayload.oversight_platoon = '';
+        } else if (updatePayload.platoon === 'Command') {
+          return Response.json({error:'Only Colonel, Lieutenant Colonel, and Major may have the Company Command assignment.'},{status:400});
         } else if (updatePayload.oversight_platoon !== undefined && String(updatePayload.oversight_platoon).trim()) {
           return Response.json({error:'Company Command cannot be assigned Platoon oversight; assign officers directly to a regional Platoon.'},{status:400});
         }

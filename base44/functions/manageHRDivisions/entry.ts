@@ -22,11 +22,22 @@ Deno.serve(async (req) => {
     }
     if (action === 'update') {
       if (!body.id) return Response.json({ error: 'Division ID required' }, { status: 400 });
+      const old=await base44.asServiceRole.entities.Division.get(body.id);
+      if(old && (old.division_level==='region'||old.is_subdivision!==true)
+          && body.data?.division_name && String(body.data.division_name).trim().toLowerCase()!==String(old.division_name).trim().toLowerCase()){
+        const platoons=await base44.asServiceRole.entities.CompanyPlatoon.filter({region:old.division_name},'-created_date',1000).catch(()=>[]);
+        if(platoons.length)return Response.json({error:'Move or reassign this Region’s Platoons before renaming the Region.'},{status:409});
+      }
       const division = await base44.asServiceRole.entities.Division.update(body.id, body.data || {});
       return Response.json({ success: true, division });
     }
     if (action === 'delete') {
       if (!body.id) return Response.json({ error: 'Division ID required' }, { status: 400 });
+      const original=await base44.asServiceRole.entities.Division.get(body.id);
+      if(original && (original.division_level==='region'||original.is_subdivision!==true)){
+        const platoons=await base44.asServiceRole.entities.CompanyPlatoon.filter({region:original.division_name},'-created_date',1000).catch(()=>[]);
+        if(platoons.length)return Response.json({error:'This Region has Platoons. Move or delete them before deleting the Region.'},{status:409});
+      }
       await base44.asServiceRole.entities.Division.delete(body.id);
       return Response.json({ success: true });
     }
