@@ -49,16 +49,26 @@ export function RosterPrintContent({ users, contactEmail }) {
  const pages = chunks(commandRows,3).map(rows=>({title:'COMMAND STRUCTURE',rows}));
  const nonCommand=users.filter(p=>!COMMAND_TIERS.includes(commandRank(p)));
  const inlineRoster=pages.length===1 && commandRows.length<=3 && users.length<=5 && nonCommand.length<=1;
- for (const letter of ['A','B','']) {
-  const people=users.filter(p=>!COMMAND_TIERS.includes(commandRank(p)) && (letter ? p.platoon===letter : !['A','B'].includes(p.platoon)));
-  const title=letter ? `PLATOON ${letter}` : 'PENDING PLATOON ASSIGNMENT';
-  if(inlineRoster && people.length) { pages[0].extra=[...(pages[0].extra || []),{title,members:people}]; }
-  else for (const members of chunks(people,6)) pages.push({title,members});
+ // Printed rosters follow Region -> Platoon rather than a company-wide A/B
+ // layout. Maryland and additional future regions stay clearly separated.
+ const regionalGroups=new Map();
+ for(const person of nonCommand){
+  const region=String(person.division||'Region not assigned');
+  const platoon=String(person.platoon||'Platoon not assigned');
+  const key=`${region}|||${platoon}`;
+  if(!regionalGroups.has(key))regionalGroups.set(key,[]);
+  regionalGroups.get(key).push(person);
+ }
+ for(const [key,people] of [...regionalGroups.entries()].sort(([a],[b])=>a.localeCompare(b))){
+  const [region,platoon]=key.split('|||');
+  const title=`${region.toUpperCase()} · ${platoon.toUpperCase().startsWith('PLATOON ')?platoon.toUpperCase():`PLATOON ${platoon.toUpperCase()}`}`;
+  if(inlineRoster && people.length)pages[0].extra=[...(pages[0].extra||[]),{title,members:people}];
+  else for(const members of chunks(people,6))pages.push({title,members});
  }
  return <>{pages.map((page,index)=><section className="roster-sheet" key={index}>
   <header className="roster-header"><div><h1>BLACK POINT SECURITY</h1><div className="roster-subtitle">PERSONNEL &amp; COMMAND ROSTER · {page.title}</div></div><div className="roster-subtitle">{new Date().toLocaleDateString('en-US')}<br/>{users.length} active personnel</div></header>
   {page.rows ? page.rows.map((row,i)=><div className="roster-tier" key={i}>
-   {i>0 && <div className="roster-connector"/>}<h2>{row.rank.toUpperCase()}{row.rank==='Major'?' · SHARED REPORTING TO BOTH LT COLONELS':''}</h2>
+   {i>0 && <div className="roster-connector"/>}<h2>{row.rank.toUpperCase()}</h2>
    <div className="roster-row">{row.people.map(person=><RosterCard key={person.id} person={person} users={users} contactEmail={contactEmail}/>)}</div>
   </div>) : <div className="roster-grid">{page.members.map(person=><RosterCard key={person.id} person={person} users={users} contactEmail={contactEmail}/>)}</div>}
   {page.extra?.map(group=><div className="roster-tier" key={group.title}><h2>{group.title}</h2><div className="roster-row">{group.members.map(person=><RosterCard key={person.id} person={person} users={users} contactEmail={contactEmail}/>)}</div></div>)}
