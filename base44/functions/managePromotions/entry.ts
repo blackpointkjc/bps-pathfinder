@@ -187,12 +187,12 @@ async function applyApprovedPromotion(entities:any,event:any){
  const warnings:string[]=[];
  try{
   const user=await entities.User.get(event.officer_id);
-  if(!isActive(user))throw Error('Scheduled officer account is no longer active');
+  if(!isEmployee(user))throw Error('Scheduled officer account is no longer active');
   if(String(user.rank||'')!==String(event.previous_rank||''))throw Error('Rank has changed since the promotion was approved; administrator reconciliation required');
   const patch=event.planned_patch||{};
   if(!patch.rank||!Array.isArray(patch.additional_roles)||!['admin','user'].includes(patch.role))throw Error('Scheduled personnel change is missing its approved role/rank snapshot');
   // Recheck direct supervisor still active, but no authorization elevation before this point.
-  if(patch.supervisor_id){const supervisor=await entities.User.get(patch.supervisor_id);if(!isActive(supervisor))throw Error('Reporting supervisor is no longer an active employee');}
+  if(patch.supervisor_id){const supervisor=await entities.User.get(patch.supervisor_id);if(!isEmployee(supervisor))throw Error('Reporting supervisor is no longer an active employee');}
   await entities.User.update(user.id,patch);
   const after=await entities.User.get(user.id);
   const check=['rank','unit_number','platoon','supervisor_id','role','profile_photo_url','profile_photo_original_url'];
@@ -217,7 +217,7 @@ async function applyApprovedPromotion(entities:any,event:any){
   // Reassignment and notifications happen ONLY after the officer's effective update.
   for(const subordinateId of event.planned_transfers||[]){
    const member=await entities.User.get(subordinateId);
-   if(!isActive(member)||member.platoon!==(event.oversight_platoon||event.new_platoon)){
+   if(!isEmployee(member)||member.platoon!==(event.oversight_platoon||event.new_platoon)){
     warnings.push('Subordinate '+subordinateId+' is no longer eligible for command transfer');continue;
    }
    await entities.User.update(member.id,{supervisor_id:after.id,supervisor_email:after.email,
@@ -261,6 +261,18 @@ Deno.serve(async req=>{
    const events=await entities.PersonnelPromotion.list('-created_date',50);
    return Response.json({events:(events||[]).map((event:any)=>({id:event.id,officer_name:event.officer_name,previous_rank:event.previous_rank,new_rank:event.new_rank,new_platoon:event.new_platoon,status:event.status,effective_at_eastern:event.effective_at_eastern,system_role:event.system_role,new_additional_roles:event.new_additional_roles,transfer_count:event.transfer_count,effective_date:event.effective_date,announcement_published:event.announcement_published,warnings:event.warnings,created_date:event.created_date}))});
   }
+  if(action==='apply'){
+    const priorRequest=trim(input.request_id,80);
+    if(!/^[a-zA-Z0-9_-]{12,80}$/.test(priorRequest))return fail('A valid idempotent command request ID is required.',400);
+    const priorEvents=await entities.PersonnelPromotion.filter({request_id:priorRequest},'-created_date',1);
+    if(priorEvents.length){
+      const prior=priorEvents[0];
+      return Response.json({success:['scheduled','complete'].includes(prior.status),
+        scheduled:prior.status==='scheduled',already_processed:true,event_id:prior.id,
+        status:prior.status,announcement_id:prior.announcement_id||'',
+        announcement_published:prior.announcement_published,warnings:prior.warnings||[]});
+    }
+  }
   const users=await entities.User.list('id',1500);
   if(users.length>=1500)return fail('Roster is too large for safe command assignment. Narrow user listing first.',409);
   if(action==='roster')return Response.json({officers:users.filter(isEmployee).filter(u=>RANKS.includes(normalizeRank(u.rank))).map(safeOfficer).sort((a:any,b:any)=>rankLevel(a.rank)-rankLevel(b.rank)||a.name.localeCompare(b.name)),ranks:RANKS});
@@ -276,8 +288,6 @@ Deno.serve(async req=>{
   if(input.confirm!==true)return fail('Explicit command approval is required.',400);
   const requestId=trim(input.request_id,80);
   if(!/^[a-zA-Z0-9_-]{12,80}$/.test(requestId))return fail('A valid idempotent command request ID is required.',400);
-  const prior=await entities.PersonnelPromotion.filter({request_id:requestId},'-created_date',1);
-  if(prior.length)return Response.json({success:['scheduled','complete'].includes(prior[0].status),scheduled:prior[0].status==='scheduled',already_processed:true,event_id:prior[0].id,status:prior[0].status,announcement_published:prior[0].announcement_published,warnings:prior[0].warnings||[]});
   const event=await entities.PersonnelPromotion.create({
     request_id:requestId,officer_id:plan.officer.id,officer_email:plan.officer.email,officer_name:name(plan.officer),
     previous_rank:plan.officer.rank,new_rank:plan.updates.rank,previous_unit:trim(plan.officer.unit_number),new_unit:plan.updates.unit_number,
