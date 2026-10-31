@@ -25,24 +25,17 @@ const displayArea = value => value === 'ALL' ? 'All Sites' : value || 'All Sites
 export default function SupervisorDutyTimeline() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
-  const { data: users = [] } = useQuery({ queryKey: ['dutyTimelineUsers'], queryFn: () => listDirectoryUsers('last_name', 1000), staleTime: 60000 });
-  const { data: assignments = [], isLoading, error } = useQuery({
-    queryKey: ['supervisorDutyTimeline'],
+  const { data: scoped = {}, isLoading, error } = useQuery({
+    queryKey: ['supervisorScopedDutyTimeline',user?.id],
     queryFn: async () => {
-      try {
-        const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action: 'list' });
-        const payload = response?.data || response || {};
-        if (!payload.success) throw new Error(payload.error || 'Duty supervisor schedule unavailable');
-        return payload.assignments || [];
-      } catch (error) {
-        // A throttled function request must not leave a blank duty timeline.
-        try { return await base44.entities.DutySupervisorAssignment.list('-assignment_date', 1500); }
-        catch { throw error; }
-      }
-    },
-    retry: 1,
-    refetchInterval: 2 * 60 * 1000,
+      const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'duty'});
+      const payload=response?.data||response||{};
+      if(payload.error||payload.success!==true)throw new Error(payload.error||'Duty coverage records unavailable');
+      return payload;
+    }, enabled:!!user, retry:1, refetchInterval:120000,
   });
+  const users=scoped.officers||[];
+  const assignments=scoped.rows||[];
 
   const personLabel = email => {
     const person = users.find(row => lower(row.email) === lower(email));

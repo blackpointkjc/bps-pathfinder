@@ -27,9 +27,15 @@ export default function SupervisorShiftHandover() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(blank());
   const { data:user } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
-  const { data:users=[] } = useQuery({ queryKey:['supervisorHandoverUsers'], queryFn:()=>listDirectoryUsers('last_name') });
-  const { data:handovers=[] } = useQuery({ queryKey:['supervisorShiftHandovers'], queryFn:()=>base44.entities.SupervisorShiftHandover.list('-created_date', 200), refetchInterval:60000 });
-  const supervisors = useMemo(() => users.filter(person => isSupervisor(person) && !person.termination_date && lower(person.email) !== lower(user?.email)), [users, user?.email]);
+  const { data: scoped = {} } = useQuery({ queryKey:['supervisorScopedHandovers',user?.id], queryFn:async()=>{
+    const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'handovers'});
+    const payload=response?.data||response||{};
+    if(payload.error||payload.success!==true)throw new Error(payload.error||'Handover records unavailable');
+    return payload;
+  },enabled:!!user,refetchInterval:60000 });
+  const users=scoped.officers||[];
+  const handovers=scoped.rows||[];
+  const supervisors=useMemo(()=>users.filter(person=>isSupervisor(person) && !person.termination_date && lower(person.email)!==lower(user?.email)),[users,user?.email]);
   const incoming = supervisors.find(person => lower(person.email) === lower(form.incoming_supervisor_email));
 
   const create = useMutation({
@@ -40,19 +46,19 @@ export default function SupervisorShiftHandover() {
       incoming_supervisor_name:incoming ? personLabel(incoming) : 'Incoming Duty Supervisor',
       acknowledged_by_incoming:false,
     }),
-    onSuccess:()=>{ qc.invalidateQueries({queryKey:['supervisorShiftHandovers']}); setForm(blank()); setShowForm(false); toast.success('Duty supervisor handover sent.'); },
+    onSuccess:()=>{ qc.invalidateQueries({queryKey:['supervisorScopedHandovers']}); setForm(blank()); setShowForm(false); toast.success('Duty supervisor handover sent.'); },
     onError:error=>toast.error(error?.message || 'Unable to send supervisor handover'),
   });
   const acknowledge = useMutation({
     mutationFn:id=>base44.entities.SupervisorShiftHandover.update(id,{ acknowledged_by_incoming:true, acknowledgement_time:new Date().toISOString() }),
-    onSuccess:()=>qc.invalidateQueries({queryKey:['supervisorShiftHandovers']}),
+    onSuccess:()=>qc.invalidateQueries({queryKey:['supervisorScopedHandovers']}),
   });
 
   if (user && !isSupervisor(user)) return <div className="p-8 text-center text-slate-400">Supervisor access required.</div>;
 
   return <div className="min-h-full bg-[radial-gradient(circle_at_top_left,_#0e2a31_0,_#07111d_45%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6"><div className="mx-auto max-w-[1500px] space-y-5">
     <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#0f2934] via-[#0b1725] to-[#07101c] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
-      <div className="min-w-0"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 shrink-0 text-cyan-300"/><h1 className="break-words text-xl font-black md:text-2xl">Duty Supervisor Shift Handover</h1></div><p className="mt-1 max-w-3xl break-words text-sm leading-5 text-slate-400">Company-wide command handoff between duty supervisors. Use this for staffing, active calls, serious incidents, safety issues, unresolved problems, fleet/equipment concerns, and follow-up items.</p></div>
+      <div className="min-w-0"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 shrink-0 text-cyan-300"/><h1 className="break-words text-xl font-black md:text-2xl">Duty Supervisor Shift Handover</h1></div><p className="mt-1 max-w-3xl break-words text-sm leading-5 text-slate-400">Assigned-platoon and operating-area handoff between duty supervisors. Use this for staffing, active calls, serious incidents, safety issues, unresolved problems, fleet/equipment concerns, and follow-up items.</p></div>
       <Button className="w-full shrink-0 rounded-xl bg-cyan-700 hover:bg-cyan-600 sm:w-auto" onClick={()=>setShowForm(value=>!value)}><Plus className="mr-2 h-4 w-4"/>New Supervisor Handover</Button>
     </div>
 

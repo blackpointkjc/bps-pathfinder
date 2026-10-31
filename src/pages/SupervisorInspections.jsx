@@ -62,7 +62,7 @@ export default function SupervisorInspections() {
       ? base44.functions.invoke('updateInspectionDraft', { inspection_id: id, inspection: data })
       : base44.entities.InspectionReport.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inspectionReports'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisorScopedInspections'] });
       setShowForm(false);
       setEditingInspectionId(null);
       setFormData({

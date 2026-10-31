@@ -52,37 +52,22 @@ export default function SupervisorCallOuts() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUserResults = [], isFetching: officersLoading, error: officersError, refetch: refreshOfficers } = useQuery({
-    queryKey: ['directoryUsers', 'supervisorCallOuts'],
+  const { data: scoped = {}, isFetching: officersLoading, error: officersError, refetch: refreshOfficers } = useQuery({
+    queryKey: ['supervisorScopedCallOuts', user?.id],
     queryFn: async () => {
-      let rows;
-      try { rows = await listDirectoryUsers('last_name', 1500, true); }
-      catch { rows = await listSupervisorDirectoryOfficers('last_name', 1000, true); }
-      return rows.filter(isOperationalOfficer).sort(comparePersonnel);
+      const response = await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'callouts'});
+      const payload = response?.data || response || {};
+      if (payload.error || payload.success !== true) throw new Error(payload.error || 'Call-out roster unavailable');
+      return payload;
     },
-    initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
+    enabled: !!user, staleTime: 30000,
   });
-
-  const allUsers = (allUserResults || []).filter(officer => withinPersonnelOversightScope(user || {}, officer));
-  const { data: locations = [] } = useQuery({
-    queryKey: ['directoryLocations', 'supervisorCallOuts'],
-    queryFn: async () => {
-      try {
-        const direct = await base44.entities.Location.list('site_name', 1000);
-        if (Array.isArray(direct) && direct.length) return direct.filter(loc => loc.active !== false);
-      } catch (error) {
-        console.warn('Direct location list failed:', error?.message);
-      }
-      const fallback = await listDirectoryLocations('site_name', 1000);
-      return (fallback || []).filter(loc => loc.active !== false);
-    },
-    initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
+  const allUsers = scoped.officers || [];
+  const locations = scoped.locations || [];
+  const callOuts = scoped.rows || [];
+  const callOutError = officersError;
+  const callOutLoading = officersLoading;
+  const refreshCallOuts = refreshOfficers;
 
   const { data: scheduledShifts = [], isFetching: shiftsLoading, error: shiftsError, refetch: refreshShifts } = useQuery({
     queryKey: ['calloutScheduledShifts', formData.officer_email, formData.call_out_date],
@@ -101,12 +86,6 @@ export default function SupervisorCallOuts() {
   const availableShifts = scheduledShifts.filter(shift => shift.archived !== true && !shift.is_open);
   const selectedShift = availableShifts.find(shift => shift.id === formData.shift_id);
 
-  const { data: callOuts=[],error:callOutError,isPending:callOutLoading,refetch:refreshCallOuts } = useQuery({
-    queryKey: ['callOuts'],
-    queryFn: () => base44.entities.CallOut.list('-call_out_date', 1000),
-    staleTime: 120000,
-  });
-
   const createCallOutMutation = useMutation({
     mutationFn: async (data) => {
       const response = await base44.functions.invoke('recordSupervisorCallOut', data);
@@ -115,7 +94,7 @@ export default function SupervisorCallOuts() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['callOuts'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisorScopedCallOuts'] });
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
       queryClient.invalidateQueries({ queryKey: ['companyAnalytics'] });
       queryClient.invalidateQueries({ queryKey: ['officerAnalytics'] });
