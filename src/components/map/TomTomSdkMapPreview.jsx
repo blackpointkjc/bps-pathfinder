@@ -257,44 +257,19 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         ]);
         if(cancelled || !elementRef.current) return;
         const proxy=sdkProxyBase();
-        // Validate the actual signed-in map-style and vector tile endpoints.
-        // MapLibre can emit a 'load' event with no usable tile imagery; report
-        // service responses separately so a blank map is never silent.
-        void (async()=>{
-          try {
-            const auth=window.localStorage.getItem('base44_access_token');
-            const requestHeaders={...(auth?{Authorization:`Bearer ${auth}`}:{}) ,
-              'Base44-App-Id':appParams.appId,
-              ...(appParams.functionsVersion?{'Base44-Functions-Version':appParams.functionsVersion}:{})};
-            const url=new URL(proxy);
-            url.searchParams.set('resourcePath','/maps/orbis/assets/styles/0.6.0-0/style.json');
-            url.searchParams.set('apiVersion','1');
-            url.searchParams.set('map','basic_street-light');
-            const styleResponse=await fetch(url,{headers:requestHeaders,credentials:'include'});
-            if(!styleResponse.ok)throw new Error(`style HTTP ${styleResponse.status}`);
-            const json=await styleResponse.json();
-            const template=json.sources?.vectorTiles?.tiles?.[0];
-            if(!template)throw new Error('style missing street-tile source');
-            const tileUrl=String(template).replace(/\{z\}/g,'13').replace(/\{x\}/g,'2330').replace(/\{y\}/g,'3139');
-            const tileResponse=await fetch(tileUrl,{headers:requestHeaders,credentials:'include'});
-            if(!tileResponse.ok)throw new Error(`street tile HTTP ${tileResponse.status}`);
-            if(cancelled)return;
-            setResourceStatus('TomTom street tiles available');
-          }catch(e){
-            if(!cancelled){
-              setResourceStatus(`TomTom tile check pending: ${e?.message || 'network error'}`);
-            }
-          }
-        })();
+        // The map renderer owns its tile requests. A separate style+tile probe
+        // doubled network traffic on every screen entry; remove that probe.
         // No API key is passed to the map. The authenticated Base44 function
         // adds credentials upstream and strips them from styles and other data.
         TomTomConfig.instance.put({commonBaseURL:proxy,language:'en-US'});
         maplibre.setWorkerUrl(workerURL());
         sdk=new TomTomMap({registerMapLibreWorker:false,
-          style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['terrain','trafficFlow','trafficIncidents']},
+          // Fast first paint: elevation/hillshade and traffic overlays must not
+          // block the base CAD street map.
+          style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:[]},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
             ? [Number(currentLocation[1]),Number(currentLocation[0])] : coords(initialCenter)
-              ? [Number(initialCenter[1]),Number(initialCenter[0])] : [-77.436,37.541],zoom:fitMarkers?12:15.5,pitch:50},
+              ? [Number(initialCenter[1]),Number(initialCenter[0])] : [-77.436,37.541],zoom:fitMarkers?12:coords(currentLocation)?15:11.5,pitch:embedded?0:40},
           // MapLibre's transformRequest MUST be synchronous; an async callback
           // returns a Promise instead of RequestParameters and breaks tiles.
           transformRequest:request=>{
@@ -340,11 +315,12 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           try{featureCount=map.queryRenderedFeatures().length;}catch{}
           setRenderStatus(`Canvas ${Math.round(rect?.width||0)}×${Math.round(rect?.height||0)} · GL ${canvas.width}×${canvas.height} · Layers ${layerCount} · Sources ${sourceCount} · Features ${featureCount}`);
         };
-        map.on('idle',updateRenderStatus);
+        // Full queryRenderedFeatures on every idle event is expensive on
+        // busy CAD maps; diagnostics are available only on startup failure.
         // Diagnostics run on actual rendering events, not every few seconds
         // while an officer pans the map on a phone.
         const renderMonitor=null;
-        window.setTimeout(()=>{if(!cancelled)updateRenderStatus();},800);
+        // Skip startup feature scanning until a map error needs diagnostics.
         const previousCleanup=cleanupRef.current;
         cleanupRef.current=()=>{window.removeEventListener('resize',resize);observer?.disconnect();window.clearInterval(renderMonitor);previousCleanup?.();};
         const dataInit=()=>{
@@ -426,33 +402,11 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           }
           mapReadyRef.current=true;
           setReady(true);
-          // Built-in TomTom 3D buildings and real elevation/terrain are part
-          // of the standard Maps SDK. The enhanced-landmarks preview is not
-          // required to enable these stable layers.
-          if(!terrainInitRef.current){
-            terrainInitRef.current=true;
-            Promise.allSettled([
-              BaseMapModule.get(sdk,{groups:{buildings3D:{visible:true}}}),
-              TerrainModule.get(sdk,{hillshade:{visible:true,method:'multidirectional'},elevation:{visible:true,exaggeration:1.15}}),
-            ]).then(results=>{
-              for(const result of results) if(result.status==='rejected')
-                console.warn('TomTom 3D feature unavailable:',result.reason?.message||'provider unavailable');
-            });
-          }
-          // Re-running TrafficFlowModule.get on every style.load can cause
-          // repeated style reloads, lost CAD layers, and visible flickering.
-          if(trafficInitRef.current) return;
-          trafficInitRef.current=true;
-          // The TomTom SDK owns real vector traffic-flow/incident overlays.
-          Promise.all([
-            TrafficFlowModule.get(sdk,{visible:true}),
-            TrafficIncidentsModule.get(sdk,{visible:true,icons:{visible:true}}),
-          ]).then(([flow,incidents])=>{
-            if(cancelled)return;
-            trafficRef.current={flow,incidents};
-            setTrafficReady(true);
-          }).catch(e=>console.warn('TomTom live traffic modules unavailable:',e?.message||e));
-        };
+          // 3D terrain and TomTom overlay modules previously triggered
+          // additional style reloads every time a page's map mounted.
+          // Keep the responsive street/CAD layer first. The already returned
+          // routing traffic segments remain available in navigation.
+                };
         map.on('load',dataInit);
         map.on('style.load',dataInit);
         map.on('click', event=>{
@@ -518,7 +472,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     // The SDK supersedes earlier in-flight setStyle calls; this avoids
     // rapid day/night taps leaving a previous theme stuck in the map.
     void sdk.setStyle({type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',
-      include:['terrain','trafficFlow','trafficIncidents']})
+      include:[]})
       .then(()=>{
         if(cancelled)return;
         activeThemeRef.current=mapTheme;
