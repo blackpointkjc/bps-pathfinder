@@ -1,0 +1,119 @@
+{
+  "name": "PatrolSpeedingEvent",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "officer_id": {
+      "type": "string"
+    },
+    "officer_email": {
+      "type": "string"
+    },
+    "officer_name": {
+      "type": "string"
+    },
+    "supervisor_id": {
+      "type": "string"
+    },
+    "supervisor_email": {
+      "type": "string"
+    },
+    "supervisor_name": {
+      "type": "string"
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "completed",
+        "interrupted"
+      ]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_seconds": {
+      "type": "number"
+    },
+    "critical_duration_seconds": {
+      "type": "number"
+    },
+    "distance_miles": {
+      "type": "number"
+    },
+    "max_speed_mph": {
+      "type": "number"
+    },
+    "speed_limit_mph": {
+      "type": "number"
+    },
+    "max_over_mph": {
+      "type": "number"
+    },
+    "road_name": {
+      "type": "string"
+    },
+    "speed_limit_source": {
+      "type": "string"
+    },
+    "gps_source": {
+      "type": "string"
+    },
+    "gps_accuracy_m": {
+      "type": "number"
+    },
+    "samples": {
+      "type": "number"
+    },
+    "review_required": {
+      "type": "boolean"
+    },
+    "last_reported_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "event_id",
+    "officer_id",
+    "officer_email",
+    "status",
+    "started_at",
+    "duration_seconds",
+    "distance_miles",
+    "max_speed_mph",
+    "speed_limit_mph"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    }
+  }
+}
