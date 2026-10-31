@@ -51,7 +51,7 @@ export default async function(req:Request):Promise<Response>{
       ||distance<0||distance>duration/3600*135*1.15||maxSpeed<limit+10
       ||maxSpeed>135||limit<10||limit>90||maxOver<10||maxOver>135
       ||accuracy<0||accuracy>50||samples<2||samples>100000
-      ||!/(virginia dot|tomtom|posted speed)/i.test(source))
+      ||!/(virginia dot|tomtom|openstreetmap posted)/i.test(source))
       return Response.json({error:'Speed telemetry does not meet the verified reporting thresholds'},{status:400});
     if(ended && (ended<started||ended>Date.now()+10000))return Response.json({error:'Invalid event end time'},{status:400});
     const officer=await api.asServiceRole.entities.User.get(signed.id);
@@ -65,7 +65,14 @@ export default async function(req:Request):Promise<Response>{
     if(!supervisor&&officer.next_level_supervisor_id&&officer.next_level_supervisor_id!==officer.id)
       supervisor=await api.asServiceRole.entities.User.get(officer.next_level_supervisor_id).catch(()=>null);
     if(!supervisorQualified(supervisor)||supervisor?.termination_date||supervisor?.id===officer.id)supervisor=null;
-    // Do not assign to a random supervisor when the HR chain is incomplete.
+    if(!supervisor){
+      const roster=asRows(await api.asServiceRole.entities.User.list('-updated_date',300)).filter((u:any)=>
+        u?.id!==officer.id && supervisorQualified(u) && !u.termination_date && u.email);
+      const samePlatoon=roster.filter((u:any)=>officer.platoon && lower(u.platoon)===lower(officer.platoon));
+      supervisor=samePlatoon.find((u:any)=>u.role==='admin'||u.is_supervisor===true)||
+        roster.find((u:any)=>u.role==='admin')||null;
+    }
+    // Use current HR command before fallback. Never assign an officer to review themselves.
     const state=payload.completed===true?'completed':'active';
     const fields={
       status:state,started_at:new Date(started).toISOString(),

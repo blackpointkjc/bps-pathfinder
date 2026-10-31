@@ -20,10 +20,11 @@ export function patrolSample(fix, limit, options={}) {
   const timestamp=Number(fix?.timestamp);
   const accuracy=Number(fix?.accuracy);
   const lat=Number(fix?.latitude),lng=Number(fix?.longitude);
-  const speed=Number(fix?.speed);
+  const speed=fix?.speed==null ? NaN : Number(fix.speed);
   const age=Date.now()-timestamp;
   const valid=Number.isFinite(timestamp)&&age>=-3000&&age<30000
-    &&Number.isFinite(accuracy)&&accuracy>=0&&accuracy<=50
+    &&fix?.accuracy!=null&&Number.isFinite(accuracy)&&accuracy>=0&&accuracy<=50
+    &&fix?.latitude!=null&&fix?.longitude!=null
     &&Number.isFinite(lat)&&Number.isFinite(lng)
     &&Math.abs(lat)<=90&&Math.abs(lng)<=180&&!(lat===0&&lng===0)
     &&Number.isFinite(speed)&&speed>=0&&speed<=135
