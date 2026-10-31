@@ -247,8 +247,9 @@ export function resolvePolicy(policies = [], user = {}) {
 
   // These roles are maintained in Manage Company Employees / Accounts & Access.
   // Higher privileges take precedence even if an employee is also an Officer.
-  const isAdmin = roles.has('admin') || roles.has('full_access');
-  const isManagement = roles.has('supervisor') || roles.has('hr') || roles.has('human_resources') || roles.has('human resources');
+  // Only the real Admin role bypasses mandatory internet restrictions.
+  const isAdmin = String(user.role || '').trim().toLowerCase() === 'admin';
+  const isManagement = roles.has('full_access') || roles.has('supervisor') || roles.has('hr') || roles.has('human_resources') || roles.has('human resources');
   const isOfficer = roles.has('officer');
   const profile = isAdmin ? 'admin_access'
     : isManagement ? 'limited_business'
@@ -343,17 +344,17 @@ export function evaluateDomain({ domain, policy, siteRules = [], grants = [], us
   if (!target) {
     return { allowed: false, category, category_label: categoryLabel, reason: 'Enter a valid website address.' };
   }
-  // Verified Admin/Full Access employee roles bypass ordinary browsing rules.
+  // Only verified Admin employee accounts bypass mandatory browsing categories.
   // This is a browser access decision, not a way around third-party frame policies.
   if (policy?.profile === 'admin_access') {
     return { allowed: true, category, category_label: categoryLabel,
-      reason: 'Unrestricted browsing permitted by the company Administrator/Full Access role.',
+      reason: 'Unrestricted browsing permitted by the company Admin role.',
       basis: 'Company administrator role' };
   }
   // Mandatory categories are evaluated before individually approved sites,
   // temporary requests, or the person's configurable role policy. This means
   // non-admin users cannot bypass company-wide social/streaming/adult blocks.
-  // Admin profiles (including Full Access browsing roles) were handled above.
+  // Only a verified Admin account receives a bypass; Full Access alone does not.
   if (category && MANDATORY_NON_ADMIN_CATEGORIES.includes(category)) {
     return {allowed:false,category,category_label:categoryLabel,
       reason:`Company-wide internet restriction: ${categoryLabel} is unavailable for non-administrators.`,
