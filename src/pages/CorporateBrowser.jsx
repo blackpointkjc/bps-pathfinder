@@ -95,7 +95,7 @@ export default function CorporateBrowser() {
           <button type="button" onClick={()=>closeTab(item.id)} aria-label={'Close '+item.title} className="rounded p-1 hover:bg-[#b9c3d1]"><X className="h-3.5 w-3.5"/></button>
         </div>)}
         <button type="button" onClick={addTab} aria-label="New tab" title="New tab" className="mb-1 rounded-full p-2 hover:bg-[#cbd5e1]"><Plus className="h-4 w-4"/></button>
-      </div>
+      </div>}
       {page.kind!=='site' && <div className="flex items-center gap-1 border-b border-[#e2e8f0] bg-white px-2 py-2 sm:gap-2 sm:px-3">
         <button type="button" aria-label="Back" title="Back" disabled={tab.index===0} onClick={()=>goHistory(-1)} className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-30"><ArrowLeft className="h-4 w-4"/></button>
         <button type="button" aria-label="Forward" title="Forward" disabled={tab.index>=tab.history.length-1} onClick={()=>goHistory(1)} className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-30"><ArrowRight className="h-4 w-4"/></button>
@@ -107,7 +107,7 @@ export default function CorporateBrowser() {
           {omnibox && <button type="button" aria-label="Clear address" onClick={()=>setOmnibox('')}><X className="h-4 w-4 text-slate-500"/></button>}
         </form>
         <button type="button" onClick={()=>navigate(omnibox)} disabled={busy||loadingPolicy} className="rounded-full bg-[#1a73e8] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:'Go'}</button>
-      </div>
+      </div>}
       {page.kind!=='site' && <nav className="flex flex-wrap items-center gap-2 border-b border-[#d7e2ec] bg-[#f8fafc] px-3 py-1.5 text-[11px] sm:gap-4" aria-label="Approved bookmarks">
         <span className="hidden items-center gap-1 font-bold text-slate-500 sm:inline-flex"><BookOpen className="h-3.5 w-3.5"/>Research shortcuts</span>
         {[['VA Courts','https://www.vacourts.gov'],['Virginia.gov','https://www.virginia.gov'],['USA.gov','https://www.usa.gov'],['IRS.gov','https://www.irs.gov']].map(([label,url])=><button type="button" key={url} onClick={()=>visit(url)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"><Landmark className="h-3 w-3"/>{label}</button>)}
@@ -115,7 +115,7 @@ export default function CorporateBrowser() {
       {page.kind!=='site' && <div className="flex items-center justify-between gap-2 border-b border-[#e5e7eb] bg-[#fafbfc] px-4 py-1.5 text-[11px] text-[#5f6368]">
         <span className="truncate">{loadingPolicy?'Checking your access…':`${admin && chromeEngine?.configured ? 'Google Search in Chrome' : 'Public internet search'} · ${profileLabel(policy?.profile)}`}</span>
         <span className="inline-flex shrink-0 items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-[#188038]"/>Pathfinder policy</span>
-      </div>
+      </div>}
       <main className="min-h-[430px] flex-1 overflow-y-auto bg-white">
         {policyError && <div className="m-5 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">Unable to check your browser permissions. Reload the page before browsing.</div>}
         {error && <div className="m-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{error}</div>}
