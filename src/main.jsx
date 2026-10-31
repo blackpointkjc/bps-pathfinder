@@ -32,9 +32,17 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/pathfinder-sw.js', { scope: '/' })
-      .then(() => primeOfflinePages())
       .then(() => navigator.serviceWorker.ready)
-      .then(() => window.addEventListener('online', () => primeOfflinePages()))
+      .then(() => {
+        // Saving offline assets can consume bandwidth and CPU while officers
+        // are opening the live map. Prime quietly after the first usable paint.
+        const primeWhenIdle = () => {
+          if ('requestIdleCallback' in window) window.requestIdleCallback(() => primeOfflinePages(), { timeout: 15000 });
+          else window.setTimeout(() => primeOfflinePages(), 8000);
+        };
+        primeWhenIdle();
+        window.addEventListener('online', primeWhenIdle);
+      })
       .catch(error => {
         console.warn('[Pathfinder] Offline worker registration skipped:', error?.message || error);
       });
