@@ -1,0 +1,17 @@
+{
+  "name":"CompanyPlatoon",
+  "type":"object",
+  "properties":{
+    "name":{"type":"string","description":"Platoon designation unique within its region"},
+    "region":{"type":"string","description":"Region/state where this platoon operates"},
+    "active":{"type":"boolean","default":true},
+    "notes":{"type":"string"}
+  },
+  "required":["name","region"],
+  "rls":{
+    "create":{"user_condition":{"role":"admin"}},
+    "read":null,
+    "update":{"user_condition":{"role":"admin"}},
+    "delete":{"user_condition":{"role":"admin"}}
+  }
+}
