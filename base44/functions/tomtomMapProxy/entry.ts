@@ -102,7 +102,10 @@ Deno.serve(async req => {
       // every time an officer changes CAD pages. Never cache failed responses.
       const mapAsset = /(?:image\/|font\/|application\/(?:x-protobuf|vnd\.mapbox-vector-tile|octet-stream|json)|text\/)/i.test(contentType)
         || /\.(?:pbf|mvt|png|jpe?g|webp|svg|woff2?|json)(?:$|\/)/i.test(suffix);
-      out.set('Cache-Control', response.ok && mapAsset ? 'private, max-age=300' : 'private, no-store');
+      // Traffic and incidents change constantly; never cache operational
+      // traffic feeds behind the static basemap optimization.
+      const liveTraffic = /(?:traffic|flow|incident|routing|search)/i.test(suffix);
+      out.set('Cache-Control', response.ok && mapAsset && !liveTraffic ? 'private, max-age=300' : 'private, no-store');
       const isText = contentType.includes('json') || contentType.startsWith('text/') || contentType.includes('javascript');
       if (isText) {
         let body = await response.text();
