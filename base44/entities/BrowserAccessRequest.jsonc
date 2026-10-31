@@ -1,0 +1,104 @@
+{
+  "name": "BrowserAccessRequest",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Employee requesting access"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Rank and name of the employee requesting access"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Website the employee needs to reach"
+    },
+    "justification": {
+      "type": "string",
+      "description": "Business justification supplied by the employee"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied",
+        "expired"
+      ],
+      "default": "pending"
+    },
+    "duration_hours": {
+      "type": "number",
+      "description": "Hours of temporary access granted"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the granted access stops"
+    },
+    "decided_by": {
+      "type": "string",
+      "description": "Administrator name that decided the request"
+    },
+    "decided_by_email": {
+      "type": "string"
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_note": {
+      "type": "string",
+      "description": "Administrator decision note shown to the employee"
+    },
+    "source": {
+      "type": "string",
+      "description": "Where the request originated, for example search or navigation"
+    }
+  },
+  "required": [
+    "user_email",
+    "domain",
+    "justification"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

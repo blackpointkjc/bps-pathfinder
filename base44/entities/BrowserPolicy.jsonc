@@ -1,0 +1,126 @@
+{
+  "name": "BrowserPolicy",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Administrator-facing profile name, for example Officer Work Research"
+    },
+    "profile": {
+      "type": "string",
+      "enum": [
+        "strict_search",
+        "work_research",
+        "limited_business",
+        "admin_access"
+      ],
+      "default": "strict_search",
+      "description": "Browser restriction profile applied to the assigned employees"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this profile permits"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Profile applied to employees with no role or personal assignment"
+    },
+    "assigned_roles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Access roles this policy applies to, for example officer, supervisor, hr"
+    },
+    "assigned_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Employee-specific overrides. A personal assignment wins over a role assignment."
+    },
+    "blocked_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Website categories denied for this profile"
+    },
+    "allowed_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Domains approved for this profile in addition to the company research list"
+    },
+    "blocked_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Domains denied for this profile even when the category is otherwise allowed"
+    },
+    "strict_search_only": {
+      "type": "boolean",
+      "default": true,
+      "description": "Shows approved search results but prevents opening any external website"
+    },
+    "safe_search": {
+      "type": "boolean",
+      "default": true,
+      "description": "Forces safe search filtering on approved searches"
+    },
+    "allow_downloads": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_print": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_clipboard": {
+      "type": "boolean",
+      "default": true
+    },
+    "allow_devtools": {
+      "type": "boolean",
+      "default": false
+    },
+    "session_timeout_minutes": {
+      "type": "number",
+      "default": 30,
+      "description": "Idle minutes before the managed browsing session is signed out"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "profile"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

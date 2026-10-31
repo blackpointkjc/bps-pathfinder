@@ -449,10 +449,10 @@ export default function CallHistory() {
     const printPropertyAlerts = () => {
         const q = search.toLowerCase();
         const addressPattern = addressHistoryPattern(search);
-        const addressMatches = addressPattern && new RegExp(addressPattern, 'i').test(String(r.location || ''));
+        const matchesAddress = row => Boolean(addressPattern) && new RegExp(addressPattern, 'i').test(String(row.location || ''));
         const propertyRows = rows.filter(row => {
             if (!row._propertyCall) return false;
-            if (q && !addressMatches && ![
+            if (q && !matchesAddress(row) && ![
                 row.incident,
                 row.location,
                 row.agency,

@@ -1,4 +1,6 @@
 import AdminAssets from './pages/AdminAssets';
+import AdminBrowserControl from './pages/AdminBrowserControl';
+import CorporateBrowser from './pages/CorporateBrowser';
 /**
  * pages.config.js - Page routing configuration
  * 
@@ -363,6 +365,8 @@ export const PAGES = {
     "Personnel": Personnel,
     "AdminPortal": AdminPortal,
     "SystemStatus": SystemStatus,
+    "AdminBrowserControl": AdminBrowserControl,
+    "CorporateBrowser": CorporateBrowser,
 }
 
 export const pagesConfig = {

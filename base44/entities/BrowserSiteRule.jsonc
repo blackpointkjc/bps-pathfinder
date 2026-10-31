@@ -1,0 +1,80 @@
+{
+  "name": "BrowserSiteRule",
+  "type": "object",
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "Domain or subdomain the rule applies to, for example courtlistener.com"
+    },
+    "rule_type": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "block"
+      ],
+      "default": "block",
+      "description": "Whether the domain is approved or denied"
+    },
+    "category": {
+      "type": "string",
+      "description": "Website category the domain belongs to, for reporting"
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "all",
+        "role",
+        "user"
+      ],
+      "default": "all",
+      "description": "Who the rule applies to"
+    },
+    "role": {
+      "type": "string",
+      "description": "Access role the rule applies to when scope is role"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Employee email the rule applies to when scope is user"
+    },
+    "note": {
+      "type": "string",
+      "description": "Why this rule exists"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Automatic expiration for temporary access grants"
+    }
+  },
+  "required": [
+    "domain",
+    "rule_type"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

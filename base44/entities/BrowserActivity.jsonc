@@ -1,0 +1,98 @@
+{
+  "name": "BrowserActivity",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Employee whose managed browser made the request"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Rank and name of the employee"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string",
+      "description": "Search text when the request came from an approved search"
+    },
+    "category": {
+      "type": "string",
+      "description": "Detected website category"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "allowed",
+        "blocked"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "description": "Policy reason shown to the employee and administrators"
+    },
+    "source": {
+      "type": "string",
+      "description": "search, navigation, directory or request"
+    },
+    "device_label": {
+      "type": "string",
+      "description": "Managed device label for this browsing session"
+    },
+    "user_agent": {
+      "type": "string"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_email",
+    "domain",
+    "decision"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

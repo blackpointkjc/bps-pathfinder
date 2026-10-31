@@ -13,7 +13,7 @@ import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
   Building2, Car, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
-  FileWarning, Gauge, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
+  FileWarning, Gauge, Globe, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
   Home, Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
   Siren, Trash2, UserCheck, UserX, Users, Wrench, X, RotateCw
 } from 'lucide-react';
@@ -170,6 +170,7 @@ const CENTER_CONFIG = {
         ['Complaints', 'SupervisorComplaints', AlertTriangle],
       ]},
       { label: 'Communication & Profile', items: [
+        ['Secure Browser', 'CorporateBrowser', Globe],
         ['Supervisor Chat', 'SupervisorChat', MessageCircle],
         ['Announcements', 'Announcements', Bell],
         ['My Profile', 'OfficerProfile', UserCheck],
@@ -189,6 +190,10 @@ const CENTER_CONFIG = {
         ['Admin Dashboard', 'AdminDashboard', Gauge],
         ['Company Analytics', 'AdminAnalytics', BarChart3],
         ['Location Tracker', 'AdminLocationTracker', MapPin],
+      ]},
+      { label: 'Corporate Browser', items: [
+        ['Browser Control', 'AdminBrowserControl', Globe],
+        ['Secure Browser', 'CorporateBrowser', ShieldCheck],
       ]},
       { label: 'People & Accounts', items: [
         ['Personnel & Command','AdminOfficerManagement',Users],
@@ -242,6 +247,7 @@ const CENTER_CONFIG = {
     icon: Users,
     groups: [
       { label: 'Employees', items: [
+        ['Secure Browser', 'CorporateBrowser', Globe],
         ['Company Employees', 'HRManageCompanyEmployees', Briefcase],
         ['Time Entries', 'ManageTimeEntries', Clock3],
         ['Divisions', 'AdminDivisions', Layers],
@@ -525,6 +531,9 @@ function canAccessPage(user, pageName) {
   if (clientIdentity) return pageName === 'ClientCenter' || (PAGE_TO_CENTERS[pageName] || []).includes('client') && !(PAGE_TO_CENTERS[pageName] || []).some(center => center !== 'client');
   const studentAccess = normalizedRoles(user).has('student');
   if (studentAccess) return pageName === 'StudentPortal';
+  // The managed corporate browser is available to every staff role; clients and
+  // students were already excluded above.
+  if (pageName === 'CorporateBrowser') return true;
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
   if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || normalizedRoles(user).has('full_access');
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
