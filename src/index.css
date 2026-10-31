@@ -1801,7 +1801,7 @@ option,
 
 /* Navigation speed displays — readable in Pathfinder dark mode and daylight. */
 .pf-speed-signs{display:flex;flex-direction:column;align-items:center;gap:8px;width:146px;max-width:100%;filter:drop-shadow(0 8px 18px rgba(0,0,0,.55));}
-.pf-current-speed{box-sizing:border-box;width:146px;min-height:102px;border:3px solid #e2e8f0;border-radius:12px;background:#102036!important;color:#fff!important;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 5px;}
+.pf-current-speed{box-sizing:border-box;width:146px;min-height:102px;border:3px solid #e2e8f0;border-radius:12px;background:#102036;color:#fff;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 5px;}
 .pf-current-speed-label{font-size:10px;font-weight:900;letter-spacing:.07em;line-height:1.2;color:inherit!important;}
 .pf-current-speed-value{font-size:47px;font-weight:950;line-height:1.03;color:inherit!important;font-variant-numeric:tabular-nums;}
 .pf-current-speed-unit{font-size:11px;font-weight:900;line-height:1.1;color:inherit!important;}
