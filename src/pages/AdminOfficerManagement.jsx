@@ -3,7 +3,8 @@ import OfficerCommandControls from '@/components/admin/OfficerCommandControls';
 import AdminOutOfOffice from '@/components/AdminOutOfOffice';
 import { actingCoverage } from '@/utils/commandReporting';
 import { isOutOfOffice } from '@/utils/outOfOffice';
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryUsers, listDirectoryDivisions } from '@/lib/appDirectory';
+import OrgAssignmentFields from '@/components/admin/OrgAssignmentFields';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -52,6 +53,8 @@ export default function AdminOfficerManagement() {
   const [homeAddressForm, setHomeAddressForm] = useState({ address: '', city: '', state: '', zip: '' });
   const [saving, setSaving] = useState(false);
   const [actionFeedback,setActionFeedback]=useState('');
+  const [orgAssignment,setOrgAssignment]=useState({division:'',subdivision:''});
+  const [orgSaving,setOrgSaving]=useState(false);
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const roles = new Set((user?.additional_roles || []).map(normalize));
@@ -63,6 +66,12 @@ export default function AdminOfficerManagement() {
     enabled: isAdmin,
   });
   const {data:commandUsers=[]} = useQuery({queryKey:['officerCoverageDirectory'],queryFn:()=>listDirectoryUsers(),enabled:isAdmin,staleTime:30000});
+  const { data: companyDivisions = [], error: companyDivisionsError, refetch: refreshCompanyDivisions } = useQuery({
+    queryKey: ['adminOfficerDivisions'],
+    queryFn: () => listDirectoryDivisions('division_name', 1000),
+    enabled: isAdmin,
+    staleTime: 60_000,
+  });
   const { data: allAvailability = [] } = useQuery({
     queryKey: ['allAvailability'], queryFn: () => base44.entities.OfficerAvailability.list(), enabled: isAdmin,
   });
@@ -109,6 +118,36 @@ export default function AdminOfficerManagement() {
     staleTime: 0,
   });
   const selectedUpcoming = useMemo(() => upcomingSchedules.filter(s => normalize(s.officer_email) === normalize(selectedOfficer)), [upcomingSchedules, selectedOfficer]);
+
+  useEffect(() => {
+    const officer = selectedOfficerPrivate || selectedOfficerRecord;
+    setOrgAssignment({ division: String(officer?.division || ''), subdivision: String(officer?.subdivision || '') });
+  }, [selectedOfficer, selectedOfficerPrivate?.division, selectedOfficerPrivate?.subdivision, selectedOfficerRecord?.division, selectedOfficerRecord?.subdivision]);
+
+  const saveOfficerDivision = async () => {
+    const officerId = selectedOfficerPrivate?.id || selectedOfficerRecord?.id;
+    if (!officerId || orgSaving) return;
+    setOrgSaving(true);
+    setActionFeedback('Updating officer division…');
+    try {
+      const updates = { division: orgAssignment.division || '', subdivision: orgAssignment.subdivision || '' };
+      const response = await base44.functions.invoke('updateUser', { userId: officerId, updates });
+      const payload = response?.data || response || {};
+      if (payload.error || payload.success === false) throw new Error(payload.error || 'Division update failed.');
+      invalidateAppDirectory();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['adminOfficerPrivateProfile', selectedOfficer] }),
+        queryClient.invalidateQueries({ queryKey: ['officerDirectory'] }),
+        queryClient.invalidateQueries({ queryKey: ['officerCoverageDirectory'] }),
+        queryClient.invalidateQueries({ queryKey: ['org-structure-users'] }),
+        queryClient.invalidateQueries({ queryKey: ['directoryUsers'] }),
+        queryClient.invalidateQueries({ queryKey: ['portalUsers'] }),
+      ]);
+      setActionFeedback('Officer region and division updated successfully.');
+    } catch (error) {
+      setActionFeedback(`Unable to update division: ${error?.message || 'Please retry.'}`);
+    } finally { setOrgSaving(false); }
+  };
 
   useEffect(() => {
     if (!selectedOfficer) return;
@@ -231,6 +270,12 @@ export default function AdminOfficerManagement() {
           <section className="rounded-xl border border-cyan-800 bg-cyan-950/20 p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-bold">{rankLast(selectedOfficerRecord)}</h2><p className="mt-1 text-xs text-slate-400">{selectedOfficerRecord?.platoon ? 'Platoon '+selectedOfficerRecord.platoon : 'Command'} · {selectedOfficerRecord?.unit_number ? 'Unit '+selectedOfficerRecord.unit_number : selectedOfficerRecord?.email}</p></div><span className="rounded-full border border-slate-600 px-3 py-1 text-xs">{isOutOfOffice(selectedOfficerPrivate || selectedOfficerRecord)?'Out of office':'Available'}</span></div>
             <OfficerCommandControls key={(selectedOfficerPrivate||selectedOfficerRecord)?.id} officer={selectedOfficerPrivate||selectedOfficerRecord} users={commandUsers}/>
+            <div className="mt-4 space-y-3 rounded-xl border border-cyan-800/70 bg-slate-950/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-bold text-cyan-200">Update officer division</h3><p className="mt-1 text-xs text-slate-400">Assign a region and operating division for this officer.</p></div><Button type="button" size="sm" variant="outline" onClick={() => { invalidateAppDirectory(); refreshCompanyDivisions(); }}>Refresh divisions</Button></div>
+              <OrgAssignmentFields divisions={companyDivisions} value={orgAssignment} onChange={next => setOrgAssignment({division:next.division,subdivision:next.subdivision})} disabled={orgSaving} />
+              {companyDivisionsError && <p role="alert" className="text-xs text-red-300">Could not load Company Structure: {companyDivisionsError.message}</p>}
+              <Button type="button" onClick={saveOfficerDivision} disabled={orgSaving || !selectedOfficerRecord} className="bg-cyan-700 hover:bg-cyan-600">{orgSaving ? 'Updating division…' : 'Update Division'}</Button>
+            </div>
             <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(220px,.65fr)]">
               <AdminOutOfOffice key={[selectedOfficer,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office_start,(selectedOfficerPrivate || selectedOfficerRecord)?.out_of_office_return].join(':')} user={selectedOfficerPrivate || selectedOfficerRecord}/>
               <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-950 p-4"><h3 className="text-sm font-bold text-cyan-200">Automatic acting coverage</h3><p className="text-lg font-bold">{(() => {const profile={...(selectedOfficerPrivate || selectedOfficerRecord),out_of_office:true,out_of_office_start:new Date(Date.now()-1000).toISOString(),out_of_office_return:new Date(Date.now()+60000).toISOString()};const acting=actingCoverage(profile,commandUsers);return acting?rankLast(acting)+(acting.unit_number?' · Unit '+acting.unit_number:''):'No available replacement';})()}</p><p className="text-xs leading-5 text-slate-400">Chosen by platoon, highest eligible rank, then earliest hire date, then unit number. Covers platoon command and assigned site supervision during the absence.</p><div className="border-t border-slate-700 pt-3 text-xs text-slate-300"><strong>Assigned tasks:</strong> eligible duties are shared among the highest available rank, starting with the longest-serving employee. Unfinished duties return automatically.</div></div>
