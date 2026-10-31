@@ -51,6 +51,9 @@ Deno.serve(async req => {
     const reviewerArea = (person:any) => {
       if(admin)return true;
       const n=(value:any)=>clean(value).toLowerCase();
+      const hierarchy=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
+      const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'');return hierarchy.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
+      if(level(user.rank)<0||level(person.rank)<=level(user.rank))return false;
       const platoon=n(user.oversight_platoon || user.platoon);
       if(!['a','b'].includes(platoon) || n(person?.platoon)!==platoon) return false;
       if(!n(user.division) || !n(user.subdivision) || n(person?.division)!==n(user.division) || n(person?.subdivision)!==n(user.subdivision))return false;

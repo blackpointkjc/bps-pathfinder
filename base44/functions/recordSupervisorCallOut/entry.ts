@@ -6,6 +6,9 @@ const canOversee = (actor:any,officer:any) => {
   const n=(value:any)=>String(value||'').trim().toLowerCase().replace(/[.]/g,'');
   const roles=new Set([actor.role,...(actor.additional_roles||[])].map(n));
   if(roles.has('admin')||roles.has('full_access'))return true;
+const hierarchy=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
+  const level=(value:any)=>{const raw=n(value);return hierarchy.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
+  if(level(actor.rank)<0||level(officer.rank)<=level(actor.rank))return false;
   const platoon=n(actor.oversight_platoon||actor.platoon);
   if(!['a','b'].includes(platoon)||n(officer.platoon)!==platoon)return false;
   if(!n(actor.division)||!n(actor.subdivision)||n(officer.division)!==n(actor.division)||n(officer.subdivision)!==n(actor.subdivision))return false;
