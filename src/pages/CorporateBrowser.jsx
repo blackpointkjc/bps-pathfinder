@@ -62,7 +62,7 @@ export default function CorporateBrowser() {
     try {
       const data=await check.mutateAsync(url.href);
       if(!data?.decision?.allowed){push({kind:'blocked',url:url.href,reason:data?.decision?.reason||'This site is restricted by your browsing profile.'});return;}
-      if(!admin){push({kind:'blocked',url:url.href,reason:'Your account may search the public internet, but viewing external websites is limited to designated browser-access profiles.'});return;}
+      if(data?.policy?.strict_search_only){push({kind:'blocked',url:url.href,reason:'Your HR role is set to Strict Search Only. Contact your administrator to change the policy for your existing role.'});return;}
       push({kind:'site',url:url.href});
     }catch(e){setError(e?.response?.data?.error||'Unable to verify this destination. Access was not granted.');}
     finally{setBusy(false);}

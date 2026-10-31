@@ -287,6 +287,13 @@ export function evaluateDomain({ domain, policy, siteRules = [], grants = [], us
   if (!target) {
     return { allowed: false, category, category_label: categoryLabel, reason: 'Enter a valid website address.' };
   }
+  // Verified Admin/Full Access employee roles bypass ordinary browsing rules.
+  // This is a browser access decision, not a way around third-party frame policies.
+  if (policy?.profile === 'admin_access') {
+    return { allowed: true, category, category_label: categoryLabel,
+      reason: 'Unrestricted browsing permitted by the company Administrator/Full Access role.',
+      basis: 'Company administrator role' };
+  }
   if (blockRule) {
     return { allowed: false, category, category_label: categoryLabel, reason: blockRule.note || `This website is blocked by company policy (${target}).`, basis: 'Site blocklist' };
   }
