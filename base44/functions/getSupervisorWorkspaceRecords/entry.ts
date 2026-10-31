@@ -13,6 +13,30 @@ const area=(me:any,p:any,hasPlatoon=true)=>admin(me)||(
   &&!!n(me.division)&&!!n(me.subdivision)&&n(p.division)===n(me.division)&&n(p.subdivision)===n(me.subdivision)
   &&(senior(me)|| (!!n(me.substation)&&n(p.substation)===n(me.substation)))
 );
+const commandName=(p:any)=>[p.rank,p.last_name||p.first_name].filter(Boolean).join(' ');
+const isAbsent=(p:any)=>{
+ const now=Date.now();
+ const windows=[...(Array.isArray(p.approved_leave_windows)?p.approved_leave_windows:[]),...(p.out_of_office&&p.out_of_office_start&&p.out_of_office_return?[{start:p.out_of_office_start,end:p.out_of_office_return}]:[])];
+ return windows.some((w:any)=>Number.isFinite(Date.parse(w.start))&&Number.isFinite(Date.parse(w.end))&&Date.parse(w.start)<=now&&Date.parse(w.end)>now);
+};
+const activePlatoonCommand=(people:any[],platoon:string)=>{
+ const eligible=people.filter((p:any)=>!p.termination_date && n(p.employment_status)!=='terminated' && !isAbsent(p));
+ const commandRank=(p:any)=>level(p.rank);
+ const members=eligible.filter((p:any)=>n(p.platoon)===n(platoon));
+ const isCommandRank=(p:any)=>commandRank(p)>=0&&commandRank(p)<=4;
+ const byOrder=(a:any,b:any)=>commandRank(a)-commandRank(b)||Number(a.command_seniority_order||999)-Number(b.command_seniority_order||999)||Number(a.unit_number||9999)-Number(b.unit_number||9999)||String(a.id).localeCompare(String(b.id));
+ // Active Captain is first choice. When unavailable, select the nearest
+ // appropriate senior command: Major assigned to the platoon, then higher.
+ const captain=members.filter((p:any)=>commandRank(p)===3).sort(byOrder)[0];
+ const majors=eligible.filter((p:any)=>commandRank(p)===2&&n(p.oversight_platoon||p.platoon)===n(platoon)).sort(byOrder);
+ const higher=eligible.filter((p:any)=>commandRank(p)>=0&&commandRank(p)<2).sort((a:any,b:any)=>commandRank(b)-commandRank(a)||byOrder(a,b));
+ const lieutenant=members.filter((p:any)=>commandRank(p)===4).sort(byOrder)[0];
+ const chosen=captain||majors[0]||higher[0]||lieutenant||null;
+ if(!chosen)return {platoon,status:'unassigned',name:'No active platoon commander assigned',rank:'',unit_number:''};
+ const permanent=people.filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated'&&n(p.platoon)===n(platoon)&&commandRank(p)===3).sort(byOrder)[0];
+ const acting=commandRank(chosen)!==3 || (permanent&&permanent.id!==chosen.id);
+ return {platoon,status:acting?'acting':'active',name:commandName(chosen),rank:String(chosen.rank||''),unit_number:String(chosen.unit_number||''),role:acting?'Acting Platoon Commander':'Platoon Commander'};
+};
 const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',force:'UseOfForceReport',callouts:'CallOut',handovers:'SupervisorShiftHandover',duty:'DutySupervisorAssignment',chat:'SupervisorChatMessage'};
 Deno.serve(async(req)=>{
  try{
@@ -27,6 +51,8 @@ Deno.serve(async(req)=>{
    kind==='personnel'?Promise.resolve([]):sdk.asServiceRole.entities[entity].list('-created_date',kind==='duty'?1200:kind==='callouts'?1000:500),
   ]);
   const people=(users||[]).filter((p:any)=>area(me,p)&&!p.termination_date&&n(p.employment_status)!=='terminated');
+  const commandPlatoons=admin(me)?['A','B']:[String(me.oversight_platoon||me.platoon||'').toUpperCase()].filter(value=>['A','B'].includes(value));
+  const platoon_commands=commandPlatoons.map(platoon=>activePlatoonCommand(users||[],platoon));
   const locations=(sites||[]).filter((p:any)=>p.active!==false&&area(me,p,false));
   const emails=new Set(people.flatMap((p:any)=>[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).filter(Boolean)));
   const ids=new Set(people.map((p:any)=>String(p.id)));
@@ -84,7 +110,7 @@ Deno.serve(async(req)=>{
    await sdk.asServiceRole.entities.AuditLog.create({entity_type:entity,entity_id:String(result?.id||id),action,actor_id:String(me.id),actor_name:String(me.email||''),timestamp:new Date().toISOString(),description:`Scoped supervisor ${action}: ${kind}`}).catch(()=>null);
    return Response.json({success:true,record:result});
   }
-  return Response.json({success:true,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_original_url||p.profile_photo_url||'',mobile_phone:p.mobile_phone||'',work_email:p.work_email||p.email,platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
+  return Response.json({success:true,platoon_commands:kind==='personnel'?platoon_commands:undefined,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_original_url||p.profile_photo_url||'',mobile_phone:p.mobile_phone||'',work_email:p.work_email||p.email,platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
         termination_date:p.termination_date||'',user_type:p.user_type||'',account_type:p.account_type||'',
         platoon:p.platoon,division:p.division,subdivision:p.subdivision,substation:p.substation,unit_number:p.unit_number})),locations:locations.map((p:any)=>({id:p.id,site_name:p.site_name,division:p.division,subdivision:p.subdivision,substation:p.substation}))});
  }catch(error:any){console.error('Scoped supervisor records failed',error);return Response.json({error:'Unable to load supervisor records safely; retry.'},{status:503});}
