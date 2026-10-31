@@ -94,7 +94,12 @@ export default function LocationPermissionBanner({ user }) {
   // A coarse browser fix is still syncing and is shown on maps with its accuracy
   // radius. Do not interrupt every page with a recurring modal-style warning.
   // Keep this banner only for actionable failures such as blocked/unavailable GPS.
-  if (quality.state === 'checking' || quality.state === 'live' || quality.state === 'low_accuracy' || quality.state === dismissedState) return null;
+  // The COM port can remain healthy while satellite reception briefly drops.
+  // Do not interrupt every Pathfinder page with a reconnect/error banner.
+  // The GPS menu continues to show the antenna and latest satellite fix.
+  if (quality.state === 'checking' || quality.state === 'live' || quality.state === 'low_accuracy'
+      || (quality.state === 'external_acquiring' && externalGps.connected && !externalGps.error)
+      || quality.state === dismissedState) return null;
 
   const blocked = quality.state === 'permission_denied';
   const retry = async () => {
