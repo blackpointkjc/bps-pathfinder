@@ -1,0 +1,5 @@
+{
+  "name": "reportPatrolSpeeding",
+  "entrypoint": "entry.ts",
+  "description": "Accepts verified live GPS patrol-speed episodes and creates or updates a deduplicated supervisor review task and notification using the officer's HR command assignment."
+}
