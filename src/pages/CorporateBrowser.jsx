@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { AlertTriangle, ClipboardCopy, Download, Loader2, Printer, Search, Send, ShieldCheck, Terminal } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, ClipboardCopy, Download, Globe2, Home, Loader2, Plus, Printer, RotateCw, Search, Send, ShieldCheck, Terminal, X } from 'lucide-react';
 import BrowserHeader from '@/components/browser/BrowserHeader';
 import BrowserSearchResults from '@/components/browser/BrowserSearchResults';
 import BrowserDirectory from '@/components/browser/BrowserDirectory';
@@ -24,6 +24,34 @@ export default function CorporateBrowser() {
   const [searchError, setSearchError] = useState('');
   const [requestDomain, setRequestDomain] = useState('');
   const [busyDomain, setBusyDomain] = useState('');
+  const [tabs, setTabs] = useState([{id: 'main', label: 'New tab', history: [], index: -1}]);
+  const [activeTab, setActiveTab] = useState('main');
+  const [omnibox, setOmnibox] = useState('');
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const selectedTab = tabs.find(tab => tab.id === activeTab) || tabs[0];
+  const currentWebsite = selectedTab?.index >= 0 ? selectedTab.history[selectedTab.index] : '';
+  const showWebsite = url => {
+    const title = new URL(url).hostname;
+    setTabs(list => list.map(tab => tab.id === activeTab ? {...tab, label: title, history: [...tab.history.slice(0,tab.index+1),url], index: tab.index+1} : tab));
+    setOmnibox(url);
+    setRefreshIndex(number => number + 1);
+  };
+  const createTab = () => {
+    const id = 'tab-' + Date.now();
+    setTabs(list => [...list, {id, label:'New tab', history:[], index:-1}]);
+    setActiveTab(id); setOmnibox(''); setDenied(null);
+  };
+  const closeTab = id => {
+    const next = tabs.filter(tab => tab.id !== id);
+    setTabs(next.length ? next : [{id:'main',label:'New tab',history:[],index:-1}]);
+    if (activeTab === id) setActiveTab(next[next.length-1]?.id || 'main');
+  };
+  const historyMove = step => {
+    const index = selectedTab.index + step;
+    if (index < 0 || index >= selectedTab.history.length) return;
+    setTabs(list => list.map(tab => tab.id === activeTab ? {...tab,index} : tab));
+    setOmnibox(selectedTab.history[index]);
+  };
 
   const { data: user } = useQuery({ queryKey: ['browserViewer'], queryFn: () => base44.auth.me(), staleTime: 300000 });
 
@@ -91,7 +119,13 @@ export default function CorporateBrowser() {
       // Never trust a search-result hint: recheck the current server policy
       // before offering any external link, including when rules changed.
       const data = await checkMutation.mutateAsync({ url, source });
-      setDenied({ url, decision: data?.decision });
+      if (data?.decision?.allowed) {
+        // A normal web application cannot inspect or enforce navigation inside
+        // arbitrary cross-origin frames. Only administrator profile pages get an
+        // iframe; others remain on server-filtered search results.
+        if (data.policy?.profile === 'admin_access') showWebsite(url);
+        else setDenied({url, decision:{...data.decision, allowed:false, reason:'This destination is approved, but interactive in-app website browsing requires a managed web gateway. Search results remain available.'}});
+      } else setDenied({ url, decision: data?.decision });
     } catch (error) {
       setDenied({
         url,
@@ -107,6 +141,7 @@ export default function CorporateBrowser() {
     if (value.length < 2) return;
     setSearchError('');
     setDenied(null);
+    setTabs(list => list.map(tab => tab.id === activeTab ? {...tab, label:'Search: '+value.slice(0,22),history:[],index:-1} : tab));
     searchMutation.mutate(value, {
       onError: error => setSearchError(
         error?.response?.data?.error || 'Approved search is unavailable right now. Use the company resources below.',
@@ -116,6 +151,25 @@ export default function CorporateBrowser() {
 
   return (
     <div className="min-h-full space-y-4 bg-slate-950 p-4 text-white md:p-6">
+      <section className="overflow-hidden rounded-xl border border-slate-600 bg-[#252e3b] shadow-lg" aria-label="Corporate browser window">
+        <div className="flex gap-1 overflow-x-auto bg-[#141b27] px-2 pt-2" role="tablist" aria-label="Open browser tabs">
+          {tabs.map(tab => <div key={tab.id} role="tab" aria-selected={activeTab === tab.id} className={`flex min-w-[110px] max-w-[205px] items-center gap-2 rounded-t-lg px-2.5 py-2 text-xs ${activeTab === tab.id ? 'bg-[#303c4f] text-white' : 'bg-[#202a39] text-slate-400'}`}><button type="button" onClick={() => {setActiveTab(tab.id);setOmnibox(tab.index >= 0 ? tab.history[tab.index] : '');}} className="flex min-w-0 flex-1 items-center gap-1.5"><Globe2 className="h-3.5 w-3.5 shrink-0"/><span className="truncate">{tab.label}</span></button><button type="button" onClick={() => closeTab(tab.id)} aria-label={`Close ${tab.label}`}><X className="h-3.5 w-3.5"/></button></div>)}
+          <button type="button" aria-label="New tab" onClick={createTab} className="rounded p-2 hover:bg-slate-700"><Plus className="h-4 w-4"/></button>
+        </div>
+        <form className="flex items-center gap-1.5 p-2" onSubmit={event => {event.preventDefault(); const value=omnibox.trim();if (/^https?:\/\//i.test(value) || /^(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/|$)/i.test(value))openDestination(value,false,'navigation');else runSearch(value);}}>
+          <button type="button" title="Back" aria-label="Back" disabled={selectedTab.index <= 0} onClick={() => historyMove(-1)} className="p-2 disabled:opacity-30"><ArrowLeft className="h-4 w-4"/></button>
+          <button type="button" title="Forward" aria-label="Forward" disabled={selectedTab.index >= selectedTab.history.length-1} onClick={() => historyMove(1)} className="p-2 disabled:opacity-30"><ArrowRight className="h-4 w-4"/></button>
+          <button type="button" title="Reload" aria-label="Reload" onClick={() => setRefreshIndex(index => index + 1)} className="p-2"><RotateCw className="h-4 w-4"/></button>
+          <button type="button" title="New tab homepage" aria-label="Home" onClick={() => {setTabs(list=>list.map(tab=>tab.id===activeTab?{...tab,index:-1,label:'New tab'}:tab));setOmnibox('');}} className="p-2"><Home className="h-4 w-4"/></button>
+          <input aria-label="Search the public internet or enter a website URL" value={omnibox} onChange={event=>setOmnibox(event.target.value)} placeholder="Search the internet or enter a website address" className="h-10 min-w-0 flex-1 rounded-full border border-slate-500 bg-[#101926] px-4 text-sm text-white placeholder:text-slate-400" />
+          <button type="submit" className="min-h-10 rounded-full bg-blue-700 px-4 text-xs font-bold text-white">Go</button>
+        </form>
+        <div className="border-t border-slate-600 px-3 py-1.5 text-[11px] text-slate-300">Live internet search · {policy?.profile === 'admin_access' ? 'Administrator embedded browsing' : 'Policy-filtered search results'} · Some websites prohibit embedding</div>
+      </section>
+      {currentWebsite && policy?.profile === 'admin_access' && <section className="overflow-hidden rounded-xl border border-slate-600 bg-white text-slate-900">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2 text-xs"><span className="truncate">Viewing {currentWebsite}</span><a href={currentWebsite} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">Open in external browser if the website blocks embedding</a></div>
+        <iframe key={`${activeTab}-${selectedTab.index}-${refreshIndex}`} title={`External website ${currentWebsite}`} src={currentWebsite} referrerPolicy="no-referrer" sandbox="allow-forms allow-scripts allow-same-origin allow-popups" className="h-[min(65dvh,680px)] min-h-[350px] w-full border-0" />
+      </section>}
       <BrowserHeader policy={policy} engine={sessionQuery.data?.engine} loading={sessionQuery.isLoading} />
 
       <BrowserIdleGuard minutes={policy?.session_timeout_minutes || 15}>
