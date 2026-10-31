@@ -1,4 +1,4 @@
-import { comparePersonnel } from '@/utils/rankPolicy';
+import { comparePersonnel, canAssignSubstation } from '@/utils/rankPolicy';
 import { orgPathLabel } from '@/lib/orgStructure';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
@@ -13,7 +13,8 @@ import { Shield, Plus, Edit, Trash, Users, Copy, RefreshCw } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryUsers, listDirectoryDivisions } from '@/lib/appDirectory';
+import OrgAssignmentFields from '@/components/admin/OrgAssignmentFields';
 
 export default function AdminOfficerRoster() {
   const [showDialog, setShowDialog] = useState(false);
@@ -51,6 +52,8 @@ export default function AdminOfficerRoster() {
     queryKey: ['allUsers'],
     queryFn: () => listDirectoryUsers(),
   });
+
+  const { data: divisions = [] } = useQuery({ queryKey: ['adminOfficerRosterDivisions'], queryFn: () => listDirectoryDivisions('division_name', 1000) });
 
   const saveEntryMutation = useMutation({
     mutationFn: (data) => {
@@ -417,13 +420,10 @@ export default function AdminOfficerRoster() {
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Division</Label>
-                <Input
-                  value={formData.division}
-                  onChange={(e) => setFormData({...formData, division: e.target.value})}
-                />
-              </div>
+            </div>
+            <div className="rounded-xl border border-slate-300 p-3">
+              <h3 className="mb-2 text-sm font-semibold">Officer Region, Division and Substation</h3>
+              <OrgAssignmentFields divisions={divisions} value={formData} includeSubstation={canAssignSubstation(formData.rank)} onChange={next => setFormData(previous => ({ ...previous, division: next.division, subdivision: next.subdivision, substation: canAssignSubstation(previous.rank) ? next.substation || '' : '' }))} />
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">

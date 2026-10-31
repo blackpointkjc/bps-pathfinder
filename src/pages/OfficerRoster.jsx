@@ -1,5 +1,7 @@
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { orgPathLabel } from '@/lib/orgStructure';
+import { orgPathLabel, withinPersonnelOversightScope } from '@/lib/orgStructure';
+import { hasSupervisorAccess } from '@/lib/supervisorAccess';
+import { useAuth } from '@/lib/AuthContext';
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +13,7 @@ import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function OfficerRoster() {
+  const { user: viewer } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: allUsers } = useQuery({
@@ -30,14 +33,14 @@ export default function OfficerRoster() {
       if (e.status !== 'active') return false;
       
       const userRecord = allUsers.find(u => String(u.email || '').toLowerCase() === String(e.email || '').toLowerCase());
-      return isOperationalOfficer(userRecord);
+      return isOperationalOfficer(userRecord) && (!hasSupervisorAccess(viewer) || withinPersonnelOversightScope(viewer, userRecord));
     });
     
     return filtered.map(entry=>{
       const current=allUsers.find(person=>String(person.email || '').toLowerCase()===String(entry.email || '').toLowerCase());
       return {...entry,rank:current?.rank ?? entry.rank,unit_number:current?.unit_number ?? entry.unit_number,badge_number:current?.badge_number ?? entry.badge_number, division:current?.division ?? entry.division, subdivision:current?.subdivision ?? entry.subdivision, substation:current?.substation ?? entry.substation};
     });
-  }, [rosterEntries, allUsers]);
+  }, [rosterEntries, allUsers, viewer]);
 
   const filteredEntries = activeEntries.filter(entry => {
     if (!searchQuery) return true;
