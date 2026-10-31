@@ -4,6 +4,7 @@ import { synchronizeOfficerIdentity } from './synchronizeOfficerIdentity.ts';
 import { normalizeRank, PAY_RANGES, RANK_SERIES, nextUnitNumber } from './rankPolicy.ts';
 import { reconcileAbsences } from './absenceLifecycle.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { autoReportingSelection, reportingFields } from './autoReporting.ts';
 
 Deno.serve(async (req) => {
     try {
@@ -155,6 +156,17 @@ Deno.serve(async (req) => {
             catch (error) { return Response.json({error:error.message},{status:409}); }
           } else if (String(target.unit_number || '').trim()) {
             updatePayload.unit_number = target.unit_number;
+          }
+        }
+        // The hierarchy is automatic: an officer reports to the nearest
+        // higher rank within their own Region and Platoon. When multiple
+        // candidates share that rank, prefer local coverage, then balance
+        // existing reports and use badge number for a stable tie-breaker.
+        const reportingChanges=['rank','platoon','division','subdivision','substation','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id'];
+        if (isSystemManager && reportingChanges.some(field=>updates[field]!==undefined)) {
+          const merged={...target,...updatePayload};
+          if (!companyRanks.includes(String(merged.rank||'').trim().toLowerCase())) {
+            Object.assign(updatePayload,reportingFields(autoReportingSelection(merged,targetUsers)));
           }
         }
         const mergedAccount={...target,...updatePayload};
