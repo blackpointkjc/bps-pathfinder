@@ -152,10 +152,22 @@ export function officerOrgContext(user = {}, locations = []) {
 export function withinPersonnelOversightScope(viewer = {}, officer = {}) {
   const roles = new Set([viewer.role, ...(viewer.additional_roles || [])].map(lower));
   if (roles.has('admin') || roles.has('full_access')) return true;
+  const platoon = text(viewer.oversight_platoon) || text(viewer.platoon);
+  if (!['a','b'].includes(lower(platoon)) || lower(officer.platoon) !== lower(platoon)) return false;
   const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(lower(viewer.rank));
   if (!lower(viewer.division) || !lower(viewer.subdivision)) return false;
   if (lower(viewer.division) !== lower(officer.division)
       || lower(viewer.subdivision) !== lower(officer.subdivision)) return false;
   if (senior) return true;
   return Boolean(lower(viewer.substation) && lower(viewer.substation) === lower(officer.substation));
+}
+
+export function withinSupervisorSiteScope(viewer = {}, site = {}) {
+  const roles = new Set([viewer.role, ...(viewer.additional_roles || [])].map(lower));
+  if (roles.has('admin') || roles.has('full_access')) return true;
+  if (!['a','b'].includes(lower(viewer.oversight_platoon || viewer.platoon))) return false;
+  if (!lower(viewer.division) || !lower(viewer.subdivision)) return false;
+  if (lower(viewer.division) !== lower(site.division) || lower(viewer.subdivision) !== lower(site.subdivision)) return false;
+  const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(lower(viewer.rank));
+  return senior || Boolean(lower(viewer.substation) && lower(viewer.substation) === lower(site.substation));
 }

@@ -32,6 +32,8 @@ const rankLevel = (user:any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
 // operating division; First Sergeant and below is limited to the substation.
 // Administrative/full-access personnel retain company-wide access.
 const withinSupervisorArea = (supervisor:any, officer:any) => {
+  const supervisorPlatoon = normalized(supervisor.oversight_platoon || supervisor.platoon);
+  if (!['a','b'].includes(supervisorPlatoon) || normalized(officer.platoon) !== supervisorPlatoon) return false;
   const rank = normalizeRank(supervisor.rank);
   const senior = ['colonel','lt colonel','major','captain','lieutenant'].includes(rank);
   if (!normalized(supervisor.division) || !normalized(supervisor.subdivision)) return false;

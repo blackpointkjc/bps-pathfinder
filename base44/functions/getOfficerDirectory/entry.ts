@@ -21,6 +21,8 @@ Deno.serve(async (req) => {
     const inScope = (person:any) => {
       if (allAccess || !supervisor) return true;
       const text = (value:any) => String(value || '').trim().toLowerCase();
+      const assignedPlatoon = text(user.oversight_platoon || user.platoon);
+      if (!['a','b'].includes(assignedPlatoon) || text(person.platoon) !== assignedPlatoon) return false;
       if (!text(user.division) || !text(user.subdivision)) return false;
       if (text(user.division) !== text(person.division) || text(user.subdivision) !== text(person.subdivision)) return false;
       return senior || Boolean(text(user.substation) && text(user.substation) === text(person.substation));
