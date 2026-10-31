@@ -69,7 +69,7 @@ export default function CorporateBrowser() {
       try {
         const viewer=await remote.mutateAsync(url.href);
         if (!viewer?.viewer_url) throw new Error('Remote Chrome did not return a viewer.');
-        push({kind:'site',url:url.href,viewer:viewer.viewer_url});
+        push({kind:'site',url:url.href,viewer:viewer.viewer_url,viewOnly:viewer.view_only===true});
       } catch(engineError) {
         const msg=engineError?.response?.data?.error || engineError?.message || 'Remote Chrome service is unavailable.';
         push({kind:'engineUnavailable',url:url.href,reason:msg});
@@ -138,6 +138,7 @@ export default function CorporateBrowser() {
         {page.kind==='blocked' && <div className="mx-auto max-w-xl px-6 py-20 text-center"><AlertTriangle className="mx-auto h-12 w-12 text-amber-500"/><h1 className="mt-5 text-2xl font-semibold">Website access restricted</h1><p className="mt-3 break-words text-sm text-slate-600">{page.url}</p><p className="mt-3 text-sm text-slate-600">{page.reason}</p><div className="mt-6 flex justify-center gap-3"><button className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white" onClick={()=>setRequestDomain(domainOf(page.url))}>Request access</button><button className="rounded-lg border px-4 py-2 text-sm" onClick={()=>push({kind:'home'})}>New search</button></div></div>}
         {page.kind==='engineUnavailable' && <div className="mx-auto flex max-w-xl flex-col items-center justify-center px-6 py-16 text-center"><Globe2 className="h-14 w-14 text-slate-500"/><h1 className="mt-5 text-2xl font-semibold">Chrome browser service not connected</h1><p className="mt-3 text-sm leading-6 text-slate-600">Your company profile permits this website. Pathfinder needs its remote Chrome browser service connected to display it fully inside the app.</p><p className="mt-3 rounded-lg bg-slate-100 p-3 text-xs text-slate-600">{page.reason}</p><button type="button" onClick={()=>visit(page.url)} className="mt-6 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white">Retry in-app browser</button></div>}
         {page.kind==='site' && <div className="flex min-h-[530px] flex-1 flex-col bg-white">
+          {page.viewOnly && <div className="border-b border-blue-200 bg-blue-50 px-4 py-2 text-xs text-slate-700">Approved government research · View-only session. To protect company restrictions, interactive non-admin browsing requires a managed web gateway.</div>}
           <iframe key={page.viewer} src={page.viewer} title={'Interactive Google Chrome browser - '+domainOf(page.url)} allow="clipboard-read; clipboard-write; fullscreen" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads" className="min-h-[620px] w-full flex-1 border-0"/>
         </div>}
       </main>
