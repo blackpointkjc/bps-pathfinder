@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { ArrowLeft, ArrowRight, Globe2, Home, LockKeyhole, Plus, RotateCw, Search, ShieldCheck, X, AlertTriangle, Loader2, BookOpen, Landmark, BadgeCheck } from 'lucide-react';
@@ -14,6 +14,7 @@ const titleFor = state => state.kind==='home'?'New tab':state.kind==='search'?'S
 
 export default function CorporateBrowser() {
   const [tabs,setTabs] = useState([blank('initial')]);
+  const initialGoogleStarted = useRef(false);
   const [activeId,setActiveId] = useState('initial');
   const [omnibox,setOmnibox] = useState('');
   const [busy,setBusy] = useState(false);
@@ -77,22 +78,25 @@ export default function CorporateBrowser() {
     }catch(e){setError(e?.response?.data?.error||'Unable to verify this destination. Access was not granted.');}
     finally{setBusy(false);}
   };
+  // Start authorized administrators directly at Google in remote Chrome.
+  // The remote viewer supplies its own tabs/address bar; don't draw another.
+  useEffect(()=>{
+    if(!admin || !chromeEngine?.configured || initialGoogleStarted.current) return;
+    initialGoogleStarted.current=true;
+    if(page.kind==='home') void visit('https://www.google.com/');
+  },[admin,chromeEngine?.configured]);
   const navigate = value => {const input=String(value||'').trim();if(!input)return; if(validSite(input))visit(input);else doSearch(input);};
   const resubmitRequest=async justification=>{try{setRequestError('');await request.mutateAsync({domain:requestDomain,justification});setRequestDomain('');}catch(e){setRequestError(e?.message||'Could not submit request');}};
   return <div className="flex h-full min-h-[calc(100dvh-140px)] flex-col bg-[#d7dce5] text-[#202124]">
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-xl border border-[#34465c] bg-white shadow-[0_8px_32px_rgba(0,0,0,.16)]">
-      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-[#284663] bg-gradient-to-r from-[#091624] via-[#10304b] to-[#081725] px-3 py-2 text-white sm:px-5">
-        <div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/50 bg-cyan-500/15"><ShieldCheck className="h-5 w-5 text-cyan-300"/></div><div><div className="text-xs font-black tracking-[.18em]">PATHFINDER <span className="text-cyan-300">SECURE WEB</span></div><div className="text-[9px] font-semibold tracking-widest text-slate-400">BLACK POINT SECURITY · COMPANY BROWSER</div></div></div>
-        <div className="flex items-center gap-2 text-[10px]"><span className="inline-flex items-center gap-1 rounded-full border border-cyan-700/50 bg-cyan-950/30 px-2 py-1 text-cyan-100"><BadgeCheck className="h-3.5 w-3.5"/>Company managed</span><span className="hidden rounded-full border border-slate-600/50 px-2 py-1 text-slate-300 sm:inline-flex">{profileLabel(policy?.profile)}</span></div>
-      </header>
-      <div className="flex min-h-[43px] items-end gap-1 overflow-x-auto border-b border-[#bdc6d2] bg-[#dee4ed] px-2 pt-1.5" role="tablist" aria-label="Browser tabs">
+      {page.kind!=='site' && <div className="flex min-h-[43px] items-end gap-1 overflow-x-auto border-b border-[#bdc6d2] bg-[#dee4ed] px-2 pt-1.5" role="tablist" aria-label="Browser tabs">
         {tabs.map(item=><div key={item.id} role="tab" aria-selected={activeId===item.id} className={`flex h-9 min-w-[125px] max-w-[225px] flex-1 items-center gap-2 rounded-t-xl px-3 text-[12px] ${activeId===item.id?'bg-white text-[#202124]':'bg-[#ccd5e1] text-[#414c5a] hover:bg-[#e7ecf3]'}`}>
           <button type="button" onClick={()=>setActiveId(item.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left"><Globe2 className="h-4 w-4 shrink-0 text-[#64748b]"/><span className="truncate">{item.title}</span></button>
           <button type="button" onClick={()=>closeTab(item.id)} aria-label={'Close '+item.title} className="rounded p-1 hover:bg-[#b9c3d1]"><X className="h-3.5 w-3.5"/></button>
         </div>)}
         <button type="button" onClick={addTab} aria-label="New tab" title="New tab" className="mb-1 rounded-full p-2 hover:bg-[#cbd5e1]"><Plus className="h-4 w-4"/></button>
       </div>
-      <div className="flex items-center gap-1 border-b border-[#e2e8f0] bg-white px-2 py-2 sm:gap-2 sm:px-3">
+      {page.kind!=='site' && <div className="flex items-center gap-1 border-b border-[#e2e8f0] bg-white px-2 py-2 sm:gap-2 sm:px-3">
         <button type="button" aria-label="Back" title="Back" disabled={tab.index===0} onClick={()=>goHistory(-1)} className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-30"><ArrowLeft className="h-4 w-4"/></button>
         <button type="button" aria-label="Forward" title="Forward" disabled={tab.index>=tab.history.length-1} onClick={()=>goHistory(1)} className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-30"><ArrowRight className="h-4 w-4"/></button>
         <button type="button" aria-label="Reload" title="Reload" onClick={()=>{setReload(n=>n+1);refreshPolicy();if(page.kind==='search')doSearch(page.query);}} className="rounded-full p-2 hover:bg-slate-100"><RotateCw className="h-4 w-4"/></button>
@@ -104,11 +108,11 @@ export default function CorporateBrowser() {
         </form>
         <button type="button" onClick={()=>navigate(omnibox)} disabled={busy||loadingPolicy} className="rounded-full bg-[#1a73e8] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:'Go'}</button>
       </div>
-      <nav className="flex flex-wrap items-center gap-2 border-b border-[#d7e2ec] bg-[#f8fafc] px-3 py-1.5 text-[11px] sm:gap-4" aria-label="Approved bookmarks">
+      {page.kind!=='site' && <nav className="flex flex-wrap items-center gap-2 border-b border-[#d7e2ec] bg-[#f8fafc] px-3 py-1.5 text-[11px] sm:gap-4" aria-label="Approved bookmarks">
         <span className="hidden items-center gap-1 font-bold text-slate-500 sm:inline-flex"><BookOpen className="h-3.5 w-3.5"/>Research shortcuts</span>
         {[['VA Courts','https://www.vacourts.gov'],['Virginia.gov','https://www.virginia.gov'],['USA.gov','https://www.usa.gov'],['IRS.gov','https://www.irs.gov']].map(([label,url])=><button type="button" key={url} onClick={()=>visit(url)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"><Landmark className="h-3 w-3"/>{label}</button>)}
-      </nav>
-      <div className="flex items-center justify-between gap-2 border-b border-[#e5e7eb] bg-[#fafbfc] px-4 py-1.5 text-[11px] text-[#5f6368]">
+      </nav>}
+      {page.kind!=='site' && <div className="flex items-center justify-between gap-2 border-b border-[#e5e7eb] bg-[#fafbfc] px-4 py-1.5 text-[11px] text-[#5f6368]">
         <span className="truncate">{loadingPolicy?'Checking your access…':`${admin && chromeEngine?.configured ? 'Google Search in Chrome' : 'Public internet search'} · ${profileLabel(policy?.profile)}`}</span>
         <span className="inline-flex shrink-0 items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-[#188038]"/>Pathfinder policy</span>
       </div>
@@ -137,12 +141,12 @@ export default function CorporateBrowser() {
         </div>}
         {page.kind==='blocked' && <div className="mx-auto max-w-xl px-6 py-20 text-center"><AlertTriangle className="mx-auto h-12 w-12 text-amber-500"/><h1 className="mt-5 text-2xl font-semibold">Website access restricted</h1><p className="mt-3 break-words text-sm text-slate-600">{page.url}</p><p className="mt-3 text-sm text-slate-600">{page.reason}</p><div className="mt-6 flex justify-center gap-3"><button className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white" onClick={()=>setRequestDomain(domainOf(page.url))}>Request access</button><button className="rounded-lg border px-4 py-2 text-sm" onClick={()=>push({kind:'home'})}>New search</button></div></div>}
         {page.kind==='engineUnavailable' && <div className="mx-auto flex max-w-xl flex-col items-center justify-center px-6 py-16 text-center"><Globe2 className="h-14 w-14 text-slate-500"/><h1 className="mt-5 text-2xl font-semibold">Chrome browser service not connected</h1><p className="mt-3 text-sm leading-6 text-slate-600">Your company profile permits this website. Pathfinder needs its remote Chrome browser service connected to display it fully inside the app.</p><p className="mt-3 rounded-lg bg-slate-100 p-3 text-xs text-slate-600">{page.reason}</p><button type="button" onClick={()=>visit(page.url)} className="mt-6 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white">Retry in-app browser</button></div>}
-        {page.kind==='site' && <div className="flex min-h-[530px] flex-1 flex-col bg-white">
+        {page.kind==='site' && <div className="flex min-h-[calc(100dvh-130px)] flex-1 flex-col bg-white">
           {page.viewOnly && <div className="border-b border-blue-200 bg-blue-50 px-4 py-2 text-xs text-slate-700">Approved government research · View-only session. To protect company restrictions, interactive non-admin browsing requires a managed web gateway.</div>}
-          <iframe key={page.viewer} src={page.viewer} title={'Interactive Google Chrome browser - '+domainOf(page.url)} allow="clipboard-read; clipboard-write; fullscreen" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads" className="min-h-[620px] w-full flex-1 border-0"/>
+          <iframe key={page.viewer} src={page.viewer} title={'Interactive Google Chrome browser - '+domainOf(page.url)} allow="clipboard-read; clipboard-write; fullscreen" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads" className="h-[calc(100dvh-130px)] min-h-[570px] w-full flex-1 border-0"/>
         </div>}
       </main>
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e2e8f0] bg-[#f8fafc] px-4 py-2 text-[11px] text-slate-500"><span>Internet browsing · Pathfinder</span><span>Full site enforcement requires a managed browser or web gateway</span></footer>
+
     </div>
     {requestError && <p className="p-2 text-xs text-red-700">{requestError}</p>}
     <BrowserRequestDialog open={!!requestDomain} domain={requestDomain} submitting={request.isPending} onOpenChange={open=>!open&&setRequestDomain('')} onSubmit={resubmitRequest}/>
