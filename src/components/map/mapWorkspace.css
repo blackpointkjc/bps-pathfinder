@@ -306,3 +306,12 @@
   }
   .pf-navigation-workspace .pf-map-search-panel > .pf-selected-destination { order: 0; }
 }
+/* Destination and the primary navigation action take priority over optional tools. */
+.pf-navigation-workspace .pf-map-search-panel > .pf-address-search-heading { order: -5; }
+.pf-navigation-workspace .pf-map-search-panel > form { order: -4; }
+.pf-navigation-workspace .pf-map-search-panel > .pf-selected-destination { order: -3; }
+.pf-navigation-workspace .pf-map-search-panel > .pf-address-results { order: -2; }
+.pf-navigation-workspace .pf-map-search-panel > .pf-manual-origin { order: 2; }
+@media (max-width:767px) {
+  .pf-navigation-workspace .pf-map-search-panel > .pf-selected-destination { order: -3; }
+}
