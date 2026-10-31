@@ -23,7 +23,7 @@ async function liveSearch(query: string, safe: boolean) {
   if (!xml.includes('<rss') && !xml.includes('<item>')) throw new Error('Search index did not return an RSS result');
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].slice(0, 15).map(match => {
     const item = match[1];
-    const field = (key: string) => xmlText(item.match(new RegExp('<' + key + '>([\s\S]*?)<\/' + key + '>', 'i'))?.[1] || '');
+    const field = (key: string) => xmlText(item.match(new RegExp('<' + key + '>([\\s\\S]*?)<\\/' + key + '>', 'i'))?.[1] || '');
     return { title: field('title'), url: field('link'), snippet: field('description') };
   }).filter(item => item.url.startsWith('https://') || item.url.startsWith('http://'));
 }
