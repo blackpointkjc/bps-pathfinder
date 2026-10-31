@@ -19,24 +19,22 @@ const isAbsent=(p:any)=>{
  const windows=[...(Array.isArray(p.approved_leave_windows)?p.approved_leave_windows:[]),...(p.out_of_office&&p.out_of_office_start&&p.out_of_office_return?[{start:p.out_of_office_start,end:p.out_of_office_return}]:[])];
  return windows.some((w:any)=>Number.isFinite(Date.parse(w.start))&&Number.isFinite(Date.parse(w.end))&&Date.parse(w.start)<=now&&Date.parse(w.end)>now);
 };
-const activePlatoonCommand=(people:any[],platoon:string)=>{
- const eligible=people.filter((p:any)=>!p.termination_date && n(p.employment_status)!=='terminated' && !isAbsent(p));
- const commandRank=(p:any)=>level(p.rank);
- const members=eligible.filter((p:any)=>n(p.platoon)===n(platoon));
- const isCommandRank=(p:any)=>commandRank(p)>=0&&commandRank(p)<=4;
- const byOrder=(a:any,b:any)=>commandRank(a)-commandRank(b)||Number(a.command_seniority_order||999)-Number(b.command_seniority_order||999)||Number(a.unit_number||9999)-Number(b.unit_number||9999)||String(a.id).localeCompare(String(b.id));
- // Active Captain is first choice. When unavailable, select the nearest
- // appropriate senior command: Major assigned to the platoon, then higher.
- const captain=members.filter((p:any)=>commandRank(p)===3).sort(byOrder)[0];
- const majors=eligible.filter((p:any)=>commandRank(p)===2&&n(p.oversight_platoon||p.platoon)===n(platoon)).sort(byOrder);
- const higher=eligible.filter((p:any)=>commandRank(p)>=0&&commandRank(p)<2).sort((a:any,b:any)=>commandRank(b)-commandRank(a)||byOrder(a,b));
- const lieutenant=members.filter((p:any)=>commandRank(p)===4).sort(byOrder)[0];
- const chosen=captain||majors[0]||higher[0]||lieutenant||null;
- if(!chosen)return {platoon,status:'unassigned',name:'No active platoon commander assigned',rank:'',unit_number:''};
- const permanent=people.filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated'&&n(p.platoon)===n(platoon)&&commandRank(p)===3).sort(byOrder)[0];
- const acting=commandRank(chosen)!==3 || (permanent&&permanent.id!==chosen.id);
- return {platoon,status:acting?'acting':'active',name:commandName(chosen),rank:String(chosen.rank||''),unit_number:String(chosen.unit_number||''),role:acting?'Acting Platoon Commander':'Platoon Commander'};
+// One regional Platoon has one active commander. Exclude Colonel/Lt Colonel/
+// Major company command entirely. Highest operational rank wins; badge number
+// breaks same-rank ties, followed by unit number for stable selection.
+const activePlatoonCommand=(people:any[],platoon:string,region:string)=>{
+ const eligible=people.filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated'
+   && !isAbsent(p)&&n(p.division)===n(region)&&n(p.platoon)===n(platoon)
+   && level(p.rank)>=3&&level(p.rank)<=5);
+ const badge=(p:any)=>{const value=Number(p.badge_number);return Number.isSafeInteger(value)&&value>0?value:Number.MAX_SAFE_INTEGER;};
+ const unit=(p:any)=>{const value=Number(p.unit_number);return Number.isSafeInteger(value)&&value>0?value:Number.MAX_SAFE_INTEGER;};
+ eligible.sort((a:any,b:any)=>level(a.rank)-level(b.rank)||badge(a)-badge(b)||unit(a)-unit(b)||String(a.id).localeCompare(String(b.id)));
+ const chosen=eligible[0];
+ if(!chosen)return {platoon,region,status:'unassigned',name:'No active platoon leader',role:'Platoon Command Vacant'};
+ const acting=level(chosen.rank)!==3;
+ return {id:chosen.id,platoon,region,status:acting?'acting':'active',name:commandName(chosen),role:acting?'Acting Platoon Commander':'Platoon Commander',rank:chosen.rank,badge_number:chosen.badge_number||'',unit_number:chosen.unit_number||''};
 };
+
 const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',force:'UseOfForceReport',callouts:'CallOut',handovers:'SupervisorShiftHandover',duty:'DutySupervisorAssignment',chat:'SupervisorChatMessage'};
 Deno.serve(async(req)=>{
  try{
@@ -62,8 +60,12 @@ Deno.serve(async(req)=>{
    return {...p,division:p.division||match.division,subdivision:p.subdivision||match.subdivision,substation:p.substation||match.substation,assigned_site_name:match.site_name};
   });
   const people=resolvedUsers.filter((p:any)=>area(me,p)&&!p.termination_date&&n(p.employment_status)!=='terminated');
-  const commandPlatoons=admin(me)?['A','B']:[String(me.oversight_platoon||me.platoon||'').toUpperCase()].filter(value=>['A','B'].includes(value));
-  const platoon_commands=commandPlatoons.map(platoon=>activePlatoonCommand(users||[],platoon));
+  const configuredPlatoons=kind==='personnel'?await sdk.asServiceRole.entities.CompanyPlatoon.list('region',1000).catch(()=>[]):[];
+  const personPlatoons=resolvedUsers.filter((p:any)=>p.platoon&&p.platoon!=='Command'&&p.division).map((p:any)=>({name:String(p.platoon),region:String(p.division)}));
+  const allRegionPlatoons=[...configuredPlatoons.filter((p:any)=>p.active!==false),...personPlatoons];
+  const regionPlatoonKeys=new Map(allRegionPlatoons.filter((p:any)=>p.region&&p.name).map((p:any)=>[`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name}]));
+  const visibleCommands=[...regionPlatoonKeys.values()].filter((entry:any)=>admin(me)||(n(entry.region)===n(me.division)&&n(entry.platoon)===n(me.oversight_platoon||me.platoon)));
+  const platoon_commands=kind==='personnel'?visibleCommands.map((entry:any)=>activePlatoonCommand(resolvedUsers,entry.platoon,entry.region)):[];
   const locations=(sites||[]).filter((p:any)=>p.active!==false&&area(me,p,false));
   const emails=new Set(people.flatMap((p:any)=>[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).filter(Boolean)));
   const ids=new Set(people.map((p:any)=>String(p.id)));

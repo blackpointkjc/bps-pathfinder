@@ -31,21 +31,24 @@ export function platoonCommander(letter, users = []) {
  }
  return users.filter(user => activePerson(user) && !isOutOfOffice(user) && commandRank(user) === 'Major' && majorPlatoon(user) === letter).sort(comparePersonnel)[0] || null;
 }
-// Read-only chart command status; separate from personnel permissions and the
-// permanent reporting chain. The Captain is the active platoon commander;
-// when absent, assigned Major is preferred over a lower-ranked Lieutenant.
-export function activePlatoonCommand(letter, users = []) {
- const available=users.filter(person=>activePerson(person)&&!isOutOfOffice(person));
- const choose=rows=>[...rows].sort(comparePersonnel)[0];
- const captain=choose(available.filter(person=>normalizeRank(person.rank)==='Captain'&&person.platoon===letter));
- const major=choose(available.filter(person=>normalizeRank(person.rank)==='Major'&&majorPlatoon(person)===letter));
- const senior=choose(available.filter(person=>['Lt Colonel','Colonel'].includes(normalizeRank(person.rank))));
- const lieutenant=choose(available.filter(person=>normalizeRank(person.rank)==='Lieutenant'&&person.platoon===letter));
- const selected=captain||major||senior||lieutenant||null;
- if(!selected)return {platoon:letter,status:'unassigned',name:'No active commander assigned',role:'Platoon Command Vacant'};
- const permanent=choose(users.filter(person=>activePerson(person)&&normalizeRank(person.rank)==='Captain'&&person.platoon===letter));
- const acting=normalizeRank(selected.rank)!=='Captain'||(permanent&&permanent.id!==selected.id);
- return {platoon:letter,status:acting?'acting':'active',name:[selected.rank,selected.last_name||selected.first_name].filter(Boolean).join(' '),role:acting?'Acting Platoon Commander':'Platoon Commander',unit_number:selected.unit_number||''};
+// Read-only command position. Company command never fills a Platoon seat.
+// Highest available operational rank, then smallest issued badge number,
+// then unit number. Captains are the permanent Platoon command rank;
+// every other qualifying leader is displayed as acting only.
+export function activePlatoonCommand(letter, users = [], region = '') {
+ const n=v=>String(v||'').trim().toLowerCase();
+ const commandRank=person=>rankLevel(person.rank);
+ const eligible=users.filter(person=>activePerson(person)&&!isOutOfOffice(person)
+   && n(person.platoon)===n(letter)
+   && (!region||n(person.division)===n(region))
+   && commandRank(person)>=rankLevel('Captain') && commandRank(person)<=rankLevel('First Sergeant'));
+ const badge=person=>Number.isFinite(Number(person.badge_number))&&Number(person.badge_number)>0?Number(person.badge_number):Number.MAX_SAFE_INTEGER;
+ const unit=person=>Number.isFinite(Number(person.unit_number))&&Number(person.unit_number)>0?Number(person.unit_number):Number.MAX_SAFE_INTEGER;
+ eligible.sort((a,b)=>commandRank(a)-commandRank(b)||badge(a)-badge(b)||unit(a)-unit(b)||String(a.id).localeCompare(String(b.id)));
+ const person=eligible[0];
+ if(!person)return {platoon:letter,region,status:'unassigned',name:'No active platoon leader',role:'Platoon Command Vacant'};
+ const acting=normalizeRank(person.rank)!=='Captain';
+ return {id:person.id,platoon:letter,region,status:acting?'acting':'active',name:[person.rank,person.last_name||person.first_name].filter(Boolean).join(' '),role:acting?'Acting Platoon Commander':'Platoon Commander',rank:person.rank,badge_number:person.badge_number||'',unit_number:person.unit_number||''};
 }
 export function platoonCommandLabel(person, users = []) {
  return ['A','B'].filter(letter => platoonCommander(letter, users)?.id === person?.id).map(letter =>
