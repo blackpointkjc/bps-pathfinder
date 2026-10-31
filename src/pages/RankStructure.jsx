@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
 import { base44 } from '@/api/base44Client';
-import { withRequestTimeout } from '@/lib/requestTimeout';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -171,12 +170,16 @@ export default function RankStructure(){
   const {data:rosterData={officers:[],commands:[],platoons:[],regions:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({
     queryKey:['rankStructureSnapshotV3',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
     queryFn:async()=>{
-      const response=await withRequestTimeout(base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'}),15000,'Rank Structure roster');
+      const response=await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new Error('Rank Structure could not load within 18 seconds because the service is busy. Retry after the request limit clears.')),18000);
+        Promise.resolve(base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'}))
+          .then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});
+      });
       const data=response?.data||response||{};
       if(data.error||data.success!==true)throw new Error(data.error||'Rank Structure roster unavailable');
       return {officers:data.officers||[],commands:data.platoon_commands||[],platoons:data.platoons||[],regions:(data.regions||[]).map(name=>({name,active:true}))};
     },enabled:!!user?.id,staleTime:5*60*1000,gcTime:30*60*1000,
-    retry:(count,error)=>count<1&&!/429|rate limit|throttl/i.test(String(error?.message||'')),
+    retry:false,
     refetchOnWindowFocus:false,refetchOnMount:false,
   });
   const structureData={platoons:rosterData.platoons||[],regions:rosterData.regions||[]};
