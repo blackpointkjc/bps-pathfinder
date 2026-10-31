@@ -9,7 +9,7 @@ const area=(me:any,p:any,hasPlatoon=true)=>admin(me)||(
   &&!!n(me.division)&&!!n(me.subdivision)&&n(p.division)===n(me.division)&&n(p.subdivision)===n(me.subdivision)
   &&(senior(me)|| (!!n(me.substation)&&n(p.substation)===n(me.substation)))
 );
-const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',force:'UseOfForceReport',callouts:'CallOut',handovers:'SupervisorShiftHandover',duty:'DutySupervisorAssignment'};
+const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',force:'UseOfForceReport',callouts:'CallOut',handovers:'SupervisorShiftHandover',duty:'DutySupervisorAssignment',chat:'SupervisorChatMessage'};
 Deno.serve(async(req)=>{
  try{
   const sdk=createClientFromRequest(req),me=await sdk.auth.me().catch(()=>null);
@@ -28,6 +28,7 @@ Deno.serve(async(req)=>{
   const ids=new Set(people.map((p:any)=>String(p.id)));
   const visible=(r:any)=>{
    if(admin(me))return true;
+   if(kind==='chat')return emails.has(n(r.sender_email))||n(r.sender_email)===n(me.email);
    if(kind==='handovers')return [r.departing_supervisor_email,r.incoming_supervisor_email].some(v=>emails.has(n(v))||n(v)===n(me.email));
    if(kind==='duty')return emails.has(n(r.supervisor_email))||n(r.supervisor_email)===n(me.email);
    const email=n(r.officer_email||r.employee_email),id=String(r.officer_id||r.employee_id||'');
@@ -35,6 +36,31 @@ Deno.serve(async(req)=>{
   };
   const action=n(body.action||'list');
   if(action!=='list'){
+   if(kind==='handovers' && ['create','acknowledge'].includes(action)){
+     if(action==='create'){
+       const data=body.data||{};
+       const recipient=people.find((p:any)=>n(p.email)===n(data.incoming_supervisor_email));
+       if(!recipient && !admin(me))return Response.json({error:'Incoming supervisor is outside your platoon and operating area'},{status:403});
+       if(!String(data.command_summary||'').trim())return Response.json({error:'Command summary required'},{status:400});
+       const record=await sdk.asServiceRole.entities.SupervisorShiftHandover.create({...data,departing_supervisor_email:me.email,departing_supervisor_name:[me.rank,me.last_name].filter(Boolean).join(' '),incoming_supervisor_name:recipient?[recipient.rank,recipient.last_name].filter(Boolean).join(' '):String(data.incoming_supervisor_name||''),acknowledged_by_incoming:false});
+       return Response.json({success:true,record});
+     }
+     const record=await sdk.asServiceRole.entities.SupervisorShiftHandover.get(String(body.id||''));
+     if(!record||n(record.incoming_supervisor_email)!==n(me.email))return Response.json({error:'Only the designated incoming supervisor may acknowledge this handover'},{status:403});
+     const updated=await sdk.asServiceRole.entities.SupervisorShiftHandover.update(record.id,{acknowledged_by_incoming:true,acknowledgement_time:new Date().toISOString()});
+     return Response.json({success:true,record:updated});
+   }
+   if(kind==='chat'&&action==='create'){
+     const message=String(body.data?.message||'').trim().slice(0,4000);
+     if(!message)return Response.json({error:'Message cannot be empty'},{status:400});
+     const record=await sdk.asServiceRole.entities.SupervisorChatMessage.create({message,sender_name:[me.first_name,me.last_name].filter(Boolean).join(' ')||me.email,sender_email:me.email,sender_photo_url:me.profile_photo_url||'',message_source:'pathfinder'});
+     for(const mention of (Array.isArray(body.mentions)?body.mentions:[]).slice(0,20)){
+       const email=n(mention.email);
+       if(!email || !people.some((p:any)=>n(p.email)===email))continue;
+       await sdk.asServiceRole.entities.ChatMention.create({message_id:record.id,chat_type:'supervisor',page:'SupervisorChat',recipient_email:email,recipient_name:String(mention.label||''),sender_name:record.sender_name,message,read:false}).catch(()=>null);
+     }
+     return Response.json({success:true,record});
+   }
    if(!['inspections','writeups','force'].includes(kind)||!['create','update','delete'].includes(action))
      return Response.json({error:'Unsupported supervisor record action'},{status:400});
    if(action==='delete'&&kind!=='force')return Response.json({error:'Deletion is not supported for these reports'},{status:403});

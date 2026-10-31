@@ -39,18 +39,18 @@ export default function SupervisorShiftHandover() {
   const incoming = supervisors.find(person => lower(person.email) === lower(form.incoming_supervisor_email));
 
   const create = useMutation({
-    mutationFn:()=>base44.entities.SupervisorShiftHandover.create({
+    mutationFn:()=>base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'handovers',action:'create',data:{
       ...form,
       departing_supervisor_email:user.email,
       departing_supervisor_name:personLabel(user),
       incoming_supervisor_name:incoming ? personLabel(incoming) : 'Incoming Duty Supervisor',
       acknowledged_by_incoming:false,
-    }),
+    }}),
     onSuccess:()=>{ qc.invalidateQueries({queryKey:['supervisorScopedHandovers']}); setForm(blank()); setShowForm(false); toast.success('Duty supervisor handover sent.'); },
     onError:error=>toast.error(error?.message || 'Unable to send supervisor handover'),
   });
   const acknowledge = useMutation({
-    mutationFn:id=>base44.entities.SupervisorShiftHandover.update(id,{ acknowledged_by_incoming:true, acknowledgement_time:new Date().toISOString() }),
+    mutationFn:id=>base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'handovers',action:'acknowledge',id}),
     onSuccess:()=>qc.invalidateQueries({queryKey:['supervisorScopedHandovers']}),
   });
 
