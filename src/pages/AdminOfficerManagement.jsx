@@ -5,7 +5,7 @@ import { actingCoverage } from '@/utils/commandReporting';
 import { isOutOfOffice } from '@/utils/outOfOffice';
 import { listDirectoryUsers, listDirectoryDivisions } from '@/lib/appDirectory';
 import OrgAssignmentFields from '@/components/admin/OrgAssignmentFields';
-import { comparePersonnel } from '@/utils/rankPolicy';
+import { comparePersonnel, canAssignSubstation } from '@/utils/rankPolicy';
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -53,7 +53,7 @@ export default function AdminOfficerManagement() {
   const [homeAddressForm, setHomeAddressForm] = useState({ address: '', city: '', state: '', zip: '' });
   const [saving, setSaving] = useState(false);
   const [actionFeedback,setActionFeedback]=useState('');
-  const [orgAssignment,setOrgAssignment]=useState({division:'',subdivision:''});
+  const [orgAssignment,setOrgAssignment]=useState({division:'',subdivision:'',substation:''});
   const [orgSaving,setOrgSaving]=useState(false);
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
@@ -121,8 +121,8 @@ export default function AdminOfficerManagement() {
 
   useEffect(() => {
     const officer = selectedOfficerPrivate || selectedOfficerRecord;
-    setOrgAssignment({ division: String(officer?.division || ''), subdivision: String(officer?.subdivision || '') });
-  }, [selectedOfficer, selectedOfficerPrivate?.division, selectedOfficerPrivate?.subdivision, selectedOfficerRecord?.division, selectedOfficerRecord?.subdivision]);
+    setOrgAssignment({ division: String(officer?.division || ''), subdivision: String(officer?.subdivision || ''), substation: canAssignSubstation(officer?.rank) ? String(officer?.substation || '') : '' });
+  }, [selectedOfficer, selectedOfficerPrivate?.division, selectedOfficerPrivate?.subdivision, selectedOfficerPrivate?.substation, selectedOfficerPrivate?.rank, selectedOfficerRecord?.division, selectedOfficerRecord?.subdivision, selectedOfficerRecord?.substation, selectedOfficerRecord?.rank]);
 
   const saveOfficerDivision = async () => {
     const officerId = selectedOfficerPrivate?.id || selectedOfficerRecord?.id;
@@ -130,7 +130,7 @@ export default function AdminOfficerManagement() {
     setOrgSaving(true);
     setActionFeedback('Updating officer division…');
     try {
-      const updates = { division: orgAssignment.division || '', subdivision: orgAssignment.subdivision || '' };
+      const updates = { division: orgAssignment.division || '', subdivision: orgAssignment.subdivision || '', substation: canAssignSubstation((selectedOfficerPrivate || selectedOfficerRecord)?.rank) ? orgAssignment.substation || '' : '' };
       const response = await base44.functions.invoke('updateUser', { userId: officerId, updates });
       const payload = response?.data || response || {};
       if (payload.error || payload.success === false) throw new Error(payload.error || 'Division update failed.');
@@ -272,7 +272,8 @@ export default function AdminOfficerManagement() {
             <OfficerCommandControls key={(selectedOfficerPrivate||selectedOfficerRecord)?.id} officer={selectedOfficerPrivate||selectedOfficerRecord} users={commandUsers}/>
             <div className="mt-4 space-y-3 rounded-xl border border-cyan-800/70 bg-slate-950/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-bold text-cyan-200">Update officer division</h3><p className="mt-1 text-xs text-slate-400">Assign a region and operating division for this officer.</p></div><Button type="button" size="sm" variant="outline" onClick={() => { invalidateAppDirectory(); refreshCompanyDivisions(); }}>Refresh divisions</Button></div>
-              <OrgAssignmentFields divisions={companyDivisions} value={orgAssignment} onChange={next => setOrgAssignment({division:next.division,subdivision:next.subdivision})} disabled={orgSaving} />
+              <OrgAssignmentFields divisions={companyDivisions} value={orgAssignment} includeSubstation={canAssignSubstation((selectedOfficerPrivate || selectedOfficerRecord)?.rank)} onChange={next => setOrgAssignment({division:next.division,subdivision:next.subdivision,substation:next.substation || ''})} disabled={orgSaving} />
+              <p className="text-xs text-slate-400">{canAssignSubstation((selectedOfficerPrivate || selectedOfficerRecord)?.rank) ? 'Field personnel: assigned region, division and substation.' : 'Lieutenant and above: assigned region and division for platoon oversight; no individual substation posting.'}</p>
               {companyDivisionsError && <p role="alert" className="text-xs text-red-300">Could not load Company Structure: {companyDivisionsError.message}</p>}
               <Button type="button" onClick={saveOfficerDivision} disabled={orgSaving || !selectedOfficerRecord} className="bg-cyan-700 hover:bg-cyan-600">{orgSaving ? 'Updating division…' : 'Update Division'}</Button>
             </div>

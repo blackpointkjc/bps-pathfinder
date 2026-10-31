@@ -2,7 +2,7 @@ import { isClientAccount } from '@/lib/directoryUtils';
 import { accessLabel } from '@/utils/accountLabels';
 import { isOutOfOffice } from '@/utils/outOfOffice';
 import AdminOutOfOffice from '@/components/AdminOutOfOffice';
-import { getPayRangeForRank, nextUnitNumber, previewRankChange } from '@/utils/rankPolicy';
+import { getPayRangeForRank, nextUnitNumber, previewRankChange, canAssignSubstation } from '@/utils/rankPolicy';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
@@ -65,6 +65,7 @@ export default function AdminUsers({ embedded = false }) {
 
     division: "",
     subdivision: "",
+    substation: "",
     dcjs_number: "",
     dcjs_expiration: "",
     firearm_expiration: "",
@@ -349,6 +350,7 @@ export default function AdminUsers({ embedded = false }) {
       termination_date: userData.termination_date || "",
       division: userData.division || "",
       subdivision: userData.subdivision || "",
+      substation: userData.substation || "",
       dcjs_number: userData.dcjs_number || "",
       dcjs_expiration: userData.dcjs_expiration || "",
       firearm_expiration: userData.firearm_expiration || "",
@@ -994,7 +996,7 @@ export default function AdminUsers({ embedded = false }) {
 
               <div className="col-span-full rounded-xl border border-slate-700 bg-slate-950/50 p-3">
                 <h3 className="mb-2 text-sm font-semibold text-white">Officer region and division</h3>
-                <OrgAssignmentFields divisions={divisions || []} value={editFormData} onChange={next => setEditFormData(previous => ({ ...previous, division: next.division, subdivision: next.subdivision }))} />
+                <OrgAssignmentFields divisions={divisions || []} value={editFormData} includeSubstation={canAssignSubstation(editFormData.rank)} onChange={next => setEditFormData(previous => ({ ...previous, division: next.division, subdivision: next.subdivision, substation: canAssignSubstation(previous.rank) ? next.substation || '' : '' }))} />
               </div>
 
               <div>

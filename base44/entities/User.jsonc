@@ -81,6 +81,10 @@
     "subdivision": {
       "type": "string"
     },
+    "substation": {
+      "type": "string",
+      "description": "Field posting within operating division; Lieutenant and above oversee at division/platoon level"
+    },
     "hire_date": {
       "type": "string",
       "format": "date"
