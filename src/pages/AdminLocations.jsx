@@ -12,6 +12,7 @@ import { Shield, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, 
 import { Badge } from "@/components/ui/badge";
 import OrgScopeFilter from "@/components/OrgScopeFilter";
 import { divisionLevel, indexDivisions, matchesOrgScope } from '@/lib/orgStructure';
+import OrgAssignmentFields from '@/components/admin/OrgAssignmentFields';
 
 
 import {
@@ -910,76 +911,12 @@ export default function AdminLocations({ embedded = false }) {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="division">Region</Label>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => refetchDivisions()} className="h-7 px-2 text-[10px]">REFRESH</Button>
-                </div>
-                <select
-                  id="division"
-                  value={formData.division || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, division: e.target.value, subdivision: ''}))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">Select division...</option>
-                  {formData.division && !divisions.some(d => !d.is_subdivision && d.division_name === formData.division) && (
-                    <option value={formData.division}>{formData.division} (current)</option>
-                  )}
-                  {divisions.filter(d => !d.is_subdivision && d.active !== false).map((div) => (
-                    <option key={div.id} value={div.division_name}>{div.division_name}</option>
-                  ))}
-                </select>
-                {divisionsError && <p className="text-xs font-semibold text-red-400">Unable to load divisions: {divisionsError.message}</p>}
-                {!divisionsError && divisions.filter(d => !d.is_subdivision && d.active !== false).length === 0 && (
-                  <p className="text-xs font-semibold text-amber-400">No active divisions are available. Add or reactivate a division in Company Areas & Divisions.</p>
-                )}
-              </div>
             </div>
-
-            {formData.division && divisions.filter(d => d.is_subdivision && d.parent_division === formData.division && d.active !== false).length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="subdivision">Division / Operating Area</Label>
-                <select
-                  id="subdivision"
-                  value={formData.subdivision || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, subdivision: e.target.value}))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">None</option>
-                  {formData.subdivision && !divisions.some(d => d.is_subdivision && d.parent_division === formData.division && (d.subdivision || d.division_name) === formData.subdivision) && (
-                    <option value={formData.subdivision}>{formData.subdivision} (current)</option>
-                  )}
-                  {divisions
-                    .filter(d => d.is_subdivision && d.parent_division === formData.division && d.active !== false)
-                    .map((div) => (
-                      <option key={div.id} value={div.subdivision || div.division_name}>{div.subdivision || div.division_name}</option>
-                    ))}
-                </select>
-              </div>
-            )}
-
-            {formData.division && formData.subdivision && (
-              <div className="space-y-2">
-                <Label htmlFor="substation">Substation</Label>
-                <select
-                  id="substation"
-                  value={formData.substation || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, substation: e.target.value}))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">None</option>
-                  {formData.substation && !substationOptions.includes(formData.substation) && (
-                    <option value={formData.substation}>{formData.substation} (current)</option>
-                  )}
-                  {substationOptions.map(name => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-                {substationOptions.length === 0 && (
-                  <p className="text-xs font-semibold text-amber-400">No substations exist under {formData.subdivision} yet. Add one in Company Structure.</p>
-                )}
-              </div>
-            )}
+            <div className="space-y-2 rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+              <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-bold text-white">Update location division</h3><Button type="button" size="sm" variant="ghost" onClick={() => { invalidateAppDirectory(); refetchDivisions(); }} className="h-8 px-2 text-xs">Refresh divisions</Button></div>
+              <OrgAssignmentFields divisions={divisions} value={formData} includeSubstation onChange={next => setFormData(prev => ({ ...prev, division: next.division, subdivision: next.subdivision, substation: next.substation }))} />
+              {divisionsError && <p role="alert" className="text-xs text-red-300">Unable to load Company Structure: {divisionsError.message}</p>}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="time_zone">Location Time Zone</Label>
