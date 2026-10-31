@@ -1,4 +1,4 @@
-import { rankLevel } from './rankPolicy';
+import { rankLevel } from './rankPolicy.js';
 const norm=value=>String(value||'').trim().toLowerCase();
 const numeric=value=>Number(value)>0&&Number.isFinite(Number(value))?Number(value):Number.MAX_SAFE_INTEGER;
 // Read-only preview of updateUser/autoReporting.ts. Backend owns the saved
