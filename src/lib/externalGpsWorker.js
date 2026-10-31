@@ -131,12 +131,18 @@ async function selectGrantedPort(selector = {}) {
   return ports.find(port => portMatches(port, selector)) || null;
 }
 
+const recoverableSerialError = error => /framing|parity|buffer.?overrun|break.?error/i.test(String(error?.name || '')+' '+String(error?.message || ''));
 async function readLoop(port, localGeneration) {
   const decoder = new TextDecoder();
+  let recentErrors=0;
+  let windowStart=Date.now();
   try {
+    // Chromium replaces port.readable after nonfatal framing/parity errors.
+    // Re-acquire a reader on the new stream instead of dropping the COM port.
     while (activePort === port && localGeneration === generation && port.readable) {
       const reader = port.readable.getReader();
       activeReader = reader;
+      let recoverable=false;
       try {
         while (activePort === port && localGeneration === generation) {
           const { value, done } = await reader.read();
@@ -145,21 +151,39 @@ async function readLoop(port, localGeneration) {
             lastDataNoticeAt = Date.now();
             self.postMessage({ type: 'data' });
           }
+          if (value?.byteLength) { recentErrors=0; windowStart=Date.now(); }
           lineBuffer += decoder.decode(value, { stream: true });
           const lines = lineBuffer.split(/\r\n|\n|\r/);
           lineBuffer = (lines.pop() || '').slice(-4096);
           lines.forEach(handleSentence);
         }
+      } catch(error) {
+        if (!(activePort === port && localGeneration === generation) || !port.readable || !recoverableSerialError(error)) throw error;
+        recoverable=true;
+        lineBuffer='';
+        const now=Date.now();
+        if(now-windowStart>30000){recentErrors=0;windowStart=now;}
+        recentErrors++;
+        if(recentErrors===3 || recentErrors===8){
+          self.postMessage({ type:'read_warning', code:'SERIAL_FRAMING',
+            message:'GPS serial framing errors detected. Pathfinder is recovering the data stream automatically. If this continues, match the receiver baud rate (4800, 9600, 38400 or 115200) in GPS settings.' });
+        }
+        // Avoid hammering a damaged or mismatched serial stream.
+        await new Promise(resolve=>setTimeout(resolve,Math.min(2000,150*recentErrors)));
       } finally {
         try { reader.releaseLock(); } catch (_) {}
         if (activeReader === reader) activeReader = null;
       }
-      if (activePort === port && localGeneration === generation) break;
+      if (!recoverable) break;
     }
   } catch (error) {
     if (activePort === port && localGeneration === generation) {
-      self.postMessage({ type: 'status', connected: false, error: error?.message || 'External GPS receiver disconnected.' });
+      self.postMessage({ type:'status', connected:false,
+        error: error?.message || 'External GPS receiver disconnected.' });
     }
+  }
+  if(activePort===port && localGeneration===generation && !port.readable){
+    self.postMessage({type:'status',connected:false,error:'GPS serial stream disconnected. Automatic reconnect will retry the approved antenna.'});
   }
 }
 

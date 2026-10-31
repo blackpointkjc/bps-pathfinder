@@ -231,6 +231,10 @@ function ensureSerialWorker() {
       if (!state.lastDataAt || Date.now() - Date.parse(state.lastDataAt) > 4000) emit({ lastDataAt: new Date().toISOString() });
       return;
     }
+    if (data.type === 'read_warning' && data.code === 'SERIAL_FRAMING') {
+      emit({ connected:true, connecting:false, error:String(data.message||'GPS serial data is being recovered.') });
+      return;
+    }
     if (data.type === 'fix' && data.fix) {
       publishLiveLocation(data.fix);
       lastSerialDataAt = Date.now();
@@ -444,36 +448,54 @@ function handleSentence(sentence) {
   });
 }
 
+const recoverableSerialError = error => /framing|parity|buffer.?overrun|break.?error/i.test(String(error?.name || '')+' '+String(error?.message || ''));
 async function readLoop(port, generation) {
-  const decoder = new TextDecoder();
+  const decoder=new TextDecoder();
+  let recentErrors=0;
+  let windowStart=Date.now();
   try {
     while (activePort === port && generation === readGeneration && port.readable) {
       const reader = port.readable.getReader();
       activeReader = reader;
+      let recoverable=false;
       try {
         while (activePort === port && generation === readGeneration) {
           const { value, done } = await reader.read();
           if (done) break;
           if (value?.byteLength) {
             lastSerialDataAt = Date.now();
-            if (!state.lastDataAt || lastSerialDataAt - Date.parse(state.lastDataAt) > 4000) emit({ lastDataAt: new Date().toISOString() });
+            recentErrors=0;
+            windowStart=Date.now();
+            if (!state.lastDataAt || lastSerialDataAt - Date.parse(state.lastDataAt) > 4000) emit({ lastDataAt: new Date().toISOString(), error:'' });
           }
           lineBuffer += decoder.decode(value, { stream: true });
           const lines = lineBuffer.split(/\r\n|\n|\r/);
           lineBuffer = (lines.pop() || '').slice(-4096);
           lines.forEach(handleSentence);
         }
+      } catch (error) {
+        if (!(activePort === port && generation === readGeneration) || !port.readable || !recoverableSerialError(error)) throw error;
+        recoverable=true;
+        lineBuffer='';
+        const now=Date.now();
+        if(now-windowStart>30000){recentErrors=0;windowStart=now;}
+        recentErrors++;
+        if(recentErrors===3 || recentErrors===8){
+          emit({ connected:true, error:'GPS framing errors detected; recovering the serial stream. If repeated, verify the antenna baud rate in GPS settings.' });
+        }
+        await delay(Math.min(2000,150*recentErrors));
       } finally {
         try { reader.releaseLock(); } catch (_) {}
         if (activeReader === reader) activeReader = null;
       }
-      if (activePort === port && generation === readGeneration) break;
+      if(!recoverable)break;
     }
-  } catch (error) {
-    if (activePort === port && generation === readGeneration) {
-      emit({ connected: false, connecting: false, error: error?.message || 'External GPS receiver disconnected.' });
-    }
+  } catch(error){
+    if(activePort===port && generation===readGeneration)
+      emit({ connected:false, connecting:false, error:error?.message||'External GPS receiver disconnected.' });
   }
+  if(activePort===port && generation===readGeneration && !port.readable)
+    emit({ connected:false,connecting:false,error:'GPS serial stream disconnected. Automatic reconnect will retry the approved antenna.' });
 }
 
 async function closeCurrentPort() {
