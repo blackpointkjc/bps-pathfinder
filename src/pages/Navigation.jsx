@@ -2008,7 +2008,7 @@ export default function Navigation() {
                             <div>Serial data: {externalReceiver.lastDataAt && gpsStatusClock - Date.parse(externalReceiver.lastDataAt) < 15000 ? 'Receiving bytes' : 'No recent data received'}</div>
                             <div>Satellite fix: {externalReceiver.lastFixAt && gpsStatusClock - Date.parse(externalReceiver.lastFixAt) < 30000 ? 'Received, but not yet usable for navigation' : 'No recent valid position'}</div>
                             {externalReceiver.satellites != null && <div>Satellites: {externalReceiver.satellites}</div>}
-                            {externalReceiver.error && <div className="mt-1 text-red-200">{externalReceiver.error}</div>}
+                            {externalReceiver.error && <div className="mt-1 font-bold text-amber-200">{externalReceiver.error}</div>}
                             <div className="mt-1 text-amber-200/80">{!externalReceiver.connected ? 'Select the GPS receiver again.' : !externalReceiver.lastDataAt || gpsStatusClock - Date.parse(externalReceiver.lastDataAt) >= 15000 ? 'Port is open but GPS data is silent. Check the selected COM port and baud rate in the GPS menu.' : 'Serial bytes are arriving. If a fix never appears, check satellite reception or the receiver NMEA protocol.'}</div>
                             <button type="button" onClick={recoverExternalReceiver} disabled={gpsRecovering} className="mt-2 rounded-md border border-cyan-500 bg-cyan-900 px-3 py-2 font-semibold text-white disabled:opacity-50">{gpsRecovering ? 'Connecting…' : 'Reconnect / Select Antenna'}</button>
                         </details>

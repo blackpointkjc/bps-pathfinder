@@ -1651,7 +1651,8 @@ export default function Layout({ children, currentPageName }) {
                     {externalGps.connected && externalGps.lastDataAt && <span>Last antenna data: {Math.max(0,Math.floor((Date.now() - Date.parse(externalGps.lastDataAt))/1000))}s ago</span>}
                     {externalGps.lockedToAntenna && <span className="text-cyan-300">Locked to saved antenna</span>}
                   </div>
-                  {externalGps.error && <div className="mt-2 rounded-md border border-red-800/60 bg-red-950/40 px-2 py-1.5 text-[9px] font-bold text-red-200">{externalGps.error}</div>}
+                  {externalGps.error && <div role="status" className="mt-2 rounded-md border border-amber-700/70 bg-amber-950/40 px-2 py-1.5 text-[10px] font-bold text-amber-100">{externalGps.error}</div>}
+                  {externalGps.error && /framing|parity|serial data/i.test(externalGps.error) && <div className="mt-1 text-[10px] text-slate-300">Pathfinder will retry the data reader automatically. If no valid satellite fix returns, select the antenna's actual baud rate below. Do not assume the open COM port means valid GPS data.</div>}
                 </div>
 
                 <div className="space-y-2 p-3">

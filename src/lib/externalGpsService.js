@@ -94,7 +94,7 @@ function emit(patch = {}) {
 function storedBaud() {
   try {
     const value = Number(localStorage.getItem(STORAGE_BAUD_KEY));
-    return [4800, 9600, 38400].includes(value) ? value : DEFAULT_BAUD;
+    return [4800, 9600, 38400, 115200].includes(value) ? value : DEFAULT_BAUD;
   } catch {
     return DEFAULT_BAUD;
   }
