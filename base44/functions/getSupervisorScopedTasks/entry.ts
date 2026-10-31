@@ -28,6 +28,20 @@ const normalizeRank = (value:any) => {
   return rank === 'lieutenant colonel' ? 'lt colonel' : rank;
 };
 const rankLevel = (user:any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
+// Server-enforced geographic responsibility. Lieutenant+ oversees the
+// operating division; First Sergeant and below is limited to the substation.
+// Administrative/full-access personnel retain company-wide access.
+const withinSupervisorArea = (supervisor:any, officer:any) => {
+  const rank = normalizeRank(supervisor.rank);
+  const senior = ['colonel','lt colonel','major','captain','lieutenant'].includes(rank);
+  if (!normalized(supervisor.division) || !normalized(supervisor.subdivision)) return false;
+  if (normalized(officer.division) !== normalized(supervisor.division)
+      || normalized(officer.subdivision) !== normalized(supervisor.subdivision)) return false;
+  if (senior) return true;
+  return Boolean(normalized(supervisor.substation) && normalized(officer.substation)
+    && normalized(supervisor.substation) === normalized(officer.substation));
+};
+
 const reviewerOutranks = (reviewer:any, officer:any) => {
   const reviewerLevel = rankLevel(reviewer);
   const officerLevel = rankLevel(officer);
@@ -277,6 +291,10 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (me.role !== 'admin' && !roles.has('full_access')) {
+      assigned = assigned.filter((person:any) => withinSupervisorArea(me, person));
+    }
+
     const aliasesByUser = new Map<string, Set<string>>();
     for (const person of assigned) aliasesByUser.set(String(person.id), new Set([normalized(person.email)].filter(Boolean)));
     for (const link of teamsLinks || []) {
@@ -302,6 +320,7 @@ Deno.serve(async (req) => {
       unit_number:u.unit_number,
       platoon:u.platoon,
       supervisor_id:u.supervisor_id,
+      division:u.division || '', subdivision:u.subdivision || '', substation:u.substation || '',
     }));
     if (request?.peopleOnly) return Response.json({ assignedPeople });
 
@@ -383,13 +402,13 @@ Deno.serve(async (req) => {
       const stage = String(r.workflow_stage || (r.supervisor_review_pending ? 'supervisor_pending' : ''));
       if (stage !== 'supervisor_pending' || r.supervisor_review_completed) return false;
       const officer = officerForReview(r);
-      if (!officer || !reviewerOutranks(me, officer)) return false;
+      if (!officer || !reviewerOutranks(me, officer) || !isAssigned(officer.email)) return false;
       return String(r.assigned_supervisor_id || '') === String(me.id || '');
     }).filter((row:any) => !completedSupervisorKeys.has(`review-${row.id}`));
     const visibleReviewFollowUps = (reviews || []).filter((r:any) => {
       if (String(r.workflow_stage || '') !== 'officer_pending' || r.officer_acknowledged) return false;
       const officer = officerForReview(r);
-      if (!officer || !reviewerOutranks(me, officer)) return false;
+      if (!officer || !reviewerOutranks(me, officer) || !isAssigned(officer.email)) return false;
       return String(r.assigned_supervisor_id || '') === String(me.id || '');
     }).filter((row:any) => !completedSupervisorKeys.has(`review-followup-${row.id}`));
 
