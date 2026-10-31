@@ -276,3 +276,33 @@
   .pf-navigation-workspace .pf-map-search-panel .pf-address-search-heading { padding-block: 3px; }
   .pf-navigation-workspace .pf-map-search-panel .pf-address-search-heading button { min-height: 36px !important; }
 }
+
+/* Compact navigation search across desktops, tablets, and small phones.
+   The search dialog itself scrolls; no 90-day history or huge fixed panel may
+   push the selected destination action off screen. */
+.pf-navigation-workspace .pf-map-search-panel {
+  max-height: min(68dvh, calc(100dvh - 125px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: auto;
+  bottom: auto;
+  overscroll-behavior: contain;
+}
+.pf-navigation-workspace .pf-map-search-panel > .pf-selected-destination { flex-shrink: 0; }
+.pf-navigation-workspace .pf-map-search-panel .pf-address-results { max-height: 180px; flex: 0 1 auto; }
+.pf-navigation-workspace .pf-map-search-panel .pf-recent-destinations { max-height: 125px; flex: 0 1 auto; }
+.pf-navigation-workspace .pf-map-search-panel .pf-manual-origin summary { min-height: 28px; }
+@media (max-width: 767px) {
+  .pf-navigation-workspace .pf-map-search-panel,
+  .pf-navigation-workspace .pf-map-search-panel.pf-search-routing {
+    top: 62px !important;
+    bottom: auto;
+    left: 7px;
+    right: 7px;
+    width: auto;
+    max-height: min(67dvh, calc(100dvh - 115px));
+    overflow-y: auto;
+    transform: none;
+  }
+  .pf-navigation-workspace .pf-map-search-panel > .pf-selected-destination { order: 0; }
+}

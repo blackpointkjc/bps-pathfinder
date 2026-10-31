@@ -2,7 +2,6 @@ import MapToolDock from '@/components/map/MapToolDock';
 import MapCallPanel from '@/components/map/MapCallPanel';
 import '@/components/map/mapWorkspace.css';
 import { createPortal } from 'react-dom';
-import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { readRecentDestinations, rememberDestination } from '@/lib/recentDestinations';
 import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
 import { observeElementSize } from '@/lib/observeElementSize';
@@ -1923,11 +1922,12 @@ export default function Navigation() {
                             <Search className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'SEARCH'}
                         </button>
                     </form>
-                    <div className="pf-manual-origin mt-2 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
-                        <label className="block pb-2 font-semibold">Starting address (when GPS is unavailable)</label>
-                        <input value={manualOriginQuery} onChange={event => setManualOriginQuery(event.target.value)} placeholder="Enter your starting address if GPS is unavailable" className="mt-1 h-10 w-full rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500" />
-                        <span className="mt-1 block text-[10px] text-slate-400">No GPS? Enter a starting address, select any destination, then tap Navigate Here for a TomTom route preview. Live driving updates require a valid GPS fix.</span>
-                    </div>
+                    <details className="pf-manual-origin mt-2 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
+                        <summary className="cursor-pointer font-semibold text-amber-200">{isLiveTracking ? 'Set a different starting address' : 'No GPS fix · Enter a starting address for route preview'}</summary>
+                        <label htmlFor="pf-manual-origin-input" className="mt-2 block pb-1 font-semibold">Starting address</label>
+                        <input id="pf-manual-origin-input" value={manualOriginQuery} onChange={event => setManualOriginQuery(event.target.value)} placeholder="Street, city, state, ZIP" className="h-10 w-full rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500" />
+                        <span className="mt-1 block text-[10px] text-slate-400">Route previews do not require GPS. Live turn-by-turn guidance needs an accurate receiver fix.</span>
+                    </details>
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         <button type="button" onClick={() => showHomeLocation()} disabled={addressSearching || isNavigating}
                             className="flex items-center justify-center gap-1.5 rounded-lg border border-cyan-600/50 bg-cyan-950/70 px-3 py-2 text-[10px] font-black text-cyan-100 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-40">
@@ -1961,8 +1961,8 @@ export default function Navigation() {
                         <div className="mt-2 text-[10px] text-slate-500">Add your address, city, state, and ZIP in your Pathfinder profile to enable Home navigation.</div>
                     )}
                     {!isLiveTracking && (externalReceiver.connected || externalReceiver.portGranted || externalReceiver.connecting) && (
-                        <div className="mt-2 rounded-lg border border-amber-600/50 bg-amber-950/40 p-3 text-xs text-amber-100" role="status">
-                            <div className="font-bold">External antenna diagnostics</div>
+                        <details className="mt-2 rounded-lg border border-amber-600/50 bg-amber-950/40 p-2 text-xs text-amber-100">
+                            <summary className="cursor-pointer font-bold">GPS antenna status · {externalReceiver.connected ? 'Connected' : 'Not connected'} · {externalReceiver.lastFixAt && gpsStatusClock - Date.parse(externalReceiver.lastFixAt) < 30000 ? 'Fix received' : 'No current fix'}</summary>
                             <div className="mt-1">COM port: {externalReceiver.connected ? 'Open' : externalReceiver.connecting ? 'Connecting' : 'Not connected'} · Baud: {externalReceiver.baudRate || 4800}</div>
                             <div>Serial data: {externalReceiver.lastDataAt && gpsStatusClock - Date.parse(externalReceiver.lastDataAt) < 15000 ? 'Receiving bytes' : 'No recent data received'}</div>
                             <div>Satellite fix: {externalReceiver.lastFixAt && gpsStatusClock - Date.parse(externalReceiver.lastFixAt) < 30000 ? 'Received, but not yet usable for navigation' : 'No recent valid position'}</div>
@@ -1970,7 +1970,7 @@ export default function Navigation() {
                             {externalReceiver.error && <div className="mt-1 text-red-200">{externalReceiver.error}</div>}
                             <div className="mt-1 text-amber-200/80">{!externalReceiver.connected ? 'Select the GPS receiver again.' : !externalReceiver.lastDataAt || gpsStatusClock - Date.parse(externalReceiver.lastDataAt) >= 15000 ? 'Port is open but GPS data is silent. Check the selected COM port and baud rate in the GPS menu.' : 'Serial bytes are arriving. If a fix never appears, check satellite reception or the receiver NMEA protocol.'}</div>
                             <button type="button" onClick={recoverExternalReceiver} disabled={gpsRecovering} className="mt-2 rounded-md border border-cyan-500 bg-cyan-900 px-3 py-2 font-semibold text-white disabled:opacity-50">{gpsRecovering ? 'Connecting…' : 'Reconnect / Select Antenna'}</button>
-                        </div>
+                        </details>
                     )}
                     {addressSearchError && (
                         <div role="alert" className="mt-2 rounded-lg border border-amber-500/60 bg-amber-950/70 p-3 text-xs text-amber-100">{addressSearchError}</div>
@@ -1980,7 +1980,7 @@ export default function Navigation() {
                         {recentDestinations.map(item => <button type="button" key={item.key} onClick={() => { setMapSelectedDestination(item); setAddressQuery(item.address || item.name); }} className="block min-h-11 w-full border-b border-slate-800 py-2 text-left text-sm text-white"><strong className="block">{item.name}</strong><span className="block text-xs text-slate-300">{item.address}</span><span className="text-xs text-slate-400">Last routed {new Date(item.visitedAt).toLocaleString()}</span></button>)}
                     </div>}
                     {mapSelectedDestination && (
-                        <div className="mt-2 rounded-xl border border-emerald-500/50 bg-[#071b19]/95 p-3 shadow-lg">
+                        <div className="pf-selected-destination mt-2 rounded-xl border border-emerald-500/50 bg-[#071b19]/95 p-3 shadow-lg">
                             <div className="flex items-start gap-2">
                                 <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
                                 <div className="min-w-0 flex-1">
@@ -1988,9 +1988,9 @@ export default function Navigation() {
                                     <div className="mt-1 text-sm font-bold text-white">{mapSelectedDestination.name}</div>{mapSelectedDestination.address !== mapSelectedDestination.name && <div className="mt-1 text-xs leading-relaxed text-slate-300">{mapSelectedDestination.address}</div>}
                                 </div>
                             </div>
-                            {(mapSelectedDestination.locationId || /^\d+[a-z]?\s+\S/i.test(mapSelectedDestination.address || mapSelectedDestination.name || "")) ? <AddressCallHistory address={mapSelectedDestination.address || mapSelectedDestination.name} propertyId={mapSelectedDestination.locationId} /> : <p className="mt-2 text-xs text-slate-300">Call history requires a street address. You can still navigate to this pin.</p>}
+
                             <button type="button" onClick={() => startNavigationToPoint(mapSelectedDestination)} disabled={routing}
-                                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-600 disabled:opacity-50">
+                                className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-600 disabled:opacity-50">
                                 <Navigation2 className="h-4 w-4" /> NAVIGATE HERE
                             </button>
                         </div>
