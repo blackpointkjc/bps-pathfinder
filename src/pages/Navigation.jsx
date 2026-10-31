@@ -34,7 +34,7 @@ import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveD
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations, lookupNavigationPoint } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
-import { getExternalGpsStatus, startExternalGpsAutoReconnect } from '@/lib/externalGpsService';
+import { getExternalGpsStatus, startExternalGpsAutoReconnect, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
 const TomTomSdkMapPreview = lazy(() => import('@/components/map/TomTomSdkMapPreview'));
@@ -93,6 +93,8 @@ export default function Navigation() {
     // explicitly opt in to camera-follow.
     const [followMyLocation, setFollowMyLocation] = useState(false);
     const [gpsQuality, setGpsQuality] = useState({ state: 'acquiring', accuracy: null });
+    const [externalReceiver, setExternalReceiver] = useState(() => getExternalGpsStatus());
+    useEffect(() => subscribeExternalGpsStatus(status => setExternalReceiver(status)), []);
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [heading, setHeading] = useState(null);
     const [speed, setSpeed] = useState(0);
@@ -1806,7 +1808,7 @@ export default function Navigation() {
                     callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
                     criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
-                    gpsLabel={!isLiveTracking && (getExternalGpsStatus().connected || getExternalGpsStatus().connecting) ? (getExternalGpsStatus().lastFixAt ? 'External antenna connected · Waiting for fresh satellite fix' : 'External antenna connected · No satellite fix yet') : !isLiveTracking && getExternalGpsStatus().portGranted ? 'External antenna authorized · Reconnecting receiver' : isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
+                    gpsLabel={!isLiveTracking && (externalReceiver.connected || externalReceiver.connecting) ? (externalReceiver.lastFixAt ? 'External antenna connected · Waiting for fresh satellite fix' : 'External antenna connected · No satellite fix yet') : !isLiveTracking && externalReceiver.portGranted ? 'External antenna authorized · Reconnecting receiver' : isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
 
             </div>
