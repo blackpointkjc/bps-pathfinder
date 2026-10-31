@@ -332,8 +332,7 @@ export default function CorporateBrowser() {
                 })}
               </ul>
               <p className="mt-3 border-t border-slate-800 pt-2 text-[11px] leading-5 text-slate-500">
-                Locked down: private browsing, guest sessions, unapproved extensions, DNS and proxy changes, and clearing
-                security audit records.
+These permissions describe Pathfinder's browsing policy. Device-wide incognito, extensions, DNS, external browsers and download restrictions require separate managed-device or secure-web-gateway enforcement.
               </p>
             </section>
           </aside>
@@ -341,7 +340,7 @@ export default function CorporateBrowser() {
 
         <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-[11px] text-slate-500">
           <span className="inline-flex items-center gap-1.5">
-            <Send className="h-3.5 w-3.5" /> Company browsing policy enforced · activity is logged for security review
+            <Send className="h-3.5 w-3.5" /> Pathfinder policy checks are logged; external websites need managed-device controls for full enforcement
           </span>
           <span>Approved search only · {policy?.name || 'no profile'}</span>
         </footer>
