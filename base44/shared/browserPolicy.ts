@@ -208,6 +208,14 @@ export function resolvePolicy(policies = [], user = {}) {
     .filter(Boolean)
     .map(role => String(role).toLowerCase()));
 
+  // A verified Pathfinder administrator receives the administrator browsing
+  // profile even before a separate BrowserPolicy record has been configured.
+  // Only the authenticated user roles supplied by the backend may grant this.
+  if (roles.has('admin')) {
+    const configured = active.find(item => item.profile === 'admin_access' && (item.assigned_roles || []).some(role => String(role).toLowerCase() === 'admin'));
+    return { policy: configured || { name: 'Administrator Access', profile: 'admin_access', active: true, safe_search: true, ...profileDefaults('admin_access') }, basis: 'Administrator role' };
+  }
+
   const personal = active.find(item => (item.assigned_emails || []).some(value => String(value).toLowerCase() === email));
   if (personal) return { policy: personal, basis: 'Personal assignment' };
 
