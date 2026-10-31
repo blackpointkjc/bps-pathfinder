@@ -125,6 +125,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Vite's development and hot-reload modules must come only from the live
+  // preview server, never from an offline cache of an older module graph.
+  if (url.pathname.startsWith('/src/') || url.pathname.startsWith('/@vite/')
+      || url.pathname.startsWith('/@react-refresh')
+      || url.pathname.startsWith('/node_modules/.vite/')
+      || url.searchParams.has('t') || url.searchParams.has('v')) return;
   if (url.origin !== self.location.origin || !isCacheablePath(url.pathname)) return;
 
   if (isNavigationRequest(request)) {

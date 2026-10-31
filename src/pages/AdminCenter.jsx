@@ -1,18 +1,11 @@
-import SupervisorScheduleWorkspace from '@/components/SupervisorScheduleWorkspace';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
-import SchedulingWorkspace from '@/components/admin/workspaces/SchedulingWorkspace';
-import AssetsWorkspace from '@/components/admin/workspaces/AssetsWorkspace';
 import ManageClients from './ManageClients';
-import AdminOperationsWorkbench from '@/components/AdminOperationsWorkbench';
 import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, GraduationCap, MessageCircle, Radio, Settings, Shield, Users } from 'lucide-react';
-import UnifiedCenter from '@/components/UnifiedCenter';
-import AdminUserPreviewPicker from '@/components/AdminUserPreviewPicker';
-import CenterToolSection from '@/components/CenterToolSection';
 import AdminDashboard from './AdminDashboard';
 import AdminAnalytics from './AdminAnalytics';
 import AdminLocationTracker from './AdminLocationTracker';
@@ -59,6 +52,14 @@ import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { setClientPreviewId } from '@/utils/clientPreview';
 import { setOfficerPreviewId } from '@/utils/officerPreview';
+
+const SupervisorScheduleWorkspace = lazy(() => import(''@/components/SupervisorScheduleWorkspace''));
+const SchedulingWorkspace = lazy(() => import(''@/components/admin/workspaces/SchedulingWorkspace''));
+const AssetsWorkspace = lazy(() => import(''@/components/admin/workspaces/AssetsWorkspace''));
+const AdminOperationsWorkbench = lazy(() => import(''@/components/AdminOperationsWorkbench''));
+const UnifiedCenter = lazy(() => import(''@/components/UnifiedCenter''));
+const AdminUserPreviewPicker = lazy(() => import(''@/components/AdminUserPreviewPicker''));
+const CenterToolSection = lazy(() => import(''@/components/CenterToolSection''));
 
 const MASTER_SECTIONS = [
   { id: 'admin', label: 'Administration', description: 'Administration-only command, scheduling, personnel, reports and system controls', icon: Settings },

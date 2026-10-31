@@ -30,7 +30,18 @@ installDailyCacheRotation()
 
 // Offline mode is automatic: the worker registers on its own, saves the pages
 // this device has opened, and takes over as soon as the network drops.
-if ('serviceWorker' in navigator) {
+const isBuilderPreview = /^(?:preview-sandbox--|preview--)/i.test(window.location.hostname)
+  || window.location.hostname.endsWith('.base44.app') && window.location.hostname.startsWith('preview-');
+// Preview serves live Vite/HMR module URLs. An offline service worker must not
+// cache these: a stale transformed module mixed with a newer dependency can
+// cause "Failed to fetch dynamically imported module" in Admin Center.
+if (isBuilderPreview && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then(registrations=>Promise.all(registrations
+      .filter(reg=>reg.active?.scriptURL?.includes('/pathfinder-sw.js'))
+      .map(reg=>reg.unregister()))).catch(()=>{});
+}
+if (!isBuilderPreview && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/pathfinder-sw.js', { scope: '/' })
