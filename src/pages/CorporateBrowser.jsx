@@ -88,17 +88,8 @@ export default function CorporateBrowser() {
     if (!url || url === 'https://') return;
     setBusyDomain(rawValue);
     try {
-      if (allowedHint) {
-        const tab = window.open(url, '_blank', 'noopener,noreferrer');
-        checkMutation.mutate({ url, source });
-        if (!tab) {
-          setDenied({
-            url,
-            decision: { allowed: true, domain: rawValue, reason: 'Allow pop-ups for this app to open approved websites in a new tab.' },
-          });
-        }
-        return;
-      }
+      // Never trust a search-result hint: recheck the current server policy
+      // before offering any external link, including when rules changed.
       const data = await checkMutation.mutateAsync({ url, source });
       setDenied({ url, decision: data?.decision });
     } catch (error) {
