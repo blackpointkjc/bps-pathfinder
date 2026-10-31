@@ -162,6 +162,18 @@ export const MANDATORY_NON_ADMIN_DOMAINS = Object.freeze([
   ...CATEGORY_DOMAINS.malicious,
 ]);
 
+export function mandatoryRestrictionsOverview() {
+  return MANDATORY_NON_ADMIN_CATEGORIES.map(category => ({
+    key: category,
+    label: CATEGORY_LABELS[category] || category,
+    domain_count: (CATEGORY_DOMAINS[category] || []).length,
+    sample_domains: (CATEGORY_DOMAINS[category] || []).slice(0, 14),
+    scope: 'All non-admin accounts',
+    source: 'Automatic company security baseline',
+    overrideable: false,
+  }));
+}
+
 export const SEARCH_ENGINE_LABEL = 'Pathfinder Approved Search';
 
 export function normalizeDomain(input) {

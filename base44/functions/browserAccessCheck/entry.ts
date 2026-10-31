@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { loadBrowserContext, checkDestination, buildDirectory, logActivity } from '../../shared/browserContext.ts';
-import { extractDomain } from '../../shared/browserPolicy.ts';
+import { extractDomain, mandatoryRestrictionsOverview } from '../../shared/browserPolicy.ts';
 
 // Resolves the employee's managed browsing profile and, when a destination is
 // supplied, decides whether it may be opened and records the request.
@@ -20,6 +20,7 @@ export default async function(req: Request): Promise<Response> {
     const base = {
       policy: context.summary,
       directory: buildDirectory(context),
+      mandatory_restrictions: context.user.role === 'admin' ? mandatoryRestrictionsOverview() : undefined,
     };
 
     if (!target) {

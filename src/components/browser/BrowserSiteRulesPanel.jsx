@@ -10,6 +10,13 @@ export default function BrowserSiteRulesPanel() {
   const [form, setForm] = useState({ domain: '', rule_type: 'allow', category: '', scope: 'all', role: '', user_email: '', note: '', expires_at: '' });
   const [error, setError] = useState('');
 
+  const { data: companyPolicy } = useQuery({
+    queryKey: ['browserMandatoryRestrictions'],
+    queryFn: async () => (await base44.functions.invoke('browserAccessCheck', {})).data,
+    staleTime: 60000,
+  });
+  const mandatory = companyPolicy?.mandatory_restrictions || [];
+
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['browserSiteRules'],
     queryFn: async () => {
@@ -61,9 +68,22 @@ export default function BrowserSiteRulesPanel() {
 
   return (
     <div className="space-y-3">
+      <section className="rounded-xl border border-amber-700/70 bg-amber-950/20 p-4">
+        <h2 className="text-sm font-bold text-amber-100">Automatic company-wide website restrictions</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-300">These blocks are preloaded and enforced by the server for every non-admin employee, including Supervisor, HR, Officer and Full Access. Only actual Admin accounts are exempt. Employee allowlists and approved website requests cannot disable these mandatory categories.</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {mandatory.map(item => <div key={item.key} className="rounded-lg border border-slate-700 bg-slate-950/70 p-3">
+            <div className="flex items-center justify-between gap-2"><strong className="text-xs text-white">{item.label}</strong><span className="text-[10px] text-amber-200">Always blocked</span></div>
+            <p className="mt-1 text-[11px] text-slate-400">{item.domain_count} known domains · Includes subdomains</p>
+            <p className="mt-1 break-words text-[11px] leading-5 text-slate-300">{item.sample_domains.join(' · ')}</p>
+          </div>)}
+        </div>
+        {mandatory.length === 0 && <p className="mt-2 text-xs text-amber-200">Restriction list not loaded. Refresh the page to inspect the server configuration.</p>}
+        <p className="mt-3 text-[11px] text-slate-400">These restrictions apply to Pathfinder's controlled search and access checks. Network-wide blocking and high-bandwidth traffic throttling require a secure web gateway or managed-device DNS policies.</p>
+      </section>
       <div>
         <h2 className="text-sm font-bold text-white">Allowlist &amp; blocklist</h2>
-        <p className="text-xs text-slate-400">An explicit block always wins. Temporary grants can expire automatically.</p>
+        <p className="text-xs text-slate-400">Custom allow and block rules below supplement the automatic company baseline; mandatory categories cannot be overridden for non-admin users.</p>
       </div>
 
       <form onSubmit={submit} className="grid gap-2 rounded-xl border border-slate-700 bg-slate-900 p-3 md:grid-cols-6">
