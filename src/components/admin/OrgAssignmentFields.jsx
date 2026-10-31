@@ -31,7 +31,7 @@ export default function OrgAssignmentFields({ divisions = [], value = {}, onChan
       </select>
     </label>
     {includeSubstation && <label className="min-w-0 space-y-1"><span className="block text-xs font-semibold text-slate-200">Substation</span>
-      <select aria-label="Location substation" className={selectorClass} value={substation} disabled={disabled || !division} onChange={event => change({ substation: event.target.value })}>
+      <select aria-label="Assignment substation" className={selectorClass} value={substation} disabled={disabled || !division} onChange={event => change({ substation: event.target.value })}>
         <option value="">{division ? 'No substation' : 'Choose division first'}</option>{option(substation, substations)}
         {substations.map(name => <option key={name} value={name}>{name}</option>)}
       </select>

@@ -142,6 +142,6 @@ export function officerOrgContext(user = {}, locations = []) {
   const site = (locations || []).find(location => names.has(lower(location?.site_name)));
   const division = text(user.division) || text(site?.division);
   const subdivision = text(user.subdivision) || text(site?.subdivision);
-  const substation = text(site?.substation);
+  const substation = text(user.substation) || text(site?.substation);
   return { division, subdivision, substation, site_name: text(site?.site_name), path: orgPathLabel({ division, subdivision, substation }) };
 }

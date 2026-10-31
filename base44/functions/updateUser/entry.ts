@@ -60,10 +60,19 @@ Deno.serve(async (req) => {
         }
         const updatePayload: Record<string, unknown> = {};
         if (oooFields.some(field => updates[field] !== undefined)) updatePayload.out_of_office_source='manual';
-        const fields = ['out_of_office','out_of_office_start','out_of_office_return','first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','subdivision','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','ssn','date_of_birth','address','city','state','zip','hire_date','termination_date','employment_status','hourly_rate','overtime_rate_override','holiday_rate_override','work_state','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','profile_photo_url','profile_photo_original_url','officer_certifications'];
+        const fields = ['out_of_office','out_of_office_start','out_of_office_return','first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','subdivision','substation','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','ssn','date_of_birth','address','city','state','zip','hire_date','termination_date','employment_status','hourly_rate','overtime_rate_override','holiday_rate_override','work_state','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','profile_photo_url','profile_photo_original_url','officer_certifications'];
         for (const f of fields) {
             if (updates[f] !== undefined) updatePayload[f] = updates[f];
         }
+
+        // Maintain the Region -> Division -> Substation chain. Senior command
+        // (Lieutenant and above) is division/platoon oversight only; lower
+        // field ranks may receive a direct substation posting.
+        const seniorRanks = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'];
+        const targetRank = String(updatePayload.rank || target.rank || '').trim().toLowerCase();
+        if (seniorRanks.includes(targetRank)) updatePayload.substation = '';
+        if (updatePayload.division === '' || updatePayload.subdivision === '') updatePayload.substation = '';
+        if (updatePayload.division === '') updatePayload.subdivision = '';
 
         if (updatePayload.oversight_platoon !== undefined) {
             if (!['A','B',''].includes(String(updatePayload.oversight_platoon))) return Response.json({error:'Platoon oversight must be A or B'},{status:400});
@@ -138,7 +147,7 @@ Deno.serve(async (req) => {
         // Confirm edits to identity/contact/onboarding fields reached persistent User.
         // A successful SDK call alone is not proof that every field was retained.
         const verifiedUser = await base44.asServiceRole.entities.User.get(userId);
-        const verifiedFields = ['platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
+        const verifiedFields = ['platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','substation','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
         const missingWrites = verifiedFields.filter(field => updatePayload[field] !== undefined && String(verifiedUser?.[field] ?? '') !== String(updatePayload[field] ?? ''));
         if (missingWrites.length) return Response.json({ error: 'Account data was not confirmed saved: ' + missingWrites.join(', '), unsaved_fields: missingWrites }, { status: 503 });
         try { await notifyPlatoonChange(base44.asServiceRole.entities, target, verifiedUser); }

@@ -41,6 +41,9 @@ function comparePersonnel(a, b) {
   const name = (p) => [p?.last_name || p?.lastName, p?.first_name || p?.firstName, p?.full_name, p?.email, p?.id].filter(Boolean).join(" ");
   return rankLevel(a?.rank) - rankLevel(b?.rank) || unit(a) - unit(b) || name(a).localeCompare(name(b));
 }
+// Lieutenant and above oversee their assigned division/platoon; field ranks
+// from First Sergeant down may also be posted to an individual substation.
+const canAssignSubstation = (rank) => rankLevel(rank) >= rankLevel('First Sergeant') && rankLevel(rank) < 999;
 const getPayRangeForRank = (rank) => PAY_RANGES[normalizeRank(rank)] || { min: 18, max: 20 };
 function nextUnitNumber(rank, users = [], excludedId = "") {
   const series = RANK_SERIES[normalizeRank(rank)];
@@ -68,5 +71,6 @@ export {
   nextUnitNumber,
   normalizeRank,
   previewRankChange,
-  rankLevel
+  rankLevel,
+  canAssignSubstation
 };
