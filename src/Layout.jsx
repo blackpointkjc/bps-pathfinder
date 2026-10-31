@@ -423,6 +423,13 @@ function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
 }
 
+// Browser restriction management is reserved for actual system Admin accounts.
+// The broader Full Access role must NOT grant policy administration.
+function canManageWebsiteRestrictions(user) {
+  return user?.role === 'admin' && user?.user_type !== 'client' &&
+    !(user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');
+}
+
 const HIDDEN_PROPERTY_ALERT_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 const normalizedCallStatus = value => String(value || '').trim().toLowerCase();
 
@@ -535,7 +542,7 @@ function canAccessPage(user, pageName) {
   // students were already excluded above.
   if (pageName === 'CorporateBrowser') return true;
   // Browser-policy administration is separate from employee browsing access.
-  if (pageName === 'AdminBrowserControl') return hasFullAccess(user);
+  if (pageName === 'AdminBrowserControl') return canManageWebsiteRestrictions(user);
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
   if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || normalizedRoles(user).has('full_access');
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
@@ -1619,7 +1626,7 @@ export default function Layout({ children, currentPageName }) {
             <Link to={createPageUrl('CorporateBrowser')} aria-label="Open secure corporate browser" title="Search approved company websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'CorporateBrowser' ? 'border-cyan-400 bg-cyan-800/50 text-white' : 'border-[#315879] bg-[#10263a] text-cyan-100 hover:border-cyan-400'}`}>
               <Globe className="h-4 w-4" /><span className="hidden sm:inline">Secure Browser</span>
             </Link>
-            {hasFullAccess(user) && <Link to={`${createPageUrl('AdminBrowserControl')}?browser_tool=lists`} aria-label="Manage website restrictions" title="Manage allowed and blocked websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'AdminBrowserControl' ? 'border-amber-400 bg-amber-900/40 text-white' : 'border-[#605132] bg-[#302718] text-amber-100 hover:border-amber-400'}`}>
+            {canManageWebsiteRestrictions(user) && <Link to={`${createPageUrl('AdminBrowserControl')}?browser_tool=lists`} aria-label="Manage website restrictions" title="Manage allowed and blocked websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'AdminBrowserControl' ? 'border-amber-400 bg-amber-900/40 text-white' : 'border-[#605132] bg-[#302718] text-amber-100 hover:border-amber-400'}`}>
               <ShieldCheck className="h-4 w-4" /><span className="hidden lg:inline">Website Restrictions</span><span className="hidden sm:inline lg:hidden">Web Controls</span>
             </Link>}
           </nav>}
