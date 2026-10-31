@@ -18,8 +18,12 @@ Deno.serve(async(req)=>{
   if(action!=='create'&&!original)return Response.json({error:'Platoon does not exist'},{status:404});
   if(action==='delete'){
     const personnel=await sdk.asServiceRole.entities.User.list('-updated_date',1000);
-    if((personnel||[]).some((p:any)=>key(p.division)===key(original.region)&&key(p.platoon)===key(original.name)))
-      return Response.json({error:'Platoon has assigned officers. Reassign them before deletion.'},{status:409});
+    const assigned=(personnel||[]).filter((p:any)=>key(p.division)===key(original.region)
+      &&key(p.platoon).replace(/^platoon\s+/,'')===key(original.name).replace(/^platoon\s+/,''));
+    if(assigned.length)return Response.json({
+      error:`Cannot permanently delete ${original.name} in ${original.region}: ${assigned.length} officer${assigned.length===1?' is':'s are'} still assigned. Reassign them in Manage Officers, or archive the Platoon while preserving their assignments.`,
+      assigned_count:assigned.length,can_archive:true,
+    },{status:409});
     await sdk.asServiceRole.entities.CompanyPlatoon.delete(id);
     return Response.json({success:true});
   }
