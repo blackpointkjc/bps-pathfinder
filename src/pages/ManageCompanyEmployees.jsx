@@ -621,7 +621,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       {canManageEmployees && <section className="mb-4 rounded-xl border border-cyan-800/60 bg-slate-900 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-base font-bold text-white">Corporate Internet Browser Access</h2><p className="text-xs text-slate-400">Review and assign approved browsing profiles alongside employee accounts.</p></div>
-          <Link to={createPageUrl('AdminBrowserControl') + '?browser_tool=profiles'} className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-xs font-semibold text-cyan-100">Browser control center</Link>
+          {isSystemAdmin && <Link to={createPageUrl('AdminBrowserControl') + '?browser_tool=profiles'} className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-xs font-semibold text-cyan-100">Browser control center</Link>}
         </div>
         <p className="mt-2 text-xs text-slate-300">Browser access is automatically based on each employee's existing account roles. Admin and Full Access receive Administrator Access; other employees use company role policies, with Strict Search Only as the default. No separate employee assignment is required.</p>}
       </section>}
