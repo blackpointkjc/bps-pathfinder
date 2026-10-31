@@ -183,7 +183,7 @@ const CENTER_CONFIG = {
     ],
   },
   admin: {
-    label: 'Admin Center',
+    label: 'Administration',
     icon: Settings,
     groups: [
       { label: 'Command', items: [
@@ -192,7 +192,7 @@ const CENTER_CONFIG = {
         ['Location Tracker', 'AdminLocationTracker', MapPin],
       ]},
       { label: 'Corporate Browser', items: [
-        ['Browser Control', 'AdminBrowserControl', Globe],
+        ['Website Restrictions', 'AdminBrowserControl', Globe],
         ['Secure Browser', 'CorporateBrowser', ShieldCheck],
       ]},
       { label: 'People & Accounts', items: [
@@ -534,6 +534,8 @@ function canAccessPage(user, pageName) {
   // The managed corporate browser is available to every staff role; clients and
   // students were already excluded above.
   if (pageName === 'CorporateBrowser') return true;
+  // Browser-policy administration is separate from employee browsing access.
+  if (pageName === 'AdminBrowserControl') return hasFullAccess(user);
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
   if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || normalizedRoles(user).has('full_access');
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
@@ -1613,10 +1615,18 @@ export default function Layout({ children, currentPageName }) {
             <span className="sm:hidden">Main</span>
             <span className="hidden sm:inline">{userHomeLabel}</span>
           </Link>
-          <div className="pf-header-context hidden min-w-0 md:block">
+          {!allowedCenters(user).every(center => center === 'client' || center === 'student') && <nav aria-label="Corporate Internet Browser" className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
+            <Link to={createPageUrl('CorporateBrowser')} aria-label="Open secure corporate browser" title="Search approved company websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'CorporateBrowser' ? 'border-cyan-400 bg-cyan-800/50 text-white' : 'border-[#315879] bg-[#10263a] text-cyan-100 hover:border-cyan-400'}`}>
+              <Globe className="h-4 w-4" /><span className="hidden sm:inline">Secure Browser</span>
+            </Link>
+            {hasFullAccess(user) && <Link to={`${createPageUrl('AdminBrowserControl')}?browser_tool=lists`} aria-label="Manage website restrictions" title="Manage allowed and blocked websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'AdminBrowserControl' ? 'border-amber-400 bg-amber-900/40 text-white' : 'border-[#605132] bg-[#302718] text-amber-100 hover:border-amber-400'}`}>
+              <ShieldCheck className="h-4 w-4" /><span className="hidden lg:inline">Website Restrictions</span><span className="hidden sm:inline lg:hidden">Web Controls</span>
+            </Link>}
+          </nav>}
+          {currentPageName !== 'AdminCenter' && <div className="pf-header-context hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
-          </div>
+          </div>}
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-[#7791aa]">
           <DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
