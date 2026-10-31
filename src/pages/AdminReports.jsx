@@ -20,6 +20,14 @@ import {
 
 
 import AdminQRReports from './AdminQRReports';
+import ParkingRecords from './ParkingRecords';
+import AdminClientReports from './AdminClientReports';
+import AdminSupervisorReports from './AdminSupervisorReports';
+import AdminConfidentialReports from './AdminConfidentialReports';
+import AdminComplaints from './AdminComplaints';
+import AdminCommendations from './AdminCommendations';
+import AdminClientFeedback from './AdminClientFeedback';
+import PathfinderReports from './Reports';
 import AcceptableUseReport from '@/components/admin/AcceptableUseReport';
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
@@ -40,7 +48,7 @@ import {
 } from "../components/MobileResponsiveDialog";
 
 
-export default function AdminReports() {
+function ReportReviewQueue() {
   const [startDate, setStartDate] = useState(format(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedLocation, setSelectedLocation] = useState("all");
@@ -1562,4 +1570,54 @@ export default function AdminReports() {
       </MobileResponsiveDialog>
     </div>
   );
+}
+
+// Report types share a single, searchable admin review area rather than
+// appearing as competing top-level pages or parallel tabs.
+const REPORT_WORKSPACES = [
+  ['allreports','All Reports & Approvals'],
+  ['parking','Property Parking & Notices'],
+  ['rentroll','Property Rent Roll & Vehicles'],
+  ['clientreports','Client Reports'],
+  ['supervisorreports','Supervisor Reports'],
+  ['confidential','Confidential Reports'],
+  ['cadreports','CAD Reports'],
+  ['complaints','Complaints'],
+  ['commendations','Commendations'],
+  ['feedback','Client Feedback'],
+];
+export default function AdminReports(){
+  const initial = () => {
+    const params=new URLSearchParams(window.location.search);
+    const candidate=params.get('report_view')||params.get('admin_reports_quality_tool')||'allreports';
+    return REPORT_WORKSPACES.some(([id])=>id===candidate)?candidate:'allreports';
+  };
+  const [active,setActive]=useState(initial);
+  const change=view=>{
+    setActive(view);
+    const url=new URL(window.location.href);
+    url.searchParams.set('report_view',view);
+    url.searchParams.delete('admin_reports_quality_tool');
+    window.history.replaceState({},'',url.pathname+url.search);
+  };
+  return <div className="space-y-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#314b65] bg-[#0b1c2e] px-3 py-3 text-white">
+      <div className="min-w-0 flex-1"><h1 className="text-base font-bold">Report Review</h1><p className="text-xs text-slate-400">Reports, reviews, parking, residents and records — one workspace</p></div>
+      <label className="min-w-[210px] flex-1 text-[11px] font-semibold text-cyan-200 sm:flex-none">Review category
+        <select aria-label="Select report review category" value={active} onChange={event=>change(event.target.value)} className="mt-1 block h-10 w-full min-w-[230px] max-w-[330px] rounded-lg border border-[#426786] bg-[#102b44] px-3 text-sm font-bold text-white">
+          {REPORT_WORKSPACES.map(([id,label])=><option key={id} value={id}>{label}</option>)}
+        </select>
+      </label>
+    </div>
+    {active==='allreports'&&<ReportReviewQueue/>}
+    {active==='parking'&&<ParkingRecords mode="admin"/>}
+    {active==='rentroll'&&<ParkingRecords mode="admin-rentroll"/>}
+    {active==='clientreports'&&<AdminClientReports/>}
+    {active==='supervisorreports'&&<AdminSupervisorReports/>}
+    {active==='confidential'&&<AdminConfidentialReports/>}
+    {active==='cadreports'&&<PathfinderReports/>}
+    {active==='complaints'&&<AdminComplaints/>}
+    {active==='commendations'&&<AdminCommendations/>}
+    {active==='feedback'&&<AdminClientFeedback/>}
+  </div>;
 }

@@ -71,7 +71,6 @@ const CENTER_CONFIG = {
       ]},
       { label: 'CAD Administration', fullAccessOnly: true, items: [
         ['Personnel', 'Personnel', Users],
-        ['CAD Reports', 'PathfinderReports', BarChart3],
       ]},
     ],
   },
@@ -215,13 +214,7 @@ const CENTER_CONFIG = {
         ['Company Assets','AdminAssets',Package],
       ]},
       { label: 'Reports & Quality', items: [
-        ['All Reports', 'AdminReports', ClipboardList],
-        ['Client Reports', 'AdminClientReports', FileText],
-        ['Supervisor Reports', 'AdminSupervisorReports', UserCheck],
-        ['Confidential Reports', 'AdminConfidentialReports', ShieldCheck],
-        ['Complaints', 'AdminComplaints', AlertTriangle],
-        ['Commendations', 'AdminCommendations', Award],
-        ['Client Feedback', 'AdminClientFeedback', Award],
+        ['Report Review','AdminReports',ClipboardList],
       ]},
       { label: 'Company Communications', items: [
         ['Announcements', 'AdminAnnouncements', Bell],

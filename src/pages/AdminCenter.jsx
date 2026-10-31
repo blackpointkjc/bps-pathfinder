@@ -190,18 +190,9 @@ function AdminSiteOperationsHub() {
 }
 
 function AdminReportsQualityHub() {
-  return <AdminInlineFunctions queryParam="admin_reports_quality_tool" tools={[
-    { id: 'allreports', label: 'Report Review', component: AdminReports },
-    { id: 'parking', label: 'Parking Notices & Approvals', component: () => <ParkingRecords mode="admin"/> },
-    { id: 'rentroll', label: 'Property Rent Roll & Registered Vehicles', component: () => <ParkingRecords mode="admin-rentroll"/> },
-    { id: 'clientreports', label: 'Client Reports', component: AdminClientReports },
-    { id: 'supervisorreports', label: 'Supervisor Reports', component: AdminSupervisorReports },
-    { id: 'confidential', label: 'Confidential Reports', component: AdminConfidentialReports },
-    { id: 'complaints', label: 'Complaints', component: AdminComplaints },
-    { id: 'commendations', label: 'Commendations', component: AdminCommendations },
-    { id: 'feedback', label: 'Client Feedback', component: AdminClientFeedback },
-    { id: 'cadreports', label: 'CAD Reports', component: PathfinderReports },
-  ]} />;
+  // One report-review workspace owns every report type and parking workflow.
+  // Avoid a second row of top-level tabs beneath Administration.
+  return <AdminReports />;
 }
 
 function AdminCommunicationsHub(){return <AdminAnnouncements embedded/>;}
