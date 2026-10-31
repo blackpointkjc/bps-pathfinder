@@ -33,7 +33,6 @@ export default function CorporateBrowser() {
   const policy=session?.policy;
   const admin=policy?.profile==='admin_access';
   const search=useMutation({mutationFn:async query=>(await base44.functions.invoke('browserSearch',{query})).data});
-  const check=useMutation({mutationFn:async url=>(await base44.functions.invoke('browserAccessCheck',{url,source:'navigation'})).data});
   const remote=useMutation({mutationFn:async payload=>(await base44.functions.invoke('browserRemoteSession',payload)).data});
   const request=useMutation({mutationFn:async ({domain,justification})=>base44.entities.BrowserAccessRequest.create({
     user_email:user?.email||'', user_name:user?.full_name||user?.email||'',domain,justification,status:'pending',source:'search'
@@ -47,7 +46,7 @@ export default function CorporateBrowser() {
   const doSearch = async query => {
     // Administrator searches happen in real Google Search inside remote Chrome.
     // Restricted staff keep the server-filtered public-web result viewer.
-    if (admin) return visit('https://www.google.com/search?q='+encodeURIComponent(query));
+    if (admin) return visit('https://www.google.com/search?hl=en&gl=us&q='+encodeURIComponent(query));
     setBusy(true);setError('');
     const tabId=activeId;
     const targetIndex=tab.index+1;
@@ -65,31 +64,31 @@ export default function CorporateBrowser() {
     try {url=new URL(asUrl(input.trim()));if(!['https:','http:'].includes(url.protocol))throw Error('Only normal web addresses are supported.');}
     catch {setError('Enter a valid internet address.');setBusy(false);return;}
     try {
-      const data=await check.mutateAsync(url.href);
-      if(!data?.decision?.allowed){push({kind:'blocked',url:url.href,reason:data?.decision?.reason||'This site is restricted by your browsing profile.'});return;}
-      if(data?.policy?.strict_search_only && data?.decision?.basis !== 'Government .gov access'){push({kind:'blocked',url:url.href,reason:'Your HR role is set to Strict Search Only. Government .gov domains remain approved.'});return;}
-      try {
-        const rectWidth=viewerContainerRef.current?.clientWidth || window.innerWidth;
-        const viewer=await remote.mutateAsync({
-          url:url.href,
-          viewport_width:Math.max(360,Math.round(rectWidth-8)),
-          viewport_height:Math.max(400,Math.round(window.innerHeight-175))
-        });
-        if (!viewer?.viewer_url) throw new Error('Remote Chrome did not return a viewer.');
-        push({kind:'site',url:url.href,viewer:viewer.viewer_url,viewOnly:viewer.view_only===true});
-      } catch(engineError) {
-        const msg=engineError?.response?.data?.error || engineError?.message || 'Remote Chrome service is unavailable.';
-        push({kind:'engineUnavailable',url:url.href,reason:msg});
-      }
-    }catch(e){setError(e?.response?.data?.error||'Unable to verify this destination. Access was not granted.');}
-    finally{setBusy(false);}
+      // The remote session backend verifies the live HR role, company policy,
+      // AUP acknowledgment, and destination itself. No duplicate access-check
+      // network request before starting the browser.
+      const rectWidth=viewerContainerRef.current?.clientWidth || window.innerWidth;
+      const viewer=await remote.mutateAsync({
+        url:url.href,
+        viewport_width:Math.max(360,Math.round(rectWidth-8)),
+        viewport_height:Math.max(400,Math.round(window.innerHeight-175))
+      });
+      if(!viewer?.viewer_url) throw new Error('Remote Chrome did not return a viewer.');
+      push({kind:'site',url:url.href,viewer:viewer.viewer_url,viewOnly:viewer.view_only===true});
+    }catch(e){
+      const code=e?.response?.data?.code;
+      const reason=e?.response?.data?.error || e?.message || 'Secure browser service unavailable.';
+      if(code==='BLOCKED_BY_POLICY'||code==='MANAGED_GATEWAY_REQUIRED')
+        push({kind:'blocked',url:url.href,reason});
+      else push({kind:'engineUnavailable',url:url.href,reason});
+    }finally{setBusy(false);}
   };
   // Start authorized administrators directly at Google in remote Chrome.
   // The remote viewer supplies its own tabs/address bar; don't draw another.
   useEffect(()=>{
     if(!admin || initialGoogleStarted.current) return;
     initialGoogleStarted.current=true;
-    if(page.kind==='home') void visit('https://www.google.com/');
+    if(page.kind==='home') void visit('https://www.google.com/?hl=en&gl=us');
   },[admin]);
   const navigate = value => {const input=String(value||'').trim();if(!input)return; if(validSite(input))visit(input);else doSearch(input);};
   const resubmitRequest=async justification=>{try{setRequestError('');await request.mutateAsync({domain:requestDomain,justification});setRequestDomain('');}catch(e){setRequestError(e?.message||'Could not submit request');}};

@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { loadBrowserContext, checkDestination } from '../../shared/browserContext.ts';
 
+// Browserless shared-fleet US-West (San Francisco) endpoint. Do not switch
+// to chrome-us-east: it requires a private/enterprise fleet token.
 const HOST = 'https://production-sfo.browserless.io';
 const VIEW_MS = 110000;
 
@@ -47,13 +49,13 @@ export default async function (req: Request): Promise<Response> {
     const token = Deno.env.get('BROWSERLESS_TOKEN')!.trim();
     // Match the actual viewer dimensions to avoid enlarging and blurring a
     // smaller remote desktop. Clamp untrusted values to reasonable bounds.
-    const viewportWidth = Math.max(360, Math.min(1920, Math.round(Number(body.viewport_width)||1280)));
-    const viewportHeight = Math.max(400, Math.min(1200, Math.round(Number(body.viewport_height)||760)));
+    const viewportWidth = Math.max(360, Math.min(1600, Math.round(Number(body.viewport_width)||1280)));
+    const viewportHeight = Math.max(400, Math.min(950, Math.round(Number(body.viewport_height)||760)));
     const mutation = [
       'mutation StartBrowser($url: String!) {',
-      ' viewport(width: '+viewportWidth+', height: '+viewportHeight+', deviceScaleFactor: 2) { width height }',
+      ' viewport(width: '+viewportWidth+', height: '+viewportHeight+', deviceScaleFactor: 1) { width height }',
       ' goto(url: $url, waitUntil: domContentLoaded) { status }',
-      ' liveURL(detached: true, interactable: '+String(isAdmin)+', showBrowserInterface: '+String(isAdmin)+', type: png, quality: 100, captureScale: 2, resizable: true, timeout: '+VIEW_MS+') { liveURL timeout }',
+      ' liveURL(detached: true, interactable: '+String(isAdmin)+', showBrowserInterface: '+String(isAdmin)+', type: jpeg, quality: 85, captureScale: 1, resizable: true, timeout: '+VIEW_MS+') { liveURL timeout }',
       ' reconnect(timeout: 120000) { browserQLEndpoint }',
       '}'
     ].join('\n');
@@ -67,7 +69,7 @@ export default async function (req: Request): Promise<Response> {
     if (json?.errors?.length) return Response.json({error:'The Chrome browser provider could not initialize a session.',code:'BROWSER_PROVIDER_ERROR'},{status:502});
     const viewer = json?.data?.liveURL?.liveURL;
     if (typeof viewer !== 'string' || !viewer.startsWith(HOST+'/')) return Response.json({error:'Remote Chrome did not provide a valid live viewer.',code:'BROWSER_PROVIDER_ERROR'},{status:502});
-    return Response.json({viewer_url:viewer,expires_in_ms:json?.data?.liveURL?.timeout||VIEW_MS,provider:'Browserless Chrome',view_only:!isAdmin}, {headers:{'Cache-Control':'no-store'}});
+    return Response.json({viewer_url:viewer,expires_in_ms:json?.data?.liveURL?.timeout||VIEW_MS,provider:'Browserless Chrome · US West',view_only:!isAdmin,region:'us-west-sfo'}, {headers:{'Cache-Control':'no-store'}});
   } catch(e:any) {
     return Response.json({error:e?.name==='TimeoutError'?'The Chrome browser provider timed out.':'The Chrome session could not be started.'},{status:502});
   }
