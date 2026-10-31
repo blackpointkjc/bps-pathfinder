@@ -78,7 +78,8 @@ export default function SupervisorOverview() {
       ]);
       const board = boardResult?.data || boardResult || {};
       const reportWork = reportResult?.data || reportResult || {};
-      const liveUnits = (locationSnapshot?.users || []).filter(unit => unit?.session_active === true);
+      const allowedOfficerEmails = new Set(board.visible_officer_emails || []);
+      const liveUnits = (locationSnapshot?.users || []).filter(unit => unit?.session_active === true && allowedOfficerEmails.has(String(unit?.officer_email || unit?.email || '').trim().toLowerCase()));
       return { users, tasks: taskPayload, board, reportWork, supervisorAssignments, liveUnits, failures: [...failures,...(reportWork.load_errors||[])] };
     },
     staleTime: 30000,

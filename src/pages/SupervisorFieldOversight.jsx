@@ -70,9 +70,10 @@ export default function SupervisorFieldOversight() {
   const welfareChecks = welfarePayload.welfare_checks || [];
   const supervisorRequests = welfarePayload.supervisor_requests || [];
   const displayByEmail = welfarePayload.display_by_email || {};
+  const allowedOfficerEmails = useMemo(() => new Set(welfarePayload.visible_officer_emails || []), [welfarePayload.visible_officer_emails]);
   const onlineUnits = useMemo(() => {
     const byOfficer = new Map();
-    for (const unit of (locationPayload.users || []).filter(item => item?.session_active === true)) {
+    for (const unit of (locationPayload.users || []).filter(item => item?.session_active === true && allowedOfficerEmails.has(lower(item.officer_email || item.email)))) {
       const key = lower(unit?.officer_email || unit?.email || unit?.id);
       if (!key) continue;
       const current = byOfficer.get(key);
@@ -81,7 +82,7 @@ export default function SupervisorFieldOversight() {
       }
     }
     return [...byOfficer.values()];
-  }, [locationPayload.users]);
+  }, [locationPayload.users, allowedOfficerEmails]);
   // Reconcile the Unit Status panel against the current CAD assignment board.
   // A browser GPS heartbeat or yesterday's current_call_info never proves that
   // an officer is currently dispatched. Preserve a manually selected Busy state
