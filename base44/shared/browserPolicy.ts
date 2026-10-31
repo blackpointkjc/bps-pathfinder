@@ -207,21 +207,40 @@ export function resolvePolicy(policies = [], user = {}) {
   const active = policies.filter(item => item && item.active !== false);
   const roles = new Set([user.role, ...(Array.isArray(user.additional_roles) ? user.additional_roles : [])]
     .filter(Boolean).map(role => String(role).trim().toLowerCase()));
+
+  // These roles are maintained in Manage Company Employees / Accounts & Access.
+  // Higher privileges take precedence even if an employee is also an Officer.
   const isAdmin = roles.has('admin') || roles.has('full_access');
-  const profile = isAdmin ? 'admin_access' : 'strict_search';
-  // Website rules and role-based policies may still be configured centrally,
-  // but cannot silently downgrade a Pathfinder administrator.
-  if (isAdmin) return {
-    policy: { name:'Administrator Access', profile:'admin_access', active:true,
-      safe_search:false, ...profileDefaults('admin_access') },
-    basis:'Manage Company Employees · Administrator/Full Access role'
+  const isManagement = roles.has('supervisor') || roles.has('hr') || roles.has('human_resources') || roles.has('human resources');
+  const isOfficer = roles.has('officer');
+  const profile = isAdmin ? 'admin_access'
+    : isManagement ? 'limited_business'
+    : isOfficer ? 'work_research'
+    : 'strict_search';
+  const display = {
+    admin_access: 'Administrator Access',
+    limited_business: 'Limited Business Access',
+    work_research: 'Officer Work Research',
+    strict_search: 'Strict Search Only',
   };
-  const byRole = active.find(item => item.profile !== 'admin_access' &&
-    (item.assigned_roles || []).some(role => roles.has(String(role).toLowerCase())));
-  if (byRole) return {policy:byRole,basis:'Manage Company Employees · Assigned role'};
-  const fallback = active.find(item => item.is_default && item.profile !== 'admin_access');
-  return {policy:fallback || {name:'Strict Search Only',profile,active:true,safe_search:true,...profileDefaults(profile)},
-    basis:'Manage Company Employees · Default employee role'};
+  const basis = 'Manage Company Employees · ' + (isAdmin ? 'Administrator role override'
+    : isManagement ? 'Supervisor / HR role override'
+    : isOfficer ? 'Officer role' : 'Default employee role');
+
+  // Restriction settings can be edited in Browser Control, but a mismatched
+  // profile attached to an Officer role cannot downgrade a Supervisor or Admin.
+  const configured = active.find(item => item.profile === profile &&
+    (item.assigned_roles || []).some(role => roles.has(String(role).trim().toLowerCase())));
+  const defaults = profileDefaults(profile);
+  const policy = configured
+    ? { ...defaults, ...configured, name: configured.name || display[profile], profile }
+    : { ...defaults, name: display[profile], profile, active: true, safe_search: !isAdmin };
+  if (isAdmin) {
+    // An administrator's profile is never downgraded by a conflicting policy.
+    return { policy: { ...defaults, name: display.admin_access,
+      profile: 'admin_access', active: true, safe_search: false }, basis };
+  }
+  return { policy, basis };
 }
 
 export function policySummary(policy) {
