@@ -292,7 +292,10 @@ Deno.serve(async (req) => {
     }
 
     if (me.role !== 'admin' && !roles.has('full_access')) {
-      assigned = assigned.filter((person:any) => withinSupervisorArea(me, person));
+      // Geographic responsibility replaces the old platoon-only roster.
+      // A Lieutenant oversees all assigned personnel in the division; field
+      // supervisors oversee everyone assigned to their substation.
+      assigned = users.filter((person:any) => person.id !== me.id && withinSupervisorArea(me, person));
     }
 
     const aliasesByUser = new Map<string, Set<string>>();
