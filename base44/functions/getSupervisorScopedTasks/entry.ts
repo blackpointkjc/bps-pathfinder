@@ -132,6 +132,12 @@ Deno.serve(async (req) => {
         if (sourceEmail) {
           const owner = await base44.asServiceRole.entities.User.filter({email:sourceEmail},'-updated_date',1).catch(()=>[]);
           if (!owner[0] || !withinSupervisorArea(me,owner[0])) return Response.json({error:'Task is outside your assigned platoon and operating area.'},{status:403});
+        } else {
+          const people = await base44.asServiceRole.entities.User.list('-updated_date',1000);
+          const person = normalized(assignedState.person);
+          const scoped = (people||[]).some((officer:any) => withinSupervisorArea(me,officer)
+            && [normalized(officer.email),normalized([officer.first_name,officer.last_name].join(' ')),normalized([officer.rank,officer.last_name].join(' '))].includes(person));
+          if (!scoped) return Response.json({error:'Task officer scope cannot be verified. Ask administration to assign this task correctly.'},{status:403});
         }
       }
       const title = String(request?.title || assignedState?.title || 'Supervisor follow-up').slice(0, 250);

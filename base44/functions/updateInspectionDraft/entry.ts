@@ -30,6 +30,19 @@ Deno.serve(async (req) => {
     }
 
     const isAdmin = user.role === 'admin' || roles.has('full_access');
+    if(!isAdmin){
+      const platoon=String(user.oversight_platoon||user.platoon||'').trim().toLowerCase();
+      const candidates=await base44.asServiceRole.entities.User.filter({email:existing.officer_email},'-updated_date',1).catch(()=>[]);
+      const officer=candidates[0];
+      const n=v=>String(v||'').trim().toLowerCase();
+      const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(user.rank));
+      if(!officer||!['a','b'].includes(platoon)||n(officer.platoon)!==platoon
+        ||!n(user.division)||!n(user.subdivision)||n(officer.division)!==n(user.division)||n(officer.subdivision)!==n(user.subdivision)
+        ||(!senior&&(!n(user.substation)||n(officer.substation)!==n(user.substation))))
+        return Response.json({error:'Inspection is outside your assigned platoon or operational area'},{status:403});
+      if(inspection.officer_email&&n(inspection.officer_email)!==n(existing.officer_email))
+        return Response.json({error:'Inspection officer cannot be changed by this supervisor'},{status:403});
+    }
     const isOwner = existing.created_by_id === user.id || existing.created_by === user.email;
     let isAssignedSupervisor = false;
     const siteCheckId = String(existing.observations || '').match(/Site check record ID:\s*([^\s]+)/)?.[1];

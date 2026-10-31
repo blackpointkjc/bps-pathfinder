@@ -125,7 +125,15 @@ Deno.serve(async req => {
       // choose a property explicitly before any resident search.
       const activeDirectory=(await getLocations()).filter(activeLocation);
       const assignedSet=new Set(assignedNames.map(siteKey));
-      const options=[...new Map(activeDirectory.filter((loc:any)=>!client||assignedSet.has(siteKey(loc.site_name)))
+      const reviewerSiteAllowed=(site:any)=>{
+        if(admin||!supervisor)return true;
+        const n=(value:any)=>clean(value).toLowerCase();
+        if(!['a','b'].includes(n(user.oversight_platoon||user.platoon)))return false;
+        if(!n(user.division)||!n(user.subdivision)||n(site.division)!==n(user.division)||n(site.subdivision)!==n(user.subdivision))return false;
+        return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(user.rank))
+          || !!(n(user.substation)&&n(site.substation)===n(user.substation));
+      };
+      const options=[...new Map(activeDirectory.filter((loc:any)=>(!client||assignedSet.has(siteKey(loc.site_name)))&&reviewerSiteAllowed(loc))
         .map((loc:any)=>[siteKey(loc.site_name),clean(loc.site_name)]).filter(([key,value]:any)=>key&&value)).values()];
       let dutySite='';
       if(officer&&user.email){try{
