@@ -24,7 +24,7 @@ function gqlError(data:any):string {
 }
 function sessionMutation(url:string, liveMs:number, idleMs:number, admin:boolean, width:number, height:number, create:boolean):string {
   return [
-    'mutation PathfinderBrowser($url: String!) {',
+    create ? 'mutation PathfinderBrowser($url: String!) {' : 'mutation PathfinderBrowser {',
     ...(create ? [
       ' viewport(width: '+width+', height: '+height+', deviceScaleFactor: 1) { width height }',
       ' goto(url:$url, waitUntil:domContentLoaded) { status }',

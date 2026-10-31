@@ -24,6 +24,8 @@ export default function CorporateBrowser() {
   const [reload,setReload] = useState(0);
   const [nightMode,setNightMode] = useState(true);
   const [requestError,setRequestError] = useState('');
+  const [sessionNotice,setSessionNotice] = useState('');
+  const [renewing,setRenewing] = useState(false);
   const tab=tabs.find(item=>item.id===activeId)||tabs[0];
   const page=tab.history[tab.index];
   const {data:user}=useQuery({queryKey:['browserViewer'],queryFn:()=>base44.auth.me(),staleTime:60000});
@@ -59,7 +61,7 @@ export default function CorporateBrowser() {
     finally{setBusy(false);}
   };
   const visit = async input => {
-    setBusy(true);setError('');
+    setBusy(true);setError('');setSessionNotice('');
     let url;
     try {url=new URL(asUrl(input.trim()));if(!['https:','http:'].includes(url.protocol))throw Error('Only normal web addresses are supported.');}
     catch {setError('Enter a valid internet address.');setBusy(false);return;}
@@ -74,7 +76,7 @@ export default function CorporateBrowser() {
         viewport_height:Math.max(400,Math.round(window.innerHeight-175))
       });
       if(!viewer?.viewer_url) throw new Error('Remote Chrome did not return a viewer.');
-      push({kind:'site',url:url.href,viewer:viewer.viewer_url,viewOnly:viewer.view_only===true});
+      push({kind:'site',url:url.href,viewer:viewer.viewer_url,viewOnly:viewer.view_only===true,sessionId:viewer.session_id,expiresInMs:viewer.expires_in_ms,expiresAt:Date.now()+Number(viewer.expires_in_ms||110000)});
     }catch(e){
       const code=e?.response?.data?.code;
       const reason=e?.response?.data?.error || e?.message || 'Secure browser service unavailable.';
@@ -90,6 +92,33 @@ export default function CorporateBrowser() {
     initialGoogleStarted.current=true;
     if(page.kind==='home') void visit('https://www.google.com/?hl=en&gl=us');
   },[admin]);
+  // Renew the signed-in viewer's link against the same remote browser before
+  // its deadline. The server stores reconnect credentials; only a viewer URL
+  // and an opaque session ID are ever returned to the frontend.
+  useEffect(()=>{
+    if(page.kind!=='site' || !page.sessionId || !page.expiresAt) return;
+    const sessionId=page.sessionId;
+    const remaining=Math.max(0,page.expiresAt-Date.now());
+    const delay=Math.max(12000, Math.min(remaining*0.70,remaining-14000));
+    const timeout=setTimeout(async()=>{
+      setRenewing(true);
+      try {
+        const refreshed=(await base44.functions.invoke('browserRemoteSession',{action:'renew',session_id:sessionId})).data;
+        if(!refreshed?.viewer_url) throw Error('The remote browser did not return a refreshed viewer.');
+        setSessionNotice('');
+        setTabs(list=>list.map(item=>({...item,history:item.history.map(entry=>
+          entry.kind==='site'&&entry.sessionId===sessionId
+            ? {...entry,viewer:refreshed.viewer_url,expiresInMs:refreshed.expires_in_ms,
+                expiresAt:Date.now()+Number(refreshed.expires_in_ms||60000)}
+            : entry
+        )})));
+      }catch(e){
+        setSessionNotice('The provider reached its maximum session duration or lost the remote connection. Reopen the browser to start a new session.');
+      }finally{setRenewing(false);}
+    },delay);
+    return()=>clearTimeout(timeout);
+  },[page.kind,page.sessionId,page.viewer,page.expiresAt]);
+
   const navigate = value => {const input=String(value||'').trim();if(!input)return; if(validSite(input))visit(input);else doSearch(input);};
   const resubmitRequest=async justification=>{try{setRequestError('');await request.mutateAsync({domain:requestDomain,justification});setRequestDomain('');}catch(e){setRequestError(e?.message||'Could not submit request');}};
   if (loadingPolicy || !user?.id) return <div className="flex min-h-[calc(100dvh-130px)] items-center justify-center bg-[#081321] text-slate-200"><div className="flex items-center gap-3 text-sm"><Loader2 className="h-5 w-5 animate-spin text-cyan-300"/>Opening secure browser…</div></div>;
@@ -155,6 +184,7 @@ export default function CorporateBrowser() {
               <button type="button" onClick={()=>setNightMode(value=>!value)} aria-pressed={nightMode} title={nightMode?'Turn off night dimming':'Dim page for night shift'} className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[#3f5b72] px-2 hover:bg-[#183047]">{nightMode?<Sun className="h-3.5 w-3.5"/>:<Moon className="h-3.5 w-3.5"/>}<span className="hidden sm:inline">{nightMode?'Daylight':'Night dim'}</span></button>
             </div>
           </div>
+          {sessionNotice && <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-700/60 bg-amber-950/40 px-3 py-2 text-xs text-amber-100"><span>{sessionNotice}</span><button type="button" onClick={()=>visit(page.url)} className="rounded border border-amber-500 px-3 py-1.5 font-bold">Reopen browser</button></div>}
           <iframe key={page.viewer} src={page.viewer} title={'Interactive Google Chrome browser - '+domainOf(page.url)} allow="clipboard-read; clipboard-write; fullscreen" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads" style={{filter:nightMode?'brightness(0.84) contrast(1.08)':'none'}} className="h-[calc(100dvh-190px)] min-h-[460px] w-full border-0 bg-[#0b1624] transition-[filter] duration-150"/>
         </div>}
       </main>
