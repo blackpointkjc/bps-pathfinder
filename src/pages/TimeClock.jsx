@@ -14,7 +14,7 @@ import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapContainer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
-import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
+import TomTomSdkMapPreview from '@/components/map/LazyTomTomMap';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';

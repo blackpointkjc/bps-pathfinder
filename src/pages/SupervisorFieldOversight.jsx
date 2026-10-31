@@ -9,7 +9,7 @@ import { MapContainer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
-import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
+import TomTomSdkMapPreview from '@/components/map/LazyTomTomMap';
 import 'leaflet/dist/leaflet.css';
 import { toast } from 'sonner';
 import { createPageUrl } from '../utils';

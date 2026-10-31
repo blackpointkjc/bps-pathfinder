@@ -33,7 +33,7 @@ import { findDirectoryUser, getAppDirectory, listDirectoryLocations } from '@/li
 import { cleanIncident } from '@/utils/callUtils';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
-import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
+import TomTomSdkMapPreview from '@/components/map/LazyTomTomMap';
 import DispatcherShiftReports from './DispatcherShiftReports';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLastGoodCalls } from '@/lib/activeDispatchCalls';

@@ -18,7 +18,7 @@ import { isInternalMember } from '@/lib/directoryUtils';
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
-import TomTomSdkMapPreview from '@/components/map/TomTomSdkMapPreview';
+import TomTomSdkMapPreview from '@/components/map/LazyTomTomMap';
 
 import GPSAuditReport from '@/components/GPSAuditReport';
 import { auditDay, auditTime, buildAuditModel } from '@/lib/locationAudit';
