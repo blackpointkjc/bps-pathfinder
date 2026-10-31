@@ -328,10 +328,10 @@
   .pf-navigation-workspace .pf-duty-select { max-width: min(152px, 38vw); flex-shrink: 1; }
   .pf-navigation-workspace .pf-duty-select select { max-width: 100%; }
   .pf-route-guidance { left: 6px !important; right: 52px !important; width: auto !important; max-width: none !important; }
-  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] { min-height: 0 !important; }
-  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:first-child { width: clamp(56px, 18vw, 76px) !important; }
-  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) { min-width: 0; padding: 7px 8px !important; }
-  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) .text-\\[22px\\] { font-size: clamp(13px, 3.7vw, 17px) !important; overflow-wrap: anywhere; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\[132px\] { min-height: 0 !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\[132px\] > div:first-child { width: clamp(56px, 18vw, 76px) !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\[132px\] > div:nth-child(2) { min-width: 0; padding: 7px 8px !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\[132px\] > div:nth-child(2) .text-\[22px\] { font-size: clamp(13px, 3.7vw, 17px) !important; overflow-wrap: anywhere; }
   .pf-route-guidance > div:first-child > .flex.items-center.gap-2.border-t { flex-wrap: wrap; padding: 5px !important; }
   .pf-route-guidance > div:first-child > .flex.items-center.gap-2.border-t > div:first-child { flex: 1 1 100%; justify-content: space-between; }
   .pf-route-guidance > div:first-child > .flex.items-center.gap-2.border-t > button { width: 36px; height: 36px; min-height: 36px; }
@@ -345,9 +345,9 @@
   .pf-navigation-workspace .pf-map-header { gap: 3px; padding: 4px 5px; }
   .pf-navigation-workspace .pf-map-subtitle, .pf-navigation-workspace .pf-map-gps-alert { font-size: 9px; }
   .pf-route-guidance { right: 45px !important; }
-  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) .text-\\[22px\\] { font-size: 13px !important; }
-  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) .text-\\[10px\\] { font-size: 9px !important; }
-  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) > div:last-child { margin-top: 3px; padding-top: 3px; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\[132px\] > div:nth-child(2) .text-\[22px\] { font-size: 13px !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\[132px\] > div:nth-child(2) .text-\[10px\] { font-size: 9px !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\[132px\] > div:nth-child(2) > div:last-child { margin-top: 3px; padding-top: 3px; }
   .pf-route-speed { width: min(170px, 100%) !important; }
   .pf-navigation-workspace .pf-map-dock { width: 38px; }
   .pf-navigation-workspace .pf-map-dock > button { width: 32px; }
