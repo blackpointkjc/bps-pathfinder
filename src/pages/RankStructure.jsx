@@ -6,7 +6,7 @@ import PersonnelPrintRoster from '@/components/PersonnelPrintRoster';
 import CommandRankTiers from '@/components/CommandRankTiers';
 import { reportingLabel, reportingSupervisors, oversightLabel, assignmentLabel, actingCommandLabel, activePlatoonCommand } from '@/utils/commandReporting';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, GitBranch, Mail, Phone, Printer } from 'lucide-react';
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
 import { base44 } from '@/api/base44Client';
+import { withRequestTimeout } from '@/lib/requestTimeout';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -163,12 +164,14 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
 export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
+  const [companyExpanded,setCompanyExpanded]=useState(false);
+  const [printRequested,setPrintRequested]=useState(false);
   const { user } = useAuth();
   const isAdmin=user?.role==='admin'||(user?.additional_roles||[]).includes('full_access');
   const {data:rosterData={officers:[],commands:[],platoons:[],regions:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({
     queryKey:['rankStructureSnapshotV3',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
     queryFn:async()=>{
-      const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'});
+      const response=await withRequestTimeout(base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'}),15000,'Rank Structure roster');
       const data=response?.data||response||{};
       if(data.error||data.success!==true)throw new Error(data.error||'Rank Structure roster unavailable');
       return {officers:data.officers||[],commands:data.platoon_commands||[],platoons:data.platoons||[],regions:(data.regions||[]).map(name=>({name,active:true}))};
@@ -177,6 +180,13 @@ export default function RankStructure(){
     refetchOnWindowFocus:false,refetchOnMount:false,
   });
   const structureData={platoons:rosterData.platoons||[],regions:rosterData.regions||[]};
+  useEffect(()=>{
+    if(!printRequested)return;
+    const frame=requestAnimationFrame(()=>{window.print();});
+    const reset=()=>setPrintRequested(false);
+    window.addEventListener('afterprint',reset,{once:true});
+    return ()=>{cancelAnimationFrame(frame);window.removeEventListener('afterprint',reset);};
+  },[printRequested]);
   const users=rosterData.officers||[];
   const commands=rosterData.commands||[];
   const roles=rolesOf(user);
@@ -192,11 +202,14 @@ export default function RankStructure(){
     {rosterError && <div role="alert" className="rounded-xl border border-red-500/50 bg-red-950/30 p-4 text-sm text-red-100">Officer assignments could not load: {rosterError.message}. <button type="button" className="ml-2 underline font-bold" onClick={()=>refetchRoster()}>Retry roster</button></div>}
     {!rosterError && rosterLoading && <div role="status" className="rounded-xl border border-cyan-800 bg-slate-900 p-4 text-sm text-cyan-200">Loading regional command roster…</div>}
     {!rosterLoading && !rosterError && !active.length && <div role="status" className="rounded-xl border border-amber-700 bg-amber-950/25 p-4 text-sm text-amber-100">No assigned lower-ranking officers are currently visible in your authorized platoon and area. Check officer Region, Division, Platoon and Substation assignments in Manage Officers.</div>}
-    <PersonnelPrintRoster users={active} contactEmail={contactEmail}/>
+    {printRequested && <PersonnelPrintRoster users={active} contactEmail={contactEmail}/>}
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Active Platoon Command is displayed first, directly above the operating Division and its Substation branches. Select a state or Division without crowding the chart.</p></div></div></div>
 
-    {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>window.print()} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
-    {isAdmin && <details className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5"><summary className="flex cursor-pointer items-center justify-between gap-3 text-lg font-black text-white"><span className="flex items-center gap-2"><Shield className="h-5 w-5 text-amber-300"/>Company Command</span><span className="text-xs font-medium text-amber-200">Expand / minimize</span></summary><div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson}/></div></details>}
+    {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>setPrintRequested(true)} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
+    {isAdmin && <section className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5">
+      <button type="button" aria-expanded={companyExpanded} onClick={()=>setCompanyExpanded(value=>!value)} className="flex w-full items-center justify-between gap-3 text-left"><span className="flex items-center gap-2 text-lg font-black text-white"><Shield className="h-5 w-5 text-amber-300"/>Company Command</span><span className="text-xs font-semibold text-amber-200">{companyExpanded?'Minimize':'Expand'}</span></button>
+      {companyExpanded&&<div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson}/></div>}
+    </section>}
     <FocusedRankFlow users={active} commands={commands} platoonDefinitions={structureData.platoons} regionsDirectory={structureData.regions} viewer={user} onOpen={setSelectedPerson}/>
     <OfficerDialog person={selectedPerson} users={active} open={!!selectedPerson} onPhotoOpen={person=>setPhotoPerson(person)} onOpenChange={open=>{if(!open)setSelectedPerson(null)}}/>
     <Dialog open={!!photoPerson} onOpenChange={open=>{if(!open)setPhotoPerson(null)}}><DialogContent className="max-w-4xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Full photo — {photoPerson ? displayName(photoPerson) : "Officer"}</DialogTitle></DialogHeader>{photoPerson?.profile_photo_url && <img src={photoPerson.profile_photo_url} alt="Full original officer photograph" className="max-h-[78vh] w-full object-contain" />}</DialogContent></Dialog>
