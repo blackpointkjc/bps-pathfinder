@@ -164,38 +164,19 @@ export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
   const { user } = useAuth();
-  const {data:structureData={platoons:[],regions:[]}}=useQuery({
-    queryKey:['rankStructureRegions'],
+  const isAdmin=user?.role==='admin'||(user?.additional_roles||[]).includes('full_access');
+  const {data:rosterData={officers:[],commands:[],platoons:[],regions:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({
+    queryKey:['rankStructureSnapshotV3',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
     queryFn:async()=>{
-      const [platoonsResult,regionsResult]=await Promise.allSettled([
-        base44.functions.invoke('manageCompanyPlatoons',{action:'list'}),
-        base44.functions.invoke('manageHRDivisions',{action:'list'}),
-      ]);
-      const platoons=platoonsResult.status==='fulfilled'?(platoonsResult.value?.data?.platoons||platoonsResult.value?.platoons||[]):[];
-      const divisions=regionsResult.status==='fulfilled'?(regionsResult.value?.data?.divisions||regionsResult.value?.divisions||[]):[];
-      return {platoons,regions:divisions.filter(p=>p.division_level==='region'&&p.active!==false).map(p=>({name:p.division_name,active:p.active}))};
-    },enabled:!!user?.id,staleTime:60000,
+      const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'});
+      const data=response?.data||response||{};
+      if(data.error||data.success!==true)throw new Error(data.error||'Rank Structure roster unavailable');
+      return {officers:data.officers||[],commands:data.platoon_commands||[],platoons:data.platoons||[],regions:(data.regions||[]).map(name=>({name,active:true}))};
+    },enabled:!!user?.id,staleTime:5*60*1000,gcTime:30*60*1000,
+    retry:(count,error)=>count<1&&!/429|rate limit|throttl/i.test(String(error?.message||'')),
+    refetchOnWindowFocus:false,refetchOnMount:false,
   });
-  const {data:rosterData={officers:[],commands:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({queryKey:['allUsersRank',user?.id,user?.rank,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation],queryFn:async()=>{
-    if (!hasSupervisorAccess(user)) {
-      const [all,locations]=await Promise.all([listDirectoryUsers('last_name',1000),listDirectoryLocations('site_name',1000).catch(()=>[])]);
-      // The old chart only read personnel.substation, although a large part
-      // of the operational roster is assigned through client site locations.
-      // Resolve missing fields using the already authorized site's hierarchy;
-      // never make a site-derived inference for supervisor accounts.
-      const officers=all.map(person=>{
-        const org=officerOrgContext(person,locations);
-        return {...person,division:org.division||person.division,subdivision:org.subdivision||person.subdivision,substation:org.substation||person.substation,assigned_site_name:org.site_name};
-      });
-      const pairs=new Map(officers.filter(p=>p.division&&p.platoon&&p.platoon!=='Command').map(p=>[`${p.division.toLowerCase()}|${p.platoon.toLowerCase()}`,{region:p.division,platoon:p.platoon}]));
-      const commands=[...pairs.values()].map(({region,platoon})=>activePlatoonCommand(platoon,officers,region));
-      return {officers,commands};
-    }
-    const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'});
-    const data=response?.data||response||{};
-    if(data.error||data.success!==true)throw new Error(data.error||'Scoped rank directory unavailable');
-    return {officers:data.officers||[],commands:data.platoon_commands||[]};
-  },enabled:!!user?.id,staleTime:60000,refetchOnWindowFocus:false});
+  const structureData={platoons:rosterData.platoons||[],regions:rosterData.regions||[]};
   const users=rosterData.officers||[];
   const commands=rosterData.commands||[];
   const roles=rolesOf(user);
@@ -204,18 +185,18 @@ export default function RankStructure(){
   // An officer on approved leave is still assigned to their substation.
   // The command card uses availability, but assignment rosters must not
   // silently remove people merely because they're off duty or on leave.
-  const active=useMemo(()=>users.filter(person=>isOperational(person) && (!hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,user?.id,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
+  const active=useMemo(()=>users.filter(person=>isOperational(person) && (isAdmin || !hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,isAdmin,user?.id,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
 
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
     {rosterError && <div role="alert" className="rounded-xl border border-red-500/50 bg-red-950/30 p-4 text-sm text-red-100">Officer assignments could not load: {rosterError.message}. <button type="button" className="ml-2 underline font-bold" onClick={()=>refetchRoster()}>Retry roster</button></div>}
-    {!rosterError && (rosterLoading || rosterFetching && !users.length) && <div role="status" className="rounded-xl border border-cyan-800 bg-slate-900 p-4 text-sm text-cyan-200">Loading assigned personnel and active platoon command…</div>}
+    {!rosterError && rosterLoading && <div role="status" className="rounded-xl border border-cyan-800 bg-slate-900 p-4 text-sm text-cyan-200">Loading regional command roster…</div>}
     {!rosterLoading && !rosterError && !active.length && <div role="status" className="rounded-xl border border-amber-700 bg-amber-950/25 p-4 text-sm text-amber-100">No assigned lower-ranking officers are currently visible in your authorized platoon and area. Check officer Region, Division, Platoon and Substation assignments in Manage Officers.</div>}
     <PersonnelPrintRoster users={active} contactEmail={contactEmail}/>
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Active Platoon Command is displayed first, directly above the operating Division and its Substation branches. Select a state or Division without crowding the chart.</p></div></div></div>
 
     {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>window.print()} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
-    {(user?.role==='admin'||(user?.additional_roles||[]).includes('full_access')) && <section className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5"><div className="mb-4 flex items-center gap-2"><Shield className="h-5 w-5 text-amber-300"/><div><h2 className="text-lg font-black text-white">Company Command</h2><p className="text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p></div></div><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson}/></section>}
+    {isAdmin && <details className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5"><summary className="flex cursor-pointer items-center justify-between gap-3 text-lg font-black text-white"><span className="flex items-center gap-2"><Shield className="h-5 w-5 text-amber-300"/>Company Command</span><span className="text-xs font-medium text-amber-200">Expand / minimize</span></summary><div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson}/></div></details>}
     <FocusedRankFlow users={active} commands={commands} platoonDefinitions={structureData.platoons} regionsDirectory={structureData.regions} viewer={user} onOpen={setSelectedPerson}/>
     <OfficerDialog person={selectedPerson} users={active} open={!!selectedPerson} onPhotoOpen={person=>setPhotoPerson(person)} onOpenChange={open=>{if(!open)setSelectedPerson(null)}}/>
     <Dialog open={!!photoPerson} onOpenChange={open=>{if(!open)setPhotoPerson(null)}}><DialogContent className="max-w-4xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Full photo — {photoPerson ? displayName(photoPerson) : "Officer"}</DialogTitle></DialogHeader>{photoPerson?.profile_photo_url && <img src={photoPerson.profile_photo_url} alt="Full original officer photograph" className="max-h-[78vh] w-full object-contain" />}</DialogContent></Dialog>
