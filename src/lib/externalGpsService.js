@@ -404,7 +404,7 @@ function handleSentence(sentence) {
       const longitude = coordinate(fields[5], fields[6], 3);
       if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
         const now = Date.now();
-        publishLiveLocation({ latitude, longitude, accuracy: 35,
+        publishLiveLocation({ latitude, longitude, accuracy: 100,
           speed: lastMotion.speed, heading: lastMotion.heading,
           timestamp: now, source: 'external_serial' });
         emit({ connected: true, connecting: false, lastFixAt: new Date(now).toISOString(), error: '' });
@@ -597,6 +597,9 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
   const connectedAtMs = state.connectedAt ? Date.parse(state.connectedAt) : 0;
   const dataAtMs = lastSerialDataAt || (state.lastDataAt ? Date.parse(state.lastDataAt) : 0);
   const serialStreamStalled = state.connected && recoverStale
+    // Chromium may freeze worker-to-page messages while minimized. Resume
+    // before deciding a physically connected COM port has stopped streaming.
+    && (typeof document === 'undefined' || document.visibilityState === 'visible')
     && connectedAtMs > 0 && Date.now() - connectedAtMs > SERIAL_STALL_MS
     && Date.now() - (dataAtMs || connectedAtMs) > SERIAL_STALL_MS;
   if (state.connected && !serialStreamStalled) return getExternalGpsStatus();

@@ -58,7 +58,7 @@ function handleSentence(sentence) {
       const latitude = coordinate(fields[3], fields[4], 2);
       const longitude = coordinate(fields[5], fields[6], 3);
       if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-        self.postMessage({ type: 'fix', fix: { latitude, longitude, accuracy: 35,
+        self.postMessage({ type: 'fix', fix: { latitude, longitude, accuracy: 100,
           speed: lastMotion.speed, heading: lastMotion.heading,
           timestamp: Date.now(), source: 'external_serial' }, satellites: null, hdop: null });
       }
