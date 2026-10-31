@@ -94,7 +94,7 @@ const easternNow=(date=new Date())=>{
 };
 const PERMITTED_ROLES=['officer','supervisor','dispatch','cad_access','support','hr','trainer','full_access'];
 
-const safeOfficer=(u:any)=>({id:u.id,name:name(u),rank:u.rank||'Officer',unit_number:u.unit_number||'',platoon:u.platoon||'',oversight_platoon:u.oversight_platoon||'',supervisor_id:u.supervisor_id||'',supervisor_name:u.supervisor_name||'',email:u.email||'',is_supervisor:!!u.is_supervisor,system_role:u.role||'user',additional_roles:Array.isArray(u.additional_roles)?u.additional_roles:[],profile_photo_url:u.profile_photo_url||''});
+const safeOfficer=(u:any)=>({id:u.id,name:name(u),rank:u.rank||'Officer',unit_number:u.unit_number||'',platoon:u.platoon||'',oversight_platoon:u.oversight_platoon||'',supervisor_id:u.supervisor_id||'',supervisor_name:u.supervisor_name||'',email:u.email||'',is_supervisor:!!u.is_supervisor,system_role:u.role||'user',additional_roles:Array.isArray(u.additional_roles)?u.additional_roles:[],profile_photo_url:String(u.profile_photo_url||'').length<=150000?u.profile_photo_url||'':''});
 async function version(users:any[]){
  const snapshot=users.map(u=>[u.id,u.updated_date,u.rank,u.unit_number,u.platoon,u.oversight_platoon,u.supervisor_id,u.next_level_supervisor_id,u.employment_status,u.termination_date]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(snapshot)));

@@ -50,7 +50,7 @@ Deno.serve(async(req)=>{
     const samePlatoon=n(me.division)===n(subject.division)&&n(me.oversight_platoon||me.platoon)===n(subject.platoon);
     if(!admin(me) && String(me.id)!==photoId && !samePlatoon && !area(me,subject))
       return Response.json({error:'Officer portrait is outside your authorized platoon'},{status:403});
-    return Response.json({success:true,id:subject.id,photo_url:subject.profile_photo_original_url||subject.profile_photo_url||''});
+    return Response.json({success:true,id:subject.id,photo_url:subject.profile_photo_url||subject.profile_photo_original_url||''});
   }
   if(!entity && kind!=='personnel')return Response.json({error:'Unknown supervisor record type'},{status:400});
   if(kind==='personnel'){
