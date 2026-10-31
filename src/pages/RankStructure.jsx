@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -143,11 +144,17 @@ export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
   const [photoPerson,setPhotoPerson]=useState(null);
   const { user } = useAuth();
-  const {data:users=[]}=useQuery({queryKey:['allUsersRank'],queryFn:()=>listDirectoryUsers('last_name',1000),staleTime:10*60*1000,refetchOnWindowFocus:false,placeholderData:previous=>previous});
+  const {data:users=[]}=useQuery({queryKey:['allUsersRank',user?.id,user?.rank,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation],queryFn:async()=>{
+    if (!hasSupervisorAccess(user)) return listDirectoryUsers('last_name',1000);
+    const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'personnel'});
+    const data=response?.data||response||{};
+    if(data.error||data.success!==true)throw new Error(data.error||'Scoped rank directory unavailable');
+    return data.officers||[];
+  },enabled:!!user?.id,staleTime:60000,refetchOnWindowFocus:false});
   const roles=rolesOf(user);
   const allowed=hasSupervisorAccess(user)||roles.has('officer')||roles.has('cad_access');
   const availabilityTick=useAvailabilityClock();
-  const active=useMemo(()=>users.filter(person=>isOperational(person)&&!isOutOfOffice(person) && (!hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,user?.id,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
+  const active=useMemo(()=>users.filter(person=>isOperational(person)&&!isOutOfOffice(person) && (!hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,user?.id,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
 
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
