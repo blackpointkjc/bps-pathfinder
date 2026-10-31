@@ -40,11 +40,24 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
       gps_accuracy_m:snapshot.last.accuracy,
       samples:snapshot.samples
     };
-    sendQueue.current=sendQueue.current.catch(()=>{}).then(()=>
-      base44.functions.invoke('reportPatrolSpeeding',payload)
-        .then(()=>setReportStatus(completed?'Supervisor speed report finalized':'Supervisor speed review task created'))
-        .catch(()=>setReportStatus('Speed report could not sync; retry when connected'))
-    );
+    sendQueue.current=sendQueue.current.catch(()=>{}).then(async()=>{
+      try {
+        await base44.functions.invoke('reportPatrolSpeeding',payload);
+        setReportStatus(completed?'Supervisor speed report finalized':'Supervisor speed review task created');
+      }catch(error){
+        // A transient network error should not silently lose the report.
+        // Use one delayed retry only; 429 responses should not be hammered.
+        const status=error?.response?.status;
+        if(status!==429 && navigator.onLine){
+          await new Promise(resolve=>window.setTimeout(resolve,6000));
+          try {
+            await base44.functions.invoke('reportPatrolSpeeding',payload);
+            setReportStatus('Supervisor speed report synced');return;
+          }catch { /* preserve the error state */ }
+        }
+        setReportStatus('Speed report could not sync; retry when connected');
+      }
+    });
     if(!completed && episode.current?.eventId===event.eventId)
       episode.current.lastReportAt=time;
   };
@@ -95,6 +108,11 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
   useEffect(()=>{
     const interval=window.setInterval(()=>{
       const fix=latest.current;
+      if(fix && Date.now()-fix.timestamp>45000 && episode.current){
+        const interrupted=episode.current;
+        episode.current=null;
+        if(shouldReportSpeeding(interrupted))report(interrupted,true);
+      }
       if(level!=='critical'||!fix||Date.now()-fix.timestamp>30000){
         if(level==='critical'&&fix&&Date.now()-fix.timestamp>30000)setLevel('unknown');
         return;
