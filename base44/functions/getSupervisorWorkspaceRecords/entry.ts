@@ -80,6 +80,8 @@ Deno.serve(async(req)=>{
    await sdk.asServiceRole.entities.AuditLog.create({entity_type:entity,entity_id:String(result?.id||id),action,actor_id:String(me.id),actor_name:String(me.email||''),timestamp:new Date().toISOString(),description:`Scoped supervisor ${action}: ${kind}`}).catch(()=>null);
    return Response.json({success:true,record:result});
   }
-  return Response.json({success:true,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,platoon:p.platoon,division:p.division,subdivision:p.subdivision,substation:p.substation,unit_number:p.unit_number})),locations:locations.map((p:any)=>({id:p.id,site_name:p.site_name,division:p.division,subdivision:p.subdivision,substation:p.substation}))});
+  return Response.json({success:true,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
+        termination_date:p.termination_date||'',user_type:p.user_type||'',account_type:p.account_type||'',
+        platoon:p.platoon,division:p.division,subdivision:p.subdivision,substation:p.substation,unit_number:p.unit_number})),locations:locations.map((p:any)=>({id:p.id,site_name:p.site_name,division:p.division,subdivision:p.subdivision,substation:p.substation}))});
  }catch(error:any){console.error('Scoped supervisor records failed',error);return Response.json({error:'Unable to load supervisor records safely; retry.'},{status:503});}
 });

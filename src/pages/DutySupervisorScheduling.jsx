@@ -27,7 +27,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
   const editorRef=useRef(null);
   const [actionError,setActionError]=useState('');
   const revealEditor=()=>requestAnimationFrame(()=>{editorRef.current?.scrollIntoView?.({block:'start',behavior:'smooth'});editorRef.current?.querySelector('input[type=date]')?.focus({preventScroll:true});});
-  const refreshCoverage=()=>Promise.all(['dutySupervisorAssignments','supervisorDutyTimeline','myScheduleData'].map(key=>qc.invalidateQueries({queryKey:[key]})));
+  const refreshCoverage=()=>Promise.all(['supervisorScopedDutyScheduling','dutySupervisorAssignments','supervisorDutyTimeline','myScheduleData'].map(key=>qc.invalidateQueries({queryKey:[key]})));
   const [dayOffset,setDayOffset] = useState(0);
   const [repeatWeek,setRepeatWeek]=useState(false);
   const [editing,setEditing] = useState(null);
@@ -35,15 +35,25 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
   const [form,setForm] = useState({ assignment_date:format(new Date(),'yyyy-MM-dd'), start_time:'18:00', end_time:'06:00', locations:['ALL'], supervisor_emails:[], notes:'' });
   const { user, isLoadingAuth:userLoading } = useAuth();
   const canManage = hasSupervisorAccess(user);
-  const { data:users=[] } = useQuery({ queryKey:['dutySupervisorUsers'], queryFn:()=>listDirectoryUsers('last_name',1000) });
-  const { data:locations=[] } = useQuery({ queryKey:['dutySupervisorLocations'], queryFn:async()=> (await listDirectoryLocations('site_name',1000)).filter(row=>row.active!==false) });
-  const { data:assignments=[],error } = useQuery({ queryKey:['dutySupervisorAssignments'], queryFn:async()=>{ try { const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'list'}); const payload=response?.data||response||{}; if(payload.error) throw new Error(payload.error); return payload.assignments||[]; } catch(error) { try { return await base44.entities.DutySupervisorAssignment.list('-assignment_date',1500); } catch { throw error; } } }, refetchInterval:5 * 60 * 1000 });
+  const {data:scope={},error} = useQuery({
+    queryKey:['supervisorScopedDutyScheduling',user?.id],
+    queryFn:async()=>{
+      const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'duty'});
+      const payload=response?.data||response||{};
+      if(payload.error||payload.success!==true)throw new Error(payload.error||'Duty supervisor scheduling unavailable');
+      return payload;
+    }, enabled:!!user&&canManage,staleTime:30000,refetchInterval:5*60*1000,
+  });
+  const users=scope.officers||[];
+  const locations=scope.locations||[];
+  const assignments=scope.rows||[];
 
   useEffect(() => {
     let unsubscribe;
     try {
       unsubscribe = base44.entities.DutySupervisorAssignment.subscribe(() => {
-        qc.invalidateQueries({ queryKey:['dutySupervisorAssignments'] });
+        qc.invalidateQueries({ queryKey:['supervisorScopedDutyScheduling'] });
+        qc.invalidateQueries({queryKey:['dutySupervisorAssignments']});
       });
     } catch {}
     return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
@@ -163,7 +173,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
         const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id});
         const payload=response?.data||response||{};
         if(payload.error||!payload.success)throw new Error(payload.error||'Duty coverage was not removed.');
-        qc.setQueryData(['dutySupervisorAssignments'],previous=>(previous||[]).filter(item=>item.id!==row.id));
+        qc.invalidateQueries({queryKey:['supervisorScopedDutyScheduling']});
       }
       if(editing&&(editing.rows||[editing]).some(row=>(group.rows||[group]).some(removed=>removed.id===row.id)))reset(form.assignment_date);
       await refreshCoverage();
