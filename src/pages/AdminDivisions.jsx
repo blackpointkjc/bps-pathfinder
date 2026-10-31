@@ -38,6 +38,9 @@ const emptyForm = (level = 'region') => ({
 
 export default function AdminDivisions() {
   const [showDialog, setShowDialog] = useState(false);
+  const [platoonDraft,setPlatoonDraft]=useState({name:'',region:'',notes:''});
+  const [editingPlatoon,setEditingPlatoon]=useState(null);
+  const [platoonError,setPlatoonError]=useState('');
   const [editingDivision, setEditingDivision] = useState(null);
   const [formData, setFormData] = useState(() => emptyForm('region'));
   const queryClient = useQueryClient();
@@ -62,6 +65,29 @@ export default function AdminDivisions() {
     refetchOnWindowFocus: false,
   });
 
+  const {data:platoons=[],isFetching:platoonsLoading,error:platoonsError} = useQuery({
+    queryKey:['companyPlatoons'],
+    queryFn:async()=>{
+      const response=await base44.functions.invoke('manageCompanyPlatoons',{action:'list'});
+      const data=response?.data||response||{};
+      if(data.error||data.success!==true)throw new Error(data.error||'Platoons unavailable');
+      return data.platoons||[];
+    },enabled:hasAccess,staleTime:60000,
+  });
+  const savePlatoon=useMutation({
+    mutationFn:async({action,id,data})=>{
+      const response=await base44.functions.invoke('manageCompanyPlatoons',{action,id,data});
+      const payload=response?.data||response||{};
+      if(payload.error||payload.success!==true)throw new Error(payload.error||'Unable to save platoon');
+      return payload;
+    },onSuccess:()=>{
+      setPlatoonError('');setPlatoonDraft({name:'',region:'',notes:''});setEditingPlatoon(null);
+      queryClient.invalidateQueries({queryKey:['companyPlatoons']});
+      queryClient.invalidateQueries({queryKey:['allUsersRank']});
+      queryClient.invalidateQueries({queryKey:['platoonUsers']});
+    },onError:error=>setPlatoonError(error?.message||'Platoon update failed'),
+  });
+  const editPlatoon=record=>{setEditingPlatoon(record);setPlatoonDraft({name:record.name||'',region:record.region||'',notes:record.notes||''});setPlatoonError('');};
   const { data: locations = [] } = useQuery({
     queryKey: ['org-structure-locations'],
     queryFn: async () => {
@@ -307,6 +333,21 @@ export default function AdminDivisions() {
           </div>
         </div>
 
+        <Card className="border border-cyan-900 bg-slate-900/50 shadow-lg">
+          <CardHeader><CardTitle className="text-white">Platoons by Region</CardTitle><p className="text-sm text-slate-400">Create additional regional platoons here. A Platoon belongs to one Region; its divisions and substations inherit that state. Company Command is not a platoon.</p></CardHeader>
+          <CardContent className="space-y-4">
+            <form className="grid gap-3 rounded-xl border border-slate-700 bg-slate-950/60 p-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end" onSubmit={event=>{event.preventDefault();setPlatoonError('');savePlatoon.mutate({action:editingPlatoon?'update':'create',id:editingPlatoon?.id,data:platoonDraft});}}>
+              <label className="space-y-1 text-xs font-bold text-slate-300">Region / State<select required aria-label="Platoon region" value={platoonDraft.region} onChange={event=>setPlatoonDraft(previous=>({...previous,region:event.target.value}))} className="h-10 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 text-sm text-white"><option value="">Choose a region</option>{(tree||[]).filter(region=>region.record?.active!==false).map(region=><option key={region.name} value={region.name}>{region.name}</option>)}</select></label>
+              <label className="space-y-1 text-xs font-bold text-slate-300">Platoon name<input required maxLength={80} aria-label="Platoon name" placeholder="e.g. Platoon C" value={platoonDraft.name} onChange={event=>setPlatoonDraft(previous=>({...previous,name:event.target.value}))} className="h-10 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 text-sm text-white"/></label>
+              <label className="space-y-1 text-xs font-bold text-slate-300">Notes<input maxLength={240} placeholder="Optional" value={platoonDraft.notes} onChange={event=>setPlatoonDraft(previous=>({...previous,notes:event.target.value}))} className="h-10 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 text-sm text-white"/></label>
+              <div className="flex gap-2"><Button disabled={savePlatoon.isPending||!platoonDraft.region||!platoonDraft.name.trim()} type="submit">{savePlatoon.isPending?'Saving…':editingPlatoon?'Save Platoon':'Create Platoon'}</Button>{editingPlatoon&&<Button type="button" variant="outline" onClick={()=>{setEditingPlatoon(null);setPlatoonDraft({name:'',region:'',notes:''});}}>Cancel</Button>}</div>
+            </form>
+            {platoonError&&<p role="alert" className="rounded-lg border border-red-700/50 bg-red-950/30 p-3 text-sm text-red-200">{platoonError}</p>}
+            {platoonsError&&<p role="alert" className="text-sm text-red-300">Unable to load platoons: {platoonsError.message}</p>}
+            {platoonsLoading&&<p className="text-xs text-slate-400">Refreshing platoons…</p>}
+            <div className="grid gap-3 md:grid-cols-2">{(tree||[]).map(region=><div key={region.name} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3"><h3 className="mb-3 text-sm font-black text-cyan-200">{region.name}</h3><div className="space-y-2">{platoons.filter(p=>p.region===region.name).map(p=><div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700 p-3"><div><div className="text-sm font-bold">{p.name}</div><div className="text-xs text-slate-400">{p.active===false?'Inactive':'Active'} · {p.notes||'Regional command'}</div></div><div className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={()=>editPlatoon(p)}>Edit</Button><Button type="button" size="sm" variant="outline" disabled={savePlatoon.isPending} onClick={async()=>{if(await confirmInApp(`Delete ${p.name} from ${p.region}? Platoons with officers will be protected.`))savePlatoon.mutate({action:'delete',id:p.id});}}>Delete</Button></div></div>)}{!platoons.some(p=>p.region===region.name)&&<p className="text-xs text-amber-200">No Platoons created for this Region. Add one above.</p>}</div></div>)}</div>
+          </CardContent>
+        </Card>
         <Card className="border border-slate-800 bg-slate-900/40 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-white">
