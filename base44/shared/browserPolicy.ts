@@ -374,6 +374,13 @@ export function evaluateDomain({ domain, policy, siteRules = [], grants = [], us
       reason:`Company-wide internet restriction: ${categoryLabel} is unavailable for non-administrators.`,
       basis:'Mandatory company restriction'};
   }
+  // Government .gov DNS hosts are always approved for visits, including
+  // strict-search users. Require the hostname to actually END with .gov,
+  // never just contain a misleading .gov. suffix before another domain.
+  if (target.endsWith('.gov') || target === 'gov') {
+    return {allowed:true,category:'government',category_label:'Government website',
+      reason:'Official .gov government domain approved by company policy.',basis:'Government .gov access'};
+  }
   if (blockRule) {
     return { allowed: false, category, category_label: categoryLabel, reason: blockRule.note || `This website is blocked by company policy (${target}).`, basis: 'Site blocklist' };
   }

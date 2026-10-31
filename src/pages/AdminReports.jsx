@@ -20,6 +20,7 @@ import {
 
 
 import AdminQRReports from './AdminQRReports';
+import AcceptableUseReport from '@/components/admin/AcceptableUseReport';
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
@@ -1177,6 +1178,7 @@ export default function AdminReports() {
   return (
     <div className="min-h-full bg-[#07111d] p-2 text-slate-100 md:p-3">
       <div className="w-full space-y-3">
+        {user?.role === 'admin' && <AcceptableUseReport />}
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-700/70 bg-[#0b1624] px-3 py-2 shadow-lg">
           <div className="mr-auto flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">

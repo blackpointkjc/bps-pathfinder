@@ -65,7 +65,7 @@ export default function CorporateBrowser() {
     try {
       const data=await check.mutateAsync(url.href);
       if(!data?.decision?.allowed){push({kind:'blocked',url:url.href,reason:data?.decision?.reason||'This site is restricted by your browsing profile.'});return;}
-      if(data?.policy?.strict_search_only){push({kind:'blocked',url:url.href,reason:'Your HR role is set to Strict Search Only. Contact your administrator to change the policy for your existing role.'});return;}
+      if(data?.policy?.strict_search_only && data?.decision?.basis !== 'Government .gov access'){push({kind:'blocked',url:url.href,reason:'Your HR role is set to Strict Search Only. Government .gov domains remain approved.'});return;}
       try {
         const viewer=await remote.mutateAsync(url.href);
         if (!viewer?.viewer_url) throw new Error('Remote Chrome did not return a viewer.');
