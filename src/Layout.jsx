@@ -1647,6 +1647,8 @@ export default function Layout({ children, currentPageName }) {
                     {externalGps.connected && <span>Baud {externalGps.baudRate || 4800}</span>}
                     {externalGps.satellites != null && <span>{externalGps.satellites} satellites</span>}
                     {externalGps.backgroundReader && <span className="text-emerald-300">Background reader active</span>}
+                    {externalGps.connected && <span className={externalGps.lastFixAt && Date.now() - Date.parse(externalGps.lastFixAt) < 30_000 ? 'text-emerald-300' : 'text-amber-300'}>{externalGps.lastFixAt && Date.now() - Date.parse(externalGps.lastFixAt) < 30_000 ? 'Satellite position current' : 'Connected · acquiring satellite fix'}</span>}
+                    {externalGps.connected && externalGps.lastDataAt && <span>Last antenna data: {Math.max(0,Math.floor((Date.now() - Date.parse(externalGps.lastDataAt))/1000))}s ago</span>}
                     {externalGps.lockedToAntenna && <span className="text-cyan-300">Locked to saved antenna</span>}
                   </div>
                   {externalGps.error && <div className="mt-2 rounded-md border border-red-800/60 bg-red-950/40 px-2 py-1.5 text-[9px] font-bold text-red-200">{externalGps.error}</div>}
