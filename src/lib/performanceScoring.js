@@ -633,7 +633,10 @@ export function calculateJobDutyCompliance({
       });
     }
   }
-  const evaluatedAll = [...evaluatedShifts, ...scheduleSessions];
+  // A published shift with no time-clock evidence is an attendance-review matter,
+  // NOT evidence the officer performed a shift and owed a DAR or incident report.
+  // Only verified worked sessions can generate report-compliance findings.
+  const evaluatedAll = evaluatedShifts;
 
   const activeRules = dutyRules.filter(rule => rule.active !== false);
   const ruleFor = site => activeRules.find(rule => siteKey(rule.property_site) === siteKey(site)) || null;
@@ -776,6 +779,14 @@ export function calculateJobDutyCompliance({
     const calls = dispatchCalls.filter(call => {
       const stamp = new Date(call.time_received || call.created_date).getTime();
       if (!Number.isFinite(stamp) || stamp < shiftStartMs || stamp > shiftEndMs) return false;
+      // Public CAD feeds are situational awareness, not an officer assignment.
+      // An off-property agency response near a post must not create a missing
+      // officer incident report. Only a verified internal unit dispatch is eligible.
+      const assignedUnits = Array.isArray(call.assigned_units) ? call.assigned_units.map(v => String(v).toLowerCase()) : [];
+      const officerIdentifiers = [officer?.id, officer?.unit_number, officer?.email].filter(Boolean).map(v => String(v).toLowerCase());
+      const explicitlyAssigned = officerIdentifiers.some(id => assignedUnits.includes(id));
+      if (!explicitlyAssigned) return false;
+      if (call.source_channel || call.external_call_id || ['richmond','henrico','chesterfield','pulsepoint'].includes(String(call.source || '').toLowerCase())) return false;
       return callMatchesProperty(call, site, locations);
     });
     const allowedTypes = Array.isArray(rule?.incident_required_call_types) ? rule.incident_required_call_types.map(v => String(v).toLowerCase()) : [];

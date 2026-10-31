@@ -23,7 +23,7 @@ export default async function(req: Request): Promise<Response> {
     for (const row of Array.isArray(request?.findings) ? request.findings.slice(0, 400) : []) {
       const email = lower(row?.officer_email);
       if (!email) continue;
-      const items = (Array.isArray(row?.items) ? row.items : []).slice(0, 25)
+      const items = (Array.isArray(row?.items) ? row.items : []).slice(0, 400)
         .map((item:any) => ({
           type:clean(item?.type) || 'duty',
           label:clean(item?.label).slice(0, 200),
@@ -127,7 +127,7 @@ export default async function(req: Request): Promise<Response> {
 
       const dutyCount = finding.items.filter((item:any) => item.type !== 'call_out').length;
       const summary = [
-        dutyCount ? `${dutyCount} missed dut${dutyCount === 1 ? 'y' : 'ies'}` : '',
+        dutyCount ? `${dutyCount} report or patrol obligation${dutyCount === 1 ? '' : 's'} requiring review` : '',
         finding.items.length - dutyCount ? `${finding.items.length - dutyCount} call-out${finding.items.length - dutyCount === 1 ? '' : 's'}` : '',
       ].filter(Boolean).join(' · ') || `${finding.items.length} finding${finding.items.length === 1 ? '' : 's'}`;
       const payload = {
@@ -142,7 +142,7 @@ export default async function(req: Request): Promise<Response> {
         summary,
         items: finding.items,
         finding_count: finding.items.length,
-        severity: finding.items.length >= 3 ? 'critical' : finding.items.length >= 2 ? 'high' : 'normal',
+        severity: finding.items.some((item:any) => item.type === 'call_out') ? 'high' : 'normal',
         assigned_to_id: String(chosen.id),
         assigned_to_email: lower(chosen.email),
         assigned_to_name: displayName(chosen),
