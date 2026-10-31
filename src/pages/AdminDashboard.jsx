@@ -164,8 +164,8 @@ export default function AdminDashboard() {
     { id: "training", title: "Training", icon: GraduationCap, url: createPageUrl("AdminTraining"), category: "team" },
     // Reports
     { id: "all_reports", title: "All Reports", icon: ClipboardList, url: createPageUrl("AdminReports"), category: "reports" },
-    { id: "supervisor_reports", title: "Supervisor Reports", icon: UserCheck, url: createPageUrl("AdminSupervisorReports"), category: "reports" },
-    { id: "confidential", title: "Confidential Reports", icon: ShieldCheck, url: createPageUrl("AdminConfidentialReports"), category: "reports" },
+    { id: "supervisor_reports", title: "Supervisor Reports", icon: UserCheck, url: `${createPageUrl("AdminReports")}?report_view=supervisorreports`, category: "reports" },
+    { id: "confidential", title: "Confidential Reports", icon: ShieldCheck, url: `${createPageUrl("AdminReports")}?report_view=confidential`, category: "reports" },
     // Scheduling
     { id: "time_entries", title: "Manage Time Entries", icon: Clock, url: createPageUrl("ManageTimeEntries"), category: "scheduling" },
     { id: "scheduling", title: "Scheduling", icon: Calendar, url: createPageUrl("AdminScheduling"), category: "scheduling" },

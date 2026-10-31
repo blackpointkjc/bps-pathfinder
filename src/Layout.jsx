@@ -1624,7 +1624,7 @@ export default function Layout({ children, currentPageName }) {
               <ShieldCheck className="h-4 w-4" /><span className="hidden lg:inline">Website Restrictions</span><span className="hidden sm:inline lg:hidden">Web Controls</span>
             </Link>}
           </nav>}
-          {currentPageName !== 'AdminCenter' && <div className="pf-header-context hidden min-w-0 md:block">
+          {!['AdminCenter','CorporateBrowser','AdminBrowserControl','AdminReports'].includes(currentPageName) && <div className="pf-header-context hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
           </div>}
