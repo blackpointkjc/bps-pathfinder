@@ -65,27 +65,19 @@ export default function SupervisorOverview() {
     queryFn: async () => {
       const failures = [];
       const read = async (label, loader, fallback = {}) => { try { const response=await loader(); const value=response?.data||response; if(value?.error)throw new Error(value.error); return value; } catch { failures.push(label); return fallback; } };
-      const viewer = await read('Supervisor identity', () => getCurrentDirectoryUser(), {});
-      const users = (await read('Officer directory', () => listDirectoryUsers('-last_updated', 500), [])).filter(person => withinPersonnelOversightScope(viewer, person));
-      // Assignment synchronisation is a background write-heavy workflow, not
-      // a read for every overview render. The scoped task reader below provides
-      // the current actionable records without throttling other command pages.
       const supervisorAssignments = {};
-      const taskResult = await read('Personnel actions', () => base44.functions.invoke('getSupervisorScopedTasks', {}));
+      const taskResult = await read('Assigned personnel actions', () => base44.functions.invoke('getSupervisorScopedTasks', {}));
       const taskPayload = taskResult?.data || taskResult || {};
-      const [boardResult, reportResult, locationSnapshot] = await Promise.all([
+      const users = taskPayload.assignedPeople || [];
+      const [boardResult, locationSnapshot] = await Promise.all([
         read('Live command board', () => base44.functions.invoke('getSupervisorWelfareBoard', {})),
-        read('Report work queue', () => base44.functions.invoke('getRoleWorkQueue', { queue_role:'supervisor_reports' })),
         read('Live units', () => getOfficerLocationSnapshot()),
       ]);
       const board = boardResult?.data || boardResult || {};
-      const reportWork = reportResult?.data || reportResult || {};
-      const officerEmails = new Set(users.map(person => String(person.email || '').toLowerCase()));
-      reportWork.tasks = (reportWork.tasks || []).filter(task => officerEmails.has(String(task.officer_email || task.source_officer_email || '').toLowerCase())
-        && (String(task.assigned_to_email || '').toLowerCase() === String(viewer.email || '').toLowerCase() || String(task.assigned_to_id || '') === String(viewer.id || '')));
+      const reportWork = {tasks:[]};
       const allowedOfficerEmails = new Set(board.visible_officer_emails || []);
       const liveUnits = (locationSnapshot?.users || []).filter(unit => unit?.session_active === true && allowedOfficerEmails.has(String(unit?.officer_email || unit?.email || '').trim().toLowerCase()));
-      return { users, tasks: taskPayload, board, reportWork, supervisorAssignments, liveUnits, failures: [...failures,...(reportWork.load_errors||[])] };
+      return { users, tasks: taskPayload, board, reportWork, supervisorAssignments, liveUnits, failures };
     },
     staleTime: 30000,
     refetchInterval: 60000,

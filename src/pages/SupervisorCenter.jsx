@@ -1,4 +1,5 @@
 import SupervisorScheduleWorkspace from '@/components/SupervisorScheduleWorkspace';
+import { useAuth } from '@/lib/AuthContext';
 import { useEffect } from 'react';
 import { useLocation,useNavigate } from 'react-router-dom';
 import { ClipboardCheck, Shield, ShieldCheck, LayoutDashboard } from 'lucide-react';
@@ -77,6 +78,7 @@ function SupervisorSectionContent({ section, embedded }) {
 }
 
 export default function SupervisorCenter({ embedded = false }) {
+  const {user}=useAuth();
   const location=useLocation(),navigate=useNavigate();
   useEffect(()=>{
    const params=new URLSearchParams(location.search),key=embedded?'supervisor_section':'section';
@@ -87,6 +89,13 @@ export default function SupervisorCenter({ embedded = false }) {
    navigate({pathname:location.pathname,search:'?'+params.toString()},{replace:true});
   },[embedded,location.pathname,location.search,navigate]);
 
+  const roles=new Set([user?.role,...(user?.additional_roles||[])].map(value=>String(value||'').trim().toLowerCase()));
+  const allAccess=roles.has('admin')||roles.has('full_access');
+  const platoon=user?.oversight_platoon||user?.platoon;
+  const platoonReady=['A','B'].includes(String(platoon||'').toUpperCase());
+  const assignedArea=[user?.division&&`Region ${user.division}`,user?.subdivision&&`Division ${user.subdivision}`,user?.substation&&`Substation ${user.substation}`].filter(Boolean).join(' · ');
+  const scopeLabel=allAccess?'Company-wide administrator':`Platoon ${platoon||'not assigned'} · ${assignedArea||'Organization not assigned'}`;
+  const scopeMissing=!allAccess&&(!platoonReady||!user?.division||!user?.subdivision||(!['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(String(user?.rank||'').toLowerCase())&&!user?.substation));
   return <UnifiedCenter
     eyebrow="Field Leadership"
     title="Supervisor Center"
@@ -95,8 +104,12 @@ export default function SupervisorCenter({ embedded = false }) {
     defaultSection="overview"
     queryParam={embedded ? 'supervisor_section' : 'section'}
     embedded={embedded}
+    headerAction={<span className="hidden max-w-[360px] truncate text-[10px] font-semibold text-cyan-200 lg:inline" title={scopeLabel}>{scopeLabel}</span>}
   >
     {section => <SupervisorSectionBoundary key={section} section={section}>
+      <div className={`mx-3 mt-2 rounded-lg border px-3 py-2 text-xs font-semibold ${scopeMissing?'border-amber-600/50 bg-amber-950/20 text-amber-200':'border-cyan-800/50 bg-cyan-950/15 text-cyan-200'}`} role="status">
+        {scopeLabel}{scopeMissing?' · Complete your platoon and organization assignments in Manage Officers to enable supervisor personnel access.':''}
+      </div>
       <SupervisorSectionContent section={section} embedded={embedded} />
     </SupervisorSectionBoundary>}
   </UnifiedCenter>;
