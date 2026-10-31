@@ -62,8 +62,7 @@ function PersonCard({ person, users, onOpen, compact = false }) {
 
 function OfficerDialog({ person, users, open, onOpenChange, onPhotoOpen }) {
   if(!person) return null;
-  const directReports=users.filter(u=>reportingSupervisors(u, users).some(s=>s.id===person.id));
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Personnel Information</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-center gap-4">{person.profile_photo_url?<button type="button" aria-label="Enlarge full officer photograph" onClick={()=>onPhotoOpen(person)}><img src={person.profile_photo_url} alt="" className="h-20 w-20 rounded-full object-cover"/></button>:<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-xl font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}<div><div className="text-xl font-black">{displayName(person)}</div>{isOutOfOffice(person) && <div className="mt-1 text-xs text-amber-300">Out of office · returns {new Date(person.out_of_office_return).toLocaleString()}</div>}<div className="text-sm text-slate-400">Unit {person.unit_number||'—'} · {orgPathLabel(person) || 'Organization unassigned'}</div><Badge className="mt-2 bg-blue-950 text-blue-300">{assignmentLabel(person, users)}</Badge>{actingCommandLabel(person,users)&&<div className="mt-1 text-xs text-cyan-300">{actingCommandLabel(person,users)}</div>}{person.rank==='Major' && <div className="mt-2 text-sm text-amber-300">{oversightLabel(person)}</div>}</div></div><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 break-all text-sm">{contactEmail(person)||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-sm">{person.mobile_phone||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Reports To</div><div className="mt-1 text-sm font-semibold">{reportingLabel(person, users, displayName)}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Direct Reports</div><div className="mt-1 text-sm font-semibold">{directReports.length?directReports.map(displayName).join(', '):'None'}</div></div></div><div className="flex flex-wrap gap-2">{contactEmail(person)&&<Link to={composeUrl(person)} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Mail className="mr-2 h-4 w-4"/>Email in Pathfinder</Link>}{person.mobile_phone&&<a href={`tel:${person.mobile_phone}`} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Phone className="mr-2 h-4 w-4"/>Call</a>}</div></div></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Personnel Information</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-center gap-4">{person.profile_photo_url?<button type="button" aria-label="Enlarge full officer photograph" onClick={()=>onPhotoOpen(person)}><img src={person.profile_photo_url} alt="" className="h-20 w-20 rounded-full object-cover"/></button>:<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-xl font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}<div><div className="text-xl font-black">{displayName(person)}</div>{isOutOfOffice(person) && <div className="mt-1 text-xs text-amber-300">Out of office · returns {new Date(person.out_of_office_return).toLocaleString()}</div>}<div className="text-sm text-slate-400">Unit {person.unit_number||'—'} · {orgPathLabel(person) || 'Organization unassigned'}</div><Badge className="mt-2 bg-blue-950 text-blue-300">{assignmentLabel(person, users)}</Badge>{actingCommandLabel(person,users)&&<div className="mt-1 text-xs text-cyan-300">{actingCommandLabel(person,users)}</div>}{person.rank==='Major' && <div className="mt-2 text-sm text-amber-300">{oversightLabel(person)}</div>}</div></div><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 break-all text-sm">{contactEmail(person)||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-sm">{person.mobile_phone||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Reports To</div><div className="mt-1 text-sm font-semibold">{reportingLabel(person, users, displayName)}</div></div></div><div className="flex flex-wrap gap-2">{contactEmail(person)&&<Link to={composeUrl(person)} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Mail className="mr-2 h-4 w-4"/>Email in Pathfinder</Link>}{person.mobile_phone&&<a href={`tel:${person.mobile_phone}`} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Phone className="mr-2 h-4 w-4"/>Call</a>}</div></div></DialogContent></Dialog>;
 }
 
 function OrgTreeNode({ person, branch, allUsers, onOpen }) {
@@ -84,10 +83,10 @@ function CommandTree({ users, allUsers, onOpen }) {
   return <CommandRankTiers users={users} renderPerson={person=><PersonCard person={person} users={allUsers} onOpen={onOpen}/>}/>;
 }
 
-function AreaMember({ person, onOpen }) {
+function AreaMember({ person, onOpen, onPhotoOpen }) {
   const label = [person.rank, person.last_name || person.first_name].filter(Boolean).join(' ');
   return <button type="button" onClick={() => onOpen(person)} className="flex w-full items-center gap-3 rounded-xl border border-slate-700/80 bg-[#091625] px-3 py-2.5 text-left text-slate-100 transition hover:border-cyan-500/70 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-400">
-    {person.profile_photo_url ? <img alt="" src={person.profile_photo_url} className="h-10 w-10 shrink-0 rounded-full border border-slate-600 object-cover"/> : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
+    {person.profile_photo_url ? <img alt="Click to enlarge officer portrait" onClick={event=>{event.stopPropagation();onPhotoOpen?.(person);}} src={person.profile_photo_url} className="h-10 w-10 shrink-0 cursor-zoom-in rounded-full border border-slate-600 object-cover"/> : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
     <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{label || person.full_name || 'Officer'}</div><div className="mt-0.5 text-xs text-slate-400">Unit {person.unit_number || '—'}</div>{person.assigned_site_name&&<div className="mt-1 text-xs text-emerald-300">{person.assigned_site_name}</div>}</div>
     <span className="shrink-0 text-xs text-cyan-300">View</span>
   </button>;
@@ -95,7 +94,7 @@ function AreaMember({ person, onOpen }) {
 
 // A focused chain-of-command board. Even with many states, only the chosen
 // platoon + region + division + substation is expanded on screen at once.
-function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = [], regionsDirectory = [], onOpen }) {
+function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = [], regionsDirectory = [], onOpen, onPhotoOpen }) {
   const roles = new Set([viewer?.role,...(viewer?.additional_roles||[])].map(value=>String(value||'').toLowerCase()));
   const companyAccess = roles.has('admin') || roles.has('full_access');
   const viewerSenior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(String(viewer?.rank||'').toLowerCase());
@@ -117,6 +116,16 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
   // Captains and Lieutenants never belong under 'unassigned substation'.
   // They are leaders of a Division/Platoon, not field substation personnel.
   const commander=commands.find(entry=>entry.platoon===platoon&&entry.region===region)||null;
+  const {data:commandPortrait}=useQuery({
+    queryKey:['rankCommanderPortrait',commander?.id],enabled:!!commander?.id,
+    queryFn:async()=>{
+      const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'portrait',id:commander.id});
+      const payload=response?.data||response||{};
+      if(payload.error||payload.success!==true)throw new Error(payload.error||'Commander portrait unavailable');
+      return payload.photo_url||'';
+    },staleTime:5*60*1000,retry:false,refetchOnWindowFocus:false,
+  });
+  const commandPhoto=commandPortrait||commander?.profile_photo_url||'';
   const fieldPeople=divisionPeople.filter(person=>FIELD_RANKS.has(person.rank) && String(person.id)!==String(commander?.id));
   const substations=distinct(fieldPeople.map(person=>person.substation||'Field posting not assigned'));
   const visibleStations=companyAccess||viewerSenior?substations:substations.filter(name=>name===viewer?.substation);
@@ -135,12 +144,12 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/25 px-4 py-3"><span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-amber-200"><Shield className="h-4 w-4"/>Active Platoon Command</span><span className={`rounded-md border px-2 py-1 text-[10px] font-bold ${commander?.status==='active'?'border-emerald-600/50 bg-emerald-950/30 text-emerald-300':'border-amber-500/30 bg-amber-950/40 text-amber-200'}`}>{commander?.status==='active'?'ACTIVE':commander?.status==='acting'?'ACTING':'VACANT'}</span></div>
         {commander?.id ? <div className="p-4 sm:p-5">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-            {commander.profile_photo_url ? <img src={commander.profile_photo_url} alt={`${commander.name} portrait`} className="h-28 w-28 shrink-0 rounded-xl border-2 border-amber-600/50 bg-slate-800 object-cover"/> : <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-xl border border-amber-600/40 bg-slate-800 text-3xl font-black text-amber-200">{commander.first_name?.[0]||''}{commander.last_name?.[0]||''}</div>}
+            {commandPhoto ? <button type="button" className="shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400" aria-label={`Enlarge photo of ${commander.name}`} onClick={()=>onPhotoOpen?.({...commander,profile_photo_url:commandPhoto})}><img src={commandPhoto} alt={`${commander.name} portrait`} className="h-28 w-28 cursor-zoom-in rounded-xl border-2 border-amber-600/50 bg-slate-800 object-cover"/></button> : <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-xl border border-amber-600/40 bg-slate-800 text-3xl font-black text-amber-200">{commander.first_name?.[0]||''}{commander.last_name?.[0]||''}</div>}
             <div className="min-w-0 flex-1 text-center sm:text-left"><h3 className="break-words text-xl font-black text-white">{commander.name}</h3><p className="mt-1 text-sm font-bold text-amber-300">{commander.status==='acting'?'Acting Platoon Commander':'Platoon Commander'}</p><div className="mt-3 flex flex-wrap justify-center gap-2 text-xs sm:justify-start"><span className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2">{commander.rank}</span><span className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2">Badge {commander.badge_number||'—'}</span><span className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2">Unit {commander.unit_number||'—'}</span></div></div>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-slate-700 bg-slate-950/70 p-3"><div className="text-[10px] font-bold uppercase text-slate-400">Work Email</div><div className="mt-1 break-all text-xs text-white">{commander.work_email||'Not provided'}</div></div><div className="rounded-lg border border-slate-700 bg-slate-950/70 p-3"><div className="text-[10px] font-bold uppercase text-slate-400">Phone</div><div className="mt-1 text-xs text-white">{commander.mobile_phone||'Not provided'}</div></div></div>
           {(commander.subdivision||commander.substation||commander.assigned_site_name)&&<p className="mt-3 text-xs text-slate-300">{[region,commander.subdivision,commander.substation,commander.assigned_site_name].filter(Boolean).join(' · ')}</p>}
-          <div className="mt-3 flex flex-wrap gap-2">{commander.work_email&&<a href={`mailto:${commander.work_email}`} className="rounded-lg border border-amber-700 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-950/40">Email Commander</a>}{commander.mobile_phone&&<a href={`tel:${commander.mobile_phone}`} className="rounded-lg border border-amber-700 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-950/40">Call Commander</a>}</div>
+          <div className="mt-3 flex flex-wrap gap-2">{commander.work_email&&<Link to={`${createPageUrl('OutlookMail')}?compose=1&to=${encodeURIComponent(commander.work_email)}`} className="rounded-lg border border-amber-700 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-950/40">Email Commander</Link>}</div>
         </div> : <div className="px-5 py-8 text-center"><p className="text-lg font-black text-white">No active Platoon Commander</p><p className="mt-2 text-xs text-slate-400">Assign personnel to this regional Platoon or review out-of-office status.</p></div>}
       </div>
       <div className="mx-auto h-8 w-px bg-amber-500/60"/>
@@ -152,7 +161,7 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
           const ranks=distinct(members.map(person=>person.rank)).sort((a,b)=>RANKS.indexOf(a)-RANKS.indexOf(b));
           return <div key={station} className="min-w-0 overflow-hidden rounded-2xl border border-emerald-700/40 bg-[#0b2031]" data-substation={station}>
             <div className="flex items-center justify-between gap-2 border-b border-emerald-700/30 bg-emerald-950/20 px-4 py-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Substation</div><h4 className="mt-0.5 text-lg font-black text-white">{station}</h4></div><span className="rounded-full border border-emerald-800 px-2 py-1 text-xs font-bold text-emerald-200">{members.length} officers</span></div>
-            <div className="space-y-4 p-3 md:p-4">{ranks.map(rank=><div key={rank}><div className="mb-2 flex items-center gap-2"><span className="text-[10px] font-black uppercase tracking-wider text-slate-300">{rank}</span><div className="h-px flex-1 bg-slate-700"/></div><div className="space-y-2">{members.filter(person=>person.rank===rank).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen}/>)}</div></div>)}</div>
+            <div className="space-y-4 p-3 md:p-4">{ranks.map(rank=><div key={rank}><div className="mb-2 flex items-center gap-2"><span className="text-[10px] font-black uppercase tracking-wider text-slate-300">{rank}</span><div className="h-px flex-1 bg-slate-700"/></div><div className="space-y-2">{members.filter(person=>person.rank===rank).map(person=><AreaMember key={person.id} person={person} onOpen={onOpen} onPhotoOpen={onPhotoOpen}/>)}</div></div>)}</div>
           </div>;
         })}
       </div>}
@@ -190,6 +199,15 @@ export default function RankStructure(){
     window.addEventListener('afterprint',reset,{once:true});
     return ()=>{cancelAnimationFrame(frame);window.removeEventListener('afterprint',reset);};
   },[printRequested]);
+  const {data:photoDetail,isFetching:photoLoading}=useQuery({
+    queryKey:['rankOfficerPhotoFull',photoPerson?.id],enabled:!!photoPerson?.id,
+    queryFn:async()=>{
+      const response=await base44.functions.invoke('getSupervisorWorkspaceRecords',{kind:'portrait',id:photoPerson.id});
+      const payload=response?.data||response||{};
+      if(payload.error||payload.success!==true)throw new Error(payload.error||'Unable to load original photo');
+      return payload.photo_url||'';
+    },staleTime:5*60*1000,retry:false,
+  });
   const users=rosterData.officers||[];
   const commands=rosterData.commands||[];
   const roles=rolesOf(user);
@@ -213,8 +231,8 @@ export default function RankStructure(){
       <button type="button" aria-expanded={companyExpanded} onClick={()=>setCompanyExpanded(value=>!value)} className="flex w-full items-center justify-between gap-3 text-left"><span className="flex items-center gap-2 text-lg font-black text-white"><Shield className="h-5 w-5 text-amber-300"/>Company Command</span><span className="text-xs font-semibold text-amber-200">{companyExpanded?'Minimize':'Expand'}</span></button>
       {companyExpanded&&<div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson}/></div>}
     </section>}
-    <FocusedRankFlow users={active} commands={commands} platoonDefinitions={structureData.platoons} regionsDirectory={structureData.regions} viewer={user} onOpen={setSelectedPerson}/>
+    <FocusedRankFlow users={active} commands={commands} platoonDefinitions={structureData.platoons} regionsDirectory={structureData.regions} viewer={user} onOpen={setSelectedPerson} onPhotoOpen={setPhotoPerson}/>
     <OfficerDialog person={selectedPerson} users={active} open={!!selectedPerson} onPhotoOpen={person=>setPhotoPerson(person)} onOpenChange={open=>{if(!open)setSelectedPerson(null)}}/>
-    <Dialog open={!!photoPerson} onOpenChange={open=>{if(!open)setPhotoPerson(null)}}><DialogContent className="max-w-4xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Full photo — {photoPerson ? displayName(photoPerson) : "Officer"}</DialogTitle></DialogHeader>{photoPerson?.profile_photo_url && <img src={photoPerson.profile_photo_url} alt="Full original officer photograph" className="max-h-[78vh] w-full object-contain" />}</DialogContent></Dialog>
+    <Dialog open={!!photoPerson} onOpenChange={open=>{if(!open)setPhotoPerson(null)}}><DialogContent className="max-w-4xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Full photo — {photoPerson ? displayName(photoPerson) : "Officer"}</DialogTitle></DialogHeader>{photoLoading&&<p className="text-xs text-cyan-300">Loading full-resolution photo…</p>}{(photoDetail||photoPerson?.profile_photo_url)&&<img src={photoDetail||photoPerson.profile_photo_url} alt="Full original officer photograph" className="max-h-[78vh] w-full object-contain" />}</DialogContent></Dialog>
   </div></div>;
 }
