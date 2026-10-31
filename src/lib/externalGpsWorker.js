@@ -133,8 +133,8 @@ async function readLoop(port, localGeneration) {
             self.postMessage({ type: 'data' });
           }
           lineBuffer += decoder.decode(value, { stream: true });
-          const lines = lineBuffer.split(/\r?\n/);
-          lineBuffer = lines.pop() || '';
+          const lines = lineBuffer.split(/\r\n|\n|\r/);
+          lineBuffer = (lines.pop() || '').slice(-4096);
           lines.forEach(handleSentence);
         }
       } finally {

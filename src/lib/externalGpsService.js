@@ -25,6 +25,7 @@ const RECOVERY_COOLDOWN_MS = 180_000;
 const STORAGE_BAUD_KEY = 'bps:external-gps-baud';
 const STORAGE_SELECTOR_KEY = 'bps:external-gps-selector';
 const STORAGE_LOCK_KEY = 'bps:external-gps-locked';
+const STORAGE_MODE_KEY = 'bps:external-gps-source-preference';
 const GPS_OWNER_LOCK = 'bps:pathfinder:external-gps-owner';
 const GPS_CHANNEL = 'bps:pathfinder:external-gps-control';
 const DEFAULT_BAUD = 4800;
@@ -119,6 +120,14 @@ function rememberSelector(selector) {
   try { localStorage.setItem(STORAGE_SELECTOR_KEY, JSON.stringify(selector || {})); } catch (_) {}
 }
 
+function gpsPreferredSource() {
+  try { return localStorage.getItem(STORAGE_MODE_KEY) || 'external'; } catch { return 'external'; }
+}
+
+function rememberGpsSource(value) {
+  try { localStorage.setItem(STORAGE_MODE_KEY, value); } catch {}
+}
+
 function antennaLockEnabled() {
   try { return localStorage.getItem(STORAGE_LOCK_KEY) === '1'; } catch { return false; }
 }
@@ -168,7 +177,7 @@ async function acquireGpsOwnership({ requestRelease = false, waitMs = 0 } = {}) 
           await new Promise(release => { releaseGpsOwnerLock = release; });
           releaseGpsOwnerLock = null;
           gpsOwner = false;
-        }).catch(() => resolve(true));
+        }).catch(() => resolve(false));
       });
       if (acquired) return true;
       if (Date.now() >= deadline) return false;
@@ -435,8 +444,8 @@ async function readLoop(port, generation) {
             if (!state.lastDataAt || lastSerialDataAt - Date.parse(state.lastDataAt) > 4000) emit({ lastDataAt: new Date().toISOString() });
           }
           lineBuffer += decoder.decode(value, { stream: true });
-          const lines = lineBuffer.split(/\r?\n/);
-          lineBuffer = lines.pop() || '';
+          const lines = lineBuffer.split(/\r\n|\n|\r/);
+          lineBuffer = (lines.pop() || '').slice(-4096);
           lines.forEach(handleSentence);
         }
       } finally {
@@ -564,7 +573,7 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
     return getExternalGpsStatus();
   }
   installSerialEvents();
-  if (manualDisconnect) return getExternalGpsStatus();
+  if (manualDisconnect || gpsPreferredSource() === 'device') return getExternalGpsStatus();
   if (connectPromise) return connectPromise;
 
   // No NMEA satellite fix is NOT a USB disconnection. GPS receivers can keep
@@ -694,6 +703,7 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
       }
 
       rememberSelector(selector);
+      rememberGpsSource('external');
       await stopWorkerPort({ terminate: true });
       await closeCurrentPort();
       await delay(400);
@@ -749,6 +759,7 @@ export function unlockExternalGpsAntenna() {
 
 export async function disconnectExternalGps() {
   manualDisconnect = true;
+  rememberGpsSource('device');
   nextAutomaticReconnectAt = Date.now() + 30_000;
   await stopWorkerPort({ terminate: true });
   if (pendingWorkerStart) {
