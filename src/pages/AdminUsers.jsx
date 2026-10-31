@@ -183,6 +183,7 @@ export default function AdminUsers({ embedded = false }) {
     },
     onSuccess: (result) => {
       invalidateAppDirectory();
+      queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -210,6 +211,7 @@ export default function AdminUsers({ embedded = false }) {
     },
     onSuccess: (result) => {
       invalidateAppDirectory();
+      queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('training');
@@ -481,6 +483,7 @@ export default function AdminUsers({ embedded = false }) {
       setSelectedUser(prev => prev ? { ...prev, profile_photo_url: photoUrl } : prev);
       setPhotoToCrop(null);
       invalidateAppDirectory();
+      queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       await queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('training');
@@ -636,6 +639,7 @@ export default function AdminUsers({ embedded = false }) {
       const payload=response?.data||response||{};
       if(!payload.success)throw new Error(payload.error||'Account transition failed');
       invalidateAppDirectory();
+      queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       await queryClient.invalidateQueries({queryKey:['portalUsers']});
       alert(action==='restore'?'Account restored for role review.':'Client account created from historical employee profile; verify site access.');
     }catch(error){alert(error?.response?.data?.error||error.message||'Account transition failed');}

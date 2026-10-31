@@ -85,6 +85,7 @@ export default function AdminDivisions() {
       setPlatoonError('');setPlatoonDraft({name:'',region:'',notes:''});setEditingPlatoon(null);
       queryClient.invalidateQueries({queryKey:['companyPlatoons']});
       queryClient.invalidateQueries({queryKey:['rankStructureRegions']});
+      queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       queryClient.invalidateQueries({queryKey:['allUsersRank']});
       queryClient.invalidateQueries({queryKey:['platoonUsers']});
     },onError:error=>setPlatoonError(error?.message||'Platoon update failed'),

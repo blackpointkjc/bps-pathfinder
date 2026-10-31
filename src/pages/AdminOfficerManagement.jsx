@@ -134,6 +134,7 @@ export default function AdminOfficerManagement() {
       const payload = response?.data || response || {};
       if (payload.error || payload.success === false) throw new Error(payload.error || 'Division update failed.');
       invalidateAppDirectory();
+      queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['adminOfficerPrivateProfile', selectedOfficer] }),
         queryClient.invalidateQueries({ queryKey: ['officerDirectory'] }),
@@ -240,6 +241,7 @@ export default function AdminOfficerManagement() {
     },
     onSuccess: async () => {
       invalidateAppDirectory();
+      queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['allAvailability'] }),
         queryClient.invalidateQueries({ queryKey: ['adminOfficerPrivateProfile', selectedOfficer] }),
