@@ -2,6 +2,16 @@ import { validateBatch } from './batchPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const canOversee = (actor:any,officer:any) => {
+  const n=(value:any)=>String(value||'').trim().toLowerCase().replace(/[.]/g,'');
+  const roles=new Set([actor.role,...(actor.additional_roles||[])].map(n));
+  if(roles.has('admin')||roles.has('full_access'))return true;
+  const platoon=n(actor.oversight_platoon||actor.platoon);
+  if(!['a','b'].includes(platoon)||n(officer.platoon)!==platoon)return false;
+  if(!n(actor.division)||!n(actor.subdivision)||n(officer.division)!==n(actor.division)||n(officer.subdivision)!==n(actor.subdivision))return false;
+  return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(actor.rank))
+    || Boolean(n(actor.substation)&&n(officer.substation)===n(actor.substation));
+};
 const displayName = (user: any) => [user?.rank, user?.last_name].filter(Boolean).join(' ').trim() || user?.full_name || user?.email || 'Supervisor';
 
 Deno.serve(async (req) => {
@@ -19,7 +29,11 @@ Deno.serve(async (req) => {
     const action = lower(body.action || 'list');
     if (action === 'list') {
       const assignments = await base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date', 1500);
-      return Response.json({ success: true, assignments: assignments || [] });
+      if(me.role==='admin'||roles.has('full_access'))return Response.json({success:true,assignments:assignments||[]});
+      const users=await base44.asServiceRole.entities.User.list('last_name',1000);
+      const allowed=new Set((users||[]).filter((person:any)=>canOversee(me,person)).map((person:any)=>lower(person.email)));
+      allowed.add(lower(me.email));
+      return Response.json({success:true,assignments:(assignments||[]).filter((row:any)=>allowed.has(lower(row.supervisor_email)))});
     }
     if(['batch','copy_week'].includes(action)){
       const users=await base44.asServiceRole.entities.User.list('id',2000);
@@ -32,6 +46,8 @@ Deno.serve(async (req) => {
         .map(row=>({assignment_date:new Date(Date.parse(row.assignment_date+'T12:00:00Z')+(to-from)).toISOString().slice(0,10),start_time:row.start_time,end_time:row.end_time,supervisor_email:row.supervisor_email,location:row.location,notes:row.notes}));
       }
       if(!rows.length||rows.length>200)return Response.json({error:'Select between 1 and 200 duty coverage blocks.'},{status:400});
+      if(me.role!=='admin'&&!roles.has('full_access')&&rows.some((row:any)=>!users.some((person:any)=>lower(person.email)===lower(row.supervisor_email)&&canOversee(me,person))))
+        return Response.json({error:'A selected duty supervisor is outside your platoon and operating area'},{status:403});
       const checked=validateBatch(rows,users,existing);
       if(checked.errors.length)return Response.json({error:checked.errors.join(' · '),validation_errors:checked.errors},{status:409});
       let created=0;
@@ -41,6 +57,11 @@ Deno.serve(async (req) => {
     if (action === 'delete') {
       const id = String(body.id || '');
       if (!id) return Response.json({ error: 'Assignment id is required.' }, { status: 400 });
+      if(me.role!=='admin'&&!roles.has('full_access')){
+        const existing=await base44.asServiceRole.entities.DutySupervisorAssignment.get(id);
+        const users=await base44.asServiceRole.entities.User.filter({email:existing.supervisor_email},'-updated_date',1);
+        if(!users[0]||!canOversee(me,users[0]))return Response.json({error:'Outside your assigned supervisor area'},{status:403});
+      }
       await base44.asServiceRole.entities.DutySupervisorAssignment.delete(id);
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type: 'DutySupervisorAssignment', entity_id: id, action: 'delete', actor_id: String(me.id || me.email), actor_name: displayName(me), timestamp: new Date().toISOString(), description: 'Duty supervisor schedule assignment removed.'
@@ -58,6 +79,7 @@ Deno.serve(async (req) => {
     const supervisorRoles = new Set((supervisor.additional_roles || []).map(lower));
     const supervisorEligible = supervisor.role === 'admin' || supervisor.is_supervisor === true || supervisorRoles.has('supervisor') || supervisorRoles.has('full_access') || supervisorRanks.includes(lower(supervisor.rank).replace(/[.]/g, '').replace(/\s+/g, ' '));
     if (!supervisorEligible) return Response.json({ error: 'Selected employee is not eligible to serve as duty supervisor.' }, { status: 400 });
+    if(!canOversee(me,supervisor))return Response.json({error:'Duty supervisor is outside your platoon and operating area'},{status:403});
 
     if(!['save',''].includes(action))return Response.json({error:'Invalid action'},{status:400});
     const existing=await base44.asServiceRole.entities.DutySupervisorAssignment.list('-assignment_date',5000);

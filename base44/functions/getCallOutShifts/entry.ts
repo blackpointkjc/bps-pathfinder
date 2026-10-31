@@ -2,6 +2,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const supervisorRanks = new Set(['sergeant','first sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
 
+const canOversee = (actor:any,officer:any) => {
+  const n=(value:any)=>String(value||'').trim().toLowerCase().replace(/[.]/g,'');
+  const roles=new Set([actor.role,...(actor.additional_roles||[])].map(n));
+  if(roles.has('admin')||roles.has('full_access'))return true;
+  const platoon=n(actor.oversight_platoon||actor.platoon);
+  if(!['a','b'].includes(platoon)||n(officer.platoon)!==platoon)return false;
+  if(!n(actor.division)||!n(actor.subdivision)||n(officer.division)!==n(actor.division)||n(officer.subdivision)!==n(actor.subdivision))return false;
+  return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(actor.rank))
+    || Boolean(n(actor.substation)&&n(officer.substation)===n(actor.substation));
+};
 const identityEmails = (person:any) => [...new Set([person.email, person.work_email, person.pathfinder_email, person.microsoft_email, person.outlook_email, ...(person.email_aliases || [])].map(lower).filter(Boolean))];
 async function callOutContext(api:any, email:string, date:string) {
   const users:any[]=[];
@@ -38,7 +48,8 @@ Deno.serve(async req => {
     if(!actor || !(roles.has('admin') || roles.has('supervisor') || roles.has('full_access') || actor.is_supervisor===true || supervisorRanks.has(lower(actor.rank)))) return Response.json({error:'Supervisor authorization required'},{status:403});
     const input=await req.json();const email=lower(input.officer_email);const date=String(input.call_out_date||'');
     if(!email || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return Response.json({error:'Select an officer and shift date'},{status:400});
-    const {matching}=await callOutContext(api,email,date);
+    const {matching,officer}=await callOutContext(api,email,date);
+    if (!canOversee(actor,officer))return Response.json({error:'Officer is outside your assigned platoon and operating area'},{status:403});
     return Response.json({shifts:matching.sort((a,b)=>String(a.start_time).localeCompare(String(b.start_time))).map(shift=>({id:shift.id,shift_date:shift.shift_date,start_time:shift.start_time,end_time:shift.end_time,location:shift.location,attendance_status:shift.attendance_status}))});
   } catch(error) {return Response.json({error:error?.message||'Unable to load shifts'},{status:500});}
 });

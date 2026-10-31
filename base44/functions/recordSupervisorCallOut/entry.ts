@@ -2,6 +2,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const supervisorRanks = new Set(['sergeant','first sergeant','lieutenant','lt colonel','lieutenant colonel','captain','major','colonel']);
 
+const canOversee = (actor:any,officer:any) => {
+  const n=(value:any)=>String(value||'').trim().toLowerCase().replace(/[.]/g,'');
+  const roles=new Set([actor.role,...(actor.additional_roles||[])].map(n));
+  if(roles.has('admin')||roles.has('full_access'))return true;
+  const platoon=n(actor.oversight_platoon||actor.platoon);
+  if(!['a','b'].includes(platoon)||n(officer.platoon)!==platoon)return false;
+  if(!n(actor.division)||!n(actor.subdivision)||n(officer.division)!==n(actor.division)||n(officer.subdivision)!==n(actor.subdivision))return false;
+  return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(actor.rank))
+    || Boolean(n(actor.substation)&&n(officer.substation)===n(actor.substation));
+};
 const identityEmails = (person:any) => [...new Set([person.email, person.work_email, person.pathfinder_email, person.microsoft_email, person.outlook_email, ...(person.email_aliases || [])].map(lower).filter(Boolean))];
 async function callOutContext(api:any, email:string, date:string) {
   const users:any[]=[];
@@ -47,6 +57,7 @@ Deno.serve(async req => {
       return Response.json({ error: 'Officer, date, reason and valid type are required' }, { status: 400 });
     }
     const {officer, schedules, matching: officerShifts} = await callOutContext(base44, email, date);
+    if (!canOversee(actor,officer)) return Response.json({error:'Officer is outside your assigned platoon and operating area'},{status:403});
     const matching = officerShifts.filter(shift => String(shift.id) === String(input.shift_id || ''));
     if (!matching.length) return Response.json({ error: 'Scheduled shift not found for this officer/date. Choose an actual shift from the schedule.' }, { status: 409 });
     const shift = matching[0];
