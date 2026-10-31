@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
+import { tomtomGeocode } from './tomtomGeocode.ts';
 
 function rolesOf(user: any) {
   return new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));

@@ -1,4 +1,4 @@
-import { addressHistoryPattern } from '../_shared/addressHistoryMatch.js';
+import { addressHistoryPattern } from './addressHistoryMatch.js';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const clean = (v:any) => String(v || '').trim();
 Deno.serve(async req => {

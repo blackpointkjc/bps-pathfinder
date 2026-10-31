@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
-import { clean, lower, isAdminAccount, isSupervisorRole, isAvailable, supervisorDisplayName as displayName } from '../../shared/supervisorIdentity.ts';
+import { clean, lower, isAdminAccount, isSupervisorRole, isAvailable, supervisorDisplayName as displayName } from './supervisorIdentity.ts';
 
 const isAdminUser = isAdminAccount;
 

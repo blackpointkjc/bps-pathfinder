@@ -1,5 +1,5 @@
 import { isOutOfOffice } from './absencePolicy.ts';
-import { clean, lower, isSupervisorAccount as isSupervisor, supervisorDisplayName as displayName } from '../../shared/supervisorIdentity.ts';
+import { clean, lower, isSupervisorAccount as isSupervisor, supervisorDisplayName as displayName } from './supervisorIdentity.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 

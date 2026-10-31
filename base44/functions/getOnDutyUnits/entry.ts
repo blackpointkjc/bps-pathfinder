@@ -1,7 +1,7 @@
 import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { LIVE_LOCATION_PRIVACY_USER_ID, stripLiveLocation } from './privacy.ts';
-import { isRateLimitError, rateLimitWaitMillis } from '../../shared/rateLimitRetry.ts';
+import { isRateLimitError, rateLimitWaitMillis } from './rateLimitRetry.ts';
 
 function roleSet(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));

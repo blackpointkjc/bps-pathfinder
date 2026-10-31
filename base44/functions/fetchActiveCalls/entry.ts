@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
+import { tomtomGeocode } from './tomtomGeocode.ts';
 
 // Calculate distance between two coordinates in meters using Haversine formula
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {

@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
+import { tomtomGeocode } from './tomtomGeocode.ts';
 
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const radius = 6371000;

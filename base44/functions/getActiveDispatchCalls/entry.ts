@@ -1,4 +1,4 @@
-import { isVisibleActiveCall, callTimestamp, ACTIVE_WINDOW_MS } from '../_shared/callFeedPolicy.js';
+import { isVisibleActiveCall, callTimestamp, ACTIVE_WINDOW_MS } from './callFeedPolicy.js';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const readCache = new Map<string, { at:number; rows:any[]; pending?:Promise<any[]> }>();

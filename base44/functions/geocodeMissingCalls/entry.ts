@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
+import { tomtomGeocode } from './tomtomGeocode.ts';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 

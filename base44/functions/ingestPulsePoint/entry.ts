@@ -1,6 +1,6 @@
-import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
+import { releaseClosedCall } from './releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { tomtomGeocode } from '../_shared/tomtomGeocode.ts';
+import { tomtomGeocode } from './tomtomGeocode.ts';
 import { createDecipheriv, createHash } from 'node:crypto';
 
 const GABC_URL = 'https://web.pulsepoint.org/DB/gabc.php';

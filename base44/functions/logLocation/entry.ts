@@ -1,7 +1,7 @@
 import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { isLiveLocationHidden, clearedLivePosition } from './privacy.ts';
-import { isRateLimitError, rateLimitWaitMillis, withRateLimitRetry } from '../../shared/rateLimitRetry.ts';
+import { isRateLimitError, rateLimitWaitMillis, withRateLimitRetry } from './rateLimitRetry.ts';
 
 function finiteNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);

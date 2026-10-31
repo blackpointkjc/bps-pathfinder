@@ -1,4 +1,4 @@
-import { releaseClosedCall } from '../updateCadCallStatus/releaseClosedCall.ts';
+import { releaseClosedCall } from './releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();

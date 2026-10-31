@@ -1,4 +1,4 @@
-import {postRecurringBills} from '../postRecurringCompanyBills/recurring.ts';
+import {postRecurringBills} from './recurring.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const categoryMap: Record<string,string> = {

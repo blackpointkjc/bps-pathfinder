@@ -1,5 +1,5 @@
-import { addressHistoryPattern } from '../_shared/addressHistoryMatch.js';
-import { callTimestamp, isValidCallRecord } from '../_shared/callFeedPolicy.js';
+import { addressHistoryPattern } from './addressHistoryMatch.js';
+import { callTimestamp, isValidCallRecord } from './callFeedPolicy.js';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
