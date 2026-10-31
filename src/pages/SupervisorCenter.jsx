@@ -96,7 +96,7 @@ export default function SupervisorCenter({ embedded = false }) {
   const platoonReady=['A','B'].includes(String(platoon||'').toUpperCase());
   const assignedArea=[user?.division&&`Region ${user.division}`,user?.subdivision&&`Division ${user.subdivision}`,user?.substation&&`Substation ${user.substation}`].filter(Boolean).join(' · ');
   const scopeLabel=allAccess?'Company-wide administrator':`Platoon ${platoon||'not assigned'} · ${assignedArea||'Organization not assigned'}`;
-  const scopeMissing=!allAccess&&(!platoonReady||!user?.division||!user?.subdivision||(!['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(String(user?.rank||'').toLowerCase())&&!user?.substation));
+  const scopeMissing=!allAccess&&(!platoonReady||!user?.division||!user?.subdivision||(!['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(String(user?.rank||'').toLowerCase())&&!user?.substation));
   return <UnifiedCenter
     eyebrow="Field Leadership"
     title="Supervisor Center"

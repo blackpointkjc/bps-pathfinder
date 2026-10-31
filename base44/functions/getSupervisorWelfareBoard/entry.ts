@@ -9,7 +9,7 @@ const validCoord = (v: unknown) => v !== null && v !== undefined && String(v).tr
 const inSupervisorArea = (viewer:any, person:any) => {
   const supervisorPlatoon = lower(viewer.oversight_platoon || viewer.platoon);
   if (!['a','b'].includes(supervisorPlatoon) || lower(person.platoon) !== supervisorPlatoon) return false;
-  const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(lower(viewer.rank));
+  const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(lower(viewer.rank));
   if (!lower(viewer.division) || !lower(viewer.subdivision)) return false;
   if (lower(person.division) !== lower(viewer.division) || lower(person.subdivision) !== lower(viewer.subdivision)) return false;
   return senior || !!(lower(viewer.substation) && lower(person.substation) === lower(viewer.substation));

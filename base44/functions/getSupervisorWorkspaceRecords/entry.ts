@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 const n=(v:any)=>String(v??'').trim().toLowerCase();
 const role=(u:any)=>new Set([u.role,...(u.additional_roles||[])].map(n));
 const admin=(u:any)=>role(u).has('admin')||role(u).has('full_access');
-const senior=(u:any)=>['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(u.rank));
+const senior=(u:any)=>['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(u.rank));
 const area=(me:any,p:any,hasPlatoon=true)=>admin(me)||(
   (!hasPlatoon||(['a','b'].includes(n(me.oversight_platoon||me.platoon))&&n(p.platoon)===n(me.oversight_platoon||me.platoon)))
   &&!!n(me.division)&&!!n(me.subdivision)&&n(p.division)===n(me.division)&&n(p.subdivision)===n(me.subdivision)

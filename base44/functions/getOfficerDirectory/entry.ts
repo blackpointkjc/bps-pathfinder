@@ -15,9 +15,9 @@ Deno.serve(async (req) => {
     const email = (value: any) => String(value || '').trim().toLowerCase();
 
     const roleSet = new Set([user.role, ...(user.additional_roles || [])].map((role:any) => String(role || '').toLowerCase()));
-    const supervisor = roleSet.has('supervisor') || user.is_supervisor === true || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal'].includes(String(user.rank || '').trim().toLowerCase());
+    const supervisor = roleSet.has('supervisor') || user.is_supervisor === true || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col','first sergeant','sergeant','corporal'].includes(String(user.rank || '').trim().toLowerCase());
     const allAccess = roleSet.has('admin') || roleSet.has('full_access');
-    const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(String(user.rank || '').trim().toLowerCase());
+    const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(String(user.rank || '').trim().toLowerCase());
     const inScope = (person:any) => {
       if (allAccess || !supervisor) return true;
       const text = (value:any) => String(value || '').trim().toLowerCase();

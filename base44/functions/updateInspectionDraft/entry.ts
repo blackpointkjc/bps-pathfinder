@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       const candidates=await base44.asServiceRole.entities.User.filter({email:existing.officer_email},'-updated_date',1).catch(()=>[]);
       const officer=candidates[0];
       const n=v=>String(v||'').trim().toLowerCase();
-      const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(user.rank));
+      const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(user.rank));
       if(!officer||!['a','b'].includes(platoon)||n(officer.platoon)!==platoon
         ||!n(user.division)||!n(user.subdivision)||n(officer.division)!==n(user.division)||n(officer.subdivision)!==n(user.subdivision)
         ||(!senior&&(!n(user.substation)||n(officer.substation)!==n(user.substation))))

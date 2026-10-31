@@ -54,7 +54,7 @@ Deno.serve(async req => {
       const platoon=n(user.oversight_platoon || user.platoon);
       if(!['a','b'].includes(platoon) || n(person?.platoon)!==platoon) return false;
       if(!n(user.division) || !n(user.subdivision) || n(person?.division)!==n(user.division) || n(person?.subdivision)!==n(user.subdivision))return false;
-      const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(user.rank));
+      const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(user.rank));
       return senior || !!(n(user.substation) && n(person?.substation)===n(user.substation));
     };
     let scopedOfficerIds:Set<string>|null=null;
@@ -130,7 +130,7 @@ Deno.serve(async req => {
         const n=(value:any)=>clean(value).toLowerCase();
         if(!['a','b'].includes(n(user.oversight_platoon||user.platoon)))return false;
         if(!n(user.division)||!n(user.subdivision)||n(site.division)!==n(user.division)||n(site.subdivision)!==n(user.subdivision))return false;
-        return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(user.rank))
+        return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(user.rank))
           || !!(n(user.substation)&&n(site.substation)===n(user.substation));
       };
       const options=[...new Map(activeDirectory.filter((loc:any)=>(!client||assignedSet.has(siteKey(loc.site_name)))&&reviewerSiteAllowed(loc))

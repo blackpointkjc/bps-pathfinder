@@ -9,7 +9,7 @@ const canOversee = (actor:any,officer:any) => {
   const platoon=n(actor.oversight_platoon||actor.platoon);
   if(!['a','b'].includes(platoon)||n(officer.platoon)!==platoon)return false;
   if(!n(actor.division)||!n(actor.subdivision)||n(officer.division)!==n(actor.division)||n(officer.subdivision)!==n(actor.subdivision))return false;
-  return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(actor.rank))
+  return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(actor.rank))
     || Boolean(n(actor.substation)&&n(officer.substation)===n(actor.substation));
 };
 const displayName = (user: any) => [user?.rank, user?.last_name].filter(Boolean).join(' ').trim() || user?.full_name || user?.email || 'Supervisor';

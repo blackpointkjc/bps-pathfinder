@@ -22,7 +22,7 @@ async function readRowsWithRetry(label:string, loader:()=>Promise<any[]>, option
 }
 const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
 const OPERATIONAL_RANKS = new Set(RANK_ORDER);
-const SUPERVISOR_RANKS = new Set(['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal']);
+const SUPERVISOR_RANKS = new Set(['colonel','lt colonel','major','captain','lieutenant','lt','lt col','first sergeant','sergeant','corporal']);
 const normalizeRank = (value:any) => {
   const rank = String(value || '').trim().toLowerCase().replace(/\./g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
   return rank === 'lieutenant colonel' ? 'lt colonel' : rank;
@@ -35,7 +35,7 @@ const withinSupervisorArea = (supervisor:any, officer:any) => {
   const supervisorPlatoon = normalized(supervisor.oversight_platoon || supervisor.platoon);
   if (!['a','b'].includes(supervisorPlatoon) || normalized(officer.platoon) !== supervisorPlatoon) return false;
   const rank = normalizeRank(supervisor.rank);
-  const senior = ['colonel','lt colonel','major','captain','lieutenant'].includes(rank);
+  const senior = ['colonel','lt colonel','major','captain','lieutenant','lt','lt col'].includes(rank);
   if (!normalized(supervisor.division) || !normalized(supervisor.subdivision)) return false;
   if (normalized(officer.division) !== normalized(supervisor.division)
       || normalized(officer.subdivision) !== normalized(supervisor.subdivision)) return false;
