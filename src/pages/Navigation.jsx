@@ -1296,7 +1296,10 @@ export default function Navigation() {
         setMapPickMode(false);
         setNavigationFallbackAddress(query);
         try {
-            const results = await withRequestTimeout(lookupNavigationDestinations(query, currentLocation), 28000, 'Destination search');
+            // A disconnected GPS does not make place search unavailable. Use
+            // the viewed map area as a search bias only, never as a route origin.
+            const searchBias = currentLocation || mapCenter || [37.541, -77.436];
+            const results = await withRequestTimeout(lookupNavigationDestinations(query, searchBias), 23000, 'Destination search');
             if (request !== destinationRequestRef.current) return;
             setAddressResults(results);
             if (!results.length) {

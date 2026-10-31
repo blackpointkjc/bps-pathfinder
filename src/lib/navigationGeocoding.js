@@ -54,78 +54,52 @@ export async function lookupNavigationPoint(latitude, longitude) {
   }
 }
 
+// Search the actual map, not just a managed-property list. Both lookups start
+// immediately; a sluggish directory can no longer block POI/address searches.
 export async function lookupNavigationDestinations(query, location, { skipManaged = false } = {}) {
   const value = String(query || '').trim();
   if (value.length < 3) return [];
-  let managedError = null;
-  if (!skipManaged) {
-    try {
-      const response = await withRequestTimeout(base44.functions.invoke('getNavigationLocations', {}), 15000, 'Managed property search');
-      const payload=response?.data||response;
-      if(payload?.error || !Array.isArray(payload?.locations)) throw new Error(payload?.error || 'Property directory incomplete');
-      const locations=payload.locations;
-      const matches = matchManagedLocations(locations, value);
-      if (matches.length) return matches;
-    } catch (error) {
-      console.warn('[NAV] Managed property search unavailable:', error?.message);
-      managedError = error;
-    }
-  }
   const encoded = encodeURIComponent(value);
-  const searches = [
-    async () => {
-      const rows = await fetchJson(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=us&addressdetails=1&q=${encoded}`);
-      return (rows || []).map(row => ({
-        coords: [Number(row.lat), Number(row.lon)],
-        name: row.name || row.display_name,
-        address: row.display_name,
-        type: row.type,
-      }));
-    },
-    async () => {
-      const near = valid(location) ? `&lat=${Number(location[0])}&lon=${Number(location[1])}` : '';
-      const payload = await fetchJson(`https://photon.komoot.io/api/?q=${encoded}&limit=6${near}`);
-      return (payload.features || []).map(item => {
-        const p = item.properties || {};
-        const label = [[p.housenumber, p.street].filter(Boolean).join(' '), p.city, p.state, p.postcode].filter(Boolean).join(', ');
-        return {
-          coords: [Number(item.geometry?.coordinates?.[1]), Number(item.geometry?.coordinates?.[0])],
-          name: p.name || label || value,
-          address: label || p.name || value,
-          type: p.type || '',
-        };
-      });
-    },
-    async () => {
-      // US Census is a street-address fallback when public OSM hosts are blocked.
-      const payload = await fetchJson(`https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encoded}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`);
-      return (payload.result?.addressMatches || []).map(match => ({
-        coords: [Number(match.coordinates?.y), Number(match.coordinates?.x)],
-        name: match.matchedAddress || value,
-        address: match.matchedAddress || value,
-        type: 'address',
-      }));
-    },
+  const near = valid(location) ? `&lat=${Number(location[0])}&lon=${Number(location[1])}` : '';
+  const normalize = rows => unique(Array.isArray(rows) ? rows : [], value);
+  const managedPromise = skipManaged ? Promise.resolve([]) : withRequestTimeout(
+    base44.functions.invoke('getNavigationLocations', {}).then(response => {
+      const data = response?.data || response || {};
+      if (!Array.isArray(data.locations)) throw new Error(data.error || 'Managed property directory unavailable');
+      return normalize(matchManagedLocations(data.locations, value));
+    }), 4500, 'Managed location lookup').catch(error => {
+      console.warn('[NAV] Managed property lookup unavailable:', error?.message || error);
+      return [];
+    });
+  const serverPromise = withRequestTimeout(base44.functions.invoke('geocodeNavigationDestination', {
+    query: value,
+    ...(valid(location) ? { latitude: Number(location[0]), longitude: Number(location[1]) } : {}),
+  }).then(response => {
+    const data = response?.data || response || {};
+    if (data.error) throw new Error(data.error);
+    return normalize(data.results);
+  }), 12500, 'Navigation place search').catch(error => {
+    console.warn('[NAV] Server place search unavailable:', error?.message || error);
+    return [];
+  });
+  const [managed, server] = await Promise.all([managedPromise, serverPromise]);
+  // Preserve managed properties first, while allowing normal businesses and
+  // arbitrary points of interest to appear in the same results list.
+  const combined = normalize([...managed, ...server]);
+  if (combined.length) return combined;
+  const browserSearches = [
+    async () => (await fetchJson(`https://photon.komoot.io/api/?q=${encoded}&limit=8${near}`, 6500)).features?.map(item => {
+      const p = item.properties || {};
+      const address = [[p.housenumber, p.street].filter(Boolean).join(' '), p.city, p.state, p.postcode].filter(Boolean).join(', ');
+      return { coords: [Number(item.geometry?.coordinates?.[1]), Number(item.geometry?.coordinates?.[0])], name: p.name || address || value, address: address || [p.name,p.city,p.state].filter(Boolean).join(', ') || value, type: p.type || '' };
+    }),
+    async () => (await fetchJson(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=us&addressdetails=1&q=${encoded}`, 6500)).map(row => ({
+      coords: [Number(row.lat), Number(row.lon)], name: row.name || row.display_name, address: row.display_name, type: row.type,
+    })),
+    async () => (await fetchJson(`https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encoded}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`, 6500)).result?.addressMatches?.map(row => ({
+      coords: [Number(row.coordinates?.y), Number(row.coordinates?.x)], name: row.matchedAddress || value, address: row.matchedAddress || value, type: 'address',
+    })),
   ];
-  try {
-    const response = await withRequestTimeout(base44.functions.invoke('geocodeNavigationDestination', {
-      query: value,
-      ...(valid(location) ? { latitude: Number(location[0]), longitude: Number(location[1]) } : {}),
-    }), 10_000, 'Navigation address lookup');
-    const payload = response?.data || response || {};
-    const matches = unique(payload.results || [], value);
-    if (matches.length) return matches;
-  } catch (error) {
-    console.warn('[NAV] Server address lookup failed; trying public services:', error?.message || error);
-  }
-  // Parallel backup: a failed provider no longer blocks the other two for
-  // another 6.5 seconds each. Always return only valid mapped coordinates.
-  const settled = await Promise.allSettled(searches.map(search => search()));
-  for (const result of settled) {
-    if (result.status !== 'fulfilled') continue;
-    const matches = unique(result.value, value);
-    if (matches.length) return matches;
-  }
-  if (managedError) throw new Error('Managed properties could not be checked, and no street-address match was returned. Retry the search.');
-  return [];
+  const settled = await Promise.allSettled(browserSearches.map(run => run()));
+  return normalize(settled.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : []));
 }
