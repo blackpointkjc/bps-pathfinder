@@ -105,7 +105,9 @@ export default function PathfinderTileLayer({ theme, satellite = false }) {
         subdomains={Array.isArray(provider.subdomains)&&provider.subdomains.length?provider.subdomains:typeof provider.subdomains==='string'&&provider.subdomains.length?provider.subdomains:'abcd'}
         maxZoom={20}
         maxNativeZoom={19}
-        keepBuffer={3}
+        // Avoid preloading a wide ring of off-screen tiles on every map view.
+        // One buffered tile row preserves smooth panning with fewer requests.
+        keepBuffer={1}
         updateWhenIdle={false}
         updateWhenZooming={true}
         updateInterval={80}
