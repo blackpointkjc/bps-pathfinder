@@ -173,6 +173,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence});
   const layerSnapshotRef=useRef({});
   const trafficRef=useRef({flow:null,incidents:null});
+  const trafficModulesRef=useRef(null);
   const trafficInitRef=useRef(false);
   const terrainInitRef=useRef(false);
   const perspectiveInitRef=useRef(false);
@@ -182,7 +183,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const requestedThemeRef=useRef(mapTheme);
   const cleanupRef=useRef(null);
   const tileErrorsRef=useRef(0);
-  const [trafficVisible,setTrafficVisible]=useState(true);
+  const [trafficVisible,setTrafficVisible]=useState(false);
+  const [trafficLoading,setTrafficLoading]=useState(false);
   const [trafficReady,setTrafficReady]=useState(false);
   const [ready,setReady]=useState(false);
   const [error,setError]=useState('');
@@ -282,6 +284,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           import('@tomtom-org/maps-sdk/map'), import('@tomtom-org/maps-sdk/core'), import('maplibre-gl'),
         ]);
         if(cancelled || !elementRef.current) return;
+        trafficModulesRef.current={TrafficFlowModule,TrafficIncidentsModule};
         const proxy=sdkProxyBase();
         // The map renderer owns its tile requests. A separate style+tile probe
         // doubled network traffic on every screen entry; remove that probe.
@@ -498,7 +501,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     // The SDK supersedes earlier in-flight setStyle calls; this avoids
     // rapid day/night taps leaving a previous theme stuck in the map.
     void sdk.setStyle({type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',
-      include:[]})
+      include:trafficReady?['trafficFlow','trafficIncidents']:[]})
       .then(()=>{
         if(cancelled)return;
         activeThemeRef.current=mapTheme;
@@ -513,6 +516,30 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       });
     return()=>{cancelled=true;};
   },[mapTheme,ready]);
+  const toggleTraffic=async()=>{
+    if(trafficLoading)return;
+    if(trafficReady){setTrafficVisible(value=>!value);return;}
+    const sdk=sdkRef.current;
+    const modules=trafficModulesRef.current;
+    if(!sdk || !modules)return;
+    setTrafficLoading(true);
+    try{
+      // Traffic is optional; first-paint CAD roads, units and calls never wait
+      // for a terrain/traffic overlay style reload.
+      await sdk.setStyle({type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:['trafficFlow','trafficIncidents']});
+      const [flow,incidents]=await Promise.all([
+        modules.TrafficFlowModule.get(sdk,{visible:true}),
+        modules.TrafficIncidentsModule.get(sdk,{visible:true,icons:{visible:true}}),
+      ]);
+      trafficRef.current={flow,incidents};
+      setTrafficReady(true);
+      setTrafficVisible(true);
+      syncCadData(sdk.mapLibreMap);
+    }catch(error){
+      console.warn('Optional map traffic unavailable:',error?.message||error);
+      setError('Traffic overlay unavailable. Base CAD map remains active.');
+    }finally{setTrafficLoading(false);}
+  };
   useEffect(()=>{
     if(!trafficReady)return;
     trafficRef.current.flow?.setVisible(trafficVisible);
@@ -541,7 +568,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     {!embedded && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-900 bg-[#0b1d2b] p-2 sm:flex-nowrap sm:gap-3 sm:p-3">
       <div className="flex min-w-0 items-center gap-2"><Shield className="h-5 w-5 shrink-0 text-cyan-300"/><div className="min-w-0"><h2 className="truncate text-sm font-black">TomTom Maps SDK</h2><p className="truncate text-[10px] text-slate-300">Interactive map preview · CAD remains available underneath</p></div></div>
       <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-        <button type="button" disabled={!trafficReady} onClick={()=>setTrafficVisible(v=>!v)} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold disabled:opacity-50" aria-pressed={trafficVisible} title="Toggle real TomTom traffic flow and road incidents"><CloudSun size={17}/>{trafficVisible?'Traffic on':'Traffic off'}</button>
+        <button type="button" disabled={!ready||trafficLoading} onClick={toggleTraffic} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold disabled:opacity-50" aria-pressed={trafficVisible} title="Optional TomTom traffic overlay; load only when requested"><CloudSun size={17}/>{trafficLoading?'Loading traffic…':trafficVisible?'Traffic on':'Show traffic'}</button>
         <button type="button" onClick={()=>{const map=sdkRef.current?.mapLibreMap;if(map&&coords(currentLocation))map.flyTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:16});}} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold" title="Recenter TomTom map on your GPS"><Crosshair size={17}/><span className="hidden sm:inline">Recenter</span></button>
         <button type="button" onClick={onClose} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-cyan-700 px-3 text-xs font-bold"><X size={17}/>Back to CAD</button>
       </div>
