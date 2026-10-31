@@ -171,7 +171,6 @@ const CENTER_CONFIG = {
         ['Complaints', 'SupervisorComplaints', AlertTriangle],
       ]},
       { label: 'Communication & Profile', items: [
-        ['Secure Browser', 'CorporateBrowser', Globe],
         ['Supervisor Chat', 'SupervisorChat', MessageCircle],
         ['Announcements', 'Announcements', Bell],
         ['My Profile', 'OfficerProfile', UserCheck],
@@ -194,7 +193,6 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Corporate Browser', items: [
         ['Website Restrictions', 'AdminBrowserControl', Globe],
-        ['Secure Browser', 'CorporateBrowser', ShieldCheck],
       ]},
       { label: 'People & Accounts', items: [
         ['Personnel & Command','AdminOfficerManagement',Users],
@@ -242,7 +240,6 @@ const CENTER_CONFIG = {
     icon: Users,
     groups: [
       { label: 'Employees', items: [
-        ['Secure Browser', 'CorporateBrowser', Globe],
         ['Company Employees', 'HRManageCompanyEmployees', Briefcase],
         ['Time Entries', 'ManageTimeEntries', Clock3],
         ['Divisions', 'AdminDivisions', Layers],
@@ -1615,9 +1612,6 @@ export default function Layout({ children, currentPageName }) {
             <span className="hidden sm:inline">{userHomeLabel}</span>
           </Link>
           {!allowedCenters(user).every(center => center === 'client' || center === 'student') && <nav aria-label="Corporate Internet Browser" className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
-            <Link to={createPageUrl('CorporateBrowser')} aria-label="Open secure corporate browser" title="Search approved company websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'CorporateBrowser' ? 'border-cyan-400 bg-cyan-800/50 text-white' : 'border-[#315879] bg-[#10263a] text-cyan-100 hover:border-cyan-400'}`}>
-              <Globe className="h-4 w-4" /><span className="hidden sm:inline">Secure Browser</span>
-            </Link>
             {canManageWebsiteRestrictions(user) && <Link to={`${createPageUrl('AdminBrowserControl')}?browser_tool=lists`} aria-label="Manage website restrictions" title="Manage allowed and blocked websites" className={`inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold sm:px-3 ${currentPageName === 'AdminBrowserControl' ? 'border-amber-400 bg-amber-900/40 text-white' : 'border-[#605132] bg-[#302718] text-amber-100 hover:border-amber-400'}`}>
               <ShieldCheck className="h-4 w-4" /><span className="hidden lg:inline">Website Restrictions</span><span className="hidden sm:inline lg:hidden">Web Controls</span>
             </Link>}
