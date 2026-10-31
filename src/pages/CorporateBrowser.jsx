@@ -8,10 +8,10 @@ import { profileLabel } from '@/lib/browserProfiles';
 
 const EMBED_DENIED = ['facebook.com','instagram.com','google.com','accounts.google.com','youtube.com','x.com','twitter.com','tiktok.com','netflix.com','spotify.com','amazon.com','bing.com','linkedin.com','reddit.com','apple.com','microsoft.com','outlook.com','icloud.com','paypal.com','bankofamerica.com'];
 const blank = id => ({ id, title: 'New tab', history: [{kind:'home'}], index:0 });
-const domainOf = raw => { try { return new URL(raw).hostname.toLowerCase().replace(/^www\\./,''); } catch { return ''; } };
+const domainOf = raw => { try { return new URL(raw).hostname.toLowerCase().replace(/^www\./,''); } catch { return ''; } };
 const cannotEmbed = url => EMBED_DENIED.some(domain => {const host=domainOf(url); return host===domain || host.endsWith('.'+domain);});
-const validSite = entry => /^(https?:\\/\\/)?(?:[a-z0-9-]+\\.)+[a-z]{2,}(?:[:/?!#]|$)/i.test(entry);
-const asUrl = text => /^https?:\\/\\//i.test(text) ? text : 'https://'+text;
+const validSite = entry => /^(https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[:/?!#]|$)/i.test(entry);
+const asUrl = text => /^https?:\/\//i.test(text) ? text : 'https://'+text;
 const titleFor = state => state.kind==='home'?'New tab':state.kind==='search'?'Search: '+state.query.slice(0,24):state.kind==='blocked'?'Access blocked':domainOf(state.url) || 'Website';
 
 export default function CorporateBrowser() {
