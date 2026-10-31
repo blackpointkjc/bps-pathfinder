@@ -4,13 +4,19 @@ import generatedConfig from '../pages.config.js?raw';
 
 // Read generated route metadata as text, preserving aliases without eager page imports.
 const pageModules = import.meta.glob('../pages/*.jsx');
+// Explicit load paths for security-sensitive browser routes. These pages must
+// remain available even when the builder regenerates pages.config.js.
+const browserRouteLoaders = {
+  AdminBrowserControl: () => import('../pages/AdminBrowserControl.jsx'),
+  CorporateBrowser: () => import('../pages/CorporateBrowser.jsx'),
+};
 const imports = Object.fromEntries([...generatedConfig.matchAll(/^import\s+(\w+)\s+from\s+['"]\.\/pages\/([^'"]+)['"]/gm)]
   .map(([, name, path]) => [name, path.endsWith('.jsx') ? path : path + '.jsx']));
 const registry = generatedConfig.match(/^export const PAGES\s*=\s*\{([\s\S]*?)\n\}/m)?.[1] || '';
 const entries = [...registry.matchAll(/["']([^"']+)["']\s*:\s*(\w+)/g)].map(([, name, component]) => [name, imports[component]]);
-const routes = new Map([...entries, ['ParkingRecords', 'ParkingRecords.jsx'], ['ClientParkingRecords', 'ClientParkingRecords.jsx'], ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx']]);
+const routes = new Map([...entries, ['ParkingRecords', 'ParkingRecords.jsx'], ['ClientParkingRecords', 'ClientParkingRecords.jsx'], ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx'], ['AdminBrowserControl', 'AdminBrowserControl.jsx'], ['CorporateBrowser', 'CorporateBrowser.jsx']]);
 const Pages = Object.fromEntries([...routes].map(([name, file]) => {
-  const loader = pageModules[`../pages/${file}`];
+  const loader = browserRouteLoaders[name] || pageModules[`../pages/${file}`];
   if (!loader) throw new Error(`Missing route module: ${name}`);
   return [name, lazy(loader)];
 }));
