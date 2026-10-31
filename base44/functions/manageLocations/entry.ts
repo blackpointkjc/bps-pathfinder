@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
       const location = await base44.asServiceRole.entities.Location.create(createData);
       if (suppliedSupervisors.length === 0 && createData.division && createData.subdivision) {
         const existing = await base44.asServiceRole.entities.Location.list('site_name',1000);
-        await balancedSiteAssignments(base44, existing, {updateExisting:false});
+        await balancedSiteAssignments(base44, existing, {updateExisting:false}).catch(error => console.error('Site created; automatic supervisor selection unavailable',error));
       }
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type: 'Location',
@@ -240,7 +240,12 @@ Deno.serve(async (req) => {
       const updateData = { ...body.data };
       const supplied = Object.prototype.hasOwnProperty.call(updateData,'assigned_supervisors')
         && Array.isArray(updateData.assigned_supervisors);
-      if (supplied) updateData.site_supervisor_auto_assigned = updateData.assigned_supervisors.filter(Boolean).length === 0;
+      if (supplied) {
+        const nextSupervisors=updateData.assigned_supervisors.filter(Boolean).map(cleanOrg);
+        const previousSupervisors=Array.isArray(before?.assigned_supervisors) ? before.assigned_supervisors.filter(Boolean).map(cleanOrg) : [];
+        const changed=JSON.stringify(nextSupervisors)!==JSON.stringify(previousSupervisors);
+        updateData.site_supervisor_auto_assigned = nextSupervisors.length === 0 || (!changed && before?.site_supervisor_auto_assigned === true);
+      }
       const activatingLive = updateData.auto_dispatch_enabled === true
         && updateData.auto_dispatch_mode === 'live'
         && (before?.auto_dispatch_mode !== 'live' || before?.auto_dispatch_enabled !== true);
@@ -262,7 +267,7 @@ Deno.serve(async (req) => {
           || (before?.site_supervisor_auto_assigned === true
               && ['division','subdivision','substation'].some(key => updateData[key]!==undefined && updateData[key]!==before[key]))) {
         const currentSites=await base44.asServiceRole.entities.Location.list('site_name',1000);
-        await balancedSiteAssignments(base44,currentSites,{updateExisting:true});
+        await balancedSiteAssignments(base44,currentSites,{updateExisting:true}).catch(error => console.error('Location saved; supervisor rebalance needs retry',error));
       }
       const location = await base44.asServiceRole.entities.Location.get(body.id);
       const protectedFields = [
