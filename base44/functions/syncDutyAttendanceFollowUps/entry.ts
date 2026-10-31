@@ -46,6 +46,19 @@ export default async function(req: Request): Promise<Response> {
       ? supervisorPool
       : (users || []).filter((user:any) => isAdminUser(user) && isAvailable(user));
 
+    const order = ['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
+    const rankIndex = (person:any) => order.indexOf(lower(person?.rank).replace('lieutenant colonel','lt colonel'));
+    const outranks = (lead:any, person:any) => rankIndex(lead) >= 0 && rankIndex(person) >= 0 && rankIndex(lead) < rankIndex(person);
+    const sameCommand = (lead:any, person:any) => {
+      if (isAdminUser(lead)) return true;
+      const leadRegion = lower(lead.division), officerRegion = lower(person.division);
+      const leadPlatoon = lower(lead.oversight_platoon || lead.platoon), officerPlatoon = lower(person.platoon);
+      return !!leadRegion && leadRegion === officerRegion && !!leadPlatoon && leadPlatoon === officerPlatoon;
+    };
+    const officerForFinding = (finding:any) => (users || []).find((person:any) =>
+      (finding.officer_id && String(person.id) === String(finding.officer_id)) ||
+      lower(person.email) === finding.officer_email
+    );
     const openRows = await base44.asServiceRole.entities.SupervisorFollowUp.filter({ status:'open' }, '-created_date', 500).catch(() => []);
     const periodRows = await base44.asServiceRole.entities.SupervisorFollowUp.filter({ period_start: periodStart }, '-created_date', 500).catch(() => []);
     const workload = new Map<string, number>();
@@ -75,8 +88,8 @@ export default async function(req: Request): Promise<Response> {
     // Rotation: the least-loaded supervisor is chosen, and load plus the most
     // recent assignment time both count — so consecutive follow-ups spread across
     // the roster instead of landing on one supervisor.
-    const pickSupervisor = (excludeEmail: string) => {
-      const pool = candidates.filter((user:any) => lower(user.email) !== excludeEmail);
+    const pickSupervisor = (officer:any) => {
+      const pool = candidates.filter((user:any) => lower(user.email) !== lower(officer?.email) && outranks(user, officer) && sameCommand(user, officer));
       if (!pool.length) return null;
       return [...pool].sort((left:any, right:any) => {
         const loadDiff = (workload.get(String(left.id)) || 0) - (workload.get(String(right.id)) || 0);
@@ -100,11 +113,17 @@ export default async function(req: Request): Promise<Response> {
       activeKeys.add(taskKey);
       if (completedKeys.has(taskKey)) { alreadyHandled += 1; continue; }
       const existing = stateByKey.get(taskKey) || reopenByKey.get(taskKey) || null;
-      const keep = existing?.assigned_to_id
-        ? candidates.find((user:any) => String(user.id) === String(existing.assigned_to_id) && lower(user.email) !== finding.officer_email)
+      const officer = officerForFinding(finding);
+      const keep = existing?.assigned_to_id && officer
+        ? candidates.find((user:any) => String(user.id) === String(existing.assigned_to_id) && outranks(user, officer) && sameCommand(user, officer))
         : null;
-      const chosen = keep || pickSupervisor(finding.officer_email);
-      if (!chosen?.id) { unassigned += 1; continue; }
+      const chosen = officer ? (keep || pickSupervisor(officer)) : null;
+      if (!chosen?.id) {
+        if (existing?.id && lower(existing.status) === 'open') {
+          await base44.asServiceRole.entities.SupervisorFollowUp.update(existing.id, {status:'auto_closed',completed_at:nowIso,completion_note:'No authorized higher-ranking supervisor available; reassignment pending.'}).catch(()=>null);
+        }
+        unassigned += 1; continue;
+      }
 
       const dutyCount = finding.items.filter((item:any) => item.type !== 'call_out').length;
       const summary = [

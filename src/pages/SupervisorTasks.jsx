@@ -33,7 +33,7 @@ export default function SupervisorTasks() {
       return data;
     },
     enabled: hasSupervisorAccess(user),
-    refetchInterval: 60000,
+    staleTime: 60000, refetchOnWindowFocus: false, refetchInterval: 180000, retry: false,
   });
 
   // Parking notices are real supervisor approval tasks, not just a separate
@@ -115,7 +115,7 @@ export default function SupervisorTasks() {
               <div>
                 <h1 className="text-xl font-black leading-tight text-white">Supervisor Action Items</h1>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  Only actions assigned to you for lower-ranking officers in your Platoon and authorized Division or Substation.
+                  Only verified action items assigned to you for officers within your authorized chain of command.
                 </p>
               </div>
             </div>

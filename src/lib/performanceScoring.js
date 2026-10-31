@@ -592,6 +592,8 @@ export function calculateJobDutyCompliance({
     );
     for (const schedule of schedules) {
       if (!schedule?.id || schedule.archived === true || schedule.is_open === true) continue;
+      // Never charge another officer's scheduled shift to this officer.
+      if (!officerEmail || emailKey(schedule.officer_email) !== officerEmail) continue;
       if (!schedule.shift_date || !schedule.start_time || !schedule.end_time) continue;
       if (monthStart && schedule.shift_date < monthStart) continue;
       if (monthEnd && schedule.shift_date > monthEnd) continue;
@@ -601,7 +603,10 @@ export function calculateJobDutyCompliance({
       const crossesMidnight = end <= start;
       if (crossesMidnight) end += 1440;
       // Only a fully elapsed shift can be owed.
-      if (nowWall == null || end > nowWall) continue;
+      if (nowWall == null) continue;
+      const scheduleEndDate = crossesMidnight ? addDaysToDateKey(schedule.shift_date, 1) : schedule.shift_date;
+      const todayDate = easternDateKey(new Date());
+      if (scheduleEndDate > todayDate || (scheduleEndDate === todayDate && end % 1440 > nowWall % 1440)) continue;
       if (absentDates.has(String(schedule.shift_date).slice(0, 10))) continue;
       const coveredByClockIn = evaluatedShifts.some(entry => {
         const inWall = wallClockMinute(easternDateKey(entry.clock_in), easternTimeKey(entry.clock_in));
