@@ -5,7 +5,8 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryUsers, getCurrentDirectoryUser } from '@/lib/appDirectory';
+import { withinPersonnelOversightScope } from '@/lib/orgStructure';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 
@@ -64,7 +65,8 @@ export default function SupervisorOverview() {
     queryFn: async () => {
       const failures = [];
       const read = async (label, loader, fallback = {}) => { try { const response=await loader(); const value=response?.data||response; if(value?.error)throw new Error(value.error); return value; } catch { failures.push(label); return fallback; } };
-      const users = await read('Officer directory', () => listDirectoryUsers('-last_updated', 500), []);
+      const viewer = await read('Supervisor identity', () => getCurrentDirectoryUser(), {});
+      const users = (await read('Officer directory', () => listDirectoryUsers('-last_updated', 500), [])).filter(person => withinPersonnelOversightScope(viewer, person));
       // Assignment synchronisation is a background write-heavy workflow, not
       // a read for every overview render. The scoped task reader below provides
       // the current actionable records without throttling other command pages.
@@ -78,6 +80,9 @@ export default function SupervisorOverview() {
       ]);
       const board = boardResult?.data || boardResult || {};
       const reportWork = reportResult?.data || reportResult || {};
+      const officerEmails = new Set(users.map(person => String(person.email || '').toLowerCase()));
+      reportWork.tasks = (reportWork.tasks || []).filter(task => officerEmails.has(String(task.officer_email || task.source_officer_email || '').toLowerCase())
+        && (String(task.assigned_to_email || '').toLowerCase() === String(viewer.email || '').toLowerCase() || String(task.assigned_to_id || '') === String(viewer.id || '')));
       const allowedOfficerEmails = new Set(board.visible_officer_emails || []);
       const liveUnits = (locationSnapshot?.users || []).filter(unit => unit?.session_active === true && allowedOfficerEmails.has(String(unit?.officer_email || unit?.email || '').trim().toLowerCase()));
       return { users, tasks: taskPayload, board, reportWork, supervisorAssignments, liveUnits, failures: [...failures,...(reportWork.load_errors||[])] };
@@ -125,8 +130,9 @@ export default function SupervisorOverview() {
     assigned_distance_miles: row.assigned_distance_miles,
   }));
   const taskQueue = [
-    ...(supervisorAssignments.success ? autoAssignedQueue : legacyTaskQueue).filter(item => item.kind !== 'missing_report' || !Array.isArray(data.reportWork?.tasks) || data.reportWork?.load_errors?.length),
-    ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:row.kind, page:row.page, title:row.title || 'Report Awaiting Review', person:row.person || 'Officer', detail:row.detail || 'Submitted report requires supervisor review' })),
+    ...(tasks.queueTasks || []).map(row => ({ id:row.task_key, source_id:row.source_id, kind:row.source_kind, title:row.title || 'Assigned Supervisor Task', person:row.person || 'Officer', detail:row.source_location || '' })),
+    ...(tasks.followUps || []).map(row => ({ id:row.id, source_id:row.id, kind:'duty_follow_up', title:row.title || 'Assigned Follow-up', person:row.officer_name || 'Officer', detail:row.summary || '' })),
+    ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:row.kind, page:row.page, title:row.title || 'Assigned Report Review', person:row.person || 'Officer', detail:row.detail || '' })),
   ];
 
   const degraded = Boolean(error || data.failures?.length);

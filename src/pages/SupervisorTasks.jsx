@@ -50,7 +50,11 @@ export default function SupervisorTasks() {
     enabled:hasSupervisorAccess(user),staleTime:120000,refetchInterval:180000,refetchOnWindowFocus:false,retry:1,
   });
   const parkingReviews=parkingQueue.reviews||[];
-  const items = useMemo(() => buildSupervisorActionItems(payload), [payload]);
+  // Action Items is an individual's assigned work queue, not every pending
+  // officer record in their area. Unassigned source findings remain in the
+  // underlying oversight module until a supervisor is given ownership.
+  const items = useMemo(() => buildSupervisorActionItems(payload).filter(item =>
+    item.source === 'queue' || item.source === 'followup'), [payload]);
   const baseSummary=useMemo(()=>summarizeActionItems(items),[items]);
   const summary=useMemo(()=>({...baseSummary,
     total:baseSummary.total+parkingReviews.length,
@@ -111,7 +115,7 @@ export default function SupervisorTasks() {
               <div>
                 <h1 className="text-xl font-black leading-tight text-white">Supervisor Action Items</h1>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  Everything assigned to you in one list: duty &amp; attendance outreach, report reviews, conduct, inspections, performance reviews and live operations.
+                  Only actions assigned to your account and within your Platoon, Region, Division and Substation oversight.
                 </p>
               </div>
             </div>
