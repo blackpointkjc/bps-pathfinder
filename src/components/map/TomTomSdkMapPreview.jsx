@@ -451,7 +451,11 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           // Optional terrain and traffic tile errors must not remove a
           // working TomTom street map. Fallback only if no base map renders.
           if((status===401||status===403) && !mapReadyRef.current){
-            setError('TomTom map access denied. Checking map availability…');
+            setError('TomTom map access denied. Automatic CAD map fallback is available.');
+            if(tileErrorsRef.current>=3)onMapUnavailableRef.current?.();
+          } else if((status===429||status>=500) && !mapReadyRef.current && tileErrorsRef.current>=5){
+            setError('TomTom tiles are temporarily unavailable. Switching to CAD backup and retrying automatically.');
+            onMapUnavailableRef.current?.();
           }
           console.warn('[TomTom SDK map]',status||e?.error?.code||'Map resource error');
         };
@@ -483,7 +487,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
                 if(cancelled||!sdkRef.current)return;
                 let hasStreets=false;
                 try{hasStreets=map.isStyleLoaded()&&map.queryRenderedFeatures().length>0;}catch{}
-                if(!hasStreets){setError('TomTom streets unavailable. Switching to detailed CAD map.');onMapUnavailableRef.current?.();}
+                if(!hasStreets){setError('TomTom streets unavailable. Switching to detailed CAD map for automatic recovery.');onMapUnavailableRef.current?.();}
               },3500);
             }
           }
@@ -515,7 +519,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         if(cancelled)return;
         requestedThemeRef.current=activeThemeRef.current;
         console.warn('TomTom theme change failed:',error?.message||error);
-        setError('TomTom day/night map style failed to load. Tap the map-theme button to retry.');
+        setError('TomTom day/night map style failed. Retrying the map automatically.');
+        if(embedded)onMapUnavailableRef.current?.();
       });
     return()=>{cancelled=true;};
   },[mapTheme,ready]);

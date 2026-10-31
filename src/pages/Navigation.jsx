@@ -175,6 +175,48 @@ export default function Navigation() {
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [useTomTomMainMap, setUseTomTomMainMap] = useState(true);
     const [tomTomMainMapFailed, setTomTomMainMapFailed] = useState(false);
+    const [tomTomRecoveryAttempt, setTomTomRecoveryAttempt] = useState(0);
+    const [tomTomRetryAt, setTomTomRetryAt] = useState(0);
+    const tomTomRetryTimerRef=useRef(null);
+    const tomTomErrorCountRef=useRef(0);
+    const markTomTomUnavailable=()=>{
+        // Keep the CAD backup visible while the retry scheduler recovers TomTom.
+        setTomTomMainMapFailed(true);
+        tomTomErrorCountRef.current+=1;
+    };
+    useEffect(()=>{
+        if(!useTomTomMainMap || !tomTomMainMapFailed || !isOnline)return undefined;
+        // Bounded exponential backoff: 8s, 16s, 32s, then up to 2 minutes.
+        // Prevents a failing TomTom provider or API key from being flooded.
+        const delay=Math.min(120000,8000*Math.pow(2,Math.min(4,tomTomErrorCountRef.current-1)));
+        const next=Date.now()+delay;
+        setTomTomRetryAt(next);
+        tomTomRetryTimerRef.current=window.setTimeout(()=>{
+            tomTomRetryTimerRef.current=null;
+            if(!navigator.onLine)return;
+            setTomTomMainMapFailed(false);
+            setTomTomRecoveryAttempt(n=>n+1);
+            setTomTomRetryAt(0);
+        },delay);
+        return()=>{window.clearTimeout(tomTomRetryTimerRef.current);tomTomRetryTimerRef.current=null;};
+    },[useTomTomMainMap,tomTomMainMapFailed,isOnline]);
+    useEffect(()=>{
+        if(!useTomTomMainMap)return undefined;
+        const recover=()=>{
+            if(!navigator.onLine || document.visibilityState!=='visible')return;
+            if(!tomTomMainMapFailed)return;
+            // Immediately retry when internet returns or the user returns to
+            // the GPS page. Cancel the scheduled backoff for this one attempt.
+            window.clearTimeout(tomTomRetryTimerRef.current);
+            tomTomRetryTimerRef.current=null;
+            setTomTomMainMapFailed(false);
+            setTomTomRecoveryAttempt(n=>n+1);
+            setTomTomRetryAt(0);
+        };
+        window.addEventListener('online',recover);
+        document.addEventListener('visibilitychange',recover);
+        return()=>{window.removeEventListener('online',recover);document.removeEventListener('visibilitychange',recover);};
+    },[useTomTomMainMap,tomTomMainMapFailed]);
     const [assigning, setAssigning] = useState(false);
     const [unmappedCalls, setUnmappedCalls] = useState([]);
     const [showUnmapped, setShowUnmapped] = useState(false);
@@ -1703,7 +1745,7 @@ export default function Navigation() {
                         {
                             key: 'tomtom-main',
                             onClick: () => {
-                                if(tomTomMainMapFailed){setUseTomTomMainMap(true);setTomTomMainMapFailed(false);}
+                                if(tomTomMainMapFailed){setUseTomTomMainMap(true);setTomTomMainMapFailed(false);setTomTomRecoveryAttempt(n=>n+1);setTomTomRetryAt(0);}
                                 else setUseTomTomMainMap(value=>!value);
                             },
                             title: useTomTomMainMap ? 'Use backup offline/CAD map' : 'Use TomTom as main map',
@@ -1736,6 +1778,7 @@ export default function Navigation() {
                 {useTomTomMainMap && isOnline && !tomTomMainMapFailed ? (
                   <Suspense fallback={<div role="status" className="absolute inset-0 flex items-center justify-center bg-slate-950 text-sm text-white">Loading TomTom live map…</div>}>
                     <TomTomSdkMapPreview
+                      key={'tomtom-gps-'+tomTomRecoveryAttempt}
                       embedded allowBlankMapFallback
                       currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
                       activeCalls={showActiveCalls ? activeCalls : []}
@@ -1758,7 +1801,7 @@ export default function Navigation() {
                       }}
                       mapTheme={mapTheme}
                       navigation={isNavigating && activeNavStep ? {instruction:formatInstruction(activeNavStep), distance:navDistanceLabel, eta:navEtaLabel, provider:navRouteProvider} : null}
-                      onMapUnavailable={()=>setTomTomMainMapFailed(true)}
+                      onMapUnavailable={markTomTomUnavailable}
                       onSelectPoint={coords=>{
                         setMapSelectedDestination({coords,name:`${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`,address:`${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`,label:'TomTom map location'});
                         setShowAddressSearch(true);
@@ -1806,8 +1849,7 @@ export default function Navigation() {
                     <OfficerDistressMarker autoCenter={false} />
                 </MapView>}
                 {useTomTomMainMap && (tomTomMainMapFailed || !isOnline) && <div role="status" className="pointer-events-auto absolute bottom-3 left-3 z-[1205] flex max-w-[calc(100%-24px)] flex-wrap items-center gap-2 rounded-xl border border-amber-600/70 bg-slate-950/95 px-3 py-2 text-xs text-amber-100 shadow-lg">
-                  <span>TomTom {isOnline ? 'map unavailable' : 'requires internet'} · Showing backup CAD map</span>
-                  {isOnline && <button type="button" className="rounded-md bg-amber-600 px-3 py-1.5 font-bold text-black" onClick={()=>{setUseTomTomMainMap(true);setTomTomMainMapFailed(false);}}>Retry TomTom</button>}
+                  <span>TomTom {isOnline ? 'temporarily unavailable · automatic recovery scheduled' : 'waiting for internet'} · Backup CAD map active</span>
                 </div>}
             </div>
 
