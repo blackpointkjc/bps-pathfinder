@@ -25,6 +25,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { listDirectoryUsers, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
 import { isCompanyEmployeeAccount } from '@/lib/directoryUtils';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import BrowserUserAssignment from '@/components/browser/BrowserUserAssignment';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
 
@@ -616,6 +619,13 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_220px]"><label className="text-xs text-slate-400">Find an employee<Input placeholder="Name, rank, unit, division or email" value={searchQuery} onChange={event=>setSearchQuery(event.target.value)} className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Platoon<select value={platoonFilter} onChange={event=>setPlatoonFilter(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="all">All platoons</option>{[...new Set(activeEmployees.map(person=>person.platoon||'unassigned'))].sort().map(name=><option key={name} value={name}>{name==='unassigned'?'Unassigned':name==='Command'?'Company Command':name.startsWith('Platoon ')?name:`Platoon ${name}`}</option>)}</select></label><label className="text-xs text-slate-400">View<select value={employeeView} onChange={event=>setEmployeeView(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="directory">Employee directory</option><option value="structure">Permanent reporting structure</option></select></label></div>
       </header>
 
+      {canManageEmployees && <section className="mb-4 rounded-xl border border-cyan-800/60 bg-slate-900 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-base font-bold text-white">Corporate Internet Browser Access</h2><p className="text-xs text-slate-400">Review and assign approved browsing profiles alongside employee accounts.</p></div>
+          <Link to={createPageUrl('AdminBrowserControl') + '?browser_tool=profiles'} className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-xs font-semibold text-cyan-100">Browser control center</Link>
+        </div>
+        {isSystemAdmin && <div className="mt-3"><BrowserUserAssignment /></div>}
+      </section>}
       {isLoading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
