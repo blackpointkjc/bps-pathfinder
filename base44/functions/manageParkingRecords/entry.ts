@@ -48,6 +48,23 @@ Deno.serve(async req => {
       }catch(error:any){console.warn('Parking active property lookup failed',String(error?.message||error));
         throw Error('Active property directory is temporarily unavailable. Retry opening Parking or Rent Roll.');}
     };
+    const reviewerArea = (person:any) => {
+      if(admin)return true;
+      const n=(value:any)=>clean(value).toLowerCase();
+      const platoon=n(user.oversight_platoon || user.platoon);
+      if(!['a','b'].includes(platoon) || n(person?.platoon)!==platoon) return false;
+      if(!n(user.division) || !n(user.subdivision) || n(person?.division)!==n(user.division) || n(person?.subdivision)!==n(user.subdivision))return false;
+      const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(n(user.rank));
+      return senior || !!(n(user.substation) && n(person?.substation)===n(user.substation));
+    };
+    let scopedOfficerIds:Set<string>|null=null;
+    const allowedOfficers=async()=>{
+      if(admin)return null;
+      if(scopedOfficerIds)return scopedOfficerIds;
+      const people=await entities.User.list('-last_name',1000);
+      scopedOfficerIds=new Set((people||[]).filter(reviewerArea).map((person:any)=>String(person.id)));
+      return scopedOfficerIds;
+    };
     const assignedNames=[...(Array.isArray(user.assigned_locations)?user.assigned_locations:[]),
       ...(Array.isArray(user.assigned_sites)?user.assigned_sites:[]),
       ...(user.assigned_location?[user.assigned_location]:[])].map(value=>clean(value)).filter(Boolean);
@@ -94,7 +111,9 @@ Deno.serve(async req => {
       if(!supervisor)return fail('Supervisor approval access required',403);
       const pending=await entities.ParkingViolation.filter({status:'issued'},'-created_date',100);
       const allowed=new Set((await getLocations()).filter(activeLocation).map((loc:any)=>siteKey(loc.site_name)));
-      return Response.json({reviews:(pending||[]).filter((v:any)=>allowed.has(siteKey(v.location))&&v.supervisor_review_status!=='approved').map((v:any)=>({
+      const scoped=await allowedOfficers();
+      return Response.json({reviews:(pending||[]).filter((v:any)=>allowed.has(siteKey(v.location))
+        && (!scoped || scoped.has(String(v.officer_id))) && v.supervisor_review_status!=='approved').map((v:any)=>({
         id:v.id,citation_number:v.citation_number,location:v.location,violation_date:v.violation_date,
         license_plate:v.license_plate,violation_type:v.violation_type,officer_name:v.officer_name,
         status:v.status,supervisor_review_status:v.supervisor_review_status,
@@ -399,7 +418,10 @@ Deno.serve(async req => {
       const notes=clean(data.notes,1000);
       let patch:any={};
       if(client){if(!['acknowledged','disputed','resolved'].includes(status))return fail('Invalid client response');patch={client_review_status:status,client_notes:notes};}
-      else if(supervisor){if(!['approved','returned','rejected'].includes(status))return fail('Invalid supervisor decision');
+      else if(supervisor){
+        const scoped=await allowedOfficers();
+        if(scoped && !scoped.has(String(old.officer_id)))return fail('This notice is outside your assigned platoon and operational area',403);
+        if(!['approved','returned','rejected'].includes(status))return fail('Invalid supervisor decision');
         if(old.status!=='issued')return fail('Only submitted, pending notices can be approved or returned');
         if((status==='returned'||status==='rejected')&&!notes)return fail('A reason is required when returning a notice');
         patch=status==='approved'?{supervisor_review_status:'approved',status:'approved',supervisor_notes:notes}:{supervisor_review_status:'returned',status:'rejected',supervisor_notes:notes,admin_notes:notes,was_rejected:true};}
