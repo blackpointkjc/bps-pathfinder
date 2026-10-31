@@ -1,7 +1,7 @@
 import {offlineIdentity} from '@/lib/offlineSession';
 import {queryClientInstance} from '@/lib/query-client';
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCache } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
@@ -477,6 +477,28 @@ export const AuthProvider = ({ children }) => {
       }
     } catch {}
 
+    // Clear this app's cached bundles and reads on each sign-out. Preserve
+    // pending offline reports, GPS settings, and other non-cache user work.
+    try {
+      clearBase44ReadCache();
+      queryClientInstance.clear();
+      if ('caches' in window) {
+        const names = await window.caches.keys();
+        await Promise.all(names.filter(name =>
+          name.startsWith('pathfinder-') || name.startsWith('workbox-') || name.startsWith('bps-')
+        ).map(name => window.caches.delete(name)));
+      }
+      for (let index = localStorage.length - 1; index >= 0; index--) {
+        const key = localStorage.key(index);
+        if (key && /^(bps:analytics:|bps:performance-cache:|bps:app-directory:|bps:cache:rotated-day:|pathfinder-offline-prime)/.test(key)) localStorage.removeItem(key);
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(registration => registration.update().catch(()=>null)));
+      }
+    } catch (error) {
+      console.warn('[AUTH] Sign-out cache refresh partially failed:', error?.message);
+    }
     setUser(null);
     setIsAuthenticated(false);
     setAccountLock(null);
