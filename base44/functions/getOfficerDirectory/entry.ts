@@ -14,8 +14,21 @@ Deno.serve(async (req) => {
     const users = await listUsers(base44);
     const email = (value: any) => String(value || '').trim().toLowerCase();
 
+    const roleSet = new Set([user.role, ...(user.additional_roles || [])].map((role:any) => String(role || '').toLowerCase()));
+    const supervisor = roleSet.has('supervisor') || user.is_supervisor === true || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal'].includes(String(user.rank || '').trim().toLowerCase());
+    const allAccess = roleSet.has('admin') || roleSet.has('full_access');
+    const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(String(user.rank || '').trim().toLowerCase());
+    const inScope = (person:any) => {
+      if (allAccess || !supervisor) return true;
+      const text = (value:any) => String(value || '').trim().toLowerCase();
+      if (!text(user.division) || !text(user.subdivision)) return false;
+      if (text(user.division) !== text(person.division) || text(user.subdivision) !== text(person.subdivision)) return false;
+      return senior || Boolean(text(user.substation) && text(user.substation) === text(person.substation));
+    };
+
     const officers = (users || [])
       .filter((entry: any) => {
+        if (!inScope(entry)) return false;
         if (!entry?.email || entry.termination_date) return false;
         const roles = new Set([entry.role, ...(entry.additional_roles || [])].filter(Boolean).map((role: string) => String(role).toLowerCase()));
         return roles.has('officer');

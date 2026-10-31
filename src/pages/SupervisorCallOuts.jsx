@@ -1,6 +1,7 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
+import { withinPersonnelOversightScope } from '@/lib/orgStructure';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState } from "react";
 import { base44, clearBase44ReadCacheMatching } from "@/api/base44Client";
@@ -51,7 +52,7 @@ export default function SupervisorCallOuts() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers = [], isFetching: officersLoading, error: officersError, refetch: refreshOfficers } = useQuery({
+  const { data: allUserResults = [], isFetching: officersLoading, error: officersError, refetch: refreshOfficers } = useQuery({
     queryKey: ['directoryUsers', 'supervisorCallOuts'],
     queryFn: async () => {
       let rows;
@@ -65,6 +66,7 @@ export default function SupervisorCallOuts() {
     refetchOnWindowFocus: false,
   });
 
+  const allUsers = (allUserResults || []).filter(officer => withinPersonnelOversightScope(user || {}, officer));
   const { data: locations = [] } = useQuery({
     queryKey: ['directoryLocations', 'supervisorCallOuts'],
     queryFn: async () => {
