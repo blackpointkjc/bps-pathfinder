@@ -201,29 +201,27 @@ export function profileDefaults(profile) {
   return { blocked_categories: blockingAll, strict_search_only: true, allow_downloads: false, allow_print: false, allow_clipboard: false, allow_devtools: false, session_timeout_minutes: 15 };
 }
 
+// Browser privileges are derived from the employee account's existing Pathfinder
+// roles, not a second per-employee browser role database.
 export function resolvePolicy(policies = [], user = {}) {
   const active = policies.filter(item => item && item.active !== false);
-  const email = String(user.email || '').toLowerCase();
   const roles = new Set([user.role, ...(Array.isArray(user.additional_roles) ? user.additional_roles : [])]
-    .filter(Boolean)
-    .map(role => String(role).toLowerCase()));
-
-  // A verified Pathfinder administrator receives the administrator browsing
-  // profile even before a separate BrowserPolicy record has been configured.
-  // Only the authenticated user roles supplied by the backend may grant this.
-  if (roles.has('admin')) {
-    const configured = active.find(item => item.profile === 'admin_access' && (item.assigned_roles || []).some(role => String(role).toLowerCase() === 'admin'));
-    return { policy: configured || { name: 'Administrator Access', profile: 'admin_access', active: true, safe_search: true, ...profileDefaults('admin_access') }, basis: 'Administrator role' };
-  }
-
-  const personal = active.find(item => (item.assigned_emails || []).some(value => String(value).toLowerCase() === email));
-  if (personal) return { policy: personal, basis: 'Personal assignment' };
-
-  const byRole = active.find(item => (item.assigned_roles || []).some(role => roles.has(String(role).toLowerCase())));
-  if (byRole) return { policy: byRole, basis: 'Role assignment' };
-
-  const fallback = active.find(item => item.is_default) || active[0] || null;
-  return { policy: fallback, basis: fallback ? 'Default profile' : 'No profile assigned' };
+    .filter(Boolean).map(role => String(role).trim().toLowerCase()));
+  const isAdmin = roles.has('admin') || roles.has('full_access');
+  const profile = isAdmin ? 'admin_access' : 'strict_search';
+  // Website rules and role-based policies may still be configured centrally,
+  // but cannot silently downgrade a Pathfinder administrator.
+  if (isAdmin) return {
+    policy: { name:'Administrator Access', profile:'admin_access', active:true,
+      safe_search:false, ...profileDefaults('admin_access') },
+    basis:'Manage Company Employees · Administrator/Full Access role'
+  };
+  const byRole = active.find(item => item.profile !== 'admin_access' &&
+    (item.assigned_roles || []).some(role => roles.has(String(role).toLowerCase())));
+  if (byRole) return {policy:byRole,basis:'Manage Company Employees · Assigned role'};
+  const fallback = active.find(item => item.is_default && item.profile !== 'admin_access');
+  return {policy:fallback || {name:'Strict Search Only',profile,active:true,safe_search:true,...profileDefaults(profile)},
+    basis:'Manage Company Employees · Default employee role'};
 }
 
 export function policySummary(policy) {

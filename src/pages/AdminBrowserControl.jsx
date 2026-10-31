@@ -6,7 +6,6 @@ import { ExternalLink, Globe } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import AdminBrowserOverview from '@/components/browser/AdminBrowserOverview';
 import BrowserPolicyPanel from '@/components/browser/BrowserPolicyPanel';
-import BrowserUserAssignment from '@/components/browser/BrowserUserAssignment';
 import BrowserSiteRulesPanel from '@/components/browser/BrowserSiteRulesPanel';
 import BrowserRequestsPanel from '@/components/browser/BrowserRequestsPanel';
 import BrowserActivityPanel from '@/components/browser/BrowserActivityPanel';
@@ -84,8 +83,8 @@ export default function AdminBrowserControl() {
 
       {active === 'profiles' && (
         <div className="space-y-3">
+          <p className="rounded-xl border border-cyan-800 bg-slate-900 p-3 text-xs text-cyan-100">Browser profiles automatically follow the account roles already configured under HR → Manage Company Employees. Admin and Full Access roles have Administrator Access. Employees have Strict Search Only unless you create a policy for their existing role. No separate browser-user assignment is required.</p>
           <BrowserPolicyPanel />
-          <BrowserUserAssignment focusEmail={focusEmail} />
         </div>
       )}
 
