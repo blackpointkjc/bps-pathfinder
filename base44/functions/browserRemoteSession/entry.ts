@@ -135,7 +135,6 @@ export default async function (req: Request): Promise<Response> {
         try {json=JSON.parse(bodyText);}catch {}
         const safeDiagnostic = String(gqlError(json) || json?.message || json?.error || bodyText || '')
           .replace(/token=[^\s&"']+/gi, 'token=[redacted]')
-          .replace(/2VXm34bXPFAh2Dc851fb23d9a0f20109c850c80808f6358b8/gi, '[redacted]')
           .slice(0,180);
         const problem=gqlError(json);
         if (response.ok && !problem && json?.data?.liveURL?.liveURL && json?.data?.reconnect?.browserQLEndpoint) {
