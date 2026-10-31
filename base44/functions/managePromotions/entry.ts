@@ -124,12 +124,13 @@ function changePlan(users:any[],input:any){
  if(nextPhoto && !/^https:\/\//i.test(nextPhoto) && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(nextPhoto))
    throw new Error('Upload a JPG, PNG or WebP portrait before scheduling.');
  if(nextPhoto.length>1_600_000)throw new Error('The staged portrait is too large. Upload a smaller image.');
- const effective=trim(input.effective_date,16);
- if(!/^\d{4}-\d{2}-\d{2}$/.test(effective)||!Number.isFinite(Date.parse(effective+'T12:00:00Z')))
-   throw new Error('Select a valid effective date.');
  const clock=easternNow();
- if(effective<clock.date||(effective===clock.date&&(clock.hour>10||(clock.hour===10&&clock.minute>=0))))
-   throw new Error('The 10:00 a.m. Eastern effective time has already passed. Choose a future date.');
+ const delayed=input.delay_promotion===true;
+ const effective=delayed?trim(input.effective_date,16):clock.date;
+ if(delayed && (!/^\d{4}-\d{2}-\d{2}$/.test(effective)||!Number.isFinite(Date.parse(effective+'T12:00:00Z'))))
+   throw new Error('Choose a valid future effective date for the delayed promotion.');
+ if(delayed && effective<=clock.date)
+   throw new Error('Delayed promotions must select a future date. Leave delay off to promote immediately.');
  const requestedPlatoon=trim(input.platoon)||trim(officer.platoon)||'Unassigned';
  const platoon=rankLevel(proposed)<=2?'Command':requestedPlatoon;
  if(!['A','B','Command','Unassigned'].includes(platoon))throw new Error('Platoon must be A, B, Command, or Unassigned.');
@@ -167,12 +168,78 @@ function changePlan(users:any[],input:any){
  updates.is_supervisor=nextRoles.includes('supervisor');
  if(photoChanged){updates.profile_photo_url=nextPhoto;updates.profile_photo_original_url=nextPhoto;}
  const reason=trim(input.reason,800);
- return {officer,supervisor,updates,transfers,promoted,noChanges,rolesChanged,photoChanged,reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10),
+ return {officer,supervisor,updates,transfers,promoted,noChanges,rolesChanged,photoChanged,reason,effective_date:effective,delayed,
    preview:{officer:safeOfficer(officer),before:{rank:officer.rank,unit_number:officer.unit_number,platoon:officer.platoon,supervisor:officer.supervisor_name||''},
      after:{rank:proposed,unit_number,platoon,oversight_platoon:oversight,supervisor:updates.supervisor_name,pay_rate:pay,supervisor_role:updates.is_supervisor},
-     no_changes:noChanges,effective_time:'10:00 AM America/New_York',system_role:nextSystemRole,
+     no_changes:noChanges,effective_time:delayed?'10:00 AM America/New_York':'Immediately upon approval',delayed,system_role:nextSystemRole,
      additional_roles:nextRoles,profile_photo_url:photoChanged?nextPhoto:'',roles_changed:rolesChanged,photo_changed:photoChanged,
-     affected_platoon:affectedPlatoon,transfer:transfer,transfers:transfers.map(u=>safeOfficer(u)),reason,effective_date:trim(input.effective_date,16)||new Date().toISOString().slice(0,10)}};
+     affected_platoon:affectedPlatoon,transfer:transfer,transfers:transfers.map(u=>safeOfficer(u)),reason,effective_date:effective}};
+}
+async function applyApprovedPromotion(entities:any,event:any){
+ if(event.status!=='scheduled')return {skipped:true};
+ const token=crypto.randomUUID();
+ // Claim before any user record changes. A failed/partial event is held for
+ // an administrator to reconcile; never publish an unverified promotion.
+ await entities.PersonnelPromotion.update(event.id,{status:'processing',processing_token:token,warnings:[]});
+ const claimed=await entities.PersonnelPromotion.get(event.id);
+ if(claimed?.processing_token!==token||claimed.status!=='processing')return {skipped:true,reason:'another processor claimed event'};
+ let changed=0;
+ const warnings:string[]=[];
+ try{
+  const user=await entities.User.get(event.officer_id);
+  if(!isActive(user))throw Error('Scheduled officer account is no longer active');
+  if(String(user.rank||'')!==String(event.previous_rank||''))throw Error('Rank has changed since the promotion was approved; administrator reconciliation required');
+  const patch=event.planned_patch||{};
+  if(!patch.rank||!Array.isArray(patch.additional_roles)||!['admin','user'].includes(patch.role))throw Error('Scheduled personnel change is missing its approved role/rank snapshot');
+  // Recheck direct supervisor still active, but no authorization elevation before this point.
+  if(patch.supervisor_id){const supervisor=await entities.User.get(patch.supervisor_id);if(!isActive(supervisor))throw Error('Reporting supervisor is no longer an active employee');}
+  await entities.User.update(user.id,patch);
+  const after=await entities.User.get(user.id);
+  const check=['rank','unit_number','platoon','supervisor_id','role','profile_photo_url','profile_photo_original_url'];
+  if(check.some(key=>patch[key]!==undefined&&String(after[key]??'')!==String(patch[key]??'')))throw Error('Updated officer rank, access, photo or command could not be verified');
+  if(!patch.additional_roles.every((role:string)=>(after.additional_roles||[]).includes(role)))throw Error('Scheduled access roles did not all persist');
+  changed++;
+  // Synchronize the actual rank and newly effective portrait across the CAD
+  // identity/roster collections. Never do this at the time of scheduling.
+  const emailList=[...new Set([after.email,after.work_email,after.pathfinder_email,...(after.email_aliases||[])].filter(Boolean))];
+  for(const collection of ['OfficerRoster','ActiveOfficer','Unit']){
+   try{
+    const query=collection==='OfficerRoster'?{email:{$in:emailList}}:
+      collection==='ActiveOfficer'?{officer_email:{$in:emailList}}:{user_id:after.id};
+    const records=await entities[collection].filter(query,'-updated_date',250);
+    for(const row of records||[]){
+      const identity=collection==='Unit'?{unit_id:String(after.unit_number||''),label:`${after.rank} ${after.last_name||''}`.trim()}:
+        {rank:after.rank,unit_number:String(after.unit_number||''),...(patch.profile_photo_url?{profile_photo_url:patch.profile_photo_url}:{})};
+      if(Object.keys(identity).some(key=>String(row[key]??'')!==String(identity[key]??'')))await entities[collection].update(row.id,identity);
+    }
+   }catch(error:any){warnings.push(collection+' roster/photo synchronization needs review: '+trim(error.message));}
+  }
+  // Reassignment and notifications happen ONLY after the officer's effective update.
+  for(const subordinateId of event.planned_transfers||[]){
+   const member=await entities.User.get(subordinateId);
+   if(!isActive(member)||member.platoon!==(event.oversight_platoon||event.new_platoon)){
+    warnings.push('Subordinate '+subordinateId+' is no longer eligible for command transfer');continue;
+   }
+   await entities.User.update(member.id,{supervisor_id:after.id,supervisor_email:after.email,
+     supervisor_name:`${after.rank} ${name(after)}`,next_level_supervisor_id:patch.supervisor_id||'',
+     next_level_supervisor_email:patch.supervisor_email||'',next_level_supervisor_name:patch.supervisor_name||''});
+   changed++;
+   try{await entities.Notification.create({recipient_email:member.email,title:'New Platoon Command',message:`Your new reporting officer is ${after.rank} ${name(after)}. Check your assignment in Pathfinder.`,type:'system_issue',priority:'high',requires_acknowledgment:true,is_read:false,event_key:'promotion-transfer:'+event.id+':'+member.id});}catch(e:any){warnings.push('Subordinate notification pending: '+e.message);}
+  }
+  const email=after.email||event.officer_email;
+  try{await entities.Notification.create({recipient_email:email,title:'Personnel Promotion Effective',message:`Your personnel change is now effective: ${event.new_rank}, unit ${event.new_unit}. Please review your assignment.`,type:'system_issue',priority:'high',requires_acknowledgment:true,is_read:false,event_key:'promotion-effective:'+event.id});}catch(e:any){warnings.push('Officer notification pending: '+e.message);}
+  const title=event.previous_rank===event.new_rank?'🎖️ OFFICIAL CHANGE OF COMMAND':'🎖️ OFFICIAL PERSONNEL PROMOTION & CHANGE OF COMMAND';
+  const message=`BLACK POINT PROTECTION — OFFICIAL COMMAND ANNOUNCEMENT\n\n${event.officer_name} has ${event.previous_rank===event.new_rank?'received an updated command assignment':`been promoted from ${event.previous_rank} to ${event.new_rank}`} effective ${event.immediate===true?'immediately upon approval on '+event.effective_date:event.effective_date+' at 10:00 AM Eastern'}.\nNew unit number: ${event.new_unit}.\nPlatoon assignment: ${event.oversight_platoon||event.new_platoon}.\nReporting command: ${event.new_supervisor||'Company Command'}.\n${changed>1?`${changed-1} officer(s) reassigned under new command.\n`:''}${event.reason?'Official remarks: '+event.reason+'\n':''}All affected personnel should review their updated chain of command in Pathfinder.`;
+  const publication_key='promotion:'+event.id;
+  const existing=await entities.Announcement.filter({publication_key},'-created_date',1);
+  const notice=existing[0]||await entities.Announcement.create({title,message,audience:'company',priority:'urgent',publication_key,photo_url:event.new_profile_photo_url||'',pinged_users:[email],read_by:[]});
+  await entities.PersonnelPromotion.update(event.id,{status:'complete',announcement_id:notice.id,announcement_published:true,processed_at:new Date().toISOString(),applied_at:new Date().toISOString(),transfer_count:changed-1,warnings});
+  return {completed:true,event_id:event.id,changed,announcement_id:notice.id,warnings};
+ }catch(e:any){warnings.push(trim(e.message,400));
+  await entities.PersonnelPromotion.update(event.id,{status:'partial',warnings,announcement_published:false,processed_at:new Date().toISOString()}).catch(()=>{});
+  console.error('Scheduled promotion needs admin reconciliation',event.id,trim(e.message));
+  return {completed:false,event_id:event.id,changed,warnings};
+ }
 }
 Deno.serve(async req=>{
  try{
@@ -219,13 +286,24 @@ Deno.serve(async req=>{
     transfer_count:plan.transfers.length,transfer_ids:[],planned_transfers:plan.transfers.map((u:any)=>u.id),
     planned_patch:plan.updates,new_additional_roles:plan.updates.additional_roles,system_role:plan.updates.role,
     new_profile_photo_url:plan.updates.profile_photo_url||'',effective_date:plan.effective_date,
-    effective_at_eastern:`${plan.effective_date} 10:00 America/New_York`,reason:plan.reason,
+    effective_at_eastern:plan.delayed?`${plan.effective_date} 10:00 America/New_York`:'Immediately upon approval',immediate:!plan.delayed,reason:plan.reason,
     status:'scheduled',announcement_published:false,requested_by:actor.email||actor.id,approved_by:actor.email||actor.id,
     approved_at:new Date().toISOString(),warnings:[]
   });
-  // Absolutely no User/Unit/CAD/Announcement/Notification mutation here.
-  // A scheduled server automation verifies the 10:00 AM America/New_York
-  // boundary and performs the changes at the effective date.
+  if(!plan.delayed){
+    const result=await applyApprovedPromotion(entities,event);
+    if(!result.completed)return Response.json({
+      error:'Promotion activation needs administrator reconciliation. Review event history before retrying.',
+      event_id:event.id,status:'partial',warnings:result.warnings||[]
+    },{status:409});
+    return Response.json({
+      success:true,scheduled:false,status:'complete',event_id:event.id,
+      immediate:true,announcement_id:result.announcement_id,
+      announcement_published:true,transferred:Math.max(0,result.changed-1),
+      warnings:result.warnings||[]
+    });
+  }
+  // Explicitly delayed promotions remain dormant until the scheduled date.
   return Response.json({success:true,scheduled:true,event_id:event.id,status:'scheduled',
     effective_at_eastern:`${plan.effective_date} 10:00 AM America/New_York`,
     announcement_published:false,transferred:0});
