@@ -42,7 +42,7 @@ export default function BrowserPolicyPanel() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-bold text-white">Browsing profiles</h2>
-          <p className="text-xs text-slate-400">Restrictions apply automatically to the user's existing company role. Admin and Full Access always receive Administrator Access.</p>
+          <p className="text-xs text-slate-400">Restrictions apply automatically to the user's existing company role. Only the Admin account role receives the mandatory-block exemption.</p>
         </div>
         <button
           type="button"

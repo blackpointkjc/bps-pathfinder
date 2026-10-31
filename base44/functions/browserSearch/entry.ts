@@ -76,6 +76,7 @@ export default async function(req: Request): Promise<Response> {
         category: decision.category || '',
         category_label: decision.category_label || 'Uncategorized',
         reason: decision.reason,
+        basis: decision.basis || '',
       });
       if (results.length >= 10) break;
     }

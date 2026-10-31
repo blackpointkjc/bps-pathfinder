@@ -29,6 +29,7 @@ export default function CorporateBrowser() {
   });
   const policy=session?.policy;
   const admin=policy?.profile==='admin_access';
+  const {data:chromeEngine} = useQuery({queryKey:['browserRemoteEngineStatus'],enabled:!!user?.email && admin,queryFn:async()=>(await base44.functions.invoke('browserRemoteSession',{action:'status'})).data,staleTime:60000});
   const search=useMutation({mutationFn:async query=>(await base44.functions.invoke('browserSearch',{query})).data});
   const check=useMutation({mutationFn:async url=>(await base44.functions.invoke('browserAccessCheck',{url,source:'navigation'})).data});
   const remote=useMutation({mutationFn:async url=>(await base44.functions.invoke('browserRemoteSession',{url})).data});
@@ -44,7 +45,7 @@ export default function CorporateBrowser() {
   const doSearch = async query => {
     // Administrator searches happen in real Google Search inside remote Chrome.
     // Restricted staff keep the server-filtered public-web result viewer.
-    if (admin) return visit('https://www.google.com/search?q='+encodeURIComponent(query));
+    if (admin && chromeEngine?.configured) return visit('https://www.google.com/search?q='+encodeURIComponent(query));
     setBusy(true);setError('');
     const tabId=activeId;
     const targetIndex=tab.index+1;
@@ -100,7 +101,7 @@ export default function CorporateBrowser() {
         <button type="button" onClick={()=>navigate(omnibox)} disabled={busy||loadingPolicy} className="rounded-full bg-[#1a73e8] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:'Go'}</button>
       </div>
       <div className="flex items-center justify-between gap-2 border-b border-[#e5e7eb] bg-[#fafbfc] px-4 py-1.5 text-[11px] text-[#5f6368]">
-        <span className="truncate">{loadingPolicy?'Checking your access…':`${admin ? 'Google Search in Chrome' : 'Public web search'} · ${profileLabel(policy?.profile)}`}</span>
+        <span className="truncate">{loadingPolicy?'Checking your access…':`${admin && chromeEngine?.configured ? 'Google Search in Chrome' : 'Public internet search'} · ${profileLabel(policy?.profile)}`}</span>
         <span className="inline-flex shrink-0 items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-[#188038]"/>Pathfinder policy</span>
       </div>
       <main className="min-h-[430px] flex-1 overflow-y-auto bg-white">
@@ -119,9 +120,9 @@ export default function CorporateBrowser() {
           {!busy && results.length===0 && !error && <p className="py-12 text-sm text-slate-500">No results returned. Try another search.</p>}
           {!busy && results.map((item,i)=> <article key={item.url+'-'+i} className="max-w-[740px] border-b border-slate-100 py-5">
             <div className="mb-1 flex items-center gap-2 text-xs text-[#4d5156]"><Globe2 className="h-4 w-4 text-slate-500"/><span className="truncate">{item.domain}</span>{!item.allowed && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] text-red-700">Blocked</span>}</div>
-            <button type="button" onClick={()=>item.allowed?visit(item.url):setRequestDomain(item.domain)} className="block text-left text-xl font-medium leading-7 text-[#1a0dab] hover:underline">{item.title||item.domain}</button>
+            <button type="button" onClick={()=>item.allowed?visit(item.url):item.basis==='Mandatory company restriction'?undefined:setRequestDomain(item.domain)} className="block text-left text-xl font-medium leading-7 text-[#1a0dab] hover:underline">{item.title||item.domain}</button>
             <p className="mt-1 text-sm leading-6 text-[#4d5156]">{item.snippet}</p>
-            {!item.allowed && <button type="button" onClick={()=>setRequestDomain(item.domain)} className="mt-1 text-xs text-[#b45309] underline">Request website access</button>}
+            {!item.allowed && (item.basis==='Mandatory company restriction' ? <p className="mt-1 text-xs font-medium text-red-700">Blocked by company-wide internet policy</p> : <button type="button" onClick={()=>setRequestDomain(item.domain)} className="mt-1 text-xs text-[#b45309] underline">Request website access</button>)}
           </article>)}
         </div>}
         {page.kind==='blocked' && <div className="mx-auto max-w-xl px-6 py-20 text-center"><AlertTriangle className="mx-auto h-12 w-12 text-amber-500"/><h1 className="mt-5 text-2xl font-semibold">Website access restricted</h1><p className="mt-3 break-words text-sm text-slate-600">{page.url}</p><p className="mt-3 text-sm text-slate-600">{page.reason}</p><div className="mt-6 flex justify-center gap-3"><button className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white" onClick={()=>setRequestDomain(domainOf(page.url))}>Request access</button><button className="rounded-lg border px-4 py-2 text-sm" onClick={()=>push({kind:'home'})}>New search</button></div></div>}

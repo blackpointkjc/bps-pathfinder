@@ -285,6 +285,8 @@ export function resolvePolicy(policies = [], user = {}) {
   const policy = configured
     ? { ...defaults, ...configured, name: configured.name || display[profile], profile }
     : { ...defaults, name: display[profile], profile, active: true, safe_search: !isAdmin };
+  // Mandatory company safety-search setting for every non-admin employee.
+  if (!isAdmin) policy.safe_search = true;
   if (isAdmin) {
     // An administrator's profile is never downgraded by a conflicting policy.
     return { policy: { ...defaults, name: display.admin_access,

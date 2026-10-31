@@ -93,7 +93,7 @@ export default function AdminBrowserControl() {
 
       {active === 'profiles' && (
         <div className="space-y-3">
-          <p className="rounded-xl border border-cyan-800 bg-slate-900 p-3 text-xs text-cyan-100">Browser permissions follow the live profiles under HR → Manage Company Employees: Admin / Full Access → Administrator Access; Supervisor / HR → Limited Business Access; Officer → Officer Work Research; all others → Strict Search Only. Higher roles override lower roles automatically; no separate employee assignment is required.</p>
+          <p className="rounded-xl border border-cyan-800 bg-slate-900 p-3 text-xs text-cyan-100">Browser permissions follow the live profiles under HR → Manage Company Employees: Admin → Administrator Access; Supervisor / HR / Full Access → Limited Business Access; Officer → Officer Work Research; all others → Strict Search Only. Higher roles override lower roles automatically; no separate employee assignment is required.</p>
           <BrowserPolicyPanel />
         </div>
       )}
