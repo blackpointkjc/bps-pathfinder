@@ -1,0 +1,21 @@
+services:
+  pathfinder-chrome:
+    image: lscr.io/linuxserver/chrome:latest
+    container_name: pathfinder-chrome
+    environment:
+      TZ: America/New_York
+      CHROME_CLI: https://www.google.com/
+      PUID: "1000"
+      PGID: "1000"
+      CUSTOM_USER: ${CHROME_LOCAL_USER:?Set CHROME_LOCAL_USER in .env}
+      PASSWORD: ${CHROME_LOCAL_PASSWORD:?Set CHROME_LOCAL_PASSWORD in .env}
+    volumes:
+      - chrome-data:/config
+    ports:
+      - "127.0.0.1:3001:3001"
+    shm_size: "1gb"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+volumes:
+  chrome-data:
