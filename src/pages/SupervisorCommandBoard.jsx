@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createPageUrl } from '../utils';
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
 const statusTone = status => ({ pending:'bg-amber-600', accepted:'bg-indigo-600', enroute:'bg-blue-600', on_scene:'bg-emerald-700' }[String(status||'').toLowerCase()] || 'bg-slate-600');
 const fmtElapsed = seconds => {
@@ -16,9 +17,10 @@ const fmtElapsed = seconds => {
 };
 
 export default function SupervisorCommandBoard() {
+  const { data: user } = useQuery({ queryKey:['currentUser'], queryFn:()=>getCurrentDirectoryUser() });
   const [workingId, setWorkingId] = useState('');
   const { data: payload = {}, isLoading, error, refetch } = useQuery({
-    queryKey:['supervisorWelfareBoard'],
+    queryKey:['supervisorWelfareBoard',user?.id],
     queryFn:async()=>{
       const response = await base44.functions.invoke('getSupervisorWelfareBoard', {});
       const data = response?.data || response || {};
@@ -30,7 +32,7 @@ export default function SupervisorCommandBoard() {
     staleTime:30000,
   });
   const { data: workforce = { signed_in_units: [], counts: {} }, refetch: refetchWorkforce } = useQuery({
-    queryKey:['workforceSnapshot'],
+    queryKey:['workforceSnapshot','supervisor',user?.id],
     queryFn:async()=>{ const response=await base44.functions.invoke('getWorkforceSnapshot',{}); const data=response?.data||response||{}; if(data.error) throw new Error(data.error); return data; },
     placeholderData:{ signed_in_units:[], counts:{} },
     staleTime:60000,

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { listDirectoryUsers, getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { withinPersonnelOversightScope } from '@/lib/orgStructure';
 import { buildDirectoryIndex, operationalName } from '@/lib/operationalDisplay';
@@ -19,6 +20,7 @@ const actions = [
 ];
 
 export default function SupervisorOverview() {
+  const {user}=useAuth();
   const queryClient = useQueryClient();
   const finishTask = useMutation({
     mutationFn: async task => {
@@ -61,7 +63,7 @@ export default function SupervisorOverview() {
   });
 
   const { data = {}, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['supervisorOverviewSnapshot'],
+    queryKey: ['supervisorOverviewSnapshot',user?.id],
     queryFn: async () => {
       const failures = [];
       const read = async (label, loader, fallback = {}) => { try { const response=await loader(); const value=response?.data||response; if(value?.error)throw new Error(value.error); return value; } catch { failures.push(label); return fallback; } };

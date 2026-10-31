@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, MapPin, RefreshCw, ShieldCheck, Signal, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,12 +38,13 @@ const effectiveGpsTimestamp = item => [item?.gps_updated_at, item?.coarse_gps_up
 const effectiveLocationLabel = item => item?.current_location || item?.assigned_location || item?.location || (hasUsablePosition(item) ? 'GPS position available' : 'Location unavailable');
 export default function SupervisorFieldOversight() {
   const navigate = useNavigate();
+  const { data: supervisorUser } = useQuery({queryKey:['currentUser'],queryFn:()=>getCurrentDirectoryUser()});
   const [workingId, setWorkingId] = useState('');
   const [mapTheme, setMapTheme] = usePathfinderMapTheme();
   const [useTomTom,setUseTomTom]=useState(true);
   const [tomTomFailed,setTomTomFailed]=useState(false);
   const { data: welfarePayload = {}, isLoading: welfareLoading, error: welfareError, refetch: refetchWelfare, isFetching } = useQuery({
-    queryKey: ['supervisorFieldOversight'],
+    queryKey: ['supervisorFieldOversight', supervisorUser?.id],
     queryFn: async () => {
       const response = await base44.functions.invoke('getSupervisorWelfareBoard', {});
       const data = response?.data || response || {};
@@ -59,7 +61,7 @@ export default function SupervisorFieldOversight() {
   });
 
   const { data: locationPayload = {}, refetch: refetchLocations } = useQuery({
-    queryKey: ['supervisorCanonicalLocations'],
+    queryKey: ['supervisorCanonicalLocations',supervisorUser?.id],
     queryFn: () => getOfficerLocationSnapshot(),
     refetchInterval: 60000,
     refetchOnWindowFocus: false,

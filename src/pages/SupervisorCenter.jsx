@@ -22,13 +22,14 @@ import RankStructure from './RankStructure';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
 import SupervisorOverview from './SupervisorOverview';
 import CADCenter from './CADCenter';
+import SupervisorCommandBoard from './SupervisorCommandBoard';
 import { Radio } from 'lucide-react';
 
 const SECTIONS = [
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
   { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
   { id: 'calendar', label: 'Duty Supervisor Coverage', description: 'Company duty supervisors and coverage areas', icon: Shield },
-  { id: 'cad', label: 'CAD Center', description: 'Dispatch dashboard, active calls, and field response tools', icon: Radio },
+  { id: 'cad', label: 'My Platoon CAD', description: 'Assigned platoon calls, units and officer welfare', icon: Radio },
   { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
   { id: 'oversight', label: 'Personnel Oversight', description: 'Inspections, performance reviews, write-ups, force and complaints', icon: ClipboardCheck },
 ];
@@ -71,7 +72,7 @@ class SupervisorSectionBoundary extends React.Component {
 function SupervisorSectionContent({ section, embedded }) {
   if (section === 'overview') return <SupervisorOverview />;
   if (section === 'officer') return <OfficerCenter embedded />;
-  if (section === 'cad') return <CADCenter embedded />;
+  if (section === 'cad') return <SupervisorCommandBoard />;
   if (section === 'calendar') return <SupervisorScheduleWorkspace/>;
   if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
   return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
