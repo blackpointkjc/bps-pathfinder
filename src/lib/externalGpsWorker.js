@@ -3,6 +3,7 @@ let activeReader = null;
 let generation = 0;
 let lineBuffer = '';
 let lastMotion = { speed: 0, heading: null };
+let lastGgaFixAt = 0;
 let lastDataNoticeAt = 0;
 
 function coordinate(value, hemisphere, degreeDigits) {
@@ -51,6 +52,17 @@ function handleSentence(sentence) {
       speed: speedMph >= 5 ? speedMph : 0,
       heading: Number.isFinite(course) ? course : null,
     };
+    // Some USB antennas expose valid RMC coordinates without GGA sentences.
+    // Use those only when a full-quality GGA fix is not arriving.
+    if (Date.now() - lastGgaFixAt > 5000) {
+      const latitude = coordinate(fields[3], fields[4], 2);
+      const longitude = coordinate(fields[5], fields[6], 3);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        self.postMessage({ type: 'fix', fix: { latitude, longitude, accuracy: 35,
+          speed: lastMotion.speed, heading: lastMotion.heading,
+          timestamp: Date.now(), source: 'external_serial' }, satellites: null, hdop: null });
+      }
+    }
     return;
   }
 
@@ -64,6 +76,7 @@ function handleSentence(sentence) {
   const hdop = Number(fields[8]);
   const accuracy = estimatedAccuracy(hdop, fixQuality);
   const now = Date.now();
+  lastGgaFixAt = now;
 
   self.postMessage({
     type: 'fix',

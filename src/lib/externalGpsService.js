@@ -15,6 +15,7 @@ let releaseGpsOwnerLock = null;
 let gpsChannel = null;
 let lineBuffer = '';
 let lastMotion = { speed: 0, heading: null };
+let lastGgaFixAt = 0;
 let nextAutomaticReconnectAt = 0;
 let consecutiveReconnectFailures = 0;
 let lastSerialDataAt = 0;
@@ -396,6 +397,19 @@ function handleSentence(sentence) {
       speed: speedMph >= 5 ? speedMph : 0,
       heading: Number.isFinite(course) ? course : null,
     };
+    // Retain location from receivers that stream RMC without GGA; do not
+    // overwrite a recent higher-quality GGA satellite position.
+    if (Date.now() - lastGgaFixAt > 5000) {
+      const latitude = coordinate(fields[3], fields[4], 2);
+      const longitude = coordinate(fields[5], fields[6], 3);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        const now = Date.now();
+        publishLiveLocation({ latitude, longitude, accuracy: 35,
+          speed: lastMotion.speed, heading: lastMotion.heading,
+          timestamp: now, source: 'external_serial' });
+        emit({ connected: true, connecting: false, lastFixAt: new Date(now).toISOString(), error: '' });
+      }
+    }
     return;
   }
 
@@ -409,6 +423,7 @@ function handleSentence(sentence) {
   const hdop = Number(fields[8]);
   const accuracy = estimatedAccuracy(hdop, fixQuality);
   const now = Date.now();
+  lastGgaFixAt = now;
 
   publishLiveLocation({
     latitude,
