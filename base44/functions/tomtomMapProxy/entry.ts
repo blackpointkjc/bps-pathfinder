@@ -97,8 +97,12 @@ Deno.serve(async req => {
       const contentType = response.headers.get('content-type') || 'application/octet-stream';
       const out = new Headers(cors);
       out.set('Content-Type', contentType);
-      out.set('Cache-Control', response.ok && /(?:image\/|font\/)/.test(contentType)
-        ? 'private, max-age=90' : 'private, no-store');
+      // These resources are static map imagery/styles keyed by their full URL.
+      // Private browser caching avoids repeating authenticated proxy fetches
+      // every time an officer changes CAD pages. Never cache failed responses.
+      const mapAsset = /(?:image\/|font\/|application\/(?:x-protobuf|vnd\.mapbox-vector-tile|octet-stream|json)|text\/)/i.test(contentType)
+        || /\.(?:pbf|mvt|png|jpe?g|webp|svg|woff2?|json)(?:$|\/)/i.test(suffix);
+      out.set('Cache-Control', response.ok && mapAsset ? 'private, max-age=300' : 'private, no-store');
       const isText = contentType.includes('json') || contentType.startsWith('text/') || contentType.includes('javascript');
       if (isText) {
         let body = await response.text();
