@@ -43,6 +43,26 @@ Deno.serve(async(req)=>{
   if(!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
   const body=await req.json().catch(()=>({})),kind=n(body.kind),entity=entities[kind];
   if(!entity && kind!=='personnel')return Response.json({error:'Unknown supervisor record type'},{status:400});
+  if(kind==='personnel'){
+    // Fast path: do not fetch every client Location or report collection. Do
+    // not return large original photos for every officer. A single dedicated
+    // snapshot replaces 3-4 competing requests during Rank Structure startup.
+    const [roster,configured]=await Promise.all([
+      sdk.asServiceRole.entities.User.list('last_name',500),
+      sdk.asServiceRole.entities.CompanyPlatoon.list('region',100).catch(()=>[]),
+    ]);
+    const staff=(roster||[]).filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated');
+    const allowed=staff.filter((p:any)=>area(me,p));
+    const entries=new Map<string,{region:string,platoon:string}>();
+    for(const p of configured||[]){if(p.active!==false&&p.region&&p.name)entries.set(`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name});}
+    for(const p of staff){if(p.division&&p.platoon&&n(p.platoon)!=='command')entries.set(`${n(p.division)}|${n(p.platoon)}`,{region:p.division,platoon:p.platoon});}
+    const visible=[...entries.values()].filter(p=>admin(me)||(n(p.region)===n(me.division)&&n(p.platoon)===n(me.oversight_platoon||me.platoon)));
+    const commands=visible.map(p=>activePlatoonCommand(staff,p.platoon,p.region));
+    const company=admin(me)?staff.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
+    const selected=[...new Map([...allowed,...company].map((p:any)=>[String(p.id),p])).values()];
+    const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:p.mobile_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',profile_photo_url:level(p.rank)<=2?(p.profile_photo_url||''):''}));
+    return Response.json({success:true,officers,platoon_commands:commands,platoons:visible,regions:[...new Set(visible.map(p=>p.region))]});
+  }
   const [users,sites,rows]=await Promise.all([
    sdk.asServiceRole.entities.User.list('last_name',1000),
    sdk.asServiceRole.entities.Location.list('site_name',1000),
