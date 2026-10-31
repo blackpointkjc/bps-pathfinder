@@ -139,6 +139,7 @@ const recordRequestTrace = entry => {
 };
 const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
+  if (meta?.kind === 'function' && meta?.name === 'routeNavigation') return 99;
   if (meta?.kind === 'function' && ['getCallOutShifts','getNavigationLocations','geocodeNavigationDestination'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 96;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
@@ -165,6 +166,7 @@ const readPriority = meta => {
   return 72;
 };
 const readTimeoutMs = meta => {
+  if (meta?.kind === 'function' && meta?.name === 'routeNavigation') return 10_000;
   if (meta?.kind === "function" && ["getAddressCallHistory", "getCallOutShifts", "getNavigationLocations", "getOfflineStreetArea"].includes(meta?.name)) return 30_000;
   if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 60_000;
@@ -392,8 +394,8 @@ function queuedRead(key, task, meta = {}) {
     // Live CAD and road data must report a loading failure promptly rather than
     // leaving the officer staring at an apparently infinite spinner for two
     // minutes. Background/administrative reads retain their full allowance.
-    const foregroundTimeout = meta?.kind === 'function' && ['getActiveDispatchCalls', 'getOnDutyUnits', 'getRoadSpeedLimit'].includes(meta?.name)
-      ? 35_000 : READ_QUEUE_TIMEOUT_MS;
+    const foregroundTimeout = meta?.kind === 'function' && ['getActiveDispatchCalls', 'getOnDutyUnits', 'getRoadSpeedLimit', 'routeNavigation'].includes(meta?.name)
+      ? (meta?.name === 'routeNavigation' ? 10_000 : 35_000) : READ_QUEUE_TIMEOUT_MS;
     job.totalQueueTimeoutMs = foregroundTimeout;
     armQueueTimeout(foregroundTimeout);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);
@@ -607,7 +609,7 @@ const isReadOnlyFunction = (name, payload = {}) => {
   if (action) return readActions.has(action);
 
   if (/^(get|list|search|fetch|load|check)/i.test(functionName)) return true;
-  if (['runSystemAudit','geocodeNavigationDestination'].includes(functionName)) return true;
+  if (['runSystemAudit','geocodeNavigationDestination','routeNavigation'].includes(functionName)) return true;
   return false;
 };
 const functions = new Proxy(rawBase44.functions, {
