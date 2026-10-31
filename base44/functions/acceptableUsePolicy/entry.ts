@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 
-const VERSION = '2026-10-31-v1';
-const TITLE = 'Pathfinder Corporate Systems & Internet Acceptable Use Policy';
+const VERSION = '2026-10-31-pathfinder-v2';
+const TITLE = 'Pathfinder Application User Agreement';
 const unpack = (x: any) => Array.isArray(x) ? x : (Array.isArray(x?.items) ? x.items : []);
 const nameOf = (u: any) => [u.first_name,u.last_name].filter(Boolean).join(' ').trim() || u.full_name || u.email || 'Employee';
 
@@ -36,7 +36,7 @@ export default async function(req: Request): Promise<Response> {
       user_id:profile.id,user_email:profile.email,user_name:nameOf(profile),
       policy_version:VERSION,policy_title:TITLE,signed_name:signature,
       accepted_at:new Date().toISOString(),status:'approved',
-      source:'first-login-required-acknowledgment',
+      source:'pathfinder-app-wide-user-agreement',
       user_agent:String(req.headers.get('user-agent') || '').slice(0,180)
     });
     return Response.json({accepted:true,accepted_at:receipt.accepted_at,policy_version:VERSION},{headers:{'Cache-Control':'no-store'}});
