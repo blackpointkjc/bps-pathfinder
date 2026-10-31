@@ -31,6 +31,22 @@ export function platoonCommander(letter, users = []) {
  }
  return users.filter(user => activePerson(user) && !isOutOfOffice(user) && commandRank(user) === 'Major' && majorPlatoon(user) === letter).sort(comparePersonnel)[0] || null;
 }
+// Read-only chart command status; separate from personnel permissions and the
+// permanent reporting chain. The Captain is the active platoon commander;
+// when absent, assigned Major is preferred over a lower-ranked Lieutenant.
+export function activePlatoonCommand(letter, users = []) {
+ const available=users.filter(person=>activePerson(person)&&!isOutOfOffice(person));
+ const choose=rows=>[...rows].sort(comparePersonnel)[0];
+ const captain=choose(available.filter(person=>normalizeRank(person.rank)==='Captain'&&person.platoon===letter));
+ const major=choose(available.filter(person=>normalizeRank(person.rank)==='Major'&&majorPlatoon(person)===letter));
+ const senior=choose(available.filter(person=>['Lt Colonel','Colonel'].includes(normalizeRank(person.rank))));
+ const lieutenant=choose(available.filter(person=>normalizeRank(person.rank)==='Lieutenant'&&person.platoon===letter));
+ const selected=captain||major||senior||lieutenant||null;
+ if(!selected)return {platoon:letter,status:'unassigned',name:'No active commander assigned',role:'Platoon Command Vacant'};
+ const permanent=choose(users.filter(person=>activePerson(person)&&normalizeRank(person.rank)==='Captain'&&person.platoon===letter));
+ const acting=normalizeRank(selected.rank)!=='Captain'||(permanent&&permanent.id!==selected.id);
+ return {platoon:letter,status:acting?'acting':'active',name:[selected.rank,selected.last_name||selected.first_name].filter(Boolean).join(' '),role:acting?'Acting Platoon Commander':'Platoon Commander',unit_number:selected.unit_number||''};
+}
 export function platoonCommandLabel(person, users = []) {
  return ['A','B'].filter(letter => platoonCommander(letter, users)?.id === person?.id).map(letter =>
   `Platoon ${letter} Commander${person.platoon === letter && normalizeRank(person.rank) === 'Captain' && !isOutOfOffice(person) ? '' : ' (Acting)'}`

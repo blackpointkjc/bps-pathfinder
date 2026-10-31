@@ -4,7 +4,7 @@ import { comparePersonnel } from '@/utils/rankPolicy';
 import { withinPersonnelOversightScope, orgPathLabel, officerOrgContext } from '@/lib/orgStructure';
 import PersonnelPrintRoster from '@/components/PersonnelPrintRoster';
 import CommandRankTiers from '@/components/CommandRankTiers';
-import { reportingLabel, reportingSupervisors, oversightLabel, assignmentLabel, actingCommandLabel, platoonCommander, majorPlatoon } from '@/utils/commandReporting';
+import { reportingLabel, reportingSupervisors, oversightLabel, assignmentLabel, actingCommandLabel, activePlatoonCommand } from '@/utils/commandReporting';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -166,8 +166,7 @@ export default function RankStructure(){
         return {...person,division:org.division||person.division,subdivision:org.subdivision||person.subdivision,substation:org.substation||person.substation,assigned_site_name:org.site_name};
       });
       const commands=['A','B'].map(platoon=>{
-        const person=platoonCommander(platoon,all);
-        return person?{platoon,status:person.rank==='Captain'?'active':'acting',name:displayName(person),role:person.rank==='Captain'?'Platoon Commander':'Acting Platoon Commander',unit_number:person.unit_number||''}:{platoon,status:'unassigned',name:'No active commander assigned'};
+        return activePlatoonCommand(platoon,all);
       });
       return {officers,commands};
     }
