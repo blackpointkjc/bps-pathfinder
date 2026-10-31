@@ -1005,7 +1005,7 @@ export default function AdminLocations({ embedded = false }) {
 
             <div className="space-y-2">
               <Label htmlFor="assigned_supervisors">Site Supervisor</Label>
-              <p className="mb-2 text-xs text-slate-500">Leave unselected to assign automatically by substation, division and lowest available supervisor rank (starting Corporal). Admin can rebalance automatic assignments; manually selected supervisors remain protected.</p>
+              <p className="mb-2 text-xs text-slate-500">Leave unselected to assign automatically by substation, division and balanced qualified supervisor workload (starting at Corporal). Admin can rebalance automatic assignments; manually selected supervisors remain protected.</p>
               <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <Label className="text-sm font-medium mb-3 block">Available Supervisors</Label>
                 <div className="space-y-2 max-h-64 overflow-y-auto">

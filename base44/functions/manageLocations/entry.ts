@@ -91,11 +91,13 @@ function assignSiteSupervisor(site:any, people:any[], loads:Map<string,number>) 
     ? eligible.filter(person => cleanOrg(person.substation) === cleanOrg(site.substation)) : [];
   // Prefer a qualified substation supervisor, then one in the same Division.
   const pool=local.length ? local : eligible;
-  // Start with Corporal and advance rank by rank only when that tier is absent.
-  const minRank=Math.min(...pool.map(person => siteSupervisorRanks.indexOf(officerRank(person.rank))));
-  const rankPool=pool.filter(person => siteSupervisorRanks.indexOf(officerRank(person.rank))===minRank);
+  // Start at Corporal; distribute across qualified field supervisors before
+  // escalating a site's permanent owner to senior company command.
+  const fieldPool = pool.filter(person => siteSupervisorRanks.indexOf(officerRank(person.rank)) <= 2);
+  const rankPool = fieldPool.length ? fieldPool : pool;
   const seed=stableSiteHash(String(site.id || site.site_name || 'site'));
   rankPool.sort((a,b)=>(loads.get(cleanOrg(a.email))||0)-(loads.get(cleanOrg(b.email))||0)
+    || siteSupervisorRanks.indexOf(officerRank(a.rank))-siteSupervisorRanks.indexOf(officerRank(b.rank))
     || (stableSiteHash(String(a.id||a.email)+'|'+seed)-stableSiteHash(String(b.id||b.email)+'|'+seed)));
   const selected=rankPool[0];
   loads.set(cleanOrg(selected.email),(loads.get(cleanOrg(selected.email))||0)+1);

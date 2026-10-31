@@ -86,25 +86,27 @@ export function actingCoverage(person, users = []) {
  const substation = clean(person.substation);
  const sameArea = candidate => !region || (clean(candidate.division) === region
    && (!division || clean(candidate.subdivision) === division));
- const scopes = [
-   active.filter(candidate => platoon && candidate.platoon === platoon && sameArea(candidate)),
-   active.filter(candidate => sameArea(candidate)),
-   active.filter(candidate => platoon && (candidate.platoon === platoon || majorPlatoon(candidate) === platoon)),
-   active,
- ];
- // Search every progressively broader scope for the NEAREST rank above.
- // Never promote a subordinate into a Captain's acting role while an
- // appropriate Major or Lieutenant Colonel is available elsewhere.
- for (const scope of scopes) {
-   const higher = scope.filter(candidate => rankLevel(candidate.rank) < currentRank).sort(rankAscending);
-   if (higher.length) return higher[0];
- }
- // Only after exhausting higher command, keep same-rank coverage and the
- // established lower-rank field fallback nearest to the affected platoon.
- for (const scope of scopes) {
-   const fallback = scope.filter(candidate => rankLevel(candidate.rank) >= currentRank).sort(rankAscending);
-   if (fallback.length) return fallback[0];
- }
+ // Rank distance is the first priority, so a Lieutenant is not bypassed
+ // for Colonel merely because Colonel shares a platoon. Geography/platoon
+ // and existing seniority policies choose among equally close ranks.
+ const scopePriority = candidate => {
+   const inDivision = sameArea(candidate);
+   const inPlatoon = platoon && (candidate.platoon === platoon || majorPlatoon(candidate) === platoon);
+   return inDivision && inPlatoon ? 0 : inDivision ? 1 : inPlatoon ? 2 : 3;
+ };
+ const nearest = pool => [...pool].sort((a,b) => {
+   const distanceA = Math.abs(rankLevel(a.rank) - currentRank);
+   const distanceB = Math.abs(rankLevel(b.rank) - currentRank);
+   return distanceA-distanceB || scopePriority(a)-scopePriority(b) || comparePersonnel(a,b);
+ })[0];
+ // Closest higher rank first. Only if no higher-ranking officer is available
+ // anywhere does coverage fall to a peer, then the closest lower rank.
+ const superior=nearest(active.filter(candidate => rankLevel(candidate.rank) < currentRank));
+ if (superior) return superior;
+ const peer=nearest(active.filter(candidate => rankLevel(candidate.rank) === currentRank));
+ if (peer) return peer;
+ const subordinate=nearest(active.filter(candidate => rankLevel(candidate.rank) > currentRank));
+ if (subordinate) return subordinate;
  return null;
 }
 export const reportingLabel = (person, users, name) => reportingSupervisors(person, users).map(name).join(' & ') || (commandRank(person) === 'Colonel' ? 'Top of Command' : 'Awaiting assignment');
