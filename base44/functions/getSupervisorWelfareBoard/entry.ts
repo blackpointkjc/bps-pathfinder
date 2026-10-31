@@ -3,6 +3,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 const lower = (v: unknown) => String(v || '').trim().toLowerCase();
 const terminalCall = (call: any) => ['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(call?.status)) || call?.manual_dismissed === true;
 const validCoord = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '' && Number.isFinite(Number(v));
+// Duty/welfare records are scoped by assignment rank, not by a client-side
+// filter. Command rank Lieutenant+ sees its division; field supervisors see
+// only their own substation. Global emergency dispatch itself is unaffected.
+const inSupervisorArea = (viewer:any, person:any) => {
+  const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant'].includes(lower(viewer.rank));
+  if (!lower(viewer.division) || !lower(viewer.subdivision)) return false;
+  if (lower(person.division) !== lower(viewer.division) || lower(person.subdivision) !== lower(viewer.subdivision)) return false;
+  return senior || !!(lower(viewer.substation) && lower(person.substation) === lower(viewer.substation));
+};
+
 
 Deno.serve(async (req) => {
   try {
@@ -27,10 +37,13 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.User.list('-updated_date', 750),
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 750),
     ]);
+    const canSeeAllOfficers = me.role === 'admin' || roles.has('full_access');
+    const visibleOfficerIds = new Set((users || []).filter((person:any) => canSeeAllOfficers || inSupervisorArea(me, person)).map((person:any) => String(person.id)));
+    const visibleOfficerEmails = new Set((users || []).filter((person:any) => canSeeAllOfficers || inSupervisorArea(me, person)).map((person:any) => lower(person.email)).filter(Boolean));
     const activeCalls = (calls || []).filter((call:any) => !terminalCall(call));
     const activeCallIds = new Set(activeCalls.map((call:any) => String(call.id)));
     const assignments = (allAssignments || [])
-      .filter((a:any) => activeCallIds.has(String(a.call_id)) && !['cleared','cancelled'].includes(lower(a.status)));
+      .filter((a:any) => activeCallIds.has(String(a.call_id)) && visibleOfficerIds.has(String(a.unit_id)) && !['cleared','cancelled'].includes(lower(a.status)));
     // Officer GPS/status is intentionally NOT loaded here. All live-location data
     // comes from the canonical workforce/location feeds.
 
@@ -92,14 +105,14 @@ Deno.serve(async (req) => {
     board.sort((a,b)=>Number(b.overdue)-Number(a.overdue) || b.elapsed_seconds-a.elapsed_seconds);
 
     const displayByEmail: Record<string,string> = {};
-    for (const officer of users || []) {
+    for (const officer of (users || []).filter((person:any) => visibleOfficerIds.has(String(person.id)))) {
       const email = lower(officer.email);
       if (!email) continue;
       const last = String(officer.last_name || '').trim() || String(officer.full_name || '').trim().split(/\s+/).pop() || '';
       displayByEmail[email] = [String(officer.rank || '').trim(), last].filter(Boolean).join(' ') || 'Officer';
     }
 
-    const activeWelfareChecks = (welfareChecks || []).filter((check:any) => activeCallIds.has(String(check.call_id)) && lower(check.status) === 'pending')
+    const activeWelfareChecks = (welfareChecks || []).filter((check:any) => activeCallIds.has(String(check.call_id)) && visibleOfficerIds.has(String(check.unit_id)) && lower(check.status) === 'pending')
       .map((check:any) => ({ ...check, elapsed_seconds: Math.max(0, Math.floor((now - new Date(check.requested_at || 0).getTime()) / 1000)) }));
 
     const supervisorUserIds = new Set((users || []).filter((u:any) => {
@@ -109,7 +122,7 @@ Deno.serve(async (req) => {
     }).map((u:any) => String(u.id)));
     const activeSupervisorCallIds = new Set((assignments || []).filter((a:any) => supervisorUserIds.has(String(a.unit_id))).map((a:any) => String(a.call_id)));
     const pendingSupervisorRequests = (statusLogs || [])
-      .filter((log:any) => log.triggering_action === 'requestSupervisorAssist.pending' && activeCallIds.has(String(log.call_id)) && !activeSupervisorCallIds.has(String(log.call_id)))
+      .filter((log:any) => log.triggering_action === 'requestSupervisorAssist.pending' && activeCallIds.has(String(log.call_id)) && visibleOfficerIds.has(String(log.unit_id || '')) && !activeSupervisorCallIds.has(String(log.call_id)))
       .map((log:any) => {
         const call:any = callById.get(String(log.call_id));
         return {
@@ -131,7 +144,7 @@ Deno.serve(async (req) => {
       welfare_checks:activeWelfareChecks,
       supervisor_requests:pendingSupervisorRequests,
       display_by_email:displayByEmail,
-      active_calls:activeCalls,
+      active_calls: canSeeAllOfficers ? activeCalls : activeCalls.filter((call:any) => assignments.some((row:any) => String(row.call_id) === String(call.id))),
       overdue_count:board.filter(x=>x.overdue).length,
       generated_at:new Date().toISOString(),
     });
