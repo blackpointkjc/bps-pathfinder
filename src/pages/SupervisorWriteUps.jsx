@@ -48,30 +48,20 @@ export default function SupervisorWriteUps() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
-  // Re-introducing allUsers query as `getOfficerIdentifier` function requires it.
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['directoryUsers', 'supervisorWriteUps'],
-    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
-    initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
+  const { data: scoped = {}, error: scopedError } = useQuery({
+    queryKey: ['supervisorScopedWriteUps', user?.id],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getSupervisorWorkspaceRecords', {kind:'writeups'});
+      const payload = result?.data || result || {};
+      if (payload.error || payload.success !== true) throw new Error(payload.error || 'Supervisor write-ups unavailable');
+      return payload;
+    },
+    enabled: hasSupervisorAccess(user), staleTime: 30000,
   });
-
+  const allUsers = scoped.officers || [];
   const filteredUsers = allUsers.filter(isOperationalOfficer);
-
-  const { data: locations = [] } = useQuery({
-    queryKey: ['directoryLocations', 'supervisorWriteUps'],
-    queryFn: () => listDirectoryLocations('site_name', 1000),
-    enabled: hasSupervisorAccess(user),
-    initialData: [],
-  });
-
-  const { data: writeUps } = useQuery({
-    queryKey: ['writeUpReports'],
-    queryFn: () => base44.entities.WriteUpReport.list('-created_date'),
-    enabled: hasSupervisorAccess(user),
-  });
+  const locations = scoped.locations || [];
+  const writeUps = scoped.rows || [];
 
   // Auto-archive expired write-ups
   useEffect(() => {
@@ -94,7 +84,7 @@ export default function SupervisorWriteUps() {
   const createWriteUpMutation = useMutation({
     mutationFn: (data) => base44.entities.WriteUpReport.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['writeUpReports'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisorScopedWriteUps'] });
       setShowForm(false);
       setEditingWriteUp(null);
       setFormData({
@@ -120,7 +110,7 @@ export default function SupervisorWriteUps() {
   const updateWriteUpMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.WriteUpReport.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['writeUpReports'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisorScopedWriteUps'] });
       setShowForm(false);
       setEditingWriteUp(null);
     },

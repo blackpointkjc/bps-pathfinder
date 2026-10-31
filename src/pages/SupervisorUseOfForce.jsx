@@ -48,30 +48,23 @@ export default function SupervisorUseOfForce() {
     retry: false,
   });
 
-  const { data: officers = [], isLoading: officersLoading, error: officersError } = useQuery({
-    queryKey: ["officerDirectory", "supervisorUseOfForce"],
-    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
-  });
-
-  const { data: reports } = useQuery({
-    queryKey: ["useOfForceReports"],
+  const { data: scoped = {}, isLoading: officersLoading, error: officersError } = useQuery({
+    queryKey: ['supervisorScopedForceReports', user?.id],
     queryFn: async () => {
-      try {
-        const allReports = await base44.entities.UseOfForceReport.list();
-        return allReports || [];
-      } catch {
-        return [];
-      }
+      const result = await base44.functions.invoke('getSupervisorWorkspaceRecords', {kind:'force'});
+      const payload = result?.data || result || {};
+      if (payload.error || payload.success !== true) throw new Error(payload.error || 'Supervisor use-of-force records unavailable');
+      return payload;
     },
+    enabled: !!user, staleTime: 30000,
   });
+  const officers = scoped.officers || [];
+  const reports = scoped.rows || [];
 
   const createReportMutation = useMutation({
     mutationFn: (data) => base44.entities.UseOfForceReport.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["useOfForceReports"] });
+      queryClient.invalidateQueries({ queryKey: ["supervisorScopedForceReports"] });
       toast.success(
         editingReport ? "Report updated successfully" : "Report created successfully"
       );
@@ -82,7 +75,7 @@ export default function SupervisorUseOfForce() {
   const updateReportMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.UseOfForceReport.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["useOfForceReports"] });
+      queryClient.invalidateQueries({ queryKey: ["supervisorScopedForceReports"] });
       toast.success("Report updated successfully");
       handleCloseDialog();
     },
@@ -91,7 +84,7 @@ export default function SupervisorUseOfForce() {
   const deleteReportMutation = useMutation({
     mutationFn: (id) => base44.entities.UseOfForceReport.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["useOfForceReports"] });
+      queryClient.invalidateQueries({ queryKey: ["supervisorScopedForceReports"] });
       toast.success("Report deleted successfully");
     },
   });

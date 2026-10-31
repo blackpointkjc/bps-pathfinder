@@ -39,35 +39,23 @@ export default function SupervisorInspections() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
-  const { data: locations = [] } = useQuery({
-    queryKey: ['directoryLocations', 'supervisorInspections'],
-    queryFn: () => listDirectoryLocations('site_name', 1000),
-    initialData: [],
-  });
-
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const supervisorAllowed = hasSupervisorAccess(user);
-
-  const { data: filteredUsers = [], isLoading: officersLoading, error: officersError } = useQuery({
-    queryKey: ['officerDirectory', 'supervisorInspections'],
-    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
-    enabled: supervisorAllowed,
-    initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
+  const { data: scoped = {}, isLoading: inspectionsLoading, error: inspectionsError } = useQuery({
+    queryKey: ['supervisorScopedInspections', user?.id],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getSupervisorWorkspaceRecords', {kind:'inspections'});
+      const payload = result?.data || result || {};
+      if (payload.error || payload.success !== true) throw new Error(payload.error || 'Supervisor inspections unavailable');
+      return payload;
+    },
+    enabled: supervisorAllowed, staleTime: 30000,
   });
-
-  const { data: inspections = [], isLoading: inspectionsLoading, error: inspectionsError } = useQuery({
-    queryKey: ['inspectionReports'],
-    queryFn: () => base44.entities.InspectionReport.list('-created_date', 500),
-    enabled: supervisorAllowed,
-    initialData: [],
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-    retry: 3,
-    retryDelay: attempt => Math.min(1500 * (attempt + 1), 5000),
-  });
+  const locations = scoped.locations || [];
+  const filteredUsers = scoped.officers || [];
+  const inspections = scoped.rows || [];
+  const officersLoading = inspectionsLoading;
+  const officersError = inspectionsError;
 
   const saveInspectionMutation = useMutation({
     mutationFn: ({ id, data }) => id
