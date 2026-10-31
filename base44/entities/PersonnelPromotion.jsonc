@@ -127,6 +127,10 @@
     },
     "approved_at": {
       "type": "string"
+    },
+    "immediate": {
+      "type": "boolean",
+      "description": "Approved and applied immediately without waiting for the scheduled 10 AM automation."
     }
   },
   "required": [
