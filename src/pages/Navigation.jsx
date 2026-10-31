@@ -7,6 +7,7 @@ import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
 import { observeElementSize } from '@/lib/observeElementSize';
 import LiveMapToolbar from '@/components/map/LiveMapToolbar';
 import usePatrolSpeeding from '@/components/usePatrolSpeeding';
+import PatrolSpeedSigns from '@/components/map/PatrolSpeedSigns';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -285,8 +286,11 @@ export default function Navigation() {
         road:roadSpeedLimitRoad,source:roadSpeedLimitSource,
         estimated:roadSpeedLimitEstimated,
     });
-    const patrolSpeedClass=patrolSpeedMonitor.level==='critical'?'pf-speed-flag-critical'
-        :patrolSpeedMonitor.level==='warning'?'pf-speed-flag-warning':'';
+    const speedSignQualified=Boolean(isLiveTracking && gpsQuality?.state==='live'
+      && Number(gpsQuality?.accuracy)<=100 && !roadSpeedLimitEstimated
+      && roadSpeedLimitAt>0 && Date.now()-roadSpeedLimitAt<70000
+      && getLiveLocation(30000));
+
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const homeAddress = profileHomeAddress(currentUser);
@@ -1913,31 +1917,17 @@ export default function Navigation() {
                             <button type="button" onClick={stopInAppNavigation} className="flex h-10 w-10 items-center justify-center rounded-full border border-red-500 bg-red-950 text-red-300" title="End navigation"><Square className="h-3.5 w-3.5 fill-current" /></button>
                         </div>
                     </div>
-                    <div className={`pf-route-speed ${patrolSpeedClass} mt-2 w-[148px] overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]`}>
-                            <div className="border-b border-slate-200 px-3 py-2 text-center">
-                                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                                <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? 'N/A'}{roadSpeedLimit != null && <span className="ml-1 text-[10px] font-black">MPH</span>}{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div><div className="mt-1 text-[9px] font-medium leading-tight text-slate-600" title={roadSpeedLimitSource || roadSpeedLimitStatus}>{roadSpeedLimitRoad || roadSpeedLimitStatus}</div>
-                            </div>
-                            <div className="px-3 py-2 text-center">
-                                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
-                                <div className="mt-0.5 text-2xl font-black leading-none">{isLiveTracking ? Math.max(0, Math.round(Number(speed) || 0)) : '—'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
-                            </div>
-                        </div>
+                    <PatrolSpeedSigns speed={speed} limit={roadSpeedLimit} live={isLiveTracking}
+                      qualified={speedSignQualified} estimated={roadSpeedLimitEstimated}
+                      road={roadSpeedLimitRoad} status={roadSpeedLimitStatus} source={roadSpeedLimitSource} />
                 </div>
             )}
 
             {!isNavigating && currentLocation && (gpsQuality?.state === 'live' || Number(speed) > 0) && (
                 <div style={{ top: toolbarHeight + 12 }} className="pf-idle-speed pointer-events-none absolute left-3 z-[1214]">
-                    <div className={`w-[148px] ${patrolSpeedClass} overflow-hidden rounded-2xl border border-slate-300 bg-white text-slate-950 shadow-[0_14px_38px_rgba(0,0,0,.45)]`}>
-                        <div className="border-b border-slate-200 px-3 py-2 text-center">
-                            <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Speed Limit</div>
-                            <div className="mt-0.5 text-2xl font-black leading-none">{roadSpeedLimit ?? 'N/A'}{roadSpeedLimit != null && <span className="ml-1 text-[10px] font-black">MPH</span>}{roadSpeedLimitEstimated && roadSpeedLimit ? <span className="ml-1 align-top text-[8px] font-black text-amber-600">EST</span> : null}</div><div className="mt-1 text-[9px] font-medium leading-tight text-slate-600" title={roadSpeedLimitSource || roadSpeedLimitStatus}>{roadSpeedLimitRoad || roadSpeedLimitStatus}</div>
-                        </div>
-                        <div className="px-3 py-2 text-center">
-                            <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Current Speed</div>
-                            <div className="mt-0.5 text-2xl font-black leading-none">{isLiveTracking ? Math.max(0, Math.round(Number(speed) || 0)) : '—'}<span className="ml-1 text-[10px] font-black">MPH</span></div>
-                        </div>
-                    </div>
+                    <PatrolSpeedSigns speed={speed} limit={roadSpeedLimit} live={isLiveTracking}
+                      qualified={speedSignQualified} estimated={roadSpeedLimitEstimated}
+                      road={roadSpeedLimitRoad} status={roadSpeedLimitStatus} source={roadSpeedLimitSource} />
                 </div>
             )}
 

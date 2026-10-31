@@ -1799,23 +1799,20 @@ option,
   line-height: 1.5;
 }
 
-/* Patrol GPS speed safety: black numerals on yellow (>5 mph over) and
-   alternating red/white (>10 mph over). Reduced-motion keeps clear static colors. */
-@keyframes pf-patrol-speed-yellow {
-  0%, 49% { background-color:#ffdb3d; border-color:#111827; }
-  50%, 100% { background-color:#fff5a0; border-color:#ffba00; }
-}
-@keyframes pf-patrol-speed-red {
-  0%, 49% { background-color:#ff4848; border-color:#ffffff; }
-  50%, 100% { background-color:#ffffff; border-color:#df1010; }
-}
-.pf-speed-flag-warning { animation:pf-patrol-speed-yellow .82s steps(1,end) infinite; }
-.pf-speed-flag-critical { animation:pf-patrol-speed-red .58s steps(1,end) infinite; }
-.pf-speed-flag-warning, .pf-speed-flag-critical { color:#080b10!important; border-width:3px!important; }
-.pf-speed-flag-warning > div, .pf-speed-flag-critical > div { background:transparent!important; }
-.pf-speed-flag-warning *, .pf-speed-flag-critical * { color:#080b10!important; }
-@media (prefers-reduced-motion: reduce) {
-  .pf-speed-flag-warning, .pf-speed-flag-critical { animation:none; }
-  .pf-speed-flag-warning { background:#ffdb3d!important; }
-  .pf-speed-flag-critical { background:#ff4848!important; }
-}
+/* Navigation speed displays — readable in Pathfinder dark mode and daylight. */
+.pf-speed-signs{display:flex;flex-direction:column;align-items:center;gap:8px;width:146px;max-width:100%;filter:drop-shadow(0 8px 18px rgba(0,0,0,.55));}
+.pf-current-speed{box-sizing:border-box;width:146px;min-height:102px;border:3px solid #e2e8f0;border-radius:12px;background:#102036!important;color:#fff!important;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 5px;}
+.pf-current-speed-label{font-size:10px;font-weight:900;letter-spacing:.07em;line-height:1.2;color:inherit!important;}
+.pf-current-speed-value{font-size:47px;font-weight:950;line-height:1.03;color:inherit!important;font-variant-numeric:tabular-nums;}
+.pf-current-speed-unit{font-size:11px;font-weight:900;line-height:1.1;color:inherit!important;}
+.pf-current-speed-alert{font-size:10px;font-weight:950;line-height:1.3;letter-spacing:.08em;color:inherit!important;}
+.pf-regulatory-sign{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;width:130px;min-height:144px;padding:8px 6px;border:4px solid #111!important;border-radius:7px;background:#fff!important;color:#050505!important;text-align:center;box-shadow:inset 0 0 0 1px #fff;}
+.pf-regulatory-sign-label{font-size:20px;font-weight:950;line-height:.96;letter-spacing:.025em;color:#050505!important;}
+.pf-regulatory-sign-number{font-size:61px;font-weight:950;line-height:1.07;margin-top:3px;letter-spacing:-.04em;color:#050505!important;font-variant-numeric:tabular-nums;}
+.pf-regulatory-sign-estimated{font-size:9px;font-weight:900;color:#784800!important;}
+.pf-regulatory-road{max-width:146px;overflow:hidden;text-overflow:ellipsis;text-align:center;white-space:nowrap;font-size:10px;font-weight:700;color:#f1f5f9!important;text-shadow:0 1px 3px #000;}
+@keyframes pf-speed-warning-flash{0%,49%{background-color:#ffe537;border-color:#171717;color:#000;}50%,100%{background-color:#fff5ab;border-color:#c48b00;color:#000;}}
+@keyframes pf-speed-critical-flash{0%,49%{background-color:#f3232e;border-color:#fff;color:#fff;}50%,100%{background-color:#fff;border-color:#c40000;color:#000;}}
+.pf-current-speed-warning{animation:pf-speed-warning-flash .85s steps(1,end) infinite!important;}
+.pf-current-speed-critical{animation:pf-speed-critical-flash .55s steps(1,end) infinite!important;}
+@media(prefers-reduced-motion:reduce){.pf-current-speed-warning{animation:none!important;background:#ffe537!important;color:#000!important;}.pf-current-speed-critical{animation:none!important;background:#f3232e!important;color:#fff!important;}}
