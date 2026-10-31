@@ -813,6 +813,19 @@ export default function Navigation() {
     };
 
     const getFreshDeviceLocation = async () => {
+        const receiver = getExternalGpsStatus();
+        if (receiver.connected || receiver.connecting || receiver.portGranted) {
+            await startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
+            const antennaFix = getLiveLocation(30_000);
+            if (antennaFix?.source === 'external_serial' && locationQuality(antennaFix).state === 'live') {
+                const coords = [antennaFix.latitude, antennaFix.longitude];
+                setCurrentLocation(coords);
+                setGpsQuality(locationQuality(antennaFix));
+                setGpsFixSource('external_serial');
+                setIsLiveTracking(true);
+                return coords;
+            }
+        }
         setGpsQuality(previous => ({ ...previous, state: 'acquiring' }));
         try {
             const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 15000, maxAccuracyMeters: 100 });
@@ -893,7 +906,7 @@ export default function Navigation() {
                 if (origin) { freshLocation = origin.coords.map(Number); previewOnly = true; }
                 else throw new Error('Starting address was not found. Enter a complete street address or enable precise GPS.');
             }
-            if (!freshLocation) throw new Error('GPS is unavailable. Enter a starting address below to preview turn-by-turn directions, or enable precise location for live guidance.');
+            if (!freshLocation) throw new Error(getExternalGpsStatus().connected ? 'External antenna is connected but has not provided a recent accurate satellite fix. Check receiver signal, antenna placement and serial data; or enter a starting address for route preview.' : 'No usable GPS fix received. Check external antenna connection or enter a starting address to preview a route.');
             setRoutePreviewOnly(previewOnly);
             const [lat, lng] = freshLocation;
             const [destLat, destLng] = coords.map(Number);
@@ -1264,7 +1277,7 @@ export default function Navigation() {
         setMapPickMode(false);
         setNavigationFallbackAddress(query);
         try {
-            const results = await lookupNavigationDestinations(query, currentLocation);
+            const results = await withRequestTimeout(lookupNavigationDestinations(query, currentLocation), 28000, 'Destination search');
             if (request !== destinationRequestRef.current) return;
             setAddressResults(results);
             if (!results.length) {
@@ -1793,7 +1806,7 @@ export default function Navigation() {
                     callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
                     criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
-                    gpsLabel={isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
+                    gpsLabel={!isLiveTracking && (getExternalGpsStatus().connected || getExternalGpsStatus().connecting) ? (getExternalGpsStatus().lastFixAt ? 'External antenna connected · Waiting for fresh satellite fix' : 'External antenna connected · No satellite fix yet') : !isLiveTracking && getExternalGpsStatus().portGranted ? 'External antenna authorized · Reconnecting receiver' : isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
 
             </div>
@@ -1888,7 +1901,7 @@ export default function Navigation() {
                             <Search className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'SEARCH'}
                         </button>
                     </form>
-                    <details className="pf-manual-origin mt-2 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
+                    <details open={gpsQuality?.state !== 'live' && !isLiveTracking} className="pf-manual-origin mt-2 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
                         <summary className="cursor-pointer font-semibold">No GPS? Enter a starting address</summary>
                         <input value={manualOriginQuery} onChange={event => setManualOriginQuery(event.target.value)} placeholder="Enter your starting address if GPS is unavailable" className="mt-1 h-10 w-full rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500" />
                         <span className="mt-1 block text-[10px] text-slate-400">No GPS? Enter a starting address, select any destination, then tap Navigate Here for a TomTom route preview. Live driving updates require device GPS.</span>

@@ -459,7 +459,8 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAc
       onError: error => {
         // Permission denial cannot recover without user action. Timeouts and
         // temporarily unavailable fixes may still recover through the shared watch.
-        if (error?.code === 1) finish(null, error);
+        // A browser permission denial does not revoke USB/NMEA receiver access.
+        // Keep waiting for a serial fix until the shared timeout expires.
       },
     });
     unsubscribe = subscribeLiveLocation(fix => {
@@ -467,7 +468,8 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAc
     }, { emitCurrent: false });
 
     requestFreshLiveLocation({ timeoutMs }).catch(error => {
-      if (error?.code === 1 || error?.message === 'GEOLOCATION_NOT_SUPPORTED') finish(null, error);
+      // Serial GPS is independent of browser geolocation permissions/support.
+      // Keep the shared fix subscription active until a fix or timeout.
     });
 
     timer = window.setTimeout(() => {
