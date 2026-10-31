@@ -457,6 +457,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
         };
         map.on('error',onMapError);
         map.on('sourcedata', event=>{if(event.isSourceLoaded)tileErrorsRef.current=0;});
+        // A tile/auth failure may leave an initialized MapLibre instance with
+        // no streets. Report a meaningful fallback instead of rendering a blank
+        // map indefinitely; normal loading continues without interruption.
         // Loading 3D terrain can temporarily replace map layers and clear
         // queryRenderedFeatures() while style tiles are being re-fetched.
         // Never switch officers back to Leaflet just because terrain/traffic
@@ -480,7 +483,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
                 if(cancelled||!sdkRef.current)return;
                 let hasStreets=false;
                 try{hasStreets=map.isStyleLoaded()&&map.queryRenderedFeatures().length>0;}catch{}
-                if(!hasStreets){setError('TomTom map failed to render. Switching to detailed GPS map.');onMapUnavailableRef.current?.();}
+                if(!hasStreets){setError('TomTom streets unavailable. Switching to detailed CAD map.');onMapUnavailableRef.current?.();}
               },3500);
             }
           }

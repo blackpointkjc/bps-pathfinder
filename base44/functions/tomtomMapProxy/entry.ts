@@ -88,6 +88,8 @@ Deno.serve(async req => {
         response = await fetch(target, {
           headers: {
             'Accept': req.headers.get('accept') || '*/*',
+            // TomTom services use this header; map resources often use key=.
+            'TomTom-Api-Key': key,
             ...(version ? { 'TomTom-Api-Version': version } : {}),
           }, signal: AbortSignal.timeout(8500),
         });
