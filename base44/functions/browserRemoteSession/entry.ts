@@ -45,10 +45,15 @@ export default async function (req: Request): Promise<Response> {
     const decision = checkDestination(context, target.href);
     if (!decision.allowed) return Response.json({error:decision.reason,code:'BLOCKED_BY_POLICY'},{status:403});
     const token = Deno.env.get('BROWSERLESS_TOKEN')!.trim();
+    // Match the actual viewer dimensions to avoid enlarging and blurring a
+    // smaller remote desktop. Clamp untrusted values to reasonable bounds.
+    const viewportWidth = Math.max(360, Math.min(1920, Math.round(Number(body.viewport_width)||1280)));
+    const viewportHeight = Math.max(400, Math.min(1200, Math.round(Number(body.viewport_height)||760)));
     const mutation = [
       'mutation StartBrowser($url: String!) {',
+      ' viewport(width: '+viewportWidth+', height: '+viewportHeight+', deviceScaleFactor: 2) { width height }',
       ' goto(url: $url, waitUntil: domContentLoaded) { status }',
-      ' liveURL(detached: true, interactable: '+String(isAdmin)+', showBrowserInterface: '+String(isAdmin)+', type: jpeg, quality: 92, captureScale: 2, resizable: true, timeout: '+VIEW_MS+') { liveURL timeout }',
+      ' liveURL(detached: true, interactable: '+String(isAdmin)+', showBrowserInterface: '+String(isAdmin)+', type: png, quality: 100, captureScale: 2, resizable: true, timeout: '+VIEW_MS+') { liveURL timeout }',
       ' reconnect(timeout: 120000) { browserQLEndpoint }',
       '}'
     ].join('\n');
