@@ -181,6 +181,8 @@ export default function AdminLocations({ embedded = false }) {
     property_safety_warnings: '',
     property_access_instructions: '',
   });
+  const [balancingSupervisors, setBalancingSupervisors] = useState(false);
+  const [siteBalanceMessage, setSiteBalanceMessage] = useState('');
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeMessage, setGeocodeMessage] = useState('');
   const [drawingBoundary, setDrawingBoundary] = useState(false);
@@ -606,6 +608,22 @@ export default function AdminLocations({ embedded = false }) {
               <div className="text-[9px] font-black uppercase tracking-[.18em] text-blue-300">Property Operations</div><h1 className="mt-1 text-xl font-black text-white sm:text-2xl">Manage Locations</h1><p className="mt-1 text-xs text-slate-400">Manage patrol sites, coordinates, supervisors, geofence rules, and dispatch settings.</p>
             </div>
           </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" type="button" disabled={balancingSupervisors || user?.role !== 'admin'} onClick={async () => {
+            if (!await confirmInApp('Balance unassigned and automatically managed site supervisors by substation and operating division? Manually assigned supervisors will stay unchanged.')) return;
+            setBalancingSupervisors(true);
+            setSiteBalanceMessage('Balancing site coverage…');
+            try {
+              const response = await base44.functions.invoke('manageLocations',{action:'rebalance_supervisors'});
+              const result = response?.data || response || {};
+              if (result.error || result.success !== true) throw new Error(result.error || 'Site balance was not confirmed.');
+              setSiteBalanceMessage(`Site coverage updated: ${result.assigned || 0} assigned, ${result.unchanged || 0} retained, ${result.unavailable || 0} without a qualified supervisor.`);
+              invalidateAppDirectory();
+              queryClient.invalidateQueries({queryKey:['adminManagedLocations']});
+              queryClient.invalidateQueries({queryKey:['clientSupervisorLocations']});
+            } catch (error) {setSiteBalanceMessage(error?.message || 'Could not rebalance supervisors.');}
+            finally {setBalancingSupervisors(false);}
+          }} className="w-full sm:w-auto">{balancingSupervisors ? 'Balancing…' : 'Balance Site Supervisors'}</Button>
           <Button
             onClick={() => {
               setEditingLocation(null);
@@ -616,8 +634,9 @@ export default function AdminLocations({ embedded = false }) {
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Location
-          </Button>
+          </Button></div>
         </div>
+        {siteBalanceMessage && <p role="status" className="rounded-lg border border-cyan-800 bg-cyan-950/30 px-3 py-2 text-xs text-cyan-100">{siteBalanceMessage}</p>}
 
         {locationsLoading && (
           <Card className="border border-blue-200 bg-blue-50">
@@ -985,12 +1004,17 @@ export default function AdminLocations({ embedded = false }) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="assigned_supervisors">Site Supervisor (Optional)</Label>
+              <Label htmlFor="assigned_supervisors">Site Supervisor</Label>
+              <p className="mb-2 text-xs text-slate-500">Leave unselected to assign automatically by substation, division and lowest available supervisor rank (starting Corporal). Admin can rebalance automatic assignments; manually selected supervisors remain protected.</p>
               <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <Label className="text-sm font-medium mb-3 block">Available Supervisors</Label>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {supervisorUsers && supervisorUsers.length > 0 ? (
-                    supervisorUsers.map((supervisor) => (
+                    supervisorUsers.filter(supervisor => {
+                      if (!formData.division || !formData.subdivision) return true;
+                      return String(supervisor.division||'').toLowerCase()===String(formData.division).toLowerCase()
+                        && String(supervisor.subdivision||'').toLowerCase()===String(formData.subdivision).toLowerCase();
+                    }).map((supervisor) => (
                       <div key={supervisor.id} className="flex items-center space-x-2 p-2 hover:bg-slate-100 rounded">
                         <Checkbox
                           id={`supervisor-${supervisor.id}`}
@@ -1019,7 +1043,7 @@ export default function AdminLocations({ embedded = false }) {
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-3">
-                  Choose one site supervisor and save. The client sees this person with their reporting chain above them. Selecting a different supervisor replaces the current selection.
+                  Selecting a supervisor manually replaces the automatic assignment. The client sees the selected supervisor and their chain of command.
                 </p>
               </div>
             </div>
