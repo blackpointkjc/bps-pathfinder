@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { subscribeLiveLocation } from '@/lib/liveLocationService';
-import { announceVoice } from '@/utils/voiceAnnouncer';
+import { announceVoice, isVoiceEnabled } from '@/utils/voiceAnnouncer';
 import { advanceSpeedingEpisode, patrolSample, patrolSpeedLevel, shouldReportSpeeding } from '@/lib/patrolSpeeding';
 
 // Use the existing live GPS stream; no additional GPS polling or map requests.
-export default function usePatrolSpeeding({user,limit,limitAt,road,source,estimated}) {
+export function shouldAnnouncePatrolSpeedWarning({isAdmin=false,quiet=false,navMuted=false}={}) {
+  // Administrator permission is required to silence this particular safety
+  // alert. Officer and non-admin supervisor audio settings do not exempt it.
+  return !isAdmin || !(quiet || navMuted);
+}
+export default function usePatrolSpeeding({user,limit,limitAt,road,source,estimated,navVoiceMuted=false}) {
   const [level,setLevel]=useState('unknown');
   const [reportStatus,setReportStatus]=useState('');
   const latest=useRef(null);
@@ -13,12 +18,20 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
   const sendQueue=useRef(Promise.resolve());
   const lastVoice=useRef(0);
   const criteria=useRef({});
-  const repeatRef=useRef(null);
+
   const wasCritical=useRef(false);
   useEffect(()=>{
-    criteria.current={userId:user?.id,limit,limitAt,road,source,estimated};
-  },[user?.id,limit,limitAt,road,source,estimated]);
+    criteria.current={userId:user?.id,isAdmin:user?.role==='admin',navVoiceMuted,limit,limitAt,road,source,estimated};
+  },[user?.id,user?.role,navVoiceMuted,limit,limitAt,road,source,estimated]);
 
+  const voiceAllowed=()=>{
+    const c=criteria.current;
+    return shouldAnnouncePatrolSpeedWarning({
+      isAdmin:c.isAdmin,
+      quiet:!isVoiceEnabled(),
+      navMuted:c.navVoiceMuted
+    });
+  };
   const report=(event,completed=false)=>{
     if(!shouldReportSpeeding(event)||!criteria.current.userId)return;
     const time=Date.now();
@@ -83,9 +96,9 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
       const severity=patrolSpeedLevel(sample.speed,sample.limit);
       setLevel(previous=>previous===severity?previous:severity);
       if(severity==='critical'){
-        if(!wasCritical.current||Date.now()-lastVoice.current>=20000){
+        if(voiceAllowed() && (!wasCritical.current||Date.now()-lastVoice.current>=20000)){
           announceVoice('You are speeding in your patrol vehicle. Slow down.',{
-            priority:'high',force:true,
+            priority:'high',force:true,canPlay:voiceAllowed,
             eventId:'patrol-speed-'+c.userId+'-'+sample.timestamp,
             dedupeMs:3000
           });
@@ -117,9 +130,9 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
         if(level==='critical'&&fix&&Date.now()-fix.timestamp>30000)setLevel('unknown');
         return;
       }
-      if(Date.now()-lastVoice.current<20000)return;
+      if(Date.now()-lastVoice.current<20000 || !voiceAllowed())return;
       announceVoice('You are speeding in your patrol vehicle. Slow down.',{
-        priority:'high',force:true,
+        priority:'high',force:true,canPlay:voiceAllowed,
         eventId:'patrol-speed-repeat-'+user?.id+'-'+Math.floor(Date.now()/20000),
         dedupeMs:3000
       });
