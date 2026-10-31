@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       if(level(user.rank)<0||level(person.rank)<=level(user.rank))return false;
       const text = (value:any) => String(value || '').trim().toLowerCase();
       const assignedPlatoon = text(user.oversight_platoon || user.platoon);
-      if (!['a','b'].includes(assignedPlatoon) || text(person.platoon) !== assignedPlatoon) return false;
+      if ((!assignedPlatoon || assignedPlatoon==='command') || text(person.platoon) !== assignedPlatoon) return false;
       if (!text(user.division) || !text(user.subdivision)) return false;
       if (text(user.division) !== text(person.division) || text(user.subdivision) !== text(person.subdivision)) return false;
       return senior || Boolean(text(user.substation) && text(user.substation) === text(person.substation));

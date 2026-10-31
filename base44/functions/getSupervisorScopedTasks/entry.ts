@@ -34,7 +34,7 @@ const rankLevel = (user:any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
 const withinSupervisorArea = (supervisor:any, officer:any) => {
   if (!reviewerOutranks(supervisor, officer)) return false;
   const supervisorPlatoon = normalized(supervisor.oversight_platoon || supervisor.platoon);
-  if (!['a','b'].includes(supervisorPlatoon) || normalized(officer.platoon) !== supervisorPlatoon) return false;
+  if ((!supervisorPlatoon || supervisorPlatoon==='command') || normalized(officer.platoon) !== supervisorPlatoon) return false;
   const rank = normalizeRank(supervisor.rank);
   const senior = ['colonel','lt colonel','major','captain','lieutenant','lt','lt col'].includes(rank);
   if (!normalized(supervisor.division) || !normalized(supervisor.subdivision)) return false;

@@ -10,7 +10,7 @@ const hierarchy=['colonel','lt colonel','major','captain','lieutenant','first se
   const level=(value:any)=>{const raw=n(value);return hierarchy.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
   if(level(actor.rank)<0||level(officer.rank)<=level(actor.rank))return false;
   const platoon=n(actor.oversight_platoon||actor.platoon);
-  if(!['a','b'].includes(platoon)||n(officer.platoon)!==platoon)return false;
+  if((!platoon || platoon==='command')||n(officer.platoon)!==platoon)return false;
   if(!n(actor.division)||!n(actor.subdivision)||n(officer.division)!==n(actor.division)||n(officer.subdivision)!==n(actor.subdivision))return false;
   return ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(actor.rank))
     || Boolean(n(actor.substation)&&n(officer.substation)===n(actor.substation));

@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'');return chain.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
       const senior=['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(user.rank));
       if(level(user.rank)<0 || level(officer?.rank)<=level(user.rank))return Response.json({error:'Inspection target must be a lower-ranking officer'},{status:403});
-      if(!officer||!['a','b'].includes(platoon)||n(officer.platoon)!==platoon
+      if(!officer||(!platoon || platoon==='command')||n(officer.platoon)!==platoon
         ||!n(user.division)||!n(user.subdivision)||n(officer.division)!==n(user.division)||n(officer.subdivision)!==n(user.subdivision)
         ||(!senior&&(!n(user.substation)||n(officer.substation)!==n(user.substation))))
         return Response.json({error:'Inspection is outside your assigned platoon or operational area'},{status:403});

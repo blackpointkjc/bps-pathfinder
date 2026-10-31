@@ -12,7 +12,7 @@ const outranks=(viewer:any,person:any)=>indexRank(viewer.rank)>=0&&indexRank(per
 const inSupervisorArea = (viewer:any, person:any) => {
   if (!outranks(viewer,person)) return false;
   const supervisorPlatoon = lower(viewer.oversight_platoon || viewer.platoon);
-  if (!['a','b'].includes(supervisorPlatoon) || lower(person.platoon) !== supervisorPlatoon) return false;
+  if ((!supervisorPlatoon || supervisorPlatoon==='command') || lower(person.platoon) !== supervisorPlatoon) return false;
   const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(lower(viewer.rank));
   if (!lower(viewer.division) || !lower(viewer.subdivision)) return false;
   if (lower(person.division) !== lower(viewer.division) || lower(person.subdivision) !== lower(viewer.subdivision)) return false;

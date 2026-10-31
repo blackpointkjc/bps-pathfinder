@@ -93,7 +93,7 @@ export default function SupervisorCenter({ embedded = false }) {
   const roles=new Set([user?.role,...(user?.additional_roles||[])].map(value=>String(value||'').trim().toLowerCase()));
   const allAccess=roles.has('admin')||roles.has('full_access');
   const platoon=user?.oversight_platoon||user?.platoon;
-  const platoonReady=['A','B'].includes(String(platoon||'').toUpperCase());
+  const platoonReady=!!String(platoon||'').trim() && String(platoon).trim().toLowerCase()!=='command';
   const assignedArea=[user?.division&&`Region ${user.division}`,user?.subdivision&&`Division ${user.subdivision}`,user?.substation&&`Substation ${user.substation}`].filter(Boolean).join(' · ');
   const scopeLabel=allAccess?'Company-wide administrator':`Platoon ${platoon||'not assigned'} · ${assignedArea||'Organization not assigned'}`;
   const scopeMissing=!allAccess&&(!platoonReady||!user?.division||!user?.subdivision||(!['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(String(user?.rank||'').toLowerCase())&&!user?.substation));

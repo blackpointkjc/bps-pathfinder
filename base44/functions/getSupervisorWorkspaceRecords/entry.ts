@@ -9,7 +9,7 @@ const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'');return rankOrder
 const lowerRank=(me:any,p:any)=>level(me.rank)>=0&&level(p.rank)>level(me.rank);
 const area=(me:any,p:any,hasPlatoon=true)=>admin(me)||(
   (hasPlatoon?lowerRank(me,p):true)
-  &&(!hasPlatoon||(['a','b'].includes(n(me.oversight_platoon||me.platoon))&&n(p.platoon)===n(me.oversight_platoon||me.platoon)))
+  &&(!hasPlatoon||(!!n(me.oversight_platoon||me.platoon)&&n(me.oversight_platoon||me.platoon)!=='command'&&n(p.platoon)===n(me.oversight_platoon||me.platoon)))
   &&!!n(me.division)&&!!n(me.subdivision)&&n(p.division)===n(me.division)&&n(p.subdivision)===n(me.subdivision)
   &&(senior(me)|| (!!n(me.substation)&&n(p.substation)===n(me.substation)))
 );
