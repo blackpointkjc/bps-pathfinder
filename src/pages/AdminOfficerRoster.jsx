@@ -1,4 +1,5 @@
 import { comparePersonnel } from '@/utils/rankPolicy';
+import { orgPathLabel } from '@/lib/orgStructure';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -26,6 +27,8 @@ export default function AdminOfficerRoster() {
     mobile_phone: "",
     email: "",
     division: "",
+    subdivision: "",
+    substation: "",
     hire_date: "",
     status: "active",
     notes: "",
@@ -87,6 +90,8 @@ export default function AdminOfficerRoster() {
       mobile_phone: "",
       email: "",
       division: "",
+    subdivision: "",
+    substation: "",
       hire_date: "",
       status: "active",
       notes: "",
@@ -107,6 +112,8 @@ export default function AdminOfficerRoster() {
         mobile_phone: selectedUser.mobile_phone || "",
         email: selectedUser.email || "",
         division: selectedUser.division || "",
+        subdivision: selectedUser.subdivision || "",
+        substation: selectedUser.substation || "",
         hire_date: selectedUser.hire_date || "",
         status: selectedUser.termination_date ? "inactive" : "active",
         notes: "",
@@ -165,6 +172,8 @@ export default function AdminOfficerRoster() {
           mobile_phone: u.mobile_phone || "",
           email: u.email,
           division: u.division || "",
+          subdivision: u.subdivision || "",
+          substation: u.substation || "",
           hire_date: u.hire_date || "",
           status: "active",
         };
@@ -244,7 +253,7 @@ export default function AdminOfficerRoster() {
             // Skip entries without division
             if (!entry.division) return;
 
-            const div = entry.division;
+            const div = orgPathLabel(entry) || 'Unassigned region';
             if (!grouped[div]) grouped[div] = [];
             grouped[div].push(entry);
           });
@@ -285,7 +294,7 @@ export default function AdminOfficerRoster() {
                 {entry.rank && <p className="text-sm"><strong>Rank:</strong> {entry.rank}</p>}
                 {entry.unit_number && <p className="text-sm"><strong>Unit:</strong> #{entry.unit_number}</p>}
                 {entry.badge_number && <p className="text-sm"><strong>Badge:</strong> {entry.badge_number}</p>}
-                {entry.division && <p className="text-sm"><strong>Division:</strong> {entry.division}</p>}
+                {entry.division && <p className="text-sm"><strong>Region / Division / Substation:</strong> {orgPathLabel(entry)}</p>}
                 {entry.mobile_phone && <p className="text-sm"><strong>Phone:</strong> {entry.mobile_phone}</p>}
                 {entry.email && <p className="text-sm text-slate-600">{entry.email}</p>}
                 <div className="flex gap-2 pt-3">

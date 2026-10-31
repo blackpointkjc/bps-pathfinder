@@ -32,7 +32,15 @@
     },
     "division": {
       "type": "string",
-      "description": "Division assignment"
+      "description": "Region assignment"
+    },
+    "subdivision": {
+      "type": "string",
+      "description": "Operating division"
+    },
+    "substation": {
+      "type": "string",
+      "description": "Field officer substation"
     },
     "hire_date": {
       "type": "string",

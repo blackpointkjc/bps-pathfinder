@@ -1,4 +1,5 @@
 import { comparePersonnel } from '@/utils/rankPolicy';
+import { orgPathLabel } from '@/lib/orgStructure';
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -34,7 +35,7 @@ export default function OfficerRoster() {
     
     return filtered.map(entry=>{
       const current=allUsers.find(person=>String(person.email || '').toLowerCase()===String(entry.email || '').toLowerCase());
-      return {...entry,rank:current?.rank ?? entry.rank,unit_number:current?.unit_number ?? entry.unit_number,badge_number:current?.badge_number ?? entry.badge_number};
+      return {...entry,rank:current?.rank ?? entry.rank,unit_number:current?.unit_number ?? entry.unit_number,badge_number:current?.badge_number ?? entry.badge_number, division:current?.division ?? entry.division, subdivision:current?.subdivision ?? entry.subdivision, substation:current?.substation ?? entry.substation};
     });
   }, [rosterEntries, allUsers]);
 
@@ -46,7 +47,9 @@ export default function OfficerRoster() {
       entry.last_name?.toLowerCase().includes(query) ||
       entry.rank?.toLowerCase().includes(query) ||
       entry.unit_number?.toLowerCase().includes(query) ||
-      entry.division?.toLowerCase().includes(query)
+      entry.division?.toLowerCase().includes(query) ||
+      entry.subdivision?.toLowerCase().includes(query) ||
+      entry.substation?.toLowerCase().includes(query)
     );
   });
 
@@ -56,7 +59,7 @@ export default function OfficerRoster() {
       // Skip entries without division
       if (!entry.division) return;
       
-      const div = entry.division;
+      const div = orgPathLabel(entry) || 'Unassigned region';
       if (!grouped[div]) grouped[div] = [];
       grouped[div].push(entry);
     });
