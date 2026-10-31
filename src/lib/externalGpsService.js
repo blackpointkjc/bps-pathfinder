@@ -330,7 +330,7 @@ async function startWorkerPort({ baudRate = storedBaud(), selector = {} } = {}) 
   const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : DEFAULT_BAUD;
   rememberBaud(baud);
   rememberSelector(selector);
-  emit({ connecting: true, error: '', baudRate: baud, portGranted: true, backgroundReader: true, activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
+  emit({ connecting: true, error: '', lastFixAt: null, lastDataAt: null, satellites: null, hdop: null, baudRate: baud, portGranted: true, backgroundReader: true, activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
   if (pendingWorkerStart) {
     window.clearTimeout(pendingWorkerStart.timeoutId);
     pendingWorkerStart.reject(new Error('External GPS connection restarted.'));
@@ -495,7 +495,7 @@ async function closeCurrentPort() {
 async function connectPort(port, baudRate) {
   if (!port) throw new Error('No external GPS receiver was selected.');
   const baud = [4800, 9600, 38400, 115200].includes(Number(baudRate)) ? Number(baudRate) : DEFAULT_BAUD;
-  if (activePort === port && state.connected && state.baudRate === baud) return state;
+  // Explicit reconnects must reopen even the same active port.
 
   emit({ connecting: true, error: '', baudRate: baud, portGranted: true });
   await closeCurrentPort();
@@ -511,7 +511,7 @@ async function connectPort(port, baudRate) {
       const selector = portSelector(port);
       rememberSelector(selector);
       lastSerialDataAt = Date.now();
-      emit({ connected: true, connectedAt: new Date().toISOString(), connecting: false, baudRate: baud, portGranted: true, lastDataAt: null, error: '', activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
+      emit({ connected: true, connectedAt: new Date().toISOString(), connecting: false, baudRate: baud, portGranted: true, lastDataAt: null, lastFixAt: null, satellites: null, hdop: null, error: '', activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
       void readLoop(port, generation);
       return state;
     } catch (error) {
@@ -711,9 +711,9 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
       }
 
       const selectedBaud = Number(baudRate) || DEFAULT_BAUD;
-      if (state.connected && state.activeSelector && selectorMatches(port, state.activeSelector) && Number(state.baudRate) === selectedBaud) {
-        return getExternalGpsStatus();
-      }
+      // A connected COM port can be silently streaming no NMEA data or no
+      // position. An explicit user reconnect must actually restart the reader.
+      // Otherwise the Reconnect button returns success without doing anything.
 
       const ownsPort = await acquireGpsOwnership({ requestRelease: true, waitMs: 7000 });
       if (!ownsPort) {

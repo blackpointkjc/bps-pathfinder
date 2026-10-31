@@ -1697,6 +1697,7 @@ export default function Layout({ children, currentPageName }) {
                       <option value="4800">4800 baud</option>
                       <option value="9600">9600 baud</option>
                       <option value="38400">38400 baud</option>
+                      <option value="115200">115200 baud</option>
                     </select>
                     <div className="mt-1 text-[8px] leading-4 text-slate-500">Changing the baud rate will reopen the external receiver chooser so Pathfinder connects using the selected speed.</div>
                   </div>
