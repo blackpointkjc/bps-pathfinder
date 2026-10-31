@@ -166,8 +166,8 @@ export default function ClientLocation() {
               </div>
 
               <div className="space-y-2">
-                <Label>Division</Label>
-                <p className="text-lg">{location?.division || 'Not assigned'}</p>
+                <Label>Region / Division / Site Substation</Label>
+                <p className="text-lg">{[location?.division, location?.subdivision, location?.substation].filter(Boolean).join(' › ') || 'Not assigned'}</p>
               </div>
 
               <div className="space-y-2">

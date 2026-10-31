@@ -102,7 +102,6 @@ export default function RankStructure(){
   const availabilityTick=useAvailabilityClock();
   const active=useMemo(()=>users.filter(person=>isOperational(person)&&!isOutOfOffice(person) && withinPersonnelOversightScope(user, person)).sort(comparePersonnel),[users,user?.id,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
 
-  if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   const oversightGroups = useMemo(() => {
     const groups = new Map();
     for (const person of active) {
@@ -115,6 +114,7 @@ export default function RankStructure(){
     }
     return [...groups.entries()].sort(([a],[b]) => a.localeCompare(b));
   }, [active]);
+  if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
     <PersonnelPrintRoster users={active} contactEmail={contactEmail}/>
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Shared command oversees both platoons. Captains command their platoons. When no Captain is assigned, the highest-ranking platoon member serves as acting commander.</p></div></div></div>

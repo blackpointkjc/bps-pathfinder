@@ -1,4 +1,5 @@
 import { comparePersonnel } from '@/utils/rankPolicy';
+import { orgPathLabel, withinPersonnelOversightScope, buildOrgTree } from '@/lib/orgStructure';
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -51,6 +52,7 @@ export default function DivisionDirectory() {
 
     return allUsers
       .filter(u => {
+        if (!withinPersonnelOversightScope(user || {}, u)) return false;
         // Operational directory never exposes client, student, or pending accounts.
         const roles = new Set([u.role, ...(u.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
         const userType = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();
@@ -86,11 +88,11 @@ export default function DivisionDirectory() {
         if (selectedDivision !== "all") {
           // Division Command: Senior Corporal to Captain ranks from their assigned division
           const commandRanks = ['Senior Corporal', 'Sergeant', 'Lieutenant', 'Captain'];
-          if (commandRanks.includes(u.rank) && u.division === selectedDivision) {
+          if (commandRanks.includes(u.rank) && [u.division,u.subdivision,u.substation].includes(selectedDivision)) {
             return true;
           }
           // Regular filter for others
-          return u.division === selectedDivision;
+          return [u.division,u.subdivision,u.substation].includes(selectedDivision);
         }
 
         return true;
@@ -182,7 +184,7 @@ export default function DivisionDirectory() {
               >
                 <option value="all">All Divisions</option>
                 {divisions?.filter(div => div.active !== false).map((div) => (
-                  <option key={div.id} value={div.division_name}>{div.division_name}</option>
+                  <option key={div.id} value={div.subdivision || div.division_name}>{div.division_level === 'region' ? 'Region' : div.division_level === 'substation' ? 'Substation' : 'Division'}: {div.subdivision || div.division_name}</option>
                 ))}
               </select>
             </div>
@@ -252,7 +254,7 @@ export default function DivisionDirectory() {
                     {officer.division && (
                       <div className="flex items-center gap-2 text-sm text-slate-700">
                         <Users className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                        <span>Division: {officer.division}</span>
+                        <span>Region / Division / Substation: {orgPathLabel(officer) || 'Unassigned'}</span>
                       </div>
                     )}
                   </CardContent>
