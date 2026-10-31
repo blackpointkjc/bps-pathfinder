@@ -123,6 +123,17 @@ Deno.serve(async (req) => {
           && normalized(assignedState.assigned_to_email) !== normalized(me.email)) {
         return Response.json({ error:'This Supervisor Operations task is assigned to another supervisor.' }, { status:403 });
       }
+      if (!fullAccess) {
+        if (!assignedState) return Response.json({error:'Only assigned supervisor work-queue items can be completed.'},{status:403});
+        if (String(assignedState.assigned_to_id || '') !== String(me.id || '')
+            && normalized(assignedState.assigned_to_email) !== normalized(me.email))
+          return Response.json({error:'This task belongs to another supervisor.'},{status:403});
+        const sourceEmail=normalized(assignedState.officer_email || assignedState.source_officer_email);
+        if (sourceEmail) {
+          const owner = await base44.asServiceRole.entities.User.filter({email:sourceEmail},'-updated_date',1).catch(()=>[]);
+          if (!owner[0] || !withinSupervisorArea(me,owner[0])) return Response.json({error:'Task is outside your assigned platoon and operating area.'},{status:403});
+        }
+      }
       const title = String(request?.title || assignedState?.title || 'Supervisor follow-up').slice(0, 250);
       const person = String(request?.person || '').slice(0, 250);
       const sourceKind = String(request?.kind || '').slice(0, 100);
@@ -206,9 +217,12 @@ Deno.serve(async (req) => {
       const followUp = await base44.asServiceRole.entities.SupervisorFollowUp.get(followUpId)
         .catch((error:any) => (error?.status === 404 ? null : Promise.reject(error)));
       if (!followUp) return Response.json({ error:'Follow-up not found' }, { status:404 });
+      const sourceEmail=normalized(followUp.officer_email);
+      const sourceOfficer=sourceEmail ? (await base44.asServiceRole.entities.User.filter({email:sourceEmail},'-updated_date',1).catch(()=>[]))[0] : null;
       const canComplete = me.role === 'admin' || roles.has('full_access')
-        || String(followUp.assigned_to_id || '') === String(me.id || '')
-        || normalized(followUp.assigned_to_email) === normalized(me.email);
+        || ((String(followUp.assigned_to_id || '') === String(me.id || '')
+          || normalized(followUp.assigned_to_email) === normalized(me.email))
+          && !!sourceOfficer && withinSupervisorArea(me,sourceOfficer));
       if (!canComplete) return Response.json({ error:'This follow-up is assigned to another supervisor.' }, { status:403 });
       const completedAt = new Date().toISOString();
       const note = String(request?.note || 'Supervisor contacted officer').slice(0, 1000);
@@ -425,14 +439,24 @@ Deno.serve(async (req) => {
       () => base44.asServiceRole.entities.SupervisorFollowUp.filter({ status:'open' }, '-created_date', 500),
       true,
     );
-    const mineFollowUps = (followUps || []).filter((row:any) => fullAccess
-      || String(row.assigned_to_id || '') === String(me.id || '')
-      || normalized(row.assigned_to_email) === normalized(me.email));
+    const assignedByEmail = (row:any) => {
+      const email=normalized(row.officer_email || row.source_officer_email);
+      if(email)return isAssigned(email);
+      const ownerId=String(row.officer_id || row.source_officer_id || '');
+      if(ownerId)return assigned.some((u:any)=>String(u.id)===ownerId);
+      // Some automated tasks store the officer's identity in the person field.
+      const person=normalized(row.person || row.officer_name);
+      return !!person && assigned.some((u:any) =>
+        [normalized(u.email),normalized([u.first_name,u.last_name].join(' ')),normalized([u.rank,u.last_name].join(' '))].includes(person));
+    };
+    const ownedByMe = (row:any) => String(row.assigned_to_id || '') === String(me.id || '')
+      || (normalized(row.assigned_to_email) && normalized(row.assigned_to_email) === normalized(me.email));
+    const mineFollowUps = (followUps || []).filter((row:any) =>
+      fullAccess || (ownedByMe(row) && assignedByEmail(row)));
     const queueTasks = (supervisorStates || [])
       .filter((state:any) => normalized(state.status) === 'open')
-      .filter((state:any) => fullAccess
-        || String(state.assigned_to_id || '') === String(me.id || '')
-        || normalized(state.assigned_to_email) === normalized(me.email));
+      .filter((state:any) => fullAccess || (ownedByMe(state) && assignedByEmail(state)));
+
 
     return Response.json({
       assignedPeople,
