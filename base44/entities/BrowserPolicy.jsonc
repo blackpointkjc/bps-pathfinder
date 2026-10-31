@@ -104,22 +104,22 @@
   "rls": {
     "create": {
       "user_condition": {
-        "role": "admin"
+        "id": "6a72bbee2842d6338cbae513"
       }
     },
     "read": {
       "user_condition": {
-        "role": "admin"
+        "id": "6a72bbee2842d6338cbae513"
       }
     },
     "update": {
       "user_condition": {
-        "role": "admin"
+        "id": "6a72bbee2842d6338cbae513"
       }
     },
     "delete": {
       "user_condition": {
-        "role": "admin"
+        "id": "6a72bbee2842d6338cbae513"
       }
     }
   }
