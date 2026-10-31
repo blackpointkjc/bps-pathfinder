@@ -87,19 +87,23 @@ export function actingCoverage(person, users = []) {
  const sameArea = candidate => !region || (clean(candidate.division) === region
    && (!division || clean(candidate.subdivision) === division));
  const scopes = [
-   active.filter(candidate => platoon && candidate.platoon === platoon && sameArea(candidate)
-     && (!substation || !candidate.substation || clean(candidate.substation) === substation)),
    active.filter(candidate => platoon && candidate.platoon === platoon && sameArea(candidate)),
    active.filter(candidate => sameArea(candidate)),
    active.filter(candidate => platoon && (candidate.platoon === platoon || majorPlatoon(candidate) === platoon)),
    active,
  ];
- // Prefer the nearest higher rank first inside the closest reporting scope.
- // If no higher-ranking supervisor is available there, use the nearest peer,
- // then lower-ranked available personnel before widening to outside the scope.
+ // Search every progressively broader scope for the NEAREST rank above.
+ // Never promote a subordinate into a Captain's acting role while an
+ // appropriate Major or Lieutenant Colonel is available elsewhere.
  for (const scope of scopes) {
-   const distinct=[...new Map(scope.map(candidate => [candidate.id,candidate])).values()].sort(rankAscending);
-   if (distinct.length) return distinct[0];
+   const higher = scope.filter(candidate => rankLevel(candidate.rank) < currentRank).sort(rankAscending);
+   if (higher.length) return higher[0];
+ }
+ // Only after exhausting higher command, keep same-rank coverage and the
+ // established lower-rank field fallback nearest to the affected platoon.
+ for (const scope of scopes) {
+   const fallback = scope.filter(candidate => rankLevel(candidate.rank) >= currentRank).sort(rankAscending);
+   if (fallback.length) return fallback[0];
  }
  return null;
 }
