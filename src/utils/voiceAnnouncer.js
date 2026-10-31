@@ -96,6 +96,32 @@ export function stopVoice() {
   try { window.speechSynthesis.cancel(); } catch {}
 }
 
+// Stop an admin-muted patrol-speed phrase without discarding unrelated CAD
+// voice announcements. Never apply this cancellation to ordinary officers.
+export function cancelPatrolSpeedVoice() {
+  const text='You are speeding in your patrol vehicle. Slow down.';
+  for(let i=speechQueue.length-1;i>=0;i--){
+    if(speechQueue[i]?.clean===text){
+      speechQueue[i].resolve?.(false);
+      speechQueue.splice(i,1);
+    }
+  }
+  if(lastBlockedSpeech?.clean===text) {
+    clearAutomaticRetry(true);
+    lastBlockedSpeech=null;
+  }
+  if(pendingSpeech?.clean===text)pendingSpeech=null;
+  if(activeSpeech?.clean!==text)return;
+  const item=activeSpeech;
+  speechCancelGeneration+=1;
+  activeSpeech=null;
+  item.resolve?.(false);
+  if(isVoiceSupported()){
+    try{window.speechSynthesis.cancel();}catch{}
+  }
+  nextQueuedSpeech();
+}
+
 function buildUtterance(clean, options = {}) {
   const utterance = new SpeechSynthesisUtterance(clean);
   utterance.lang = options.lang || 'en-US';
