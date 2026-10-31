@@ -315,3 +315,45 @@
 @media (max-width:767px) {
   .pf-navigation-workspace .pf-map-search-panel > .pf-selected-destination { order: -3; }
 }
+
+/* Adaptive mobile/foldable map controls. Based on actual viewport geometry,
+   not brittle iPhone/Duo model or user-agent sniffing. */
+.pf-navigation-workspace, .pf-navigation-workspace * { box-sizing: border-box; }
+@media (max-width: 900px), (max-height: 540px) and (max-width: 1200px) {
+  .pf-navigation-workspace { min-width: 0; max-width: 100%; overflow: hidden; }
+  .pf-navigation-workspace .pf-map-header { width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0,1fr); gap: 6px; }
+  .pf-navigation-workspace .pf-map-heading { min-width: 0; width: 100%; }
+  .pf-navigation-workspace .pf-map-heading h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-navigation-workspace .pf-map-header-actions { width: 100%; min-width: 0; justify-content: space-between; flex-wrap: wrap; gap: 5px; }
+  .pf-navigation-workspace .pf-duty-select { max-width: min(152px, 38vw); flex-shrink: 1; }
+  .pf-navigation-workspace .pf-duty-select select { max-width: 100%; }
+  .pf-route-guidance { left: 6px !important; right: 52px !important; width: auto !important; max-width: none !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] { min-height: 0 !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:first-child { width: clamp(56px, 18vw, 76px) !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) { min-width: 0; padding: 7px 8px !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) .text-\\[22px\\] { font-size: clamp(13px, 3.7vw, 17px) !important; overflow-wrap: anywhere; }
+  .pf-route-guidance > div:first-child > .flex.items-center.gap-2.border-t { flex-wrap: wrap; padding: 5px !important; }
+  .pf-route-guidance > div:first-child > .flex.items-center.gap-2.border-t > div:first-child { flex: 1 1 100%; justify-content: space-between; }
+  .pf-route-guidance > div:first-child > .flex.items-center.gap-2.border-t > button { width: 36px; height: 36px; min-height: 36px; }
+  .pf-route-speed { display: flex; width: min(210px,100%) !important; margin-top: 4px; }
+  .pf-route-speed > div { min-width: 0; flex: 1; padding: 4px 6px !important; }
+  .pf-route-speed > div:first-child { border-bottom: 0; border-right: 1px solid #cbd5e1; }
+  .pf-route-speed .text-2xl { font-size: 15px !important; }
+  .pf-navigation-workspace .pf-map-search-panel, .pf-navigation-workspace .pf-map-search-panel.pf-search-routing { left: 6px; right: 52px; width: auto; top: auto !important; bottom: max(6px,env(safe-area-inset-bottom)); max-height: min(54dvh, calc(100dvh - 150px)); overflow-y: auto; }
+}
+@media (max-width: 390px), (max-height: 430px) {
+  .pf-navigation-workspace .pf-map-header { gap: 3px; padding: 4px 5px; }
+  .pf-navigation-workspace .pf-map-subtitle, .pf-navigation-workspace .pf-map-gps-alert { font-size: 9px; }
+  .pf-route-guidance { right: 45px !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) .text-\\[22px\\] { font-size: 13px !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) .text-\\[10px\\] { font-size: 9px !important; }
+  .pf-route-guidance > div:first-child > .flex.min-h-\\[132px\\] > div:nth-child(2) > div:last-child { margin-top: 3px; padding-top: 3px; }
+  .pf-route-speed { width: min(170px, 100%) !important; }
+  .pf-navigation-workspace .pf-map-dock { width: 38px; }
+  .pf-navigation-workspace .pf-map-dock > button { width: 32px; }
+}
+@media (horizontal-viewport-segments: 2) {
+  .pf-route-guidance { max-width: calc(env(viewport-segment-width 0 0) - 65px) !important; }
+  .pf-navigation-workspace .pf-map-search-panel { max-width: calc(env(viewport-segment-width 0 0) - 22px); }
+}
+
