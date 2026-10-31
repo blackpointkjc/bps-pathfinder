@@ -59,6 +59,72 @@ async function geocodeWithPhoton(address: string) {
   }
 }
 
+
+// Stable balanced assignment, rather than random reassignments on every read.
+// Tie-breaking is seeded by site ID/name for repeatable fair distribution;
+// site assignments made manually are never overwritten by the auto-balancer.
+const cleanOrg = (value:any) => String(value || '').trim().toLowerCase();
+const siteSupervisorRanks = ['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','colonel'];
+const officerRank = (value:any) => {
+  const rank = cleanOrg(value).replace(/[.]/g, '').replace(/\s+/g, ' ');
+  return rank === 'lieutenant colonel' ? 'lt colonel' : rank;
+};
+function stableSiteHash(value:string) {
+  let hash=2166136261;
+  for (const char of String(value)) hash=Math.imul(hash ^ char.charCodeAt(0),16777619);
+  return hash >>> 0;
+}
+function eligibleSiteSupervisor(person:any, site:any) {
+  const rank=officerRank(person?.rank);
+  const roles = new Set((person?.additional_roles || []).map(cleanOrg));
+  if (!person?.email || person.termination_date || cleanOrg(person.employment_status)==='terminated' || roles.has('client') || roles.has('student') || roles.has('pending')) return false;
+  if (!siteSupervisorRanks.includes(rank)) return false;
+  // Match the actual division / operating area, never another district.
+  return !!cleanOrg(site.division) && !!cleanOrg(site.subdivision)
+    && cleanOrg(person.division) === cleanOrg(site.division)
+    && cleanOrg(person.subdivision) === cleanOrg(site.subdivision);
+}
+function assignSiteSupervisor(site:any, people:any[], loads:Map<string,number>) {
+  const eligible=people.filter(person => eligibleSiteSupervisor(person,site));
+  if (!eligible.length) return null;
+  const local=site.substation
+    ? eligible.filter(person => cleanOrg(person.substation) === cleanOrg(site.substation)) : [];
+  // Prefer a qualified substation supervisor, then one in the same Division.
+  const pool=local.length ? local : eligible;
+  // Start with Corporal and advance rank by rank only when that tier is absent.
+  const minRank=Math.min(...pool.map(person => siteSupervisorRanks.indexOf(officerRank(person.rank))));
+  const rankPool=pool.filter(person => siteSupervisorRanks.indexOf(officerRank(person.rank))===minRank);
+  const seed=stableSiteHash(String(site.id || site.site_name || 'site'));
+  rankPool.sort((a,b)=>(loads.get(cleanOrg(a.email))||0)-(loads.get(cleanOrg(b.email))||0)
+    || (stableSiteHash(String(a.id||a.email)+'|'+seed)-stableSiteHash(String(b.id||b.email)+'|'+seed)));
+  const selected=rankPool[0];
+  loads.set(cleanOrg(selected.email),(loads.get(cleanOrg(selected.email))||0)+1);
+  return selected;
+}
+async function balancedSiteAssignments(base44:any, locations:any[], { updateExisting=false }={}) {
+  const people=await base44.asServiceRole.entities.User.list('-last_name',1000);
+  const loads=new Map<string,number>();
+  const isManual=(site:any)=>Array.isArray(site.assigned_supervisors) && site.assigned_supervisors.length
+    && site.site_supervisor_auto_assigned !== true;
+  for (const site of locations) {
+    if(site.active===false || site.is_special_event===true || !isManual(site)) continue;
+    for(const email of site.assigned_supervisors) loads.set(cleanOrg(email),(loads.get(cleanOrg(email))||0)+1);
+  }
+  const candidates=locations.filter(site=>site.active!==false && site.is_special_event!==true
+    && (!Array.isArray(site.assigned_supervisors) || site.assigned_supervisors.length===0 || (updateExisting && site.site_supervisor_auto_assigned===true)))
+    .sort((a,b)=>stableSiteHash(String(a.id||a.site_name))-stableSiteHash(String(b.id||b.site_name)));
+  let assigned=0, unchanged=0, unavailable=0;
+  for (const site of candidates) {
+    const person=assignSiteSupervisor(site,people,loads);
+    if (!person) { unavailable++; continue; }
+    const previous=Array.isArray(site.assigned_supervisors)?site.assigned_supervisors:[];
+    if(previous.length===1 && cleanOrg(previous[0])===cleanOrg(person.email)) {unchanged++;continue;}
+    await base44.asServiceRole.entities.Location.update(site.id,{assigned_supervisors:[person.email],site_supervisor_auto_assigned:true});
+    assigned++;
+  }
+  return {assigned,unchanged,unavailable,eligible_sites:candidates.length};
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -77,6 +143,13 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || 'list').toLowerCase();
+
+    if (action === 'rebalance_supervisors') {
+      if (user.role !== 'admin' && !roles.has('full_access')) return Response.json({error:'Administrator approval required to rebalance site supervisors.'},{status:403});
+      const locations=await base44.asServiceRole.entities.Location.list('site_name',1000);
+      const result=await balancedSiteAssignments(base44,locations,{updateExisting:true});
+      return Response.json({success:true,...result});
+    }
 
     if (action === 'list') {
       const locations = await base44.asServiceRole.entities.Location.list('site_name', 1000);
@@ -138,7 +211,13 @@ Deno.serve(async (req) => {
       if (!String(createData.address || '').trim()) {
         return Response.json({ error: 'Address is required for a fixed location' }, { status: 400 });
       }
+      const suppliedSupervisors = Array.isArray(createData.assigned_supervisors) ? createData.assigned_supervisors.filter(Boolean) : [];
+      createData.site_supervisor_auto_assigned = suppliedSupervisors.length === 0;
       const location = await base44.asServiceRole.entities.Location.create(createData);
+      if (suppliedSupervisors.length === 0 && createData.division && createData.subdivision) {
+        const existing = await base44.asServiceRole.entities.Location.list('site_name',1000);
+        await balancedSiteAssignments(base44, existing, {updateExisting:false});
+      }
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type: 'Location',
         entity_id: location.id,
@@ -159,6 +238,9 @@ Deno.serve(async (req) => {
       }
       const before = await base44.asServiceRole.entities.Location.get(body.id);
       const updateData = { ...body.data };
+      const supplied = Object.prototype.hasOwnProperty.call(updateData,'assigned_supervisors')
+        && Array.isArray(updateData.assigned_supervisors);
+      if (supplied) updateData.site_supervisor_auto_assigned = updateData.assigned_supervisors.filter(Boolean).length === 0;
       const activatingLive = updateData.auto_dispatch_enabled === true
         && updateData.auto_dispatch_mode === 'live'
         && (before?.auto_dispatch_mode !== 'live' || before?.auto_dispatch_enabled !== true);
@@ -174,6 +256,14 @@ Deno.serve(async (req) => {
         updateData.auto_dispatch_live_approved_by = '';
       }
       await base44.asServiceRole.entities.Location.update(body.id, updateData);
+      // Reassign only explicitly automatic or unassigned sites. Manual site
+      // owners must remain untouched when someone edits billing or geofencing.
+      if (updateData.site_supervisor_auto_assigned === true
+          || (before?.site_supervisor_auto_assigned === true
+              && ['division','subdivision','substation'].some(key => updateData[key]!==undefined && updateData[key]!==before[key]))) {
+        const currentSites=await base44.asServiceRole.entities.Location.list('site_name',1000);
+        await balancedSiteAssignments(base44,currentSites,{updateExisting:true});
+      }
       const location = await base44.asServiceRole.entities.Location.get(body.id);
       const protectedFields = [
         'auto_dispatch_enabled', 'auto_dispatch_mode', 'auto_dispatch_live_approved_at',

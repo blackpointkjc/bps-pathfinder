@@ -22,6 +22,11 @@
       "type": "string",
       "description": "Email of client user assigned to this location"
     },
+    "site_supervisor_auto_assigned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Site's designated supervisor is assigned by rank-aware fair balancer; manual selections are never overwritten"
+    },
     "assigned_supervisors": {
       "type": "array",
       "items": {
