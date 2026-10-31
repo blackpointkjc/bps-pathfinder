@@ -365,6 +365,35 @@ export default function Navigation() {
         return () => { unsubscribe(); stopTracking(); };
     }, []);
 
+    // Re-entering Navigation remounts this page. Reclaim the already granted
+    // antenna and resume GPS updates without requiring another Connect click.
+    useEffect(()=>{
+        const resume=()=>{
+            if(document.visibilityState==='hidden')return;
+            const receiver=getExternalGpsStatus();
+            if(receiver.portGranted || receiver.connected || receiver.connecting ||
+               receiver.lockedToAntenna){
+                void startExternalGpsAutoReconnect({recoverStale:true}).catch(()=>null);
+            }
+            const latest=getLiveLocation(30000);
+            if(latest && validPosition(latest.latitude,latest.longitude)){
+                setCurrentLocation([latest.latitude,latest.longitude]);
+                setSpeed(Math.round(liveSpeedMph(latest.speed)));
+                setGpsQuality(locationQuality(latest));
+                setIsLiveTracking(locationQuality(latest).state==='live');
+            }
+        };
+        resume();
+        window.addEventListener('bps-operational-resume',resume);
+        window.addEventListener('pageshow',resume);
+        window.addEventListener('focus',resume);
+        return()=>{
+            window.removeEventListener('bps-operational-resume',resume);
+            window.removeEventListener('pageshow',resume);
+            window.removeEventListener('focus',resume);
+        };
+    },[]);
+
     // Detect a receiver that goes silent during a long drive. Keep the map at
     // its last known position without claiming it is live, and recover GNSS.
     useEffect(() => {
@@ -1063,6 +1092,13 @@ export default function Navigation() {
             setNavDurationMinutes(Math.max(1, Math.ceil(route.duration / 60), Math.ceil((route.distance / 1609.344) * 60 / 65)));
             setFollowMyLocation(true);
             setIsNavigating(true);
+            // Save only the current user's active destination, not the full
+            // route, which must be recalculated from a fresh GPS fix on resume.
+            try{sessionStorage.setItem('bps:active-navigation',JSON.stringify({
+              userId:currentUser?.id||'',coords:[destLat,destLng],
+              name:destination.name||destination.address||'Destination',
+              address:destination.address||'',savedAt:Date.now()
+            }));}catch{}
             setRecentDestinations(rememberDestination(currentUser?.id, { ...destination, coords: [destLat, destLng] }));
             setShowCallSidebar(false);
             setShowAddressSearch(false);
@@ -1077,6 +1113,7 @@ export default function Navigation() {
             // A route preview without live position must never change CAD duty status.
             if (!previewOnly && shouldSetDispatchEnroute(options, currentUser)) void handleStatusChange('Enroute');
             if (previewOnly) toast.success('Route preview ready. Enable precise GPS for live turn-by-turn tracking.');
+            else if (options.resuming) toast.success('GPS navigation resumed from your current position');
             else if (options.reroute) toast.success('Route updated from your current position');
             else toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
@@ -1092,6 +1129,40 @@ export default function Navigation() {
             setRouting(false);
         }
     };
+
+    const restoredNavigationRef=useRef(false);
+    useEffect(()=>{
+        if(!currentUser?.id || restoredNavigationRef.current)return undefined;
+        let saved=null;
+        try{saved=JSON.parse(sessionStorage.getItem('bps:active-navigation')||'null');}catch{}
+        if(!saved || saved.userId!==currentUser.id ||
+          !Array.isArray(saved.coords)||!validPosition(saved.coords[0],saved.coords[1])||
+          Date.now()-Number(saved.savedAt)>6*3600000){
+            if(saved)try{sessionStorage.removeItem('bps:active-navigation');}catch{}
+            restoredNavigationRef.current=true;
+            return undefined;
+        }
+        restoredNavigationRef.current=true;
+        let cancelled=false;
+        let attempts=0;
+        let retryTimer;
+        const attemptRestore=async()=>{
+            if(cancelled || !navigator.onLine)return;
+            const fix=getLiveLocation(30000);
+            if(!fix || locationQuality(fix).state!=='live'){
+                if(++attempts<=8)retryTimer=window.setTimeout(attemptRestore,3000);
+                return;
+            }
+            const pos=[Number(fix.latitude),Number(fix.longitude)];
+            setCurrentLocation(pos);
+            setIsLiveTracking(true);
+            // Do not change officer duty status when resuming an existing trip.
+            await startNavigationToPoint({coords:saved.coords,name:saved.name,address:saved.address},
+              {reroute:true,setEnroute:false,originOverride:pos,resuming:true});
+        };
+        retryTimer=window.setTimeout(attemptRestore,1200);
+        return()=>{cancelled=true;window.clearTimeout(retryTimer);};
+    },[currentUser?.id]);
 
     useEffect(() => {
         if (!isNavigating || routePreviewOnly || !isLiveTracking || !getLiveLocation(25_000) || !currentLocation || navRoute.length < 2 || !navDestination || routing) return;
@@ -1461,6 +1532,7 @@ export default function Navigation() {
         lastSpokenNavStepRef.current = -1;
         spokenNavPromptsRef.current.clear();
         setIsNavigating(false);
+        try{sessionStorage.removeItem('bps:active-navigation');}catch{}
         setFollowMyLocation(false);
         setNavDestination(null);
         setNavRoute([]);
