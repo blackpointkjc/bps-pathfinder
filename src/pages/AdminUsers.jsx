@@ -29,6 +29,7 @@ import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
+import OrgAssignmentFields from '@/components/admin/OrgAssignmentFields';
 
 export default function AdminUsers({ embedded = false }) {
   const navigate = useNavigate();
@@ -991,39 +992,10 @@ export default function AdminUsers({ embedded = false }) {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="division" className="text-xs text-slate-500">Division</Label>
-                <select
-                  id="division"
-                  value={editFormData.division || ''}
-                  onChange={(e) => setEditFormData(prev => ({...prev, division: e.target.value || null, subdivision: null}))}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">None</option>
-                  {divisions?.filter(d => !d.is_subdivision && d.active !== false).map((div) => (
-                    <option key={div.id} value={div.division_name}>{div.division_name}</option>
-                  ))}
-                </select>
+              <div className="col-span-full rounded-xl border border-slate-700 bg-slate-950/50 p-3">
+                <h3 className="mb-2 text-sm font-semibold text-white">Officer region and division</h3>
+                <OrgAssignmentFields divisions={divisions || []} value={editFormData} onChange={next => setEditFormData(previous => ({ ...previous, division: next.division, subdivision: next.subdivision }))} />
               </div>
-
-              {editFormData.division && divisions?.filter(d => d.is_subdivision && d.parent_division === editFormData.division && d.active !== false).length > 0 && (
-                <div>
-                  <Label htmlFor="subdivision" className="text-xs text-slate-500">Subdivision</Label>
-                  <select
-                    id="subdivision"
-                    value={editFormData.subdivision || ''}
-                    onChange={(e) => setEditFormData(prev => ({...prev, subdivision: e.target.value || null}))}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
-                  >
-                    <option value="">None</option>
-                    {divisions
-                      ?.filter(d => d.is_subdivision && d.parent_division === editFormData.division && d.active !== false)
-                      .map((div) => (
-                        <option key={div.id} value={div.subdivision || div.division_name}>{div.subdivision || div.division_name}</option>
-                      ))}
-                  </select>
-                </div>
-              )}
 
               <div>
                 <Label htmlFor="hire_date" className="text-xs text-slate-500">Hire Date</Label>

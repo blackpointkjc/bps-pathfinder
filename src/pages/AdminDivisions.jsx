@@ -96,6 +96,11 @@ export default function AdminDivisions() {
     onSuccess: () => {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
+      // Every assignment editor must see newly created, renamed, or activated
+      // regions/divisions without waiting for the ten-minute directory TTL.
+      for (const key of ['adminLocationDivisions', 'adminOfficerDivisions', 'activeDivisions', 'adminManagedLocations', 'officerDirectory', 'org-structure-locations', 'org-structure-users']) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
       setShowDialog(false);
       setEditingDivision(null);
       setFormData(emptyForm('region'));
@@ -112,6 +117,11 @@ export default function AdminDivisions() {
     onSuccess: () => {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
+      // Every assignment editor must see newly created, renamed, or activated
+      // regions/divisions without waiting for the ten-minute directory TTL.
+      for (const key of ['adminLocationDivisions', 'adminOfficerDivisions', 'activeDivisions', 'adminManagedLocations', 'officerDirectory', 'org-structure-locations', 'org-structure-users']) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
       setShowDialog(false);
       setEditingDivision(null);
       setFormData(emptyForm('region'));
@@ -128,6 +138,11 @@ export default function AdminDivisions() {
     onSuccess: () => {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
+      // Every assignment editor must see newly created, renamed, or activated
+      // regions/divisions without waiting for the ten-minute directory TTL.
+      for (const key of ['adminLocationDivisions', 'adminOfficerDivisions', 'activeDivisions', 'adminManagedLocations', 'officerDirectory', 'org-structure-locations', 'org-structure-users']) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
     },
   });
 
@@ -141,6 +156,11 @@ export default function AdminDivisions() {
     onSuccess: () => {
       invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
+      // Every assignment editor must see newly created, renamed, or activated
+      // regions/divisions without waiting for the ten-minute directory TTL.
+      for (const key of ['adminLocationDivisions', 'adminOfficerDivisions', 'activeDivisions', 'adminManagedLocations', 'officerDirectory', 'org-structure-locations', 'org-structure-users']) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
     },
   });
 
