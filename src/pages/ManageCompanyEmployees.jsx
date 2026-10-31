@@ -3,7 +3,6 @@ import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
 import CommandRankTiers from '@/components/CommandRankTiers';
-import MajorPlatoonAssignment from '@/components/MajorPlatoonAssignment';
 import { reportingLabel, oversightLabel } from '@/utils/commandReporting';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
@@ -550,11 +549,10 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           <button type="button" onClick={() => person.profile_photo_url && setFullPhoto({url:person.profile_photo_url,fallback:person.profile_photo_url,name:`${person.first_name || ''} ${person.last_name || ''}`})} aria-label={`View full photo of ${person.first_name} ${person.last_name}`} className="shrink-0">
             {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className="h-[78px] w-[64px] rounded-md border border-amber-600/60 object-cover"/> : <div className="flex h-[78px] w-[64px] items-center justify-center rounded-md bg-slate-700 font-bold">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
           </button>
-          <div className="min-w-0 flex-1"><div className="text-[11px] font-black uppercase tracking-wider text-amber-300">{person.rank || 'Employee'}</div><div className="break-words text-sm font-black">{person.first_name} {person.last_name}</div><div className="mt-1 text-[11px] text-slate-300">Badge {person.badge_number || '—'} · Unit {person.unit_number || '—'}</div><div className="text-[11px] text-slate-300">{person.division || 'No division'} · {commandRanks.has(person.rank) ? 'Command' : `Platoon ${person.platoon || 'Unassigned'}`}{person.rank==='Major' && <div className="mt-1 text-amber-300">{oversightLabel(person)}</div>}</div></div>
+          <div className="min-w-0 flex-1"><div className="text-[11px] font-black uppercase tracking-wider text-amber-300">{person.rank || 'Employee'}</div><div className="break-words text-sm font-black">{person.first_name} {person.last_name}</div><div className="mt-1 text-[11px] text-slate-300">Badge {person.badge_number || '—'} · Unit {person.unit_number || '—'}</div><div className="text-[11px] text-slate-300">{person.division || 'No division'} · {commandRanks.has(person.rank) ? 'Command' : `Platoon ${person.platoon || 'Unassigned'}`}</div></div>
         </div>
         <div className="mt-2 space-y-1 border-t border-slate-700 pt-2 text-[11px]"><div className="break-all text-slate-300">{person.email || 'No email'}</div><div className="text-slate-300">{person.mobile_phone || 'No phone recorded'}</div></div>
         {commandRanks.has(person.rank) && <div className="mt-2 text-xs text-amber-200">Reports to {reportingLabel(person, users || [], p=>`${p.rank} ${p.last_name || p.first_name}`)}</div>}
-        {person.rank === 'Major' && canManageEmployees && <MajorPlatoonAssignment person={person}/>}
         <Button type="button" size="sm" variant="outline" className="mt-3 w-full border-amber-500/70 bg-slate-900 text-white hover:bg-slate-700" onClick={() => handleEditUser(person)}><Edit className="mr-2 h-3.5 w-3.5"/> Edit Personnel</Button>
         {canManageEmployees && person.additional_roles?.includes('officer') && <button type="button" className="mt-2 w-full text-center text-[11px] text-amber-300 underline underline-offset-2" onClick={async () => { if (await confirmInApp(`Move ${person.first_name} ${person.last_name} back to Pending Users? This removes their Officer role.`)) moveToPendingMutation.mutate(person); }}>Move to Pending Users</button>}
       </div>

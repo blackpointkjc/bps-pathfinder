@@ -74,10 +74,25 @@ Deno.serve(async (req) => {
         if (updatePayload.division === '' || updatePayload.subdivision === '') updatePayload.substation = '';
         if (updatePayload.division === '') updatePayload.subdivision = '';
 
-        if (updatePayload.oversight_platoon !== undefined) {
-            if (!['A','B',''].includes(String(updatePayload.oversight_platoon))) return Response.json({error:'Platoon oversight must be A or B'},{status:400});
-            if (String(updatePayload.rank || target.rank) !== 'Major') return Response.json({error:'Platoon oversight is assigned to Majors only'},{status:400});
-            updatePayload.platoon = 'Command';
+        // Company command is a company-wide reporting tier, never a Platoon.
+        // Regional platoons are independent of Command and can be created in
+        // Company Structure; an administrator may only assign an existing
+        // regional platoon (or retain a legacy current assignment).
+        const companyRanks = ['colonel','lt colonel','lieutenant colonel','major'];
+        if (companyRanks.includes(targetRank)) {
+          updatePayload.platoon = 'Command';
+          updatePayload.oversight_platoon = '';
+        } else if (updatePayload.oversight_platoon !== undefined && String(updatePayload.oversight_platoon).trim()) {
+          return Response.json({error:'Company Command cannot be assigned Platoon oversight; assign officers directly to a regional Platoon.'},{status:400});
+        }
+        if (updatePayload.platoon !== undefined && updatePayload.platoon !== '' && updatePayload.platoon !== 'Command') {
+          const chosen = String(updatePayload.platoon).trim();
+          const region = String(updatePayload.division ?? target.division ?? '').trim();
+          if (!region) return Response.json({error:'Assign a Region before selecting a Platoon'},{status:400});
+          const configured = await base44.asServiceRole.entities.CompanyPlatoon.filter({region},'-created_date',1000).catch(()=>[]);
+          const valid = (configured||[]).some((row:any)=>String(row.name||'').toLowerCase()===chosen.toLowerCase()&&row.active!==false);
+          const legacy = chosen===String(target.platoon||'').trim() && region===String(target.division||'').trim();
+          if (!valid && !legacy) return Response.json({error:'Create this Platoon under the selected Region in Company Structure before assigning officers.'},{status:409});
         }
         if (updatePayload.role !== undefined && !['user', 'admin'].includes(String(updatePayload.role))) {
             return Response.json({ error: 'Role must be user or admin' }, { status: 400 });
