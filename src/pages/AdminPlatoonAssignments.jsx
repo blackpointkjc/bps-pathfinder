@@ -28,8 +28,7 @@ function eligibleSupervisors(person, users, platoon) {
     if (candidate.id === person.id || !isOperational(candidate)) return false;
     const candidateRank = rankIndex(candidate.rank);
     if (candidateRank >= personRank) return false;
-    if (COMMAND_RANKS.has(candidate.rank)) return true;
-    return platoon && candidate.platoon === platoon;
+    return !COMMAND_RANKS.has(candidate.rank) && platoon && candidate.platoon === platoon && String(candidate.division||'').trim().toLowerCase()===String(person.division||'').trim().toLowerCase();
   });
   if (!higher.length) return [];
   const nearestAvailableRank = Math.max(...higher.map(candidate => rankIndex(candidate.rank)));

@@ -41,7 +41,7 @@ export function activePlatoonCommand(letter, users = [], region = '') {
  const eligible=users.filter(person=>activePerson(person)&&!isOutOfOffice(person)
    && n(person.platoon)===n(letter)
    && (!region||n(person.division)===n(region))
-   && commandRank(person)>=rankLevel('Captain') && commandRank(person)<=rankLevel('First Sergeant'));
+   && commandRank(person)>=rankLevel('Captain') && commandRank(person)<999);
  const badge=person=>Number.isFinite(Number(person.badge_number))&&Number(person.badge_number)>0?Number(person.badge_number):Number.MAX_SAFE_INTEGER;
  const unit=person=>Number.isFinite(Number(person.unit_number))&&Number(person.unit_number)>0?Number(person.unit_number):Number.MAX_SAFE_INTEGER;
  eligible.sort((a,b)=>commandRank(a)-commandRank(b)||badge(a)-badge(b)||unit(a)-unit(b)||String(a.id).localeCompare(String(b.id)));

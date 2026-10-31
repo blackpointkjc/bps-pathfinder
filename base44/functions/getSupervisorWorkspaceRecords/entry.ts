@@ -25,7 +25,7 @@ const isAbsent=(p:any)=>{
 const activePlatoonCommand=(people:any[],platoon:string,region:string)=>{
  const eligible=people.filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated'
    && !isAbsent(p)&&n(p.division)===n(region)&&n(p.platoon)===n(platoon)
-   && level(p.rank)>=3&&level(p.rank)<=5);
+   && level(p.rank)>=3&&level(p.rank)<999);
  const badge=(p:any)=>{const value=Number(p.badge_number);return Number.isSafeInteger(value)&&value>0?value:Number.MAX_SAFE_INTEGER;};
  const unit=(p:any)=>{const value=Number(p.unit_number);return Number.isSafeInteger(value)&&value>0?value:Number.MAX_SAFE_INTEGER;};
  eligible.sort((a:any,b:any)=>level(a.rank)-level(b.rank)||badge(a)-badge(b)||unit(a)-unit(b)||String(a.id).localeCompare(String(b.id)));
