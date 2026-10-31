@@ -1,0 +1,72 @@
+{
+  "name": "BrowserRemoteSession",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "reconnect_endpoint": {
+      "type": "string"
+    },
+    "viewer_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_renewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "initial_url": {
+      "type": "string"
+    },
+    "plan_window_ms": {
+      "type": "number"
+    },
+    "view_only": {
+      "type": "boolean"
+    },
+    "active": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "session_id",
+    "user_id",
+    "reconnect_endpoint",
+    "created_at",
+    "viewer_expires_at",
+    "initial_url",
+    "plan_window_ms",
+    "view_only",
+    "active"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "__server_only__"
+      }
+    }
+  }
+}
