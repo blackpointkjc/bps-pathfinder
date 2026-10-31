@@ -22,6 +22,9 @@ export default function AdminBrowserControl() {
   const params = new URLSearchParams(window.location.search);
   const requested = params.get('browser_tool');
   const [active, setActive] = useState(TOOLS.some(tool => tool.id === requested) ? requested : 'overview');
+  const [engineTest,setEngineTest] = useState(null);
+  const [testingEngine,setTestingEngine] = useState(false);
+  const testEngine=async()=>{setTestingEngine(true);setEngineTest(null);try{const result=(await base44.functions.invoke('browserRemoteSession',{action:'test'})).data;setEngineTest(result||{reachable:false,error:'Browser response empty'});}catch(error){setEngineTest({reachable:false,error:error?.response?.data?.error||'Could not run live browser check.'});}finally{setTestingEngine(false);}};
   const focusEmail = params.get('email') || '';
 
   const { data: reviewer } = useQuery({ queryKey: ['browserReviewer'], queryFn: () => base44.auth.me(), staleTime: 300000 });
@@ -65,7 +68,8 @@ export default function AdminBrowserControl() {
       </header>
 
       <section className="rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs">
-        <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold text-slate-100">Interactive Google Chrome browser engine: <span className={browserEngine?.configured ? 'text-emerald-300' : 'text-amber-300'}>{browserEngineLoading ? 'Checking…' : browserEngine?.configured ? 'Connected' : 'Not connected'}</span></div><button type="button" onClick={() => refreshBrowserEngine()} className="rounded border border-slate-500 px-3 py-1.5 text-slate-100">Check connection</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold text-slate-100">Interactive Google Chrome browser engine: <span className={browserEngine?.configured ? 'text-emerald-300' : 'text-amber-300'}>{browserEngineLoading ? 'Checking…' : browserEngine?.configured ? 'Credential configured' : 'Not configured'}</span></div><div className="flex gap-2"><button type="button" onClick={() => refreshBrowserEngine()} className="rounded border border-slate-500 px-3 py-1.5 text-slate-100">Refresh credential status</button>{browserEngine?.configured&&<button type="button" disabled={testingEngine} onClick={testEngine} className="rounded border border-cyan-600 bg-cyan-900/30 px-3 py-1.5 text-cyan-100 disabled:opacity-50">{testingEngine?'Testing…':'Test live Chrome'}</button>}</div></div>
+        {engineTest && <p className={`mt-2 rounded-lg border p-2 ${engineTest.reachable?'border-emerald-700 bg-emerald-950/30 text-emerald-200':'border-amber-700 bg-amber-950/20 text-amber-200'}`}>{engineTest.reachable?'Live remote Chrome connection verified.':'Chrome connection not verified: '+(engineTest.error||'Provider test failed.')}</p>}
         {!browserEngine?.configured && <p className="mt-2 text-slate-300">For websites that block ordinary embedding, Pathfinder uses an interactive remote Chrome session. Add the Browserless API token as <code className="text-cyan-300">BROWSERLESS_TOKEN</code> in this Base44 app's Secrets settings to enable it. The token remains on the server. Until it is configured, full interactive browsing cannot start. Restricted employee roles also require a policy-enforcing gateway before receiving unrestricted browser controls.</p>}
       </section>
       <div className="sticky top-0 z-20 flex flex-wrap gap-1.5 rounded-xl border border-slate-800 bg-slate-950/95 px-2 py-2 backdrop-blur">
