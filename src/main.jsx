@@ -7,6 +7,7 @@ import '@/field-readability.css'
 import { installRequiredPrintFooter } from '@/utils/requiredPrintFooter'
 import { installGlobalRuntimeIssueCapture } from '@/utils/appDiagnostics'
 import { primeOfflinePages } from '@/lib/offlineMode'
+import { installDailyCacheRotation } from '@/lib/dailyCacheRotation'
 
 // "ResizeObserver loop completed with undelivered notifications." is a benign
 // browser notification from libraries (recharts, Leaflet, Radix) whose resize
@@ -25,6 +26,7 @@ window.addEventListener('error', event => {
 
 installRequiredPrintFooter()
 installGlobalRuntimeIssueCapture()
+installDailyCacheRotation()
 
 // Offline mode is automatic: the worker registers on its own, saves the pages
 // this device has opened, and takes over as soon as the network drops.
