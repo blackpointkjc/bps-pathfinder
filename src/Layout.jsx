@@ -970,7 +970,7 @@ export default function Layout({ children, currentPageName }) {
     setGpsChanging(true);
     try {
       await requestExternalGpsConnection({ baudRate: Number(baudRate) || 4800 });
-      toast.success('External GPS antenna connected. Pathfinder is now using the receiver as the preferred live GPS source.');
+      toast.success('External GPS COM port opened. Waiting for a valid satellite position; check GPS diagnostics before navigating.');
       setGpsMenuOpen(false);
     } catch (error) {
       toast.error(error?.message || 'Unable to connect the external GPS antenna.');

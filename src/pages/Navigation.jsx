@@ -34,7 +34,7 @@ import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveD
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations, lookupNavigationPoint } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
-import { getExternalGpsStatus, startExternalGpsAutoReconnect, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
+import { getExternalGpsStatus, startExternalGpsAutoReconnect, requestExternalGpsConnection, subscribeExternalGpsStatus } from '@/lib/externalGpsService';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
 const TomTomSdkMapPreview = lazy(() => import('@/components/map/TomTomSdkMapPreview'));
@@ -94,6 +94,9 @@ export default function Navigation() {
     const [followMyLocation, setFollowMyLocation] = useState(false);
     const [gpsQuality, setGpsQuality] = useState({ state: 'acquiring', accuracy: null });
     const [externalReceiver, setExternalReceiver] = useState(() => getExternalGpsStatus());
+    const [gpsRecovering, setGpsRecovering] = useState(false);
+    const [gpsStatusClock, setGpsStatusClock] = useState(Date.now());
+    useEffect(() => { const interval = window.setInterval(() => setGpsStatusClock(Date.now()), 5000); return () => window.clearInterval(interval); }, []);
     useEffect(() => subscribeExternalGpsStatus(status => setExternalReceiver(status)), []);
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [heading, setHeading] = useState(null);
@@ -812,6 +815,20 @@ export default function Navigation() {
         if (modifier.includes('right')) return <CornerUpRight className={className} />;
         if (type === 'arrive') return <MapPin className={className} />;
         return <ArrowUp className={className} />;
+    };
+
+    const recoverExternalReceiver = async () => {
+        if (gpsRecovering) return;
+        setGpsRecovering(true);
+        try {
+            // Explicitly reopen the device chooser on a user click. Merely
+            // selecting External GPS previously could keep a silent COM port open.
+            const result = await requestExternalGpsConnection({ baudRate: externalReceiver.baudRate || 4800 });
+            if (!result.connected) throw new Error(result.error || 'Receiver port did not open.');
+            toast.success('Antenna port opened. Waiting for satellite data; verify the status below.');
+        } catch (error) {
+            toast.error(error?.message || 'Could not reconnect the external GPS antenna.');
+        } finally { setGpsRecovering(false); }
     };
 
     const getFreshDeviceLocation = async () => {
@@ -1903,11 +1920,11 @@ export default function Navigation() {
                             <Search className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'SEARCH'}
                         </button>
                     </form>
-                    <details open={gpsQuality?.state !== 'live' && !isLiveTracking} className="pf-manual-origin mt-2 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
-                        <summary className="cursor-pointer font-semibold">No GPS? Enter a starting address</summary>
+                    <div className="pf-manual-origin mt-2 rounded-lg border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs text-slate-200">
+                        <label className="block pb-2 font-semibold">Starting address (when GPS is unavailable)</label>
                         <input value={manualOriginQuery} onChange={event => setManualOriginQuery(event.target.value)} placeholder="Enter your starting address if GPS is unavailable" className="mt-1 h-10 w-full rounded-md border border-slate-600 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500" />
-                        <span className="mt-1 block text-[10px] text-slate-400">No GPS? Enter a starting address, select any destination, then tap Navigate Here for a TomTom route preview. Live driving updates require device GPS.</span>
-                    </details>
+                        <span className="mt-1 block text-[10px] text-slate-400">No GPS? Enter a starting address, select any destination, then tap Navigate Here for a TomTom route preview. Live driving updates require a valid GPS fix.</span>
+                    </div>
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         <button type="button" onClick={() => showHomeLocation()} disabled={addressSearching || isNavigating}
                             className="flex items-center justify-center gap-1.5 rounded-lg border border-cyan-600/50 bg-cyan-950/70 px-3 py-2 text-[10px] font-black text-cyan-100 hover:bg-cyan-900/70 disabled:cursor-not-allowed disabled:opacity-40">
@@ -1939,6 +1956,18 @@ export default function Navigation() {
                     )}
                     {!homeAddress && (
                         <div className="mt-2 text-[10px] text-slate-500">Add your address, city, state, and ZIP in your Pathfinder profile to enable Home navigation.</div>
+                    )}
+                    {!isLiveTracking && (externalReceiver.connected || externalReceiver.portGranted || externalReceiver.connecting) && (
+                        <div className="mt-2 rounded-lg border border-amber-600/50 bg-amber-950/40 p-3 text-xs text-amber-100" role="status">
+                            <div className="font-bold">External antenna diagnostics</div>
+                            <div className="mt-1">COM port: {externalReceiver.connected ? 'Open' : externalReceiver.connecting ? 'Connecting' : 'Not connected'} · Baud: {externalReceiver.baudRate || 4800}</div>
+                            <div>Serial data: {externalReceiver.lastDataAt && gpsStatusClock - Date.parse(externalReceiver.lastDataAt) < 15000 ? 'Receiving bytes' : 'No recent data received'}</div>
+                            <div>Satellite fix: {externalReceiver.lastFixAt && gpsStatusClock - Date.parse(externalReceiver.lastFixAt) < 30000 ? 'Received, but not yet usable for navigation' : 'No recent valid position'}</div>
+                            {externalReceiver.satellites != null && <div>Satellites: {externalReceiver.satellites}</div>}
+                            {externalReceiver.error && <div className="mt-1 text-red-200">{externalReceiver.error}</div>}
+                            <div className="mt-1 text-amber-200/80">{!externalReceiver.connected ? 'Select the GPS receiver again.' : !externalReceiver.lastDataAt || gpsStatusClock - Date.parse(externalReceiver.lastDataAt) >= 15000 ? 'Port is open but GPS data is silent. Check the selected COM port and baud rate in the GPS menu.' : 'Serial bytes are arriving. If a fix never appears, check satellite reception or the receiver NMEA protocol.'}</div>
+                            <button type="button" onClick={recoverExternalReceiver} disabled={gpsRecovering} className="mt-2 rounded-md border border-cyan-500 bg-cyan-900 px-3 py-2 font-semibold text-white disabled:opacity-50">{gpsRecovering ? 'Connecting…' : 'Reconnect / Select Antenna'}</button>
+                        </div>
                     )}
                     {addressSearchError && (
                         <div role="alert" className="mt-2 rounded-lg border border-amber-500/60 bg-amber-950/70 p-3 text-xs text-amber-100">{addressSearchError}</div>

@@ -20,8 +20,8 @@ let nextAutomaticReconnectAt = 0;
 let consecutiveReconnectFailures = 0;
 let lastSerialDataAt = 0;
 let manualDisconnect = false;
-const SERIAL_STALL_MS = 180_000;
-const RECOVERY_COOLDOWN_MS = 180_000;
+const SERIAL_STALL_MS = 45_000;
+const RECOVERY_COOLDOWN_MS = 90_000;
 
 const STORAGE_BAUD_KEY = 'bps:external-gps-baud';
 const STORAGE_SELECTOR_KEY = 'bps:external-gps-selector';
