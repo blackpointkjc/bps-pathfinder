@@ -20,17 +20,21 @@ export default function AcceptableUseGate({user,children}) {
   const client = useQueryClient();
   const [confirmed,setConfirmed] = useState(false);
   const [signature,setSignature] = useState('');
-  const key=['acceptableUsePolicy',user?.id];
+  // Include the current app-wide agreement version in the query identity so
+  // cached approvals for an earlier agreement cannot bypass a new version.
+  const key=['acceptableUsePolicy',AUP_VERSION,user?.id,String(user?.email||'').toLowerCase()];
   const {data, isLoading,isError,refetch} = useQuery({
     queryKey:key,enabled:Boolean(user?.id),queryFn:async()=> (await base44.functions.invoke('acceptableUsePolicy',{action:'status'})).data,
-    staleTime:5*60*1000,retry:1,refetchOnWindowFocus:false
+    staleTime:0,retry:1,refetchOnMount:'always',refetchOnWindowFocus:true
   });
   const accept=useMutation({
     mutationFn:async()=> (await base44.functions.invoke('acceptableUsePolicy',{action:'accept',policy_version:data?.policy_version,confirmed,signature})).data,
-    onSuccess:result=>{if(result?.accepted)client.setQueryData(key,prev=>({...prev,accepted:true,accepted_at:result.accepted_at}));}
+    onSuccess:result=>{if(result?.accepted && result?.policy_version===AUP_VERSION)client.setQueryData(key,prev=>({...prev,accepted:true,policy_version:AUP_VERSION,accepted_at:result.accepted_at}));}
   });
   if(!user?.id) return children;
-  if(data?.accepted) return children;
+  // A yes/no flag alone is insufficient: acceptances belong only to the
+  // matching version of the full Pathfinder-wide agreement.
+  if(data?.accepted===true && data?.policy_version===AUP_VERSION) return children;
   return <div className="fixed inset-0 z-[999999] flex items-center justify-center overflow-y-auto bg-[#030914] p-3 text-white sm:p-5" role="dialog" aria-modal="true" aria-label="Required Pathfinder user agreement">
     <div className="my-auto flex w-full max-w-[780px] flex-col overflow-hidden rounded-2xl border border-[#315574] bg-[#091522] shadow-[0_30px_100px_rgba(0,0,0,.8)]">
       <header className="flex gap-4 border-b border-[#29435d] bg-[#10263d] p-5"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-600/20 text-cyan-200"><ShieldCheck className="h-7 w-7"/></div><div><div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-300">Pathfinder · Required account acknowledgment</div><h1 className="mt-1 text-xl font-bold">Pathfinder Application User Agreement</h1><p className="mt-1 text-xs text-slate-300">Read and approve before continuing into your company account.</p></div></header>
@@ -40,7 +44,7 @@ export default function AcceptableUseGate({user,children}) {
       <div className="space-y-3 border-t border-[#29435d] bg-[#0b1d30] p-5">
         <label className="flex items-start gap-3 text-sm text-slate-200"><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)} className="mt-1 h-4 w-4 accent-cyan-500"/><span>I have read the Pathfinder Application User Agreement, agree to follow its account, operational, confidentiality, security, and authorized-use requirements, and understand that violations may result in corrective or disciplinary action.</span></label>
         <label className="block text-xs font-bold text-slate-300">Electronic signature — type your full name<input value={signature} onChange={event=>setSignature(event.target.value)} maxLength={100} autoComplete="name" placeholder={data?.user_name||'First and last name'} className="mt-1.5 h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-base text-white"/></label>
-        <div className="flex flex-wrap items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs text-slate-400"><LockKeyhole className="h-4 w-4"/>Approval is saved to your account and visible in Admin Reports</span><button type="button" disabled={!confirmed||signature.trim().length<3||accept.isPending} onClick={()=>accept.mutate()} className="flex min-h-11 items-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40">{accept.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:<FileCheck2 className="h-4 w-4"/>}Accept & Continue</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs text-slate-400"><LockKeyhole className="h-4 w-4"/>Approval is saved to your account and visible in Admin Reports</span><button type="button" disabled={!confirmed||signature.trim().length<3||accept.isPending||data?.policy_version!==AUP_VERSION} onClick={()=>accept.mutate()} className="flex min-h-11 items-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40">{accept.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:<FileCheck2 className="h-4 w-4"/>}Accept & Continue</button></div>
         {accept.isError && <p className="text-xs text-red-300">{accept.error?.response?.data?.error||accept.error?.message||'Could not record acknowledgment.'}</p>}
       </div></>}
     </div>

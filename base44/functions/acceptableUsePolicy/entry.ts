@@ -23,7 +23,12 @@ export default async function(req: Request): Promise<Response> {
     }
     const profile = await api.asServiceRole.entities.User.get(caller.id);
     if (!profile || String(profile.email || '').toLowerCase() !== String(caller.email).toLowerCase()) return Response.json({error:'Unable to confirm current account'},{status:403});
-    const existing = unpack(await api.asServiceRole.entities.AcceptableUseAcknowledgment.filter({user_id:profile.id,policy_version:VERSION},{limit:5})).find(x=>x.status==='approved');
+    // Read the CURRENT agreement version only. Prior internet-browser
+    // acknowledgments remain in history but do not authorize current access.
+    const receipts=unpack(await api.asServiceRole.entities.AcceptableUseAcknowledgment.filter(
+      {user_id:profile.id,policy_version:VERSION},'-accepted_at',5
+    ));
+    const existing=receipts.find(x=>x.status==='approved' && x.policy_version===VERSION);
     if (action === 'status') {
       return Response.json({policy_version:VERSION,policy_title:TITLE,accepted:Boolean(existing), accepted_at:existing?.accepted_at || null, user_name:nameOf(profile)},{headers:{'Cache-Control':'no-store'}});
     }
