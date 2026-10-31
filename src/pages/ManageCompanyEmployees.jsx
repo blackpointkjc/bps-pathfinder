@@ -60,6 +60,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [activeTab, setActiveTab] = useState("active");
   const [employeeView,setEmployeeView]=useState("directory");
   const [platoonFilter,setPlatoonFilter]=useState("all");
+  const [structureRegion,setStructureRegion]=useState('');
+  const [structurePlatoon,setStructurePlatoon]=useState('');
   const [searchQuery, setSearchQuery] = useState("");
   const [imapMailboxId, setImapMailboxId] = useState('');
   const [imapSaving, setImapSaving] = useState(false);
@@ -569,12 +571,32 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   };
   const renderActiveHierarchy = people => {
     const ranked=people.filter(person=>hierarchyRanks.includes(person.rank));
+    const field=ranked.filter(person=>!commandRanks.has(person.rank));
     const other=people.filter(person=>!hierarchyRanks.includes(person.rank));
+    const regions=[...new Set(field.map(person=>person.division||'Region not assigned'))].sort();
+    const region=regions.includes(structureRegion)?structureRegion:regions[0]||'';
+    const regionPeople=field.filter(person=>(person.division||'Region not assigned')===region);
+    const platoons=[...new Set(regionPeople.map(person=>person.platoon||'Platoon not assigned'))].sort();
+    const platoon=platoons.includes(structurePlatoon)?structurePlatoon:platoons[0]||'';
+    const members=regionPeople.filter(person=>(person.platoon||'Platoon not assigned')===platoon);
+    const divisions=[...new Set(members.map(person=>person.subdivision||'Division not assigned'))].sort();
     return <div className="space-y-5">
-      <section className="rounded-2xl border border-amber-700/40 bg-[#0e1829] p-5"><h2 className="mb-4 text-center font-black text-amber-300">COMMAND — SHARED REPORTING</h2><CommandRankTiers users={ranked} renderPerson={person=>renderHierarchyNode(person,[])}/></section>
-      <div className="mx-auto h-6 w-px bg-amber-600/70"/>
-      <div className="grid gap-5 xl:grid-cols-2">{renderHierarchySection('Platoon A',ranked.filter(person=>person.platoon==='A' && !commandRanks.has(person.rank)))}{renderHierarchySection('Platoon B',ranked.filter(person=>person.platoon==='B' && !commandRanks.has(person.rank)))}</div>
-      {ranked.some(person=>!commandRanks.has(person.rank) && !['A','B'].includes(person.platoon)) && renderHierarchySection('Unassigned Platoon',ranked.filter(person=>!commandRanks.has(person.rank) && !['A','B'].includes(person.platoon)))}
+      <details className="rounded-xl border border-amber-700/40 bg-[#0e1829] p-4"><summary className="cursor-pointer text-sm font-black text-amber-300">Company Command (separate from regional Platoons)</summary><div className="mt-4"><CommandRankTiers users={ranked.filter(person=>commandRanks.has(person.rank))} renderPerson={person=>renderHierarchyNode(person,[])}/></div></details>
+      <div className="grid gap-3 rounded-xl border border-cyan-800/60 bg-[#101e30] p-4 sm:grid-cols-2">
+        <label className="text-xs font-bold text-cyan-200">Region / State<select value={region} onChange={event=>{setStructureRegion(event.target.value);setStructurePlatoon('');}} className="mt-1 h-10 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-sm text-white">{regions.length?regions.map(name=><option key={name} value={name}>{name}</option>):<option value="">No regions assigned</option>}</select></label>
+        <label className="text-xs font-bold text-cyan-200">Platoon within {region||'Region'}<select value={platoon} onChange={event=>setStructurePlatoon(event.target.value)} className="mt-1 h-10 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-sm text-white">{platoons.length?platoons.map(name=><option key={name} value={name}>{name.startsWith('Platoon ')?name:`Platoon ${name}`}</option>):<option value="">No platoons assigned</option>}</select></label>
+      </div>
+      <div className="space-y-4">{divisions.map(division=>{
+        const group=members.filter(person=>(person.subdivision||'Division not assigned')===division);
+        const leadership=group.filter(person=>['Captain','Lieutenant'].includes(person.rank));
+        const fieldStaff=group.filter(person=>!['Captain','Lieutenant'].includes(person.rank));
+        const stations=[...new Set(fieldStaff.map(person=>person.substation||'Field posting not assigned'))].sort();
+        return <section key={division} className="space-y-3 rounded-2xl border border-slate-700 bg-[#0c1929] p-4"><div className="rounded-lg border border-cyan-900 bg-cyan-950/20 px-4 py-3 text-center"><div className="text-xs font-black uppercase text-cyan-300">Division / Operations Area</div><div className="mt-1 text-xl font-black text-white">{division}</div></div>
+          {!!leadership.length&&renderHierarchySection('Platoon / Division Leadership',leadership)}
+          <div className="grid items-start gap-3 xl:grid-cols-2">{stations.map(station=><div key={station}>{renderHierarchySection(`Substation · ${station}`,fieldStaff.filter(person=>(person.substation||'Field posting not assigned')===station))}</div>)}</div>
+          {!leadership.length&&!stations.length&&<p className="p-4 text-center text-sm text-slate-400">No personnel assigned in this Division.</p>}
+        </section>;
+      })}</div>
       {other.length>0 && <section className="space-y-3"><h2 className="text-lg font-black text-white">Other Company Personnel</h2><div className="grid gap-3 md:grid-cols-2">{other.map(person=>renderUserCard(person))}</div></section>}
     </div>;
   };
@@ -591,7 +613,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       />
       <header className="mb-4 rounded-2xl border border-slate-700 bg-gradient-to-r from-slate-900 to-[#0b1a2a] p-5">
        <div className="flex flex-wrap items-center justify-between gap-3"><div><span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Company personnel</span><h1 className="mt-1 text-2xl font-bold">Manage Company Employees</h1><p className="mt-2 text-sm text-slate-400">Employee records, certifications and employment history. Client accounts stay in Client Accounts.</p></div><div className="flex gap-4 text-center text-sm">{[['Active',activeEmployees.length],['Onboarding',pendingOnboarding.length],['Former',terminatedEmployees.length]].map(([label,count])=><div key={label}><strong className="block text-2xl text-white">{count}</strong><span className="text-xs text-slate-400">{label}</span></div>)}</div></div>
-       <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_220px]"><label className="text-xs text-slate-400">Find an employee<Input placeholder="Name, rank, unit, division or email" value={searchQuery} onChange={event=>setSearchQuery(event.target.value)} className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Platoon<select value={platoonFilter} onChange={event=>setPlatoonFilter(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="all">All platoons</option><option>A</option><option>B</option><option>Command</option><option value="unassigned">Unassigned</option></select></label><label className="text-xs text-slate-400">View<select value={employeeView} onChange={event=>setEmployeeView(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="directory">Employee directory</option><option value="structure">Permanent reporting structure</option></select></label></div>
+       <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_220px]"><label className="text-xs text-slate-400">Find an employee<Input placeholder="Name, rank, unit, division or email" value={searchQuery} onChange={event=>setSearchQuery(event.target.value)} className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Platoon<select value={platoonFilter} onChange={event=>setPlatoonFilter(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="all">All platoons</option>{[...new Set(activeEmployees.map(person=>person.platoon||'unassigned'))].sort().map(name=><option key={name} value={name}>{name==='unassigned'?'Unassigned':name==='Command'?'Company Command':name.startsWith('Platoon ')?name:`Platoon ${name}`}</option>)}</select></label><label className="text-xs text-slate-400">View<select value={employeeView} onChange={event=>setEmployeeView(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="directory">Employee directory</option><option value="structure">Permanent reporting structure</option></select></label></div>
       </header>
 
       {isLoading ? (
