@@ -50,7 +50,18 @@ Deno.serve(async(req)=>{
    sdk.asServiceRole.entities.Location.list('site_name',1000),
    kind==='personnel'?Promise.resolve([]):sdk.asServiceRole.entities[entity].list('-created_date',kind==='duty'?1200:kind==='callouts'?1000:500),
   ]);
-  const people=(users||[]).filter((p:any)=>area(me,p)&&!p.termination_date&&n(p.employment_status)!=='terminated');
+  // Some historic officers are linked to a managed client site but never had
+  // the new Substation field populated. Resolve *missing* organizational
+  // fields from that exact site, then enforce the same supervisor restrictions.
+  // This does not authorize unassigned supervisors or cross-platoon personnel.
+  const sitesByName=new Map((sites||[]).filter((site:any)=>site.site_name).map((site:any)=>[n(site.site_name),site]));
+  const resolvedUsers=(users||[]).map((p:any)=>{
+   const references=[p.assigned_location,...(Array.isArray(p.assigned_locations)?p.assigned_locations:[]),...(Array.isArray(p.assigned_sites)?p.assigned_sites:[])].filter(Boolean);
+   const match=references.map((value:any)=>sitesByName.get(n(String(value).split(':')[0]))).find(Boolean);
+   if(!match)return p;
+   return {...p,division:p.division||match.division,subdivision:p.subdivision||match.subdivision,substation:p.substation||match.substation,assigned_site_name:match.site_name};
+  });
+  const people=resolvedUsers.filter((p:any)=>area(me,p)&&!p.termination_date&&n(p.employment_status)!=='terminated');
   const commandPlatoons=admin(me)?['A','B']:[String(me.oversight_platoon||me.platoon||'').toUpperCase()].filter(value=>['A','B'].includes(value));
   const platoon_commands=commandPlatoons.map(platoon=>activePlatoonCommand(users||[],platoon));
   const locations=(sites||[]).filter((p:any)=>p.active!==false&&area(me,p,false));
@@ -110,7 +121,7 @@ Deno.serve(async(req)=>{
    await sdk.asServiceRole.entities.AuditLog.create({entity_type:entity,entity_id:String(result?.id||id),action,actor_id:String(me.id),actor_name:String(me.email||''),timestamp:new Date().toISOString(),description:`Scoped supervisor ${action}: ${kind}`}).catch(()=>null);
    return Response.json({success:true,record:result});
   }
-  return Response.json({success:true,platoon_commands:kind==='personnel'?platoon_commands:undefined,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_original_url||p.profile_photo_url||'',mobile_phone:p.mobile_phone||'',work_email:p.work_email||p.email,assigned_location:p.assigned_location||'',assigned_locations:p.assigned_locations||[],assigned_sites:p.assigned_sites||[],platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
+  return Response.json({success:true,platoon_commands:kind==='personnel'?platoon_commands:undefined,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_original_url||p.profile_photo_url||'',mobile_phone:p.mobile_phone||'',work_email:p.work_email||p.email,assigned_site_name:p.assigned_site_name||'',assigned_location:p.assigned_location||'',assigned_locations:p.assigned_locations||[],assigned_sites:p.assigned_sites||[],platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
         termination_date:p.termination_date||'',user_type:p.user_type||'',account_type:p.account_type||'',
         platoon:p.platoon,division:p.division,subdivision:p.subdivision,substation:p.substation,unit_number:p.unit_number})),locations:locations.map((p:any)=>({id:p.id,site_name:p.site_name,division:p.division,subdivision:p.subdivision,substation:p.substation}))});
  }catch(error:any){console.error('Scoped supervisor records failed',error);return Response.json({error:'Unable to load supervisor records safely; retry.'},{status:503});}
