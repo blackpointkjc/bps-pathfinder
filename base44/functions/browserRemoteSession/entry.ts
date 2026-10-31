@@ -48,7 +48,7 @@ export default async function (req: Request): Promise<Response> {
     const mutation = [
       'mutation StartBrowser($url: String!) {',
       ' goto(url: $url, waitUntil: domContentLoaded) { status }',
-      ' liveURL(detached: true, interactable: '+String(isAdmin)+', showBrowserInterface: '+String(isAdmin)+', timeout: '+VIEW_MS+') { liveURL timeout }',
+      ' liveURL(detached: true, interactable: '+String(isAdmin)+', showBrowserInterface: '+String(isAdmin)+', type: jpeg, quality: 92, captureScale: 2, resizable: true, timeout: '+VIEW_MS+') { liveURL timeout }',
       ' reconnect(timeout: 120000) { browserQLEndpoint }',
       '}'
     ].join('\n');
