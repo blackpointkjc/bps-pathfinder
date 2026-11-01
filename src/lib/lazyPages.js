@@ -25,7 +25,7 @@ const Pages = Object.fromEntries([...routes].map(([name,file])=>{
  const source=browserRouteLoaders[name]||pageModules['../pages/'+file];
  if(!source)throw new Error('Missing route module: '+name);
  const load=()=>{
-  if(!modulePromises.has(file))modulePromises.set(file,source().then(value=>{loadedModules.set(file,value);return value;}));
+  if(!modulePromises.has(file))modulePromises.set(file,source().then(value=>{loadedModules.set(file,value);return value;}).catch(error=>{modulePromises.delete(file);throw error;}));
   return modulePromises.get(file);
  };
  routeLoaders.set(name,load);
