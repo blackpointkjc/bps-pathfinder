@@ -121,8 +121,9 @@ export default async function(req){
    const page=Math.max(0,Math.min(10000,Number(body.page)||0)),limit=50;
    const query=review?{}:{$or:[{investigator_id:u.id},{investigator_id:''},{status:'new'}]};
    const rows=await db.PSCase.filter(query,'-created_date',limit,page*limit);
+   const findings={};if(action==='reports'&&rows.length){const ids=new Set(rows.filter(canRead).map(c=>c.id));const allegations=await db.PSRecord.filter({kind:'allegation'},'-created_date',1000);for(const r of allegations){if(ids.has(r.case_id))findings[r.finding||'pending']=(findings[r.finding||'pending']||0)+1;}}
    await audit(db,u,action==='reports'?'report_view':'inbox_view');
-   return Response.json({cases:rows.filter(canRead).map(({tracking_hash,...c})=>c),staff:staffSummary,reviewer:review,page,has_more:rows.length===limit});
+   return Response.json({findings,cases:rows.filter(canRead).map(({tracking_hash,...c})=>c),staff:staffSummary,reviewer:review,page,has_more:rows.length===limit});
   }
   if(action==='export'){
    if(!review)fail('Only reviewers may export case information.',403);

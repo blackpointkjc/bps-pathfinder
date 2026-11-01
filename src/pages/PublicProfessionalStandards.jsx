@@ -18,7 +18,7 @@ export default function PublicProfessionalStandards(){
  useEffect(()=>{psCall({action:'contact'}).then(setContact).catch(()=>setError('Contact information could not load. Please retry.'));},[]);
  const change=(key,value)=>setForm(p=>({...p,[key]:value}));
  const select=key=>{setTab(key);setError('');setStatus(null);setFiles([]);setEvidenceMessage('');};
- const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{const r=await psCall({action:'submit',kind:tab,...form},files);setReceipt(r);setFiles([]);}catch(err){setError(err?.response?.data?.error||err.message||'Could not submit. Please retry.');}finally{setBusy(false);}};
+ const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{const r=await psCall({action:'submit',kind:tab,...form,incident_date:form.incident_date?new Date(form.incident_date).toISOString():''},files);setReceipt(r);setFiles([]);}catch(err){setError(err?.response?.data?.error||err.message||'Could not submit. Please retry.');}finally{setBusy(false);}};
  const track=async e=>{e.preventDefault();setBusy(true);setError('');setStatus(null);try{setStatus(await psCall({action:'track',...tracking}));}catch(err){setError(err?.response?.data?.error||err.message||'Unable to find this submission.');}finally{setBusy(false);}};
  return <main className="portal-shell fixed inset-0 overflow-y-auto">
   <header><div className="flex items-center justify-between gap-4"><div><div className="text-xs font-bold tracking-[.2em]">BPS PATHFINDER</div><strong className="block mt-2 text-xl">Professional Standards</strong></div><Link to="/Login">Staff sign in →</Link></div></header>
