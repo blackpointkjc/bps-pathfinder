@@ -27,7 +27,7 @@ const digest=async s=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextE
 assert.equal((await call({action:'list'})).httpStatus,401);
 assert.equal((await call({action:'contact'})).httpStatus,200);
 const receipt=await call({action:'submit',kind:'complaint',anonymous:true,complainant_name:'DO NOT STORE',contact_email:'private@example.test',description:'A synthetic test description without real allegations.',location:'Test-only location',incident_date:'2026-01-01T12:00',officers:'Unknown'},[new File(['evidence'],'test.txt',{type:'text/plain'})]);
-assert.equal(receipt.httpStatus,200);assert.ok(receipt.tracking_code.length>=48);
+assert.equal(receipt.httpStatus,200);assert.match(receipt.tracking_code,/^[0-9]{4}$/);
 const c=tables.PSCase[0];assert.equal(c.complainant_name,'Anonymous');assert.equal(c.contact_email,'');assert.notEqual(c.tracking_hash,receipt.tracking_code);
 assert.equal(tables.PSRecord[0].file_uri,'private/mock/evidence');
 assert.equal(tables.PSRecord[0].file_hash,await digest('evidence'));

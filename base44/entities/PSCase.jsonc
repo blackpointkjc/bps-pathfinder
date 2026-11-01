@@ -88,6 +88,13 @@
     },
     "last_reminder_day": {
       "type": "string"
+    },
+    "tracking_failures": {
+      "type": "integer",
+      "default": 0
+    },
+    "tracking_locked_until": {
+      "type": "string"
     }
   },
   "rls": {

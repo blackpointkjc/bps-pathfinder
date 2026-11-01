@@ -70,18 +70,25 @@ export default async function(req){
    if(!anonymous&&(!text(body.complainant_name)||!['email','phone','none'].includes(body.contact_preference)))fail('Enter your name and a contact preference, or choose anonymous.');
    if(!anonymous&&body.contact_preference==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text(body.contact_email)))fail('Enter a valid email address.');
    if(!anonymous&&body.contact_preference==='phone'&&!text(body.contact_phone))fail('Enter a phone number.');
-   const tracking_code=random(),reference='PS-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
+   const tracking_code=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,'0'),reference='PS-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
    const c=await db.PSCase.create({reference,tracking_hash:await hash(tracking_code),kind:body.kind,anonymous,complainant_name:anonymous?'Anonymous':text(body.complainant_name,200),contact_email:anonymous?'':text(body.contact_email,250),contact_phone:anonymous?'':text(body.contact_phone,80),contact_preference:anonymous?'none':text(body.contact_preference,30),language:text(body.language,100),accessibility:text(body.accessibility,1000),incident_date:text(body.incident_date,40),location:text(body.location,500),officers:text(body.officers,1000),witnesses:text(body.witnesses,2000),description:text(body.description,12000),status:'new',public_status:'Received',public_message:'Your submission has been received for intake review.',category:'unclassified',priority:'normal',version:1,legal_hold:false});
    await audit(db,null,'public_submission',c.id,body.kind);
    let evidence_error='';
    try{await upload(base44,db,null,c,files);}catch{evidence_error='Your report was saved, but one or more evidence files could not be attached. Use your reference and private code to retry from Check Status.';}
-   return Response.json({reference,tracking_code,evidence_error});
+   return Response.json({reference,tracking_code,evidence_error,submitted_at:c.created_date||new Date().toISOString()});
   }
   if(action==='track'||action==='public_evidence'){
    throttle(req,'track');
    const list=await db.PSCase.filter({reference:text(body.reference,80).toUpperCase()},'-created_date',1);
    const c=list[0],h=await hash(text(body.tracking_code,100));
-   if(!c||h!==c.tracking_hash)fail('Reference or private tracking code is incorrect.',404);
+   if(!c)fail('Reference or private tracking code is incorrect.',404);
+   if(c.tracking_locked_until&&Date.parse(c.tracking_locked_until)>Date.now())fail('Tracking is temporarily locked. Please wait 15 minutes and try again.',429);
+   if(h!==c.tracking_hash){
+    const failures=(c.tracking_locked_until&&Date.parse(c.tracking_locked_until)<=Date.now()?0:Number(c.tracking_failures||0))+1;
+    await db.PSCase.update(c.id,{tracking_failures:failures,tracking_locked_until:failures>=5?new Date(Date.now()+15*60000).toISOString():''});
+    fail('Reference or private tracking code is incorrect.',404);
+   }
+   if(c.tracking_failures||c.tracking_locked_until)await db.PSCase.update(c.id,{tracking_failures:0,tracking_locked_until:''});
    if(action==='public_evidence'){await upload(base44,db,null,c,files);await audit(db,null,'public_evidence_added',c.id);return Response.json({success:true});}
    return Response.json({reference:c.reference,kind:c.kind,status:c.public_status||'Received',message:c.public_message||'',submitted_at:c.created_date,updated_at:c.updated_date});
   }
@@ -125,7 +132,7 @@ export default async function(req){
    const rows=await db.PSCase.filter(query,'-created_date',limit,page*limit);
    const findings={};if(action==='reports'&&rows.length){const ids=new Set(rows.filter(canRead).map(c=>c.id));const allegations=await db.PSRecord.filter({kind:'allegation'},'-created_date',1000);for(const r of allegations){if(ids.has(r.case_id))findings[r.finding||'pending']=(findings[r.finding||'pending']||0)+1;}}
    await audit(db,u,action==='reports'?'report_view':'inbox_view');
-   return Response.json({findings,cases:rows.filter(canRead).map(({tracking_hash,...c})=>c),staff:staffSummary,reviewer:review,page,has_more:rows.length===limit});
+   return Response.json({findings,cases:rows.filter(canRead).map(({tracking_hash,tracking_failures,tracking_locked_until,...c})=>c),staff:staffSummary,reviewer:review,page,has_more:rows.length===limit});
   }
   if(action==='export'){
    if(!review)fail('Only reviewers may export case information.',403);
@@ -144,7 +151,7 @@ export default async function(req){
   if(action==='get'){
    await audit(db,u,'case_view',c.id);
    const history=await db.PSAudit.filter({case_id:c.id},'-created_date',250);
-   const {tracking_hash,...safe}=c;
+   const {tracking_hash,tracking_failures,tracking_locked_until,...safe}=c;
    return Response.json({case:safe,records:records.map(({file_uri,...r})=>r),audit:history,staff:staffSummary,reviewer:review});
   }
   const editable=review||c.investigator_id===u.id;
