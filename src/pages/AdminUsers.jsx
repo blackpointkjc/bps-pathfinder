@@ -1160,15 +1160,10 @@ export default function AdminUsers({ embedded = false }) {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{createAsClient ? 'Create New Client' : 'Create New Officer'}</DialogTitle>
+            <DialogTitle>Create Account Invitation</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit} className="space-y-6">
-            <label className="block text-sm font-semibold">Account category<select value={createFormData.requested_type || 'employee'} onChange={e=>setCreateFormData(p=>({...p,requested_type:e.target.value}))} className="mt-2 w-full rounded border p-2"><option value="employee">Employee</option><option value="student">Student</option><option value="visitor">Visitor</option></select></label>
-            <label htmlFor="create_as_client" className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 cursor-pointer">
-              <Checkbox checked={createAsClient} onCheckedChange={(checked) => setCreateAsClient(checked === true)} id="create_as_client" />
-              <span className="text-sm font-semibold text-slate-700">This user is a Client</span>
-              <span className="text-xs text-slate-500">Only first name, last name, phone and email are required; the account goes to Pending Users for approval.</span>
-            </label>
+            <label className="block text-sm font-semibold">Account category<select value={createAsClient ? 'client' : createFormData.requested_type || 'employee'} onChange={e=>{const requested_type=e.target.value;setCreateAsClient(requested_type==='client');setCreateFormData(p=>({...p,requested_type}));}} className="mt-2 w-full rounded border p-2"><option value="employee">Employee</option><option value="student">Student</option><option value="visitor">Visitor</option><option value="client">Client</option></select></label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="create_first_name" className="text-xs text-slate-500">First Name *</Label>
@@ -1201,10 +1196,11 @@ export default function AdminUsers({ embedded = false }) {
                 />
               </div>
 
-              {!createAsClient && (<div>
+              {!createAsClient && createFormData.requested_type !== 'visitor' && (<div>
                 <Label htmlFor="create_date_of_birth" className="text-xs text-slate-500">Date of Birth</Label>
                 <Input
                   id="create_date_of_birth"
+                  required={createFormData.requested_type === 'student'}
                   type="date"
                   value={createFormData.date_of_birth}
                   onChange={(e) => setCreateFormData({...createFormData, date_of_birth: e.target.value})}
@@ -1222,7 +1218,7 @@ export default function AdminUsers({ embedded = false }) {
                 />
               </div>
 
-              {!createAsClient && (<div>
+              {!createAsClient && (!createFormData.requested_type || createFormData.requested_type === 'employee') && (<div>
                 <Label htmlFor="create_badge_number" className="text-xs text-slate-500">Badge Number</Label>
                 <Input
                   id="create_badge_number"
@@ -1231,7 +1227,7 @@ export default function AdminUsers({ embedded = false }) {
                 />
               </div>)}
 
-              {!createAsClient && (<div>
+              {!createAsClient && (!createFormData.requested_type || createFormData.requested_type === 'employee') && (<div>
                 <Label className="text-xs text-slate-500">Rank *</Label>
                 <Select
                   value={createFormData.rank}
@@ -1262,7 +1258,7 @@ export default function AdminUsers({ embedded = false }) {
                 </Select>
               </div>)}
 
-              {!createAsClient && (<div>
+              {!createAsClient && (!createFormData.requested_type || createFormData.requested_type === 'employee') && (<div>
                 <Label htmlFor="create_unit_number" className="text-xs text-slate-500">Unit Number</Label>
                 <Input
                   id="create_unit_number"
@@ -1271,7 +1267,7 @@ export default function AdminUsers({ embedded = false }) {
                 />
               </div>)}
 
-              {!createAsClient && (<div>
+              {!createAsClient && (!createFormData.requested_type || createFormData.requested_type === 'employee') && (<div>
                 <Label htmlFor="create_division" className="text-xs text-slate-500">Division</Label>
                 <select
                   id="create_division"
@@ -1286,7 +1282,7 @@ export default function AdminUsers({ embedded = false }) {
                 </select>
               </div>)}
 
-              {!createAsClient && (<div>
+              {!createAsClient && (!createFormData.requested_type || createFormData.requested_type === 'employee') && (<div>
                 <Label htmlFor="create_hire_date" className="text-xs text-slate-500">Hire Date *</Label>
                 <Input
                   id="create_hire_date"
@@ -1297,7 +1293,7 @@ export default function AdminUsers({ embedded = false }) {
                 />
               </div>)}
 
-              {!createAsClient && (<div>
+              {!createAsClient && (!createFormData.requested_type || createFormData.requested_type === 'employee') && (<div>
                 <Label htmlFor="create_dcjs_number" className="text-xs text-slate-500">DCJS Number</Label>
                 <Input
                   id="create_dcjs_number"
@@ -1309,7 +1305,7 @@ export default function AdminUsers({ embedded = false }) {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
-                <strong>Note:</strong> {createAsClient ? 'The client will be invited by email and will appear in Pending Users for approval, just like a new employee.' : 'The officer account will be created immediately and they will receive login credentials via email.'}
+                <strong>Note:</strong> An invitation email lets the person securely set their own password. Their account remains pending until an authorized manager approves access.
               </p>
             </div>
 
@@ -1327,7 +1323,7 @@ export default function AdminUsers({ embedded = false }) {
               </Button>
               <Button type="submit" disabled={createUserMutation.isPending}>
                 <Save className="w-4 h-4 mr-2" />
-                {createUserMutation.isPending ? 'Creating...' : 'Create Pending User'}
+                {createUserMutation.isPending ? 'Sending invitation...' : 'Send Account Invitation'}
               </Button>
             </div>
           </form>
