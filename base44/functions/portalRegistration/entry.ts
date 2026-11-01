@@ -7,6 +7,17 @@ export default async function(req){
  const me=await base44.auth.me().catch(()=>null);
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
  const body=await req.json();
+ const manager=me.role==='admin'||(me.additional_roles||[]).includes('full_access');
+ if(body.action==='invitations'){
+  if(!manager)return Response.json({error:'Account administrator access required'},{status:403});
+  const rows=await db.PortalInvitation.list('-created_date',200);
+  return Response.json({invitations:rows.map(v=>({id:v.id,email:v.email,account_type:v.account_type,status:v.status,email_sent:v.email_sent,first_name:v.profile?.first_name||'',last_name:v.profile?.last_name||'',date_of_birth:v.profile?.date_of_birth||'',created_date:v.created_date}))});
+ }
+ if(body.action==='cancel_invitation'){
+  if(!manager)return Response.json({error:'Account administrator access required'},{status:403});
+  await db.PortalInvitation.update(clean(body.invitation_id,100),{status:'cancelled'});
+  return Response.json({success:true});
+ }
  const assigned=me.role==='admin'||(me.additional_roles||[]).length>0||['investigator','reviewer'].includes(me.ps_role);
  if (me.portal_approved !== assigned) await db.User.update(me.id,{portal_approved:assigned});
  if(body.action==='profile'){

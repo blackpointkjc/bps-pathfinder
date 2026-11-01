@@ -157,11 +157,13 @@ export default function AdminUsers({ embedded = false }) {
     onSuccess: request => {
       queryClient.invalidateQueries({ queryKey: ['pendingAccessRequests'] });
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['portalInvitations'] });
       alert(`Invitation sent to ${request.email}. The account will appear in Pending Users when Base44 finishes creating it.`);
     },
     onError: error => alert(`Unable to process access request: ${error.message}`),
   });
 
+  const {data: portalInvitations=[]} = useQuery({queryKey:['portalInvitations'],enabled:hasAccess,queryFn:async()=>{const r=await base44.functions.invoke('portalRegistration',{action:'invitations'});if(r.data?.error)throw new Error(r.data.error);return r.data?.invitations||[];},staleTime:15000});
   const { data: divisions } = useQuery({
     queryKey: ['activeDivisions'],
     queryFn: async () => {
@@ -185,6 +187,7 @@ export default function AdminUsers({ embedded = false }) {
       invalidateAppDirectory();
       queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['portalInvitations'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
@@ -687,6 +690,7 @@ export default function AdminUsers({ embedded = false }) {
 
       <div className="space-y-4">
        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-4"><div><h1 className="text-2xl font-bold text-white">Accounts & Access</h1><p className="mt-1 text-sm text-slate-400">Manage staff access and pending accounts. Client accounts are managed under Client Accounts.</p></div><div className="flex gap-2"><Button variant="outline" disabled={checkingAnniversaries} onClick={checkAnniversariesAndBirthdays}>Anniversary announcements</Button><Button onClick={()=>{resetCreateForm();setShowCreateDialog(true);}}><Plus className="mr-2 h-4 w-4"/>Create account</Button></div></header>
+       <section className="rounded-xl border border-slate-700 bg-slate-950 p-4"><h2 className="text-base font-bold text-white">Account invitation delivery</h2><p className="mt-1 text-xs text-slate-400">Latest 200 invitations. Registration stays pending until an administrator or trainer approves access.</p><div className="mt-3 max-h-64 overflow-auto"><table className="w-full text-left text-xs text-slate-200"><thead><tr><th className="p-2">Recipient</th><th className="p-2">Category</th><th className="p-2">Status</th><th className="p-2">Email</th><th className="p-2">Actions</th></tr></thead><tbody>{portalInvitations.map(v=><tr key={v.id} className="border-t border-slate-800"><td className="p-2">{v.first_name} {v.last_name}<span className="block text-slate-400">{v.email}</span></td><td className="p-2">{v.account_type}</td><td className="p-2">{v.status}</td><td className="p-2">{v.email_sent?'Accepted for delivery':'Delivery not confirmed'}</td><td className="p-2">{v.status==='invited'&&<><button type="button" className="mr-3 text-cyan-300 underline" onClick={async()=>{try{const r=await base44.functions.invoke('createPortalAccount',{accountType:v.account_type==='student'?'student_pending':v.account_type==='visitor'?'visitor':v.account_type==='client'?'client':'pending',email:v.email,first_name:v.first_name,last_name:v.last_name,date_of_birth:v.date_of_birth});if(!r.data?.email_sent)throw new Error(r.data?.email_error||r.data?.error||'Delivery not confirmed');await queryClient.invalidateQueries({queryKey:['portalInvitations']});alert('Invitation email accepted for delivery.');}catch(e){alert(e.message);}}}>Resend email</button><button type="button" className="text-amber-300 underline" onClick={async()=>{try{await base44.functions.invoke('portalRegistration',{action:'cancel_invitation',invitation_id:v.id});await queryClient.invalidateQueries({queryKey:['portalInvitations']});}catch(e){alert('Unable to cancel invitation.');}}}>Cancel invitation</button></>}</td></tr>)}</tbody></table>{!portalInvitations.length&&<p className="mt-3 text-xs text-slate-400">No account invitations recorded yet.</p>}</div></section>
        <div className="grid items-end gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3 md:grid-cols-[minmax(0,1fr)_200px_auto]"><label className="text-xs text-slate-400">Search accounts<Input value={accountSearch} onChange={event=>setAccountSearch(event.target.value)} placeholder="Name, rank, unit or email" className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Access role<select value={accountRole} onChange={event=>setAccountRole(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white">{['all','admin','officer','supervisor','hr','trainer','student','support_staff','fleet_manager'].map(role=><option key={role} value={role}>{role==='all'?'All roles':accessLabel(role)}</option>)}</select></label><Button variant="outline" onClick={()=>setActiveTab('pending')}>Pending onboarding ({pendingUsers.length})</Button></div>
 
         {error && (
