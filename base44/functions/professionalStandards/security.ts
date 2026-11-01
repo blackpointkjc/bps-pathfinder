@@ -5,7 +5,7 @@ export const roles = u => new Set([u?.role,...(u?.additional_roles||[])].map(v=>
 export const terminated = u => !u || u.disabled || u.termination_date || ['terminated','suspended','denied'].includes(String(u.account_status||u.employment_status||'').toLowerCase());
 export const manager = u => !terminated(u) && (u.role==='admin'||roles(u).has('full_access'));
 export const psRole = u => terminated(u) ? '' : manager(u) ? 'reviewer' : ['investigator','reviewer'].includes(u.ps_role) ? u.ps_role : '';
-export const hash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
+export const hash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',value instanceof Uint8Array ? value : new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export const random = (n=24) => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export const fail = (message,status=400) => { throw Object.assign(new Error(message),{status}); };
 export async function identity(base44) {

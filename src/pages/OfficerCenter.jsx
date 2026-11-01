@@ -68,7 +68,7 @@ const TOOLS = {
     { id: 'records', label: 'Records AI (People & Vehicles)', component: RecordsAssistant },
     { id: 'maintenance', label: 'Maintenance', component: MaintenanceReports },
     { id: 'opendoor', label: 'Open Door', component: OpenDoorReports },
-    { id: 'confidential', label: 'Confidential', component: ConfidentialReport },
+
     { id: 'expense', label: 'Expense Report', component: ExpenseReports },
     { id: 'qr', label: 'QR Patrol Scan', component: QRPatrolScan },
   ],
@@ -81,7 +81,7 @@ const TOOLS = {
   profile: [
     { id: 'profile', label: 'My Profile', component: OfficerProfile },
     { id: 'performance', label: 'My Performance', component: MyPerformanceAnalytics },
-    { id: 'reviews', label: 'My Reviews & Feedback', component: OfficerPerformanceReviews },
+
     { id: 'training', label: 'Training', component: OfficerTraining },
     { id: 'rank', label: 'Rank Structure', component: RankStructure },
     { id: 'duties', label: 'Rank Duties', component: RankDuties },

@@ -30,7 +30,7 @@ const SECTIONS = [
   { id: 'calendar', label: 'Duty Supervisor Coverage', description: 'Company duty supervisors and coverage areas', icon: Shield },
   { id: 'cad', label: 'My Platoon CAD', description: 'Assigned platoon calls, units and officer welfare', icon: Radio },
   { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
-  { id: 'oversight', label: 'Personnel Oversight', description: 'Inspections, performance reviews, write-ups, force and complaints', icon: ClipboardCheck },
+
 ];
 
 const COMMAND_TOOLS = [

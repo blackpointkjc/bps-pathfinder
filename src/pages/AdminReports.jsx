@@ -1580,10 +1580,7 @@ const REPORT_WORKSPACES = [
   ['rentroll','Property Rent Roll & Vehicles'],
   ['clientreports','Client Reports'],
   ['supervisorreports','Supervisor Reports'],
-  ['confidential','Confidential Reports'],
   ['cadreports','CAD Reports'],
-  ['complaints','Complaints'],
-  ['commendations','Commendations'],
   ['feedback','Client Feedback'],
 ];
 export default function AdminReports(){

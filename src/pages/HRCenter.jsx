@@ -15,7 +15,7 @@ const SECTIONS = [
   { id: 'employees', label: 'Workforce & Structure', description: 'Employee records and operating divisions', icon: Building2 },
   { id: 'support', label: 'Time & Attendance', description: 'Employee time records and support clock-in', icon: Clock3 },
   { id: 'leave', label: 'PTO & Leave', description: 'Employee PTO balances, adjustments and loss history', icon: CalendarClock },
-  { id: 'clients', label: 'Performance Reviews', description: 'Annual and manual employee review workflow', icon: Briefcase },
+
 ];
 
 const TOOLS = {

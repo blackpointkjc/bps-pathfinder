@@ -174,8 +174,8 @@ export default function AdminUsers({ embedded = false }) {
   const createUserMutation = useMutation({
     mutationFn: async (data) => {
       const response = await base44.functions.invoke('createPortalAccount', {
-        accountType: 'pending',
         ...data,
+        accountType: createAsClient ? 'client' : data.requested_type === 'student' ? 'student_pending' : data.requested_type === 'visitor' ? 'visitor' : 'pending',
       });
       const payload = response?.data || response || {};
       if (payload.error || payload.success !== true) throw new Error(payload.error || 'Account invitation was not confirmed');

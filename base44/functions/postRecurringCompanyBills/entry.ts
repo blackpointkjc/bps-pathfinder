@@ -3,6 +3,8 @@ import {postRecurringBills} from './recurring.ts';
 Deno.serve(async(req)=>{
   try{
     const base44=createClientFromRequest(req);
+    const caller=await base44.auth.me().catch(()=>null);
+    if(!caller||(!caller.is_service&&caller.role!=='admin'))return Response.json({error:'Unauthorized'},{status:403});
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const now=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'}).format(new Date());
     if(Number(now)!==8)return Response.json({success:true,skipped:true,reason:'Recurring bills post at 8 AM Eastern'});
