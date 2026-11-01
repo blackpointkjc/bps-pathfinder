@@ -79,25 +79,6 @@ const ADMIN_SECTIONS = [
 
 
 
-const ADMIN_SUPERVISOR_SECTIONS = [
-  { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: Activity },
-  { id: 'calendar', label: 'Duty Supervisor Coverage', description: 'Company duty supervisors and coverage areas', icon: Calendar },
-  { id: 'callouts', label: 'Officer Call-Outs', description: 'Record an officer absence and update the schedule', icon: ClipboardCheck },
-  { id: 'operations', label: 'Supervisor Operations', description: 'Live oversight, welfare, requests, handoff and command tasks', icon: ClipboardCheck },
-
-];
-
-const ADMIN_SUPERVISOR_TOOLS = {
-  operations: [
-    { id: 'field', label: 'Live Field Oversight', component: SupervisorFieldOversight },
-    { id: 'handover', label: 'Duty Supervisor Handoff', component: SupervisorShiftHandover },
-    { id: 'tasks', label: 'Action Items', component: SupervisorTasks },
-    { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
-    { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
-    { id: 'rank', label: 'Rank Structure', component: RankStructure },
-  ],
-};
-
 function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
@@ -184,17 +165,6 @@ function AdminReportsQualityHub() {
 }
 
 function AdminCommunicationsHub(){return <AdminAnnouncements embedded/>;}
-
-function AdminSupervisorToolsOnly() {
-  return <UnifiedCenter eyebrow="Supervisor" title="Supervisor" description="Complete supervisor tools for administrators, without the personal Officer Workspace." sections={ADMIN_SUPERVISOR_SECTIONS} defaultSection="overview" queryParam="admin_supervisor_section" embedded>
-    {section => {
-      if (section === 'overview') return <SupervisorOverview />;
-      if (section === 'callouts') return <SupervisorCallOuts />;
-      if (section === 'calendar') return <SupervisorScheduleWorkspace/>;
-      return <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section] || ADMIN_SUPERVISOR_TOOLS.operations} queryParam="admin_supervisor_tool" />;
-    }}
-  </UnifiedCenter>;
-}
 
 function AdministrationToolsOnly() {
   return (
