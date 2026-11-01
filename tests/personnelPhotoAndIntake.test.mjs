@@ -21,3 +21,13 @@ for(const name of ['Complaint','ConfidentialReport','UseOfForceReport','WriteUpR
 assert.equal(all.length,7);
 const failed=await link({...db,PSCase:{filter:async()=>[],create:async()=>{throw Error('temporary failure');}}},user,'Complaint',{id:'saved-source'});assert.equal(failed.pending,true);assert.equal(failed.source_record_id,'saved-source');
 console.log('PASS: photo replacement and removal synchronize active identities and chat portraits; a stale original never overrides the portrait; each native report type creates one linked IA case with a hashed four-digit receipt; case-link failures preserve source recovery.');
+let actor={id:'self',role:'user',email:'self@example.invalid'},validSession=true,updated=0;
+const profiles={self:{...actor,profile_photo_url:'https://example.invalid/old.jpg'},other:{id:'other',profile_photo_url:'https://example.invalid/other.jpg'}};
+const photoSdk={auth:{me:async()=>actor},functions:{invoke:async()=>({data:{success:validSession}})},asServiceRole:{entities:{User:{get:async id=>({...profiles[id]}),update:async(id,patch)=>{updated++;Object.assign(profiles[id],patch);}},AuditLog:{create:async()=>({})}}};
+const photoCode=transformSync(fs.readFileSync('base44/functions/updatePersonnelPhoto/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','return async function(req){'),{loader:'ts'}).code;
+const photoHandler=new Function('createClientFromRequest','synchronizeOfficerIdentity',photoCode)(()=>photoSdk,async()=>[]);
+const photoCall=async data=>{const r=await photoHandler(new Request('https://example.invalid',{method:'POST',body:JSON.stringify(data)}));return{status:r.status,...await r.json()};};
+assert.equal((await photoCall({user_id:'other',profile_photo_url:'https://example.invalid/new.jpg'})).status,403);assert.equal(updated,0);
+assert.equal((await photoCall({profile_photo_url:'https://example.invalid/new.jpg'})).status,200);assert.equal(profiles.self.profile_photo_original_url,'https://example.invalid/new.jpg');
+validSession=false;assert.equal((await photoCall({profile_photo_url:''})).status,401);assert.equal(updated,1);
+console.log('PASS: self-service portrait endpoint checks the active portal session, refuses another person’s photo, and replaces both portrait references together.');

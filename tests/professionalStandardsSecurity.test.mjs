@@ -130,6 +130,11 @@ assert.equal((await call({...directive,directive_type:'written_warning'})).httpS
 assert.equal((await call(directive)).httpStatus,200);assert.equal((await call(directive)).existing,true);
 c.status='approved';assert.equal((await call({...directive,directive_type:'written_warning'})).httpStatus,200);
 assert.ok(tables.WriteUpReport.some(r=>r.severity==='written_warning'&&r.status==='approved'&&r.officer_email===subject.email));
+actor={id:'ordinary-submitter',role:'user',portal_approved:true,additional_roles:['officer'],email:'ordinary@example.test'};
+sdk.entities=db;
+const nativeReceipt=await call({action:'legacy_entity',entity:'Complaint',method:'create',args:[{officer_email:subject.email,description:'Synthetic native portal complaint sent to IA automatically.',incident_date:'2026-11-01',location:'Test-only location'}]});
+assert.equal(nativeReceipt.httpStatus,200);assert.match(nativeReceipt.receipt.tracking_code,/^\d{4}$/);assert.ok(tables.PSCase.some(row=>row.source_entity==='Complaint'&&row.source_record_id===nativeReceipt.result.id));
+assert.equal((await call({action:'list'})).httpStatus,403,'Submitting a complaint does not grant investigation access');
 actor={...reviewer,termination_date:'2026-01-01'};
 assert.equal((await call({action:'list',ps_access:reviewToken})).httpStatus,401);
 for(const name of ['PSCase','PSRecord','PSAudit','PSAccess','PortalInvitation','PortalRegistration']){
