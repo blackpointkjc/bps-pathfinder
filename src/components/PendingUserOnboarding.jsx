@@ -12,6 +12,7 @@ const fields = [
 const required = new Set(fields.filter(([name]) => !['date_of_birth','dcjs_number','dcjs_expiration'].includes(name)).map(([name]) => name));
 export default function PendingUserOnboarding({ user }) {
  const {checkAppState,logout}=useAuth();
+ const denied=user?.account_status==='denied';
  const limitedIntake=['visitor','client'].includes(user?.requested_account_type);
  const [registration,setRegistration]=useState({first_name:user?.first_name||'',last_name:user?.last_name||'',requested_type:user?.requested_account_type||'employee'});
  const isStudent = String(user?.rank || '').toLowerCase() === 'student registration pending';
@@ -37,8 +38,8 @@ export default function PendingUserOnboarding({ user }) {
  return <main className="fixed inset-0 overflow-y-auto bg-[#060b13] p-4 text-white sm:p-8">
   <section className="mx-auto max-w-3xl rounded-2xl border border-amber-600/40 bg-[#101c2c] p-6 shadow-xl">
    <p className="text-xs font-bold uppercase tracking-widest text-amber-400">Black Point | Secure registration</p>
-   <h1 className="mt-2 text-2xl font-black">{submitted ? (isStudent ? 'Pending trainer review' : 'Pending administrator approval') : (isStudent ? 'Complete your student registration' : 'Complete your new account profile')}</h1>
-   {submitted && isStudent ? <div className="mt-5"><StudentPortal onboardingOnly /></div> : submitted ? <div className="mt-5 space-y-4 text-slate-200">
+   <h1 className="mt-2 text-2xl font-black">{denied?'Account request declined':submitted ? (isStudent ? 'Pending trainer review' : 'Pending administrator approval') : (isStudent ? 'Complete your student registration' : 'Complete your new account profile')}</h1>
+   {denied?<div className="mt-5 space-y-3 text-slate-200"><p>An administrator declined this account request. Staff workspaces remain unavailable.</p><p>Contact BlackPoint administration if you need the decision reviewed.</p></div>:submitted && isStudent ? <div className="mt-5"><StudentPortal onboardingOnly /></div> : submitted ? <div className="mt-5 space-y-4 text-slate-200">
      <p>Your account profile has been submitted successfully. Your account will remain pending while the Administration Department reviews your information and confirms your assigned access.</p>
      <p className="text-sm text-slate-400">You may close this page. Once your administrator approves your account, sign in again to access your employee portal.</p>
    </div> : <>

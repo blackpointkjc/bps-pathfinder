@@ -8,6 +8,17 @@ export default async function(req){
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
  const body=await req.json();
  const manager=me.role==='admin'||(me.additional_roles||[]).includes('full_access');
+ if(body.action==='review_account'){
+  if(!manager)return Response.json({error:'Account administrator access required'},{status:403});
+  if(!['deny','restore_pending'].includes(body.decision))return Response.json({error:'Choose a valid review decision'},{status:400});
+  const target=await db.User.get(clean(body.user_id,100));
+  if(!target||target.role==='admin'||(target.additional_roles||[]).length||['reviewer','investigator'].includes(target.ps_role))return Response.json({error:'This action is limited to pending account requests.'},{status:409});
+  const denied=body.decision==='deny';
+  await db.PSAudit.create({actor_id:me.id,actor_name:me.email,action:denied?'account_request_denied':'account_request_restored',details:target.id});
+  await db.User.update(target.id,{account_status:denied?'denied':'pending',portal_approved:false,rank:denied?'Account Request Declined':target.requested_account_type==='student'?'Student Registration Pending':target.requested_account_type==='visitor'?'Visitor Pending':'Pending Assignment'});
+  return Response.json({success:true});
+ }
+ if(body.action==='profile'&&me.account_status==='denied')return Response.json({success:true,pending:true,profile:{...me,portal_approved:false},access_denied:true});
  if(body.action==='invitations'){
   if(!manager)return Response.json({error:'Account administrator access required'},{status:403});
   const rows=await db.PortalInvitation.list('-created_date',200);

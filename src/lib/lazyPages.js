@@ -63,3 +63,5 @@ export function prepareWorkspace(user,onProgress){
  }}).catch(error=>{prepared.delete(user.id);throw error;});
  prepared.set(user.id,task);return task;
 }
+
+export const getPreparedTool = file => loadedModules.get(file)?.default;

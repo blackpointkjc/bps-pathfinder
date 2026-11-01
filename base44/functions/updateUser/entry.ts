@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
         if (updates.portal_approved !== undefined) delete updates.portal_approved;
         const updatePayload: Record<string, unknown> = {};
         if (oooFields.some(field => updates[field] !== undefined)) updatePayload.out_of_office_source='manual';
-        const fields = ['ps_role','portal_approved','out_of_office','out_of_office_start','out_of_office_return','first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','subdivision','substation','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','ssn','date_of_birth','address','city','state','zip','hire_date','termination_date','employment_status','hourly_rate','overtime_rate_override','holiday_rate_override','work_state','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','profile_photo_url','profile_photo_original_url','officer_certifications'];
+        const fields = ['account_status','ps_role','portal_approved','out_of_office','out_of_office_start','out_of_office_return','first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','subdivision','substation','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','ssn','date_of_birth','address','city','state','zip','hire_date','termination_date','employment_status','hourly_rate','overtime_rate_override','holiday_rate_override','work_state','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','profile_photo_url','profile_photo_original_url','officer_certifications'];
         for (const f of fields) {
             if (updates[f] !== undefined) updatePayload[f] = updates[f];
         }
@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
           }
         }
         const mergedAccount={...target,...updatePayload};
+        if (updates.additional_roles !== undefined || updates.role !== undefined || updates.ps_role !== undefined) updatePayload.account_status = 'approved';
         if (updates.additional_roles !== undefined || updates.role !== undefined || updates.ps_role !== undefined) updatePayload.portal_approved = mergedAccount.role === 'admin' || (mergedAccount.additional_roles || []).length > 0 || ['investigator','reviewer'].includes(mergedAccount.ps_role);
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));

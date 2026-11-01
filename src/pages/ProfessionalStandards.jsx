@@ -1,5 +1,6 @@
 import {lazy,Suspense,useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
+import {getPreparedTool} from '@/lib/lazyPages';
 import {useAuth} from '@/lib/AuthContext';
 import {psCall,EvidenceInput} from './PublicProfessionalStandards';
 import '@/components/portal.css';
@@ -31,7 +32,8 @@ export default function ProfessionalStandards(){
  const legacyTabs=reviewer?[['approvals','Officer report approvals'],['complaints','Officer complaints'],['force','Use of force'],['writeups','Write-ups'],['inspections','Inspections'],['reviews','Performance reviews'],['confidential','Confidential reports'],['commendations','Commendations']]:supervisor?[['supervisorComplaints','Officer complaints'],['force','Use of force'],['writeups','Write-ups'],['inspections','Inspections'],['supervisorReviews','Performance reviews']]:[];
  const availableLegacy=[...legacyTabs,['myreviews','My reviews & acknowledgments'],['report','Confidential reporting']];
  useEffect(()=>{const expire=()=>{sessionStorage.removeItem('bps:ps-access');setVerified(false);setDetail(null);};window.addEventListener('bps:ps-verification-expired',expire);return()=>window.removeEventListener('bps:ps-verification-expired',expire);},[]);
- const Legacy=availableLegacy.some(([k])=>k===tab)?legacy[tab]:null;
+ const legacyFiles={approvals:'AdminSupervisorReports',complaints:'AdminComplaints',force:'SupervisorUseOfForce',writeups:'SupervisorWriteUps',inspections:'SupervisorInspections',reviews:'AdminPerformanceReviews',confidential:'AdminConfidentialReports',commendations:'AdminCommendations',supervisorComplaints:'SupervisorComplaints',supervisorReviews:'SupervisorPerformanceReview',myreviews:'OfficerPerformanceReviews',report:'ConfidentialReport'};
+ const Legacy=availableLegacy.some(([k])=>k===tab)?getPreparedTool(legacyFiles[tab]+'.jsx')||legacy[tab]:null;
  const c=detail?.case;
  const records=detail?.records||[];
  const caseSections=['overview','evidence','interviews','tasks','findings','corrective_actions','audit'];

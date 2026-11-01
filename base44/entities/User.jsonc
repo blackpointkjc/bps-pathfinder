@@ -622,6 +622,19 @@
       "rls": {
         "write": false
       }
+    },
+    "account_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied",
+        "suspended",
+        "terminated"
+      ],
+      "rls": {
+        "write": false
+      }
     }
   },
   "required": [
