@@ -9,7 +9,7 @@ const user={id:'person',email:'person@example.invalid',rank:'Officer',unit_numbe
 assert.deepEqual(await sync(entities,user,{profile_photo_url:'old'}),[]);
 assert.equal(rows.ActiveOfficer[0].profile_photo_url,'new');assert.equal(rows.OfficerChatMessage[0].sender_photo_url,'new');assert.equal(rows.SupervisorChatMessage[0].sender_photo_url,'new');
 await sync(entities,{...user,profile_photo_url:''},user);assert.equal(rows.ActiveOfficer[0].profile_photo_url,'');assert.equal(rows.OfficerChatMessage[0].sender_photo_url,'');
-const directory=fs.readFileSync('src/lib/appDirectory.js','utf8');const start=directory.indexOf('function preferOriginalPersonnelPhoto');const stop=directory.indexOf('\n}',start)+2;const choose=new Function(directory.slice(start,stop)+';return preferOriginalPersonnelPhoto;')();
+const directory=fs.readFileSync('src/lib/appDirectory.js','utf8');const start=directory.indexOf('function preferOriginalPersonnelPhoto');const stop=directory.indexOf('\n}',start)+2;const choose=new Function('const portraitOverrides=new Map();'+directory.slice(start,stop)+';return preferOriginalPersonnelPhoto;')();
 assert.equal(choose({profile_photo_url:'new',profile_photo_original_url:'old'}).profile_photo_url,'new');
 const link=load('base44/functions/professionalStandards/reportLink.ts','linkSubmittedReport');let all=[],counter=0;
 const db={User:{filter:async()=>[{id:'subject'}]},PSCase:{filter:async q=>all.filter(r=>r.source_entity===q.source_entity&&r.source_record_id===q.source_record_id),create:async value=>{const r={...value,id:'case-'+(++counter)};all.push(r);return r;}},PSRecord:{create:async()=>({})},PSAudit:{create:async()=>({})}};

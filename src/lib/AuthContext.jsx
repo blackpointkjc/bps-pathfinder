@@ -75,9 +75,13 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!user?.id) return;
     let unsubscribe;
+    const seenPortraits=new Map([[String(user.id),JSON.stringify([user.profile_photo_url,user.profile_photo_original_url])]]);
     try { unsubscribe = base44.entities.User.subscribe(event => {
       const record = event?.data || event?.record;
-      if(record && Object.hasOwn(record,'profile_photo_url'))window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated',{detail:{userId:event?.id||record.id,profile_photo_url:record.profile_photo_url,profile_photo_original_url:record.profile_photo_original_url ?? record.profile_photo_url}}));
+      if(record && Object.hasOwn(record,'profile_photo_url')){
+        const id=String(event?.id||record.id||''),signature=JSON.stringify([record.profile_photo_url,record.profile_photo_original_url]);
+        if(id&&seenPortraits.get(id)!==signature){seenPortraits.set(id,signature);window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated',{detail:{userId:id,profile_photo_url:record.profile_photo_url,profile_photo_original_url:record.profile_photo_original_url ?? record.profile_photo_url}}));}
+      }
       if (String(event?.id || record?.id || '') !== String(user.id) || !record) return;
       const fields = ['role','additional_roles','ps_role','portal_approved','account_status','disabled','termination_date','employment_status','rank','unit_number','hourly_rate','first_name','last_name','full_name','profile_photo_url','profile_photo_original_url','division','platoon','oversight_platoon'];
       const patch = Object.fromEntries(fields.filter(key => record[key] !== undefined).map(key => [key,record[key]]));

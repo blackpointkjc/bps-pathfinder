@@ -4,6 +4,7 @@ import { base44, clearBase44ReadCache } from '@/api/base44Client';
 import { getOfficerPreviewProfile } from '@/utils/officerPreview';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
+const portraitOverrides=new Map();
 let cache = null;
 let cacheAt = 0;
 let pending = null;
@@ -19,6 +20,7 @@ let supervisorOfficerPending = null;
 const TTL_MS = 10 * 60_000;
 const STALE_CACHE_MAX_MS = 24 * 60 * 60_000;
 const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v11';
+try{for(const key of Object.keys(localStorage))if(key.startsWith('bps:app-directory:last-good:')&&key!==DIRECTORY_STORAGE_KEY)localStorage.removeItem(key);}catch{}
 
 function readPersistedDirectory() {
   try {
@@ -42,6 +44,7 @@ if (persistedDirectory?.data) {
 const normalizedIdentity = value => String(value || '').trim().toLowerCase();
 
 export function preferOriginalPersonnelPhoto(user) {
+  if(user&&portraitOverrides.has(String(user.id)))return {...user,...portraitOverrides.get(String(user.id))};
   if (!user || user.profile_photo_url || !user.profile_photo_original_url) return user;
   return { ...user, profile_photo_url: user.profile_photo_original_url };
 }
@@ -239,6 +242,7 @@ if (typeof window !== 'undefined' && !window.__bpsDirectorySyncInstalled) {
     if (!change?.userId || change.profile_photo_url === undefined) return;
     invalidateAppDirectory();clearBase44ReadCache();
     const portrait={profile_photo_url:change.profile_photo_url,profile_photo_original_url:change.profile_photo_original_url ?? change.profile_photo_url};
+    portraitOverrides.set(String(change.userId),portrait);
     const patch=value=>{
       if(!value || typeof value!=='object')return value;
       if(Array.isArray(value))return value.map(patch);
@@ -297,7 +301,7 @@ export async function listSupervisorDirectoryOfficers(sort = 'last_name', limit 
       let payload = result?.data || result || {};
       if (!Array.isArray(payload.assignedPeople) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
-      supervisorOfficerCache = Array.isArray(payload.assignedPeople) ? payload.assignedPeople : [];
+      supervisorOfficerCache = Array.isArray(payload.assignedPeople) ? payload.assignedPeople.map(preferOriginalPersonnelPhoto) : [];
       supervisorOfficerCacheAt = Date.now();
       return supervisorOfficerCache;
     }).finally(() => { supervisorOfficerPending = null; });

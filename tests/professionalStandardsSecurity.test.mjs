@@ -19,7 +19,8 @@ const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,integrations:{Cor
 const security=fs.readFileSync('base44/functions/professionalStandards/security.ts','utf8').replace(/^import .*;\n/m,'').replace(/^export \{.*\};?\n?/gm,'').replaceAll('export ','');
 const source=fs.readFileSync('base44/functions/professionalStandards/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','return async function(req){');
 const caseTools=fs.readFileSync('base44/functions/professionalStandards/caseTools.ts','utf8').replaceAll('export ','');
-const handler=new Function('createClientFromRequest',security+'\n'+caseTools+'\n'+source)(()=>sdk);
+const reportLink=new Function(fs.readFileSync('base44/functions/professionalStandards/reportLink.ts','utf8').replaceAll('export ','')+';return linkSubmittedReport;')();
+const handler=new Function('createClientFromRequest','linkSubmittedReport',security+'\n'+caseTools+'\n'+source)(()=>sdk,reportLink);
 let reqNo=0;
 async function call(payload,files=[]){
  tables.PortalAuthSession[0].user_id=actor?.id;
@@ -92,7 +93,7 @@ actor=reviewer;
 await call({action:'update',case_id:c.id,version:c.version,patch:{status:'investigating'}});
 const subject=await db.User.create({id:'subject',role:'user',additional_roles:['officer'],first_name:'Synthetic',last_name:'Subject',email:'subject@example.test',employment_status:'active',portal_approved:true,account_status:'approved',ssn:'DO_NOT_EXPOSE',bank_routing_number:'DO_NOT_EXPOSE'});
 assert.equal((await call({action:'officer_file',case_id:c.id,officer_id:subject.id})).httpStatus,403);
-assert.equal((await call({action:'link_officers',case_id:c.id,officer_ids:[subject.id]})).httpStatus,200);
+assert.equal((await call({action:'link_officers',case_id:c.id,officer_ids:[subject.id]})).httpStatus,200);assert.match(c.officers,/Synthetic Subject/);assert.equal(c.officers.includes('Unknown'),false);
 let personnel=await call({action:'officer_file',case_id:c.id,officer_id:subject.id});
 assert.equal(personnel.httpStatus,200);assert.equal(personnel.officer.ssn,undefined);assert.equal(personnel.officer.bank_routing_number,undefined);
 const requirement=await db.TrainingRequirement.create({training_name:'Synthetic remedial course',active:true,description:'Normal training instructions'});
@@ -121,6 +122,14 @@ assert.equal((await call({action:'lift_suspension',case_id:c.id,record_id:suspen
 assert.equal((await db.User.get(subject.id)).employment_status,'active');assert.equal((await db.User.get(subject.id)).portal_approved,true);
 assert.equal(tables.AccountLock.find(v=>v.id===suspension.linked_id).locked,false);
 assert.ok(tables.PSAudit.some(v=>v.action==='officer_file_view'));assert.ok(tables.PSAudit.some(v=>v.action==='officer_suspended'));
+actor=investigator;
+const directive={action:'issue_directive',case_id:c.id,officer_id:subject.id,directive_type:'counseling',instructions:'Complete a coaching meeting and document the agreed improvement plan.',reason:'Private documented synthetic counseling decision.'};
+assert.equal((await call(directive)).httpStatus,403);
+actor=reviewer;c.status='investigating';
+assert.equal((await call({...directive,directive_type:'written_warning'})).httpStatus,400);
+assert.equal((await call(directive)).httpStatus,200);assert.equal((await call(directive)).existing,true);
+c.status='approved';assert.equal((await call({...directive,directive_type:'written_warning'})).httpStatus,200);
+assert.ok(tables.WriteUpReport.some(r=>r.severity==='written_warning'&&r.status==='approved'&&r.officer_email===subject.email));
 actor={...reviewer,termination_date:'2026-01-01'};
 assert.equal((await call({action:'list',ps_access:reviewToken})).httpStatus,401);
 for(const name of ['PSCase','PSRecord','PSAudit','PSAccess','PortalInvitation','PortalRegistration']){
