@@ -30,7 +30,7 @@ export async function notify(base44,to,subject,body,actor=null,existingId='') {
  }catch{}
  let delivered=false,lastError='';
  try{const {companyDelivery}=await import('./delivery.ts');delivered=await companyDelivery(base44,to,subject,body,actor);}catch(error){lastError=/expired|authorization|Microsoft|management/i.test(String(error?.message||''))?'Management email authorization is unavailable or expired. Reconnect the management Microsoft mailbox in Mail settings.':'The configured company SMTP sender could not accept the message. Check the sender connection in account email settings.';}
- if(!delivered){try{await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});delivered=true;}catch{lastError=(lastError||'No authorized company sender is available.')+' Base44 email fallback also did not accept the message.';}}
+ if(!delivered){try{const result=await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});if(result?.error||result?.success===false)throw new Error('Email provider rejected the message.');delivered=true;}catch{lastError=(lastError||'No authorized company sender is available.')+' Base44 email fallback also did not accept the message.';}}
  if(item)await db.PSNotification.update(item.id,{status:delivered?'sent':'failed',last_error:delivered?'':lastError,...(delivered?{sent_at:new Date().toISOString()}:{})});
  return delivered;
 }

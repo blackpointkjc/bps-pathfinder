@@ -228,7 +228,7 @@ export default async function(req){
    await audit(db,u,'case_updated',c.id,Object.keys(updates).join(', '));
    let email_sent=null;
    if(updates.investigator_id){const person=eligible.find(v=>v.id===updates.investigator_id);email_sent=await notify(base44,person?.email,'Professional Standards assignment '+c.reference,'A case has been assigned to you. Sign in to BPS Pathfinder and open Professional Standards.',u);}
-   if(body.send_notice===true){
+   if(body.send_notice===true&&c.contact_preference==='email'&&c.contact_email){
     if(!review)fail('Reviewer access required.',403);
     email_sent=await notify(base44,c.contact_preference==='email'?c.contact_email:'','Professional Standards update '+c.reference,(updates.public_message||c.public_message||'A status update is available using your reference and private tracking code.'),u);
     await audit(db,u,'approved_notice',c.id,email_sent?'sent':'not delivered / no email preference');

@@ -101,7 +101,10 @@ export async function linkedCaseTools(ctx){
   if(person.role==='admin')fail('System administrator suspensions require main account administration. Record the recommendation in this case.',403);
   if(reason.length<20)fail('Document the suspension decision and reason in at least 20 characters.');
   if(records.some(r=>r.action_type==='suspension'&&r.officer_id===person.id&&r.status!=='completed'))return Response.json({success:true,existing:true});
-  const now=new Date().toISOString(),previous={employment_status:person.employment_status||'active',account_status:person.account_status||'approved',portal_approved:person.portal_approved!==false};
+  const prior=await db.PSRecord.filter({officer_id:person.id,action_type:'suspension'},'-created_date',100);
+  const baseline=prior.find(r=>r.status!=='completed'&&r.previous_account_state?.employment_status!=='suspended')?.previous_account_state;
+  const now=new Date().toISOString(),previous=baseline||{employment_status:person.employment_status||'active',account_status:person.account_status||'approved',portal_approved:person.portal_approved!==false};
+
   const lock=await db.AccountLock.create({user_id:person.id,user_email:person.email,locked:true,reason:'Professional Standards suspension · '+c.reference,message:'Your account is suspended. Contact BlackPoint administration.',locked_by_email:u.email,locked_by_name:actorName(u),locked_at:now});
   let suspension;
   try{suspension=await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:'suspension',officer_id:person.id,linked_entity:'AccountLock',linked_id:lock.id,previous_account_state:previous,title:'Officer suspension',body:reason,status:'applying',suspension_until:text(body.suspension_until,40),author_id:u.id,author_name:actorName(u)});}catch(error){await db.AccountLock.update(lock.id,{locked:false,unlocked_at:now,unlocked_by_email:u.email});throw error;}
