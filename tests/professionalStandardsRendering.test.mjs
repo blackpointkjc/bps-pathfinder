@@ -6,6 +6,7 @@ import React from 'react';
 const require=createRequire(import.meta.url);
 globalThis.window={location:{search:''}};
 const result=await build({entryPoints:['src/pages/ProfessionalStandards.jsx'],bundle:true,write:false,format:'cjs',platform:'node',packages:'external',jsx:'automatic',alias:{'@':process.cwd()+'/src'},plugins:[{name:'isolate-render',setup(b){
+ b.onResolve({filter:/^lucide-react$/},()=>({path:process.cwd()+'/node_modules/lucide-react/dist/esm/lucide-react.js'}));
  b.onResolve({filter:/AuthContext|lazyPages|base44Client|PublicProfessionalStandards|\.css$|react-router-dom/},args=>({path:args.path,namespace:'fixture'}));
  b.onResolve({filter:/^\.\/(Admin|Supervisor|Officer|ConfidentialReport)/},args=>({path:args.path,namespace:'fixture'}));
  b.onLoad({filter:/.*/,namespace:'fixture'},args=>{
