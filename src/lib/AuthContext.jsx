@@ -196,7 +196,8 @@ export const AuthProvider = ({ children }) => {
           type: 'microsoft_session_expired',
           message: 'Your Microsoft session has expired. Please sign in again with your BlackPoint email.'
         });
-      } else if (error.status === 401 || error.status === 403) {
+      } else if ([401,403].includes(error.status||error?.response?.status)) {
+        if(error?.response?.data?.code==='SESSION_REAUTH_REQUIRED'){appParams.token=null;base44.auth.logout(window.location.origin+'/Login');}
         setAuthError({ type: 'auth_required', message: 'Authentication required' });
       } else {
         setAuthError({
@@ -529,7 +530,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if(!isAuthenticated||!user?.id)return;
-    return watchInactivity({userId:user.id,issuedAt:Date.parse(user.__portal_session_started_at||''),onExpire:()=>{
+    return watchInactivity({userId:user.id,issuedAt:Date.parse(user.__portal_session_started_at||''),onActivity:()=>window.dispatchEvent(new Event('bps:auth-activity')),onExpire:()=>{
       try{localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY,JSON.stringify({reason:'You were signed out after 30 minutes of inactivity. Please sign in again.',issuedBy:'Pathfinder session security',issuedAt:new Date().toISOString()}));}catch{}
       setUser(null);setIsAuthenticated(false);setAccountLock(null);
       clearBase44ReadCache();
@@ -541,16 +542,19 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(()=>{
     if(!isAuthenticated||!user?.id)return;
-    let lastSent=0,stopped=false;
-    const check=async()=>{
+    let lastSent=Number(localStorage.getItem(activityKey(user.id))||0),stopped=false,checking=false,lastActivitySent=0;
+    const check=async(activityEvent=false)=>{
+      if(checking||activityEvent&&Date.now()-lastActivitySent<60000)return;checking=true;
       try{
         const activity=Number(localStorage.getItem(activityKey(user.id))||0);
         const response=await base44.functions.invoke('portalSession',{action:activity>lastSent?'activity':'check'});
-        if(response.data?.success)lastSent=activity;
-      }catch(error){if(error?.response?.data?.code==='SESSION_REAUTH_REQUIRED'&&!stopped)window.dispatchEvent(new Event('bps:session-reauthentication-required'));}
+        if(response.data?.success&&activity>lastSent){lastSent=activity;lastActivitySent=Date.now();}
+      }catch(error){if(error?.response?.data?.code==='SESSION_REAUTH_REQUIRED'&&!stopped)window.dispatchEvent(new Event('bps:session-reauthentication-required'));}finally{checking=false;}
     };
-    const timer=window.setInterval(check,60000);
-    return()=>{stopped=true;window.clearInterval(timer);};
+    const onActivity=()=>void check(true);
+    window.addEventListener('bps:auth-activity',onActivity);
+    const timer=window.setInterval(()=>void check(),60000);
+    return()=>{stopped=true;window.clearInterval(timer);window.removeEventListener('bps:auth-activity',onActivity);};
   },[isAuthenticated,user?.id]);
 
   useEffect(()=>{

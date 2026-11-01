@@ -5,7 +5,8 @@ import '@/lib/AuthContext';
 import {base44} from '@/api/base44Client';
 import ProfessionalStandards from '@/pages/ProfessionalStandards';
 import '@/index.css';
-import '@/globals.css';
+import '@/responsive.css';
+import '@/field-readability.css';
 const rows=[
 {id:'design1',reference:'PS-2026-EXAMPLE-01',kind:'complaint',officers:'Example Officer',location:'Sample assignment',status:'new',priority:'normal',investigator_id:'',created_date:'2026-11-01T10:00:00Z',version:1,description:'Synthetic design preview only.'},
 {id:'design2',reference:'PS-2026-EXAMPLE-02',kind:'complaint',officers:'Example Officer',location:'Sample assignment',status:'investigating',priority:'high',investigator_id:'reviewer',due_date:'2026-11-06',created_date:'2026-10-30T10:00:00Z',version:1,description:'Synthetic design preview only.'},

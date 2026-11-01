@@ -6,14 +6,14 @@ export const activityKey = userId => 'bps:auth-activity:'+userId;
 export function recordLoginActivity(userId,storage=localStorage,now=Date.now()){
  if(userId)storage.setItem(activityKey(userId),String(now));
 }
-export function watchInactivity({userId,onExpire,storage=localStorage,target=window,documentTarget=document,now=Date.now,setIntervalFn=setInterval,clearIntervalFn=clearInterval,issuedAt=0}){
+export function watchInactivity({userId,onExpire,onActivity=()=>{},storage=localStorage,target=window,documentTarget=document,now=Date.now,setIntervalFn=setInterval,clearIntervalFn=clearInterval,issuedAt=0}){
  const key=activityKey(userId);
  let ended=false,lastWrite=0;
  let lastActivity=Math.max(Number(storage.getItem(key)||0),Number(issuedAt)||0);
  if(!Number.isFinite(lastActivity)||lastActivity<=0){lastActivity=now();storage.setItem(key,String(lastActivity));}
  const expire=()=>{if(ended)return;ended=true;onExpire();};
  const check=()=>{const saved=Number(storage.getItem(key)||0);if(saved>lastActivity)lastActivity=saved;if(now()-lastActivity>=INACTIVITY_LIMIT_MS){expire();return false;}return !ended;};
- const activity=()=>{if(!check())return;lastActivity=now();if(lastActivity-lastWrite>=1000){storage.setItem(key,String(lastActivity));lastWrite=lastActivity;}};
+ const activity=()=>{if(!check())return;lastActivity=now();if(lastActivity-lastWrite>=1000){storage.setItem(key,String(lastActivity));lastWrite=lastActivity;onActivity(lastActivity);}};
  const sync=e=>{if(e.key===key)check();};
  const visible=()=>{if(documentTarget.visibilityState==='visible')check();};
  const events=['pointerdown','keydown','touchstart','scroll','wheel'];
