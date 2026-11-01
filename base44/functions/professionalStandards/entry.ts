@@ -1,3 +1,4 @@
+import {globalCaseTools,linkedCaseTools} from './caseTools.ts';
 import {createClientFromRequest,text,roles,manager,psRole,identity,hash,random,fail,audit,notify,actorName} from './security.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
@@ -118,6 +119,8 @@ export default async function(req){
   const staff=await db.User.list('-created_date',1000);
   const eligible=staff.filter(v=>psRole(v));
   const staffSummary=eligible.map(v=>({id:v.id,name:actorName(v),email:v.email,role:psRole(v)}));
+  const globalTools=await globalCaseTools({action,body,db,u,review,base44,audit,notify,fail});
+  if(globalTools)return globalTools;
   if(action==='create_case'){
    const input=body.case||{},sourceEntity=text(input.source_entity,80),sourceId=text(input.source_record_id,100);
    let source=null;
@@ -165,6 +168,8 @@ export default async function(req){
   const c=await db.PSCase.get(text(body.case_id,100));
   if(!c||!canRead(c))fail('Case not available.',403);
   const records=await db.PSRecord.filter({case_id:c.id},'created_date',1000);
+  const caseTools=await linkedCaseTools({action,body,db,u,c,records,review,editable:review||c.investigator_id===u.id,base44,audit,notify,fail,text,actorName});
+  if(caseTools)return caseTools;
   if(action==='get'){
    await audit(db,u,'case_view',c.id);
    const history=await db.PSAudit.filter({case_id:c.id},'-created_date',250);
@@ -188,6 +193,7 @@ export default async function(req){
     if(!['new','triage','investigating','pending_review','approved','closed','returned'].includes(p.status))fail('Invalid case status.');
     if(['approved','closed','returned'].includes(p.status)&&!review)fail('Reviewer approval is required.',403);
     if(['approved','closed'].includes(p.status)){
+     if(!text(c.outcome_summary,12000))fail('Document the investigation outcome before approval.');
      if((p.investigator_id??c.investigator_id)===u.id)fail('An independent reviewer must approve an investigator’s case.',403);
      if(!['pending_review','approved'].includes(c.status))fail('Send the investigation for review first.');
      const allegations=records.filter(r=>r.kind==='allegation');
@@ -209,10 +215,10 @@ export default async function(req){
    await db.PSCase.update(c.id,updates);
    await audit(db,u,'case_updated',c.id,Object.keys(updates).join(', '));
    let email_sent=null;
-   if(updates.investigator_id){const person=eligible.find(v=>v.id===updates.investigator_id);email_sent=await notify(base44,person?.email,'Professional Standards assignment '+c.reference,'A case has been assigned to you. Sign in to BPS Pathfinder and open Professional Standards.');}
+   if(updates.investigator_id){const person=eligible.find(v=>v.id===updates.investigator_id);email_sent=await notify(base44,person?.email,'Professional Standards assignment '+c.reference,'A case has been assigned to you. Sign in to BPS Pathfinder and open Professional Standards.',u);}
    if(body.send_notice===true){
     if(!review)fail('Reviewer access required.',403);
-    email_sent=await notify(base44,c.contact_preference==='email'?c.contact_email:'','Professional Standards update '+c.reference,(updates.public_message||c.public_message||'A status update is available using your reference and private tracking code.'));
+    email_sent=await notify(base44,c.contact_preference==='email'?c.contact_email:'','Professional Standards update '+c.reference,(updates.public_message||c.public_message||'A status update is available using your reference and private tracking code.'),u);
     await audit(db,u,'approved_notice',c.id,email_sent?'sent':'not delivered / no email preference');
    }
    return Response.json({success:true,email_sent});
@@ -227,7 +233,7 @@ export default async function(req){
    await audit(db,u,'record_add_requested',c.id,r.kind);
    await db.PSRecord.create({case_id:c.id,kind:r.kind,title:text(r.title,300),body:text(r.body,12000),person:text(r.person,300),policy:text(r.policy,500),finding:r.kind==='allegation'?finding:'',status:'open',assigned_to:text(r.assigned_to,100),due_date:text(r.due_date,40),author_id:u.id,author_name:actorName(u)});
    let email_sent=null;
-   if(r.assigned_to)email_sent=await notify(base44,eligible.find(v=>v.id===r.assigned_to)?.email,'Professional Standards task '+c.reference,'A task or follow-up has been assigned. Open Professional Standards to review the deadline.');
+   if(r.assigned_to)email_sent=await notify(base44,eligible.find(v=>v.id===r.assigned_to)?.email,'Professional Standards task '+c.reference,'A task or follow-up has been assigned. Open Professional Standards to review the deadline.',u);
    await audit(db,u,'record_added',c.id,r.kind);
    return Response.json({success:true,email_sent});
   }
@@ -239,7 +245,7 @@ export default async function(req){
    if(action==='finding'){
     if(r.kind!=='allegation'||!['sustained','not_sustained','unfounded','exonerated','policy_failure'].includes(body.finding))fail('Choose a valid allegation finding.');
     patch={finding:body.finding};
-   }else{if(!['task','corrective_action'].includes(r.kind))fail('Only tasks and corrective actions can be completed.');patch={status:'completed'};}
+   }else{if(!['task','corrective_action'].includes(r.kind))fail('Only tasks and corrective actions can be completed.');if(r.action_type==='suspension')fail('Use Lift suspension to document reinstatement and restore access.');if(r.action_type==='training'){const training=await db.TrainingAssignment.get(r.linked_id);if(training?.status!=='approved')fail('Training must be completed and approved in the training portal first.');}patch={status:'completed'};}
    await audit(db,u,action+'_requested',c.id,r.id);
    await db.PSRecord.update(r.id,patch);await audit(db,u,action,c.id,r.id);
    return Response.json({success:true});
