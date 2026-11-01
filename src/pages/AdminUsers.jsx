@@ -36,6 +36,7 @@ export default function AdminUsers({ embedded = false }) {
   const [accountSearch,setAccountSearch]=useState("");
   const [accountRole,setAccountRole]=useState("all");
   const [editingUser, setEditingUser] = useState(null);
+  const [initialEditForm,setInitialEditForm]=useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoToCrop, setPhotoToCrop] = useState(null);
@@ -334,7 +335,7 @@ export default function AdminUsers({ embedded = false }) {
       ? (userData.hourly_rate || payRange.min)
       : (userData.hourly_rate && userData.hourly_rate >= payRange.min ? userData.hourly_rate : payRange.min);
 
-    setEditFormData({
+    const nextForm={
       first_name: userData.first_name || "",
       last_name: userData.last_name || "",
       ssn: userData.ssn || "",
@@ -371,7 +372,8 @@ export default function AdminUsers({ embedded = false }) {
       additional_certifications: userData.certifications || [],
       officer_certifications: userData.officer_certifications || [],
       profile_photo_url: userData.profile_photo_url || ""
-    });
+    };
+    setEditFormData(nextForm);setInitialEditForm(nextForm);
     setSelectedUser(userData);
     setShowDialog(true);
   };
@@ -514,7 +516,7 @@ export default function AdminUsers({ embedded = false }) {
     if (!editingUser) return;
 
     // Validate hourly_rate is set
-    if (!editFormData.hourly_rate || editFormData.hourly_rate <= 0) {
+    if (editFormData.hourly_rate !== initialEditForm?.hourly_rate && (!editFormData.hourly_rate || editFormData.hourly_rate <= 0)) {
       alert('Hourly rate is required and must be greater than 0');
       return;
     }
@@ -522,20 +524,13 @@ export default function AdminUsers({ embedded = false }) {
     // Validate hourly_rate is within rank range (skip enforcement for HR and Support Staff)
     const payRange = getPayRangeForRank(editFormData.rank);
     const isFlexibleRank = ['Human Resources', 'Support Staff'].includes(editFormData.rank);
-    if (!isFlexibleRank && (editFormData.hourly_rate < payRange.min || editFormData.hourly_rate > payRange.max)) {
+    if (editFormData.hourly_rate !== initialEditForm?.hourly_rate && !isFlexibleRank && (editFormData.hourly_rate < payRange.min || editFormData.hourly_rate > payRange.max)) {
       alert(`Hourly rate must be between $${payRange.min.toFixed(2)} and $${payRange.max.toFixed(2)} for ${editFormData.rank}`);
       return;
     }
 
-    // Only include fields that have values (filter out empty strings, null, undefined)
-    const filteredData = Object.fromEntries(
-      Object.entries(editFormData).filter(([key, value]) => {
-        if (value === null || value === undefined || value === '') return false;
-        if (Array.isArray(value) && value.length === 0 && key !== 'additional_certifications') return false;
-        return true;
-      })
-    );
-
+    const filteredData = Object.fromEntries(Object.entries(editFormData).filter(([key,value])=>JSON.stringify(value)!==JSON.stringify(initialEditForm?.[key])));
+    if(!Object.keys(filteredData).length){setShowDialog(false);return;}
     // Map additional_certifications to certifications for the API
     if (filteredData.additional_certifications) {
       filteredData.certifications = filteredData.additional_certifications;
@@ -578,8 +573,8 @@ export default function AdminUsers({ embedded = false }) {
   // employee login and must never require an Officer/reporting-officer role.
   const isPendingUser = (u) => {
     const roles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
-    return !['investigator','reviewer'].includes(u.ps_role) && u.role !== 'admin' && String(u.rank || '').toLowerCase() !== 'student registration pending' &&
-      !['officer','client','student','support','support_staff','hr','accounting','trainer','dispatch','cad_access','visitor'].some(role => roles.has(role)) &&
+    return !['investigator','reviewer'].includes(u.ps_role) && u.role !== 'admin' &&
+      !['ia','full_access','officer','client','student','support','support_staff','hr','accounting','trainer','dispatch','cad_access','visitor'].some(role => roles.has(role)) &&
       !['support staff','human resources'].includes(String(u.rank || '').trim().toLowerCase());
   };
 
@@ -618,7 +613,7 @@ export default function AdminUsers({ embedded = false }) {
       const accepted = window.confirm('This officer has no DCJS registration number on file. Approve the personnel account while keeping DCJS verification outstanding for Training/HR? This does not certify the officer for field duty.');
       if (!accepted) return;
     }
-    const response = await base44.functions.invoke('updateUser', {
+    const response = category==='student' ? await base44.functions.invoke('approveStudentAccount',{userId:userData.id}) : await base44.functions.invoke('updateUser', {
       userId: userData.id,
       updates: { role: 'user', additional_roles: config.roles, rank: approvedRank },
     });
@@ -1035,12 +1030,9 @@ export default function AdminUsers({ embedded = false }) {
                   id="hourly_rate"
                   type="number"
                   step="0.01"
-                  min={['Human Resources', 'Support Staff'].includes(editFormData.rank) ? undefined : (editFormData.rank ? getPayRangeForRank(editFormData.rank).min : 18.00)}
-                  max={['Human Resources', 'Support Staff'].includes(editFormData.rank) ? undefined : (editFormData.rank ? getPayRangeForRank(editFormData.rank).max : 27.50)}
                   placeholder="e.g., 18.50"
                   value={editFormData.hourly_rate || ''}
                   onChange={(e) => setEditFormData({...editFormData, hourly_rate: parseFloat(e.target.value) || 0})}
-                  required
                 />
                 {editFormData.rank && (
                   <p className={`text-xs mt-1 ${['Human Resources', 'Support Staff'].includes(editFormData.rank) ? 'text-blue-600' : 'text-slate-500'}`}>
