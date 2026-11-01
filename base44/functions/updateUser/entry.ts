@@ -102,6 +102,11 @@ Deno.serve(async (req) => {
             if (updates[f] !== undefined) updatePayload[f] = updates[f];
         }
 
+        // A replacement portrait must never retain the previous original as a fallback.
+        if (updates.profile_photo_url !== undefined) {
+          updatePayload.profile_photo_original_url = updates.profile_photo_original_url || updates.profile_photo_url || '';
+        }
+
         // Maintain the Region -> Division -> Substation chain. Senior command
         // (Lieutenant and above) is division/platoon oversight only; lower
         // field ranks may receive a direct substation posting.
@@ -215,7 +220,7 @@ Deno.serve(async (req) => {
         // Confirm edits to identity/contact/onboarding fields reached persistent User.
         // A successful SDK call alone is not proof that every field was retained.
         const verifiedUser = await base44.asServiceRole.entities.User.get(userId);
-        const verifiedFields = ['platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','substation','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
+        const verifiedFields = ['profile_photo_url','profile_photo_original_url','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','substation','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
         const missingWrites = verifiedFields.filter(field => updatePayload[field] !== undefined && String(verifiedUser?.[field] ?? '') !== String(updatePayload[field] ?? ''));
         if (missingWrites.length) return Response.json({ error: 'Account data was not confirmed saved: ' + missingWrites.join(', '), unsaved_fields: missingWrites }, { status: 503 });
         try { await notifyPlatoonChange(base44.asServiceRole.entities, target, verifiedUser); }

@@ -88,7 +88,7 @@ export function applyOfficerLocationEvent(rows = [], event) {
       // statuses; explicit User duty updates still flow through this stream.
       if (row?.status_source && !event?.directory_profile && ['status','current_call_id','current_call_info'].includes(field)) continue;
       if (record[field] === undefined) continue;
-      if (['profile_photo_url','officer_name','first_name','last_name','rank','unit_number'].includes(field)
+      if (['officer_name','first_name','last_name','rank','unit_number'].includes(field)
           && (record[field] === null || String(record[field]).trim() === '')
           && next[field]) continue;
       next[field] = record[field];

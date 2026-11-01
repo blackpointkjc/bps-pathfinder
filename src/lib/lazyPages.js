@@ -1,7 +1,6 @@
 import { lazy,createElement,useState } from 'react';
 import Layout,{canAccessPage} from '@/Layout';
-import {prepareToolLoaders,waitForWorkspaceIdle} from './workspacePreparation';
-import {getBase44RequestHealth} from '@/api/base44Client';
+import {prepareToolLoaders} from './workspacePreparation';
 import {queryClientInstance} from './query-client';
 import generatedConfig from '../pages.config.js?raw';
 
@@ -57,9 +56,9 @@ export function prepareWorkspace(user,onProgress){
   if(!exclusive&&(user.role==='admin'||(user.additional_roles||[]).length)){
    const {getAppDirectory}=await import('./appDirectory');await getAppDirectory();
   }
-  const photo=user.profile_photo_original_url||user.profile_photo_url;
-  if(photo)await new Promise(resolve=>{const image=new Image();image.onload=resolve;image.onerror=resolve;image.src=photo;if(image.complete)resolve();});
-  await waitForWorkspaceIdle(()=>{const health=getBase44RequestHealth();return health.activeReads===0&&health.queuedReads===0&&health.activeWrites===0&&queryClientInstance.isFetching()===0;});
+  const photo=user.profile_photo_url || user.profile_photo_original_url;
+  if(photo)await new Promise(resolve=>{const image=new Image();const timer=setTimeout(resolve,5000);const done=()=>{clearTimeout(timer);resolve();};image.onload=done;image.onerror=done;image.src=photo;if(image.complete)done();});
+  // Only startup requests above gate Welcome; ongoing GPS/chat polling cannot block entry.
  }}).catch(error=>{prepared.delete(user.id);throw error;});
  prepared.set(user.id,task);return task;
 }

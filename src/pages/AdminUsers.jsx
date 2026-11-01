@@ -486,7 +486,7 @@ export default function AdminUsers({ embedded = false }) {
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.details || payload.error);
       setEditFormData(prev => ({ ...prev, profile_photo_url: photoUrl, profile_photo_original_url: originalUrl || photoUrl }));
-      setSelectedUser(prev => prev ? { ...prev, profile_photo_url: photoUrl } : prev);
+      setSelectedUser(prev => prev ? { ...prev, profile_photo_url: photoUrl, profile_photo_original_url:originalUrl || photoUrl } : prev);
       setPhotoToCrop(null);
       invalidateAppDirectory();
       queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
@@ -494,7 +494,7 @@ export default function AdminUsers({ embedded = false }) {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('training');
       }});
-      const photoChange = { userId: editingUser, profile_photo_url: photoUrl };
+      const photoChange = { userId: editingUser, profile_photo_url: photoUrl, profile_photo_original_url:originalUrl || photoUrl };
       window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: photoChange }));
       try {
         const channel = new BroadcastChannel('bps-pathfinder-personnel-photos');

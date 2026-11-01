@@ -6,7 +6,7 @@ export async function synchronizeOfficerIdentity(entities: any, user: any) {
     try {
       const rows = await entities[name].filter(query, '-updated_date', 1000);
       for (const row of rows || []) {
-        const fields = name === 'Unit' ? { unit_id:identity.unit_number, label:[identity.rank,user.last_name].filter(Boolean).join(' ') || user.full_name || user.email } : identity;
+        const fields = name === 'ActiveOfficer' ? { ...identity, profile_photo_url:user.profile_photo_url || '' } : name === 'Unit' ? { unit_id:identity.unit_number, label:[identity.rank,user.last_name].filter(Boolean).join(' ') || user.full_name || user.email } : identity;
         const patch = Object.fromEntries(Object.entries(fields).filter(([key,value]) => String(row[key] ?? '') !== String(value)));
         if (Object.keys(patch).length) await entities[name].update(row.id, patch);
       }

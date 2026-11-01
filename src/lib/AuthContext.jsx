@@ -77,8 +77,9 @@ export const AuthProvider = ({ children }) => {
     let unsubscribe;
     try { unsubscribe = base44.entities.User.subscribe(event => {
       const record = event?.data || event?.record;
+      if(record && Object.hasOwn(record,'profile_photo_url'))window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated',{detail:{userId:event?.id||record.id,profile_photo_url:record.profile_photo_url,profile_photo_original_url:record.profile_photo_original_url ?? record.profile_photo_url}}));
       if (String(event?.id || record?.id || '') !== String(user.id) || !record) return;
-      const fields = ['role','additional_roles','ps_role','portal_approved','account_status','disabled','termination_date','employment_status','rank','unit_number','hourly_rate','first_name','last_name','full_name','profile_photo_url','division','platoon','oversight_platoon'];
+      const fields = ['role','additional_roles','ps_role','portal_approved','account_status','disabled','termination_date','employment_status','rank','unit_number','hourly_rate','first_name','last_name','full_name','profile_photo_url','profile_photo_original_url','division','platoon','oversight_platoon'];
       const patch = Object.fromEntries(fields.filter(key => record[key] !== undefined).map(key => [key,record[key]]));
       if(record.disabled||record.termination_date||['suspended','terminated','denied'].includes(String(record.account_status||record.employment_status||'').toLowerCase()))window.dispatchEvent(new Event('bps:session-reauthentication-required'));
       if (Object.keys(patch).length) {
@@ -94,9 +95,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const onPhotoUpdated = event => {
       const change = event.detail;
-      if (!change?.userId || !change?.profile_photo_url) return;
+      if (!change?.userId || change?.profile_photo_url === undefined) return;
       setUser(previous => previous && String(previous.id) === String(change.userId)
-        ? { ...previous, profile_photo_url: change.profile_photo_url }
+        ? { ...previous, profile_photo_url: change.profile_photo_url, profile_photo_original_url:change.profile_photo_original_url ?? change.profile_photo_url }
         : previous);
     };
     window.addEventListener('bps-personnel-photo-updated', onPhotoUpdated);
@@ -167,7 +168,7 @@ export const AuthProvider = ({ children }) => {
       const operational = roleSet.has('officer') || roleSet.has('cad_access') || roleSet.has('supervisor') || currentUser.is_supervisor === true || fieldRank;
       if (operational) cacheOfficerStatus(currentUser.status || 'Out of Service');
 
-      setUser(currentUser?.profile_photo_original_url ? { ...currentUser, profile_photo_url: currentUser.profile_photo_original_url } : currentUser);
+      setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
 

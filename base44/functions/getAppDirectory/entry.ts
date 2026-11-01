@@ -84,7 +84,7 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
     division: entry.division || '',
     subdivision: entry.subdivision || '',
     substation: entry.substation || '',
-    profile_photo_url: entry.profile_photo_original_url || entry.profile_photo_url || '',
+    profile_photo_url: entry.profile_photo_url || entry.profile_photo_original_url || '',
     profile_photo_original_url: entry.profile_photo_original_url || '',
     additional_roles: entry.additional_roles || [],
     role: entry.role || 'user',

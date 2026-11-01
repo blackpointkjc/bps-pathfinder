@@ -40,7 +40,7 @@ export function activePlatoonCommand(letter, users = [], region = '') {
  const person=eligible[0];
  if(!person)return {platoon:letter,region,status:'unassigned',name:'No active platoon leader',role:'Platoon Command Vacant'};
  const acting=normalizeRank(person.rank)!=='Captain';
- return {id:person.id,platoon:letter,region,status:acting?'acting':'active',name:[person.rank,person.last_name||person.first_name].filter(Boolean).join(' '),first_name:person.first_name||'',last_name:person.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:person.rank,badge_number:person.badge_number||'',unit_number:person.unit_number||'',profile_photo_url:person.profile_photo_original_url||person.profile_photo_url||'',work_email:person.work_email||person.email||'',mobile_phone:person.mobile_phone||'',subdivision:person.subdivision||'',substation:person.substation||'',assigned_site_name:person.assigned_site_name||''};
+ return {id:person.id,platoon:letter,region,status:acting?'acting':'active',name:[person.rank,person.last_name||person.first_name].filter(Boolean).join(' '),first_name:person.first_name||'',last_name:person.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:person.rank,badge_number:person.badge_number||'',unit_number:person.unit_number||'',profile_photo_url:person.profile_photo_url || person.profile_photo_original_url||'',work_email:person.work_email||person.email||'',mobile_phone:person.mobile_phone||'',subdivision:person.subdivision||'',substation:person.substation||'',assigned_site_name:person.assigned_site_name||''};
 }
 export function platoonCommandLabel(person, users = []) {
  const platoon=String(person?.platoon||'').trim(),region=String(person?.division||'').trim();

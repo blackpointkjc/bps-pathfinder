@@ -415,7 +415,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule');
       }});
-      const photoChange = { userId: editingUser, profile_photo_url: photoUrl };
+      const photoChange = { userId: editingUser, profile_photo_url: photoUrl, profile_photo_original_url:originalUrl || photoUrl };
       window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: photoChange }));
       try {
         const channel = new BroadcastChannel('bps-pathfinder-personnel-photos');

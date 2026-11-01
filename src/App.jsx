@@ -272,7 +272,7 @@ const AuthenticatedApp = () => {
     return()=>{active=false;};
   },[user?.id,publicEntry,preparedUserId]);
   const welcomeOverlay = user && preparedUserId!==user.id && !publicEntry ? <div className="portal-welcome" role="status" aria-live="polite"><div>
-    {(user.profile_photo_original_url || user.profile_photo_url) ? <img src={user.profile_photo_original_url || user.profile_photo_url} alt="Your profile" /> : <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full border-2 border-amber-400 text-4xl">{String(user.last_name || user.full_name || '?').slice(0,1)}</div>}
+    {(user.profile_photo_url || user.profile_photo_original_url) ? <img src={user.profile_photo_url || user.profile_photo_original_url} alt="Your profile" /> : <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full border-2 border-amber-400 text-4xl">{String(user.last_name || user.full_name || '?').slice(0,1)}</div>}
     <p className="mb-3 text-xs tracking-[.25em] text-amber-300">BLACKPOINT · PATHFINDER</p><h1>Welcome, {[user.rank,user.last_name || user.full_name].filter(Boolean).join(' ')}</h1><p className="mt-3 text-slate-300">{startupError||startupProgress.label+'…'}</p><progress aria-label="Preparing workspace" max={startupProgress.total} value={startupProgress.completed}/>
     {startupError&&<div className="mt-6 flex justify-center gap-3"><button type="button" className="rounded-full bg-amber-300 px-5 py-3 font-bold text-black" onClick={()=>window.location.reload()}>Retry preparation</button><button type="button" className="rounded-full border border-slate-500 px-5 py-3" onClick={()=>logout(true)}>Sign out</button></div>}
     </div></div> : null;

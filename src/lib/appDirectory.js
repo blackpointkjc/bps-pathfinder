@@ -1,5 +1,6 @@
 import { comparePersonnel, rankLevel } from '@/utils/rankPolicy';
-import { base44 } from '@/api/base44Client';
+import {queryClientInstance} from './query-client';
+import { base44, clearBase44ReadCache } from '@/api/base44Client';
 import { getOfficerPreviewProfile } from '@/utils/officerPreview';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
@@ -17,7 +18,7 @@ let supervisorOfficerPending = null;
 // five large directory entities and competing with CAD/time-clock requests.
 const TTL_MS = 10 * 60_000;
 const STALE_CACHE_MAX_MS = 24 * 60 * 60_000;
-const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v10';
+const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v11';
 
 function readPersistedDirectory() {
   try {
@@ -41,7 +42,7 @@ if (persistedDirectory?.data) {
 const normalizedIdentity = value => String(value || '').trim().toLowerCase();
 
 export function preferOriginalPersonnelPhoto(user) {
-  if (!user || !user.profile_photo_original_url) return user;
+  if (!user || user.profile_photo_url || !user.profile_photo_original_url) return user;
   return { ...user, profile_photo_url: user.profile_photo_original_url };
 }
 
@@ -233,11 +234,26 @@ if (typeof window !== 'undefined' && !window.__bpsDirectorySyncInstalled) {
     if (shouldClearDirectory(event?.detail)) invalidateAppDirectory();
   };
   window.addEventListener('bps-data-changed', handleDirectoryChange);
+  window.addEventListener('bps-personnel-photo-updated', event => {
+    const change=event.detail;
+    if (!change?.userId || change.profile_photo_url === undefined) return;
+    invalidateAppDirectory();clearBase44ReadCache();
+    const portrait={profile_photo_url:change.profile_photo_url,profile_photo_original_url:change.profile_photo_original_url ?? change.profile_photo_url};
+    const patch=value=>{
+      if(!value || typeof value!=='object')return value;
+      if(Array.isArray(value))return value.map(patch);
+      const match=String(value.id||value.user_id||value.officer_id||'')===String(change.userId);
+      return Object.fromEntries(Object.entries(match?{...value,...portrait}:value).map(([key,item])=>[key,item&&typeof item==='object'?patch(item):item]));
+    };
+    queryClientInstance.setQueriesData({}, patch);
+    queryClientInstance.invalidateQueries({predicate:q=>/user|directory|officer|supervisor|personnel|rank|cad|chat/i.test(JSON.stringify(q.queryKey))});
+    try{const key='pathfinder-offline-session-v1';const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved?.user?.id===change.userId){saved.user={...saved.user,...portrait};localStorage.setItem(key,JSON.stringify(saved));}}catch{}
+  });
   // A changed photo must invalidate persisted and in-memory rosters in other tabs.
   try {
     const photoChannel = new BroadcastChannel('bps-pathfinder-personnel-photos');
     photoChannel.addEventListener('message', event => {
-      if (!event?.data?.userId || !event?.data?.profile_photo_url) return;
+      if (!event?.data?.userId || event?.data?.profile_photo_url === undefined) return;
       invalidateAppDirectory();
       window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: event.data }));
     });

@@ -46,7 +46,8 @@ export async function linkedCaseTools(ctx){
   if(ids.length>25)fail('Link no more than 25 officers to a case.');
   const users=await db.User.list('last_name',1000);
   if(ids.some(id=>!users.some(v=>v.id===id&&employee(v))))fail('Choose officers from the personnel directory.');
-  await db.PSCase.update(c.id,{officer_ids:ids,version:Number(c.version||0)+1});
+  const names=ids.map(id=>{const person=users.find(v=>v.id===id);return [person.rank,person.first_name,person.last_name].filter(Boolean).join(' ')||person.full_name||person.email;});
+  await db.PSCase.update(c.id,{officer_ids:ids,...(names.length?{officers:names.join('; ')}:{}),version:Number(c.version||0)+1});
   await audit(db,u,'case_officers_linked',c.id,ids.join(', '));
   return Response.json({success:true});
  }
