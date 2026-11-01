@@ -21,6 +21,6 @@ export async function audit(db,u,action,caseId='',details='') {
 }
 export async function notify(base44,to,subject,body) {
   if(!to)return false;
-  try{await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});return true;}catch{return false;}
+  try{await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});return true;}catch{try{const {companyDelivery}=await import('./delivery.ts');return await companyDelivery(base44,to,subject,body);}catch{return false;}}
 }
 export {createClientFromRequest};
