@@ -1,0 +1,31 @@
+{
+  "name": "PortalInvitation",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string"
+    },
+    "account_type": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "invited_by": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "email_sent": {
+      "type": "boolean"
+    }
+  },
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}
