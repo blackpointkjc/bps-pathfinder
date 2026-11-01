@@ -83,12 +83,12 @@ export const AuthProvider = ({ children }) => {
       if (Object.keys(patch).length) {
         setUser(previous => previous ? { ...previous, ...patch } : previous);
         queryClientInstance.setQueryData(['currentUser'],previous=>previous?{...previous,...patch}:previous);
-        if(['role','additional_roles','ps_role','account_status','portal_approved'].some(key=>patch[key]!==undefined))clearBase44ReadCache();
+        if(['role','additional_roles','ps_role','account_status','portal_approved'].some(key=>patch[key]!==undefined&&JSON.stringify(patch[key])!==JSON.stringify(user[key])))clearBase44ReadCache();
       }
     });
     } catch (error) { console.warn('Profile identity stream unavailable', error?.message); }
     return typeof unsubscribe === 'function' ? unsubscribe : undefined;
-  }, [user?.id]);
+  }, [user?.id,user?.role,user?.ps_role,user?.account_status,user?.portal_approved,JSON.stringify(user?.additional_roles||[])]);
 
   useEffect(() => {
     const onPhotoUpdated = event => {
