@@ -50,7 +50,7 @@ export default async function(req){
    if(!existing.length)await db.PortalRegistration.create({user_id:me.id,email:me.email,requested_type:type,submitted_at:new Date().toISOString()});
    if(type==='student'&&birth){
     const enrollments=await db.StudentEnrollment.filter({email:me.email},'-created_date',1);
-    if(!enrollments.length)await db.StudentEnrollment.create({email:me.email,user_id:me.id,first_name:first,last_name:last,date_of_birth:clean(p.date_of_birth),status:'invited',invited_by:invitation?.invited_by||'self-registration'});
+    if(!enrollments.length)await db.StudentEnrollment.create({email:me.email,user_id:me.id,first_name:first,last_name:last,date_of_birth:birth,status:'invited',invited_by:invitation?.invited_by||'self-registration'});
    }
    if(invitation)await db.PortalInvitation.update(invitation.id,{status:'registered'});
   }

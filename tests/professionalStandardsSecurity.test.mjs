@@ -82,8 +82,8 @@ assert.equal((await call({action:'track',reference:receipt.reference,tracking_co
 assert.equal(c.tracking_failures,0);
 actor=reviewer;
 let opened=await call({action:'create_case',ps_access:reviewToken,case:{description:'A staff-opened investigation for a synthetic test.',location:'Test office',incident_date:'2026-01-01T12:00',investigator_id:investigator.id}});assert.equal(opened.httpStatus,200);assert.ok(opened.case_id);assert.equal(tables.PSCase.find(v=>v.id===opened.case_id).investigator_id,investigator.id);
-const source=await db.Complaint.create({description:'An existing synthetic complaint to link into an investigation.',officer_name:'Test Officer',incident_date:'2026-01-01T12:00',location:'Test site'});
-const linkedPayload={action:'create_case',ps_access:reviewToken,case:{source_entity:'Complaint',source_record_id:source.id}};let linked=await call(linkedPayload);assert.equal(linked.httpStatus,200);assert.equal(tables.PSCase.find(v=>v.id===linked.case_id).source_record_id,source.id);assert.equal((await call(linkedPayload)).existing,true);
+const linkedSource=await db.Complaint.create({description:'An existing synthetic complaint to link into an investigation.',officer_name:'Test Officer',incident_date:'2026-01-01T12:00',location:'Test site'});
+const linkedPayload={action:'create_case',ps_access:reviewToken,case:{source_entity:'Complaint',source_record_id:linkedSource.id}};let linked=await call(linkedPayload);assert.equal(linked.httpStatus,200);assert.equal(tables.PSCase.find(v=>v.id===linked.case_id).source_record_id,linkedSource.id);assert.equal((await call(linkedPayload)).existing,true);
 actor=investigator;assert.equal((await call({...linkedPayload,ps_access:invToken})).httpStatus,403);
 actor=null;assert.equal((await call({action:'public_followup',reference:receipt.reference,tracking_code:receipt.tracking_code,message:'Additional synthetic incident information.'})).httpStatus,200);assert.ok(tables.PSRecord.some(v=>v.case_id===c.id&&v.kind==='public_followup'));
 actor={...reviewer,termination_date:'2026-01-01'};
