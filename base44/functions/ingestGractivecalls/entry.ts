@@ -2,6 +2,7 @@ import { fetchCadSource } from './sourceFetch.ts';
 import { releaseClosedCall } from './releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { tomtomGeocode } from './tomtomGeocode.ts';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 // Entity reads are throttled per caller. A 429 means "pause, then continue": wait
 // the window the platform states and retry once so an ingestion cycle keeps its
@@ -1248,7 +1249,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().catch(()=>null);
+    const __portalCaller = await base44.auth.me().then(__limitFullAccess).catch(()=>null);
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -1256,7 +1257,7 @@ Deno.serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const scheduledRun = body?.scheduled === true;
-    const user = await base44.auth.me().catch(() => null);
+    const user = await base44.auth.me().then(__limitFullAccess).catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).trim().toLowerCase()));
     const primaryRole = String(user.role || '').trim().toLowerCase();

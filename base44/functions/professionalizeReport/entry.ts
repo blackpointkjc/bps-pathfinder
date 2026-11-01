@@ -1,9 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().then(__limitFullAccess);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const roles = new Set((user.additional_roles || []).map((r: unknown) => String(r).toLowerCase()));

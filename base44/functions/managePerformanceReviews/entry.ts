@@ -1,6 +1,7 @@
 import {verifiedPS} from './psVerification.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -126,13 +127,13 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().catch(()=>null);
+    const __portalCaller = await base44.auth.me().then(__limitFullAccess).catch(()=>null);
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
-    const me = await base44.auth.me();
+    const me = await base44.auth.me().then(__limitFullAccess);
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 if(!await verifiedPS(base44,me,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
 await base44.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'legacy_workflow_access',details:'managePerformanceReviews'});

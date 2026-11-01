@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const valid=(value:any)=>{const text=String(value||'').trim();return !!text&&!/^[a-f0-9]{24}$/i.test(text)&&!/^property-alert-|^web-|^https?:|^[a-f0-9]{48,}$/i.test(text)&&/^(?:BPS-\d{6}-\d{1,8}|CAD[- ]|[A-Z]{0,6}[- ]?\d{3,})/i.test(text);};
 const ref=(row:any)=>[row?.agency_cad_number,row?.bps_reference,row?.cadNumber,row?.call_number,row?.call_id].find(valid)||'';
 const pause=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -33,8 +34,8 @@ async function reserve(api:any,count:number){
 Deno.serve(async req=>{
  let migration:any=null,migrationApi:any=null;
  try{
-  const api=createClientFromRequest(req),actor=await api.auth.me().catch(()=>null);
- const __portalCaller=await api.auth.me().catch(()=>null);
+  const api=createClientFromRequest(req),actor=await api.auth.me().then(__limitFullAccess).catch(()=>null);
+ const __portalCaller=await api.auth.me().then(__limitFullAccess).catch(()=>null);
  let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await api.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
  if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
  api.auth.me=async()=>__portalCaller;

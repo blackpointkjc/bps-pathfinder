@@ -2,6 +2,7 @@ import { releaseClosedCall } from './releaseClosedCall.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { tomtomGeocode } from './tomtomGeocode.ts';
 import { createDecipheriv, createHash } from 'node:crypto';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 const GABC_URL = 'https://web.pulsepoint.org/DB/gabc.php';
 const AGENCY_DATA_URL = 'https://web.pulsepoint.org/DB/GeolocationAgency.php?id=';
@@ -443,7 +444,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().catch(()=>null);
+    const __portalCaller = await base44.auth.me().then(__limitFullAccess).catch(()=>null);
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -454,7 +455,7 @@ Deno.serve(async (req) => {
     if (!approvedFeed) return Response.json({ success:false, configured:false, skipped:true, reason:'approved_feed_required', source:'pulsepoint', message:'Automatic import is not configured. Use the official PulsePoint live feed view.' });
     const feedUrl = new URL(approvedFeed);
     if (feedUrl.protocol !== 'https:') return Response.json({ error:'Approved feed must use HTTPS' }, { status:400 });
-    const user = await base44.auth.me().catch(() => null);
+    const user = await base44.auth.me().then(__limitFullAccess).catch(() => null);
     let trustedServiceInvocation = false;
     if (!user && req.headers.get('Authorization')) {
       try {

@@ -1,4 +1,5 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 
 
@@ -92,7 +93,7 @@ const easternNow=(date=new Date())=>{
  const read=(name:string)=>Number(parts.find(part=>part.type===name)?.value||0);
  return {date:`${read('year')}-${String(read('month')).padStart(2,'0')}-${String(read('day')).padStart(2,'0')}`,hour:read('hour'),minute:read('minute')};
 };
-const PERMITTED_ROLES=['officer','supervisor','dispatch','cad_access','support','hr','trainer','full_access'];
+const PERMITTED_ROLES=['officer','supervisor','dispatch','cad_access','support','hr','trainer','ia','full_access'];
 
 const safeOfficer=(u:any)=>({id:u.id,name:name(u),rank:u.rank||'Officer',unit_number:u.unit_number||'',platoon:u.platoon||'',oversight_platoon:u.oversight_platoon||'',supervisor_id:u.supervisor_id||'',supervisor_name:u.supervisor_name||'',email:u.email||'',is_supervisor:!!u.is_supervisor,system_role:u.role||'user',additional_roles:Array.isArray(u.additional_roles)?u.additional_roles:[],profile_photo_url:String(u.profile_photo_url||'').length<=150000?u.profile_photo_url||'':''});
 async function version(users:any[]){
@@ -115,7 +116,7 @@ function changePlan(users:any[],input:any){
    (officer.additional_roles||[]).map((role:any)=>trim(role).toLowerCase());
  const existingRoles=(officer.additional_roles||[]).map((role:any)=>trim(role).toLowerCase());
  if(nextRoles.some((role:string)=>!PERMITTED_ROLES.includes(role)&&!existingRoles.includes(role)))throw new Error('The selected account role is not supported for personnel promotions.');
- if(nextSystemRole==='admin'&&!nextRoles.includes('full_access'))nextRoles.push('full_access');
+ if(nextRoles.includes('full_access')&&officer.id!=='6a72bbee2842d6338cbae513')throw new Error('Full Access is reserved for Colonel Hiers.');
  if(supervisorRank(proposed)&&!nextRoles.includes('supervisor'))nextRoles.push('supervisor');
  const nextPhoto=String(input.profile_photo_url||'').trim();
  // Internal uploads are stored as data:image URLs by storeInternalFile.
@@ -191,6 +192,7 @@ async function applyApprovedPromotion(entities:any,event:any){
   if(String(user.rank||'')!==String(event.previous_rank||''))throw Error('Rank has changed since the promotion was approved; administrator reconciliation required');
   const patch=event.planned_patch||{};
   if(!patch.rank||!Array.isArray(patch.additional_roles)||!['admin','user'].includes(patch.role))throw Error('Scheduled personnel change is missing its approved role/rank snapshot');
+  if(patch.additional_roles.includes('full_access')&&user.id!=='6a72bbee2842d6338cbae513')throw Error('Full Access is reserved for Colonel Hiers; reschedule this change with corrected roles');
   // Recheck direct supervisor still active, but no authorization elevation before this point.
   if(patch.supervisor_id){const supervisor=await entities.User.get(patch.supervisor_id);if(!isEmployee(supervisor))throw Error('Reporting supervisor is no longer an active employee');}
   await entities.User.update(user.id,patch);
@@ -243,8 +245,8 @@ async function applyApprovedPromotion(entities:any,event:any){
 }
 Deno.serve(async req=>{
  try{
-  const sdk=createClientFromRequest(req),actor=await sdk.auth.me().catch(()=>null);
- const __portalCaller=await sdk.auth.me().catch(()=>null);
+  const sdk=createClientFromRequest(req),actor=await sdk.auth.me().then(__limitFullAccess).catch(()=>null);
+ const __portalCaller=await sdk.auth.me().then(__limitFullAccess).catch(()=>null);
  let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
  if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
  sdk.auth.me=async()=>__portalCaller;

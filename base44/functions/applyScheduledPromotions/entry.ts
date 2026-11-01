@@ -1,4 +1,5 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 const text=(v:any,max=160)=>String(v??'').trim().slice(0,max);
 const names=(u:any)=>[u.first_name,u.last_name].filter(Boolean).join(' ')||u.full_name||u.email||'Officer';
@@ -27,6 +28,7 @@ async function runOne(entities:any,event:any,clock:any){
   if(String(user.rank||'')!==String(event.previous_rank||''))throw Error('Rank has changed since the promotion was approved; administrator reconciliation required');
   const patch=event.planned_patch||{};
   if(!patch.rank||!Array.isArray(patch.additional_roles)||!['admin','user'].includes(patch.role))throw Error('Scheduled personnel change is missing its approved role/rank snapshot');
+  if(patch.additional_roles.includes('full_access')&&user.id!=='6a72bbee2842d6338cbae513')throw Error('Full Access is reserved for Colonel Hiers; reschedule this change with corrected roles');
   // Recheck direct supervisor still active, but no authorization elevation before this point.
   if(patch.supervisor_id){const supervisor=await entities.User.get(patch.supervisor_id);if(!isActive(supervisor))throw Error('Reporting supervisor is no longer an active employee');}
   await entities.User.update(user.id,patch);
@@ -80,12 +82,12 @@ async function runOne(entities:any,event:any,clock:any){
 Deno.serve(async req=>{
  try{
   const sdk=createClientFromRequest(req),body=await req.json().catch(()=>({}));
- const __portalCaller=await sdk.auth.me().catch(()=>null);
+ const __portalCaller=await sdk.auth.me().then(__limitFullAccess).catch(()=>null);
  let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
  if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
  sdk.auth.me=async()=>__portalCaller;
 
-  const actor=await sdk.auth.me().catch(()=>null);
+  const actor=await sdk.auth.me().then(__limitFullAccess).catch(()=>null);
   const roleSet=new Set([actor?.role,...(actor?.additional_roles||[])].map((r:any)=>text(r).toLowerCase()));
   // The recurring automation has no interactive account. A manual call needs
   // actual administrator authorization. A spoofed scheduled=true flag cannot

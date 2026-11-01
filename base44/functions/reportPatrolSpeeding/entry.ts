@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const str=(v:any)=>String(v??'').trim();
 const num=(v:any)=>Number(v);
 const lower=(v:any)=>str(v).toLowerCase();
@@ -36,13 +37,13 @@ export default async function(req:Request):Promise<Response>{
   try{
     const api=createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await api.auth.me().catch(()=>null);
+    const __portalCaller = await api.auth.me().then(__limitFullAccess).catch(()=>null);
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await api.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     api.auth.me = async () => __portalCaller;
 
-    const signed=await api.auth.me().catch(()=>null);
+    const signed=await api.auth.me().then(__limitFullAccess).catch(()=>null);
     if(!signed?.id)return Response.json({error:'Sign-in required'},{status:401});
     const payload=await req.json().catch(()=>({}));
     const eventId=str(payload.event_id);

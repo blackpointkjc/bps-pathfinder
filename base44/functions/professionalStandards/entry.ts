@@ -100,10 +100,6 @@ export default async function(req){
    return Response.json({reference:c.reference,kind:c.kind,status:c.public_status||'Received',message:c.public_message||'',submitted_at:c.created_date,updated_at:c.updated_date});
   }
   const u=await identity(base44),role=psRole(u);
-  if(action==='legacy_entity'&&!role){
-   if(!manager(u)&&!(u.additional_roles||[]).length)fail('Approved staff access is required.',403);
-   return await legacyRequest(base44,db,u,body,false);
-  }
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   if(action==='request_access'){
    const prior=await db.PSAccess.filter({user_id:u.id},'-created_date',1);

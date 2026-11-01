@@ -1,11 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 const allowed = ['first_name','last_name','date_of_birth','mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration','dcjs_number','dcjs_expiration'];
 const required = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration'];
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
-    const me = await base44.auth.me();
+    const me = await base44.auth.me().then(__limitFullAccess);
     if (!me?.id) return Response.json({error:'Sign in required'}, {status:401});
     const roles = (me.additional_roles || []).map(value => String(value).toLowerCase());
     if (me.role === 'admin' || roles.some(r => ['officer','cad_access','client','student','support_staff','support','hr','trainer','full_access','dispatch'].includes(r))) {

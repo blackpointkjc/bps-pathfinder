@@ -317,6 +317,7 @@
       "default": 0
     },
     "additional_roles": {
+      "description": "Assigned portal roles, including ia for Internal Affairs. full_access is reserved for Colonel Hiers and enforced by the account service.",
       "type": "array",
       "items": {
         "type": "string"

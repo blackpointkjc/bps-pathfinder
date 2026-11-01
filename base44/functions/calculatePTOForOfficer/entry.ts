@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().catch(()=>null);
+    const __portalCaller = await base44.auth.me().then(__limitFullAccess).catch(()=>null);
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
     // any officer; non-admins may only calculate for their own account.
     let caller;
     try {
-      caller = await base44.auth.me();
+      caller = await base44.auth.me().then(__limitFullAccess);
     } catch (_e) {
       return Response.json({ error: 'Authentication required' }, { status: 401 });
     }

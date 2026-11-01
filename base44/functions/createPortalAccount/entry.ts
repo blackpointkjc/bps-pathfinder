@@ -1,10 +1,11 @@
 import {companyDelivery} from './delivery.ts';
 import {createClientFromRequest} from 'npm:@base44/sdk';
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const URL='https://bpspf.blackpointkjc.com/Login?mode=register';
 const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export default async function(req){
  try{
- const base44=createClientFromRequest(req),me=await base44.auth.me();
+ const base44=createClientFromRequest(req),me=await base44.auth.me().then(__limitFullAccess);
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
  const b=await req.json(),roles=new Set(me.additional_roles||[]),admin=me.role==='admin'||roles.has('full_access');
  const type={pending:'employee',student_pending:'student',employee:'employee',student:'student',client:'client',visitor:'visitor'}[b.accountType];
