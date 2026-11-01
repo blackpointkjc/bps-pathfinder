@@ -55,3 +55,5 @@
 .ps-canvas .portal-record small{overflow-wrap:anywhere}
 .ps-canvas .portal-eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#67c7e7;font-weight:750}
 @media(max-width:760px){.ps-toolbar{flex-wrap:wrap;gap:7px}.ps-toolbar>div{flex-basis:100%;max-width:none}.ps-primary-action{flex:1}.ps-section-heading{padding:14px 12px}.ps-canvas{padding:12px}.ps-canvas .portal-grid{grid-template-columns:1fr}.ps-canvas .portal-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ps-canvas .portal-card{padding:13px}.ps-canvas .portal-table{min-width:690px}}
+
+.ps-canvas .portal-danger{background:#9f2435;border-color:#ef7181}.ps-canvas .portal-danger:hover{background:#be3045}
