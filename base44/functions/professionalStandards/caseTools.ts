@@ -81,7 +81,12 @@ export async function linkedCaseTools(ctx){
   if(!requirement||requirement.active===false||reason.length<10||!/^\d{4}-\d{2}-\d{2}$/.test(due))fail('Select a course, due date, and documented reason.');
   const email=person.work_email||person.email;
   const existing=await db.TrainingAssignment.filter({ps_case_id:c.id,officer_email:email,training_name:requirement.training_name},'-created_date',10);
-  if(existing.some(v=>!['rejected','expired'].includes(v.status)))return Response.json({success:true,existing:true});
+  const activeAssignment=existing.find(v=>!['rejected','expired'].includes(v.status));
+  if(activeAssignment){
+   if(!records.some(r=>r.linked_entity==='TrainingAssignment'&&r.linked_id===activeAssignment.id))await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:'training',officer_id:person.id,linked_entity:'TrainingAssignment',linked_id:activeAssignment.id,title:'Required training: '+requirement.training_name,body:reason,due_date:activeAssignment.due_date,status:activeAssignment.status==='approved'?'completed':'open',author_id:u.id,author_name:actorName(u)});
+   return Response.json({success:true,existing:true,training_assignment_id:activeAssignment.id});
+  }
+
   const assignment=await db.TrainingAssignment.create({requirement_id:requirement.id,training_name:requirement.training_name,category:requirement.category,description:requirement.description||'',officer_email:email,officer_name:[person.first_name,person.last_name].filter(Boolean).join(' '),assigned_date:new Date().toISOString().slice(0,10),due_date:due,is_mandatory:true,priority:'high',status:'assigned',assigned_by:u.email,required_proof_type:requirement.required_proof_type||'',requires_photos:requirement.requires_photos===true,requires_expiration_date:requirement.requires_expiration_date===true,requires_certificate_number:requirement.requires_certificate_number===true,ps_case_id:c.id,ps_case_reference:c.reference,admin_notes:'Required training. Contact Training for completion instructions.'});
   await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:'training',officer_id:person.id,linked_entity:'TrainingAssignment',linked_id:assignment.id,title:'Required training: '+requirement.training_name,body:reason,due_date:due,status:'open',author_id:u.id,author_name:actorName(u)});
   await audit(db,u,'corrective_training_assigned',c.id,person.id+' '+assignment.id);
