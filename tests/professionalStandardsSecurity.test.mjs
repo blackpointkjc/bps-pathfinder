@@ -20,7 +20,8 @@ const security=fs.readFileSync('base44/functions/professionalStandards/security.
 const source=fs.readFileSync('base44/functions/professionalStandards/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','return async function(req){');
 const caseTools=fs.readFileSync('base44/functions/professionalStandards/caseTools.ts','utf8').replaceAll('export ','');
 const reportLink=new Function(fs.readFileSync('base44/functions/professionalStandards/reportLink.ts','utf8').replaceAll('export ','')+';return linkSubmittedReport;')();
-const handler=new Function('createClientFromRequest','linkSubmittedReport',security+'\n'+caseTools+'\n'+source)(()=>sdk,reportLink);
+const publicPolicy=fs.readFileSync('base44/functions/professionalStandards/publicPolicy.ts','utf8').replaceAll('export ','');
+const handler=new Function('createClientFromRequest','linkSubmittedReport',publicPolicy+'\n'+security+'\n'+caseTools+'\n'+source)(()=>sdk,reportLink);
 let reqNo=0;
 async function call(payload,files=[]){
  tables.PortalAuthSession[0].user_id=actor?.id;
