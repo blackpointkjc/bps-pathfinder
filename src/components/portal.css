@@ -76,3 +76,5 @@
 .bp-ia .ia-footer{border-top:1px solid #bfa04b40;padding:25px max(24px,calc((100vw - 1112px)/2));display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;font-size:11px;color:#a99e83;background:#070707;}
 .bp-ia .ia-footer a{color:#d6bd72;text-decoration:none;}
 @media(max-width:650px){.bp-ia .ia-header{padding:16px;gap:12px}.bp-ia .ia-header nav a:first-child{display:none}.bp-ia .bp-wordmark img{width:35px;height:44px}.bp-ia .bp-wordmark strong{font-size:20px}.bp-ia .bp-wordmark small{font-size:8px}.bp-ia .ia-intro>img{display:none}.bp-ia .portal-wrap{padding:24px 16px 40px}.bp-ia .portal-tabs button{font-size:11px;padding:9px 12px}.bp-ia .ia-contact-bar{font-size:10px;gap:6px 16px}.bp-ia .ia-header nav{font-size:10px}.bp-ia .ia-header nav a:last-child{padding:9px 12px}}
+
+.bp-ia input,.bp-ia select,.bp-ia textarea{color-scheme:dark}.bp-ia .bp-wordmark{min-width:0}.bp-ia .bp-wordmark>div{min-width:0}@media(max-width:650px){.bp-ia .bp-wordmark{gap:10px}.bp-ia .bp-wordmark small{max-width:170px;white-space:normal;line-height:1.5}.bp-ia .ia-header nav{flex-shrink:0;white-space:nowrap}}
