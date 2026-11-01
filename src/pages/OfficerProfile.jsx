@@ -180,7 +180,15 @@ export default function OfficerProfile() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data) => base44.auth.updateMe(data),
+    mutationFn: async data => {
+      const response=await base44.functions.invoke('updatePersonnelPhoto',{user_id:user?.id,...data});
+      if(response.data?.error||!response.data?.success)throw new Error(response.data?.error||'Photo was not confirmed saved.');
+      const photoChange={userId:user.id,profile_photo_url:response.data.profile_photo_url,profile_photo_original_url:response.data.profile_photo_original_url};
+      invalidateAppDirectory();
+      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated',{detail:photoChange}));
+      try{const channel=new BroadcastChannel('bps-pathfinder-personnel-photos');channel.postMessage(photoChange);channel.close();}catch{}
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['officerProfileUser'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });

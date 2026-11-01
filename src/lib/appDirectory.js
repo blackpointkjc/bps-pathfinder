@@ -224,6 +224,7 @@ if (typeof window !== 'undefined' && !window.__bpsDirectorySyncInstalled) {
     }
     if (kind === 'function') return [
       'updateUser',
+      'updatePersonnelPhoto',
       'createPortalAccount',
       'manageHRDivisions',
       'manageLocations',
