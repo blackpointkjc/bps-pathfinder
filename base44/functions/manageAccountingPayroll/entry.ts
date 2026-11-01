@@ -4,6 +4,10 @@ const money=(v:any)=>Math.round(Number(v||0)*100)/100;
 Deno.serve(async req=>{
   try {
     const base44=createClientFromRequest(req);
+    // Pending account identities cannot call operational service-role endpoints.
+    const __portalCaller = await base44.auth.me().catch(()=>null);
+    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+
     const actor=await base44.auth.me().catch(()=>null);
     if(!actor)return Response.json({error:'Sign in required'},{status:401});
     const roles=new Set((actor.additional_roles||[]).map(lower));

@@ -49,6 +49,10 @@ async function readAll(entity: any, query: any, sort: string, limit = 5000) {
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
+    // Pending account identities cannot call operational service-role endpoints.
+    const __portalCaller = await base44.auth.me().catch(()=>null);
+    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Sign in required' }, { status: 401 });
     // Matches the management location-history page; never expose a service-role report to a broader audience.

@@ -2,6 +2,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 Deno.serve(async req => {
  try {
   const api = createClientFromRequest(req);
+    // Pending account identities cannot call operational service-role endpoints.
+    const __portalCaller = await api.auth.me().catch(()=>null);
+    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+
   const actor = await api.auth.me();
   const permissions = (actor?.additional_roles || []).map((r:unknown) => String(r).toLowerCase());
   if (!actor || (actor.role !== 'admin' && !permissions.includes('trainer') && !permissions.includes('full_access')))

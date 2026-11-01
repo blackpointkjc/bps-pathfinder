@@ -4,6 +4,10 @@ const lower = (x: unknown) => String(x || '').trim().toLowerCase();
 Deno.serve(async req => {
  try {
   const api = createClientFromRequest(req);
+    // Pending account identities cannot call operational service-role endpoints.
+    const __portalCaller = await api.auth.me().catch(()=>null);
+    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+
   const me = await api.auth.me();
   if (!me?.email) return Response.json({error:'Login required'}, {status:401});
   const data = await req.json();

@@ -66,6 +66,10 @@ const siteNameFrom = (value:any) => clean(value).split(':')[0].split(' - ')[0].t
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    // Pending account identities cannot call operational service-role endpoints.
+    const __portalCaller = await base44.auth.me().catch(()=>null);
+    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+
     const me = await base44.auth.me().catch(() => null);
     if (!me) return Response.json({ error:'Unauthorized' }, { status:401 });
     if (!isSupervisor(me)) return Response.json({ error:'Supervisor access required' }, { status:403 });

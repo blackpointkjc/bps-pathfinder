@@ -9,6 +9,10 @@ const RESERVED = [
 Deno.serve(async req => {
  try {
   const api=createClientFromRequest(req);
+    // Pending account identities cannot call operational service-role endpoints.
+    const __portalCaller = await api.auth.me().catch(()=>null);
+    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+
   const me=await api.auth.me();
   if (!me || (me.role!=='admin' && !(me.additional_roles || []).includes('full_access'))) return Response.json({error:'System administrator required'},{status:403});
   const users=await api.asServiceRole.entities.User.list(undefined,1000);

@@ -35,6 +35,10 @@ function taskDescription(row:any,officer:any,supervisor:any){
 export default async function(req:Request):Promise<Response>{
   try{
     const api=createClientFromRequest(req);
+    // Pending account identities cannot call operational service-role endpoints.
+    const __portalCaller = await api.auth.me().catch(()=>null);
+    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+
     const signed=await api.auth.me().catch(()=>null);
     if(!signed?.id)return Response.json({error:'Sign-in required'},{status:401});
     const payload=await req.json().catch(()=>({}));
