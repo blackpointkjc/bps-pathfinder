@@ -27,7 +27,7 @@ compile(fs.readFileSync('base44/functions/updateUser/entry.ts','utf8'),{
  Deno:{serve:fn=>handler=fn},createClientFromRequest:()=>sdk,
  notifyPlatoonChange:async()=>{},synchronizeOfficerIdentity:async()=>[],normalizeRank:v=>v,PAY_RANGES:{},RANK_SERIES:{},nextUnitNumber:()=>1,reconcileAbsences:async()=>null,isClientIdentity:()=>false,clientOperationalPatch:()=>({}),autoReportingSelection:()=>({}),reportingFields:()=>({})
 });
-async function update(userId,updates){sdk.auth.me=async()=>actor;const r=await handler(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId,updates})}));return {status:r.status,...await r.json()};}
+async function update(userId,updates){sdk.auth.me=async()=>actor;const r=await handler(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer e30.'+Buffer.from(JSON.stringify({iat:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.test-signature'},body:JSON.stringify({userId,updates})}));return {status:r.status,...await r.json()};}
 let r=await update('staff',{additional_roles:['support','ia'],ps_role:'reviewer'});assert.equal(r.success,true,JSON.stringify(r));assert.equal(rows[0].ps_role,'reviewer');assert.ok(rows[0].additional_roles.includes('ia'));assert.equal(rows[0].portal_approved,true);
 r=await update('staff',{additional_roles:['support']});assert.equal(r.success,true);assert.equal(rows[0].ps_role,'none');assert.equal(hasIAAccess(rows[0]),false);
 r=await update('staff',{additional_roles:['support','full_access']});assert.equal(r.status,403);assert.match(r.error,/Colonel Hiers/);assert.equal(rows[0].additional_roles.includes('full_access'),false);

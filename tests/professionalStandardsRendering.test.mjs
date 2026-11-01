@@ -14,15 +14,22 @@ const result=await build({entryPoints:['src/pages/ProfessionalStandards.jsx'],bu
  if(args.path.includes('lazyPages'))contents='export const getPreparedTool=()=>null;';
  if(args.path.includes('base44Client'))contents='export const base44={};';
  if(args.path.includes('PublicProfessionalStandards'))contents='export const psCall=async()=>({});export const EvidenceInput=()=>null;';
- if(args.path==='react-router-dom')contents="import React from 'react';export const Link=({to,children,...rest})=>React.createElement('a',{href:to,...rest},children);";
+ if(args.path==='react-router-dom')contents="import React from 'react';export const Link=({to,children,...rest})=>React.createElement('a',{href:to,...rest},children);export const useLocation=()=>globalThis.__iaRenderLocation||({pathname:'/ProfessionalStandards',search:''});export const useNavigate=()=>()=>{};";
  return {contents,loader:'js',resolveDir:process.cwd()};
  });
 }}]});
 const module={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,module,module.exports);
 const Page=module.exports.default;
 globalThis.__iaRenderUser={id:'ia-staff',role:'user',additional_roles:['ia'],ps_role:'reviewer'};
-let html=renderToStaticMarkup(React.createElement(Page));
+let html='';
+for(const [area,section] of [['intake','inbox'],['investigations','cases'],['personnel','approvals'],['insights','reports'],['resources','resources']]){
+ globalThis.__iaRenderLocation={pathname:'/ProfessionalStandards',search:'?ps_area='+area+'&section='+section};
+ html+=renderToStaticMarkup(React.createElement(Page));
+}
 for(const heading of ['Complaint inbox','Case management','Evidence library','Interviews &amp; notes','Deadlines &amp; tasks','Findings &amp; approvals','Corrective actions','Reports &amp; trends','Audit history','Use of force','Write-ups','Inspections','Performance reviews','Confidential reports'])assert.ok(html.includes(heading),heading);
+assert.ok(html.includes('bps-command-theme'));
+assert.equal(html.includes('portal-shell'),false);
+assert.equal(html.includes('bp-ia'),false);
 assert.equal(html.includes('Verify your staff access'),false);
 assert.equal(html.includes('Email my verification code'),false);
 globalThis.__iaRenderUser={id:'ordinary-staff',role:'user',additional_roles:['officer']};

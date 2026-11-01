@@ -18,7 +18,7 @@ const source=fs.readFileSync('base44/functions/professionalStandards/entry.ts','
 const handler=new Function('createClientFromRequest',security+'\n'+source)(()=>sdk);
 let reqNo=0;
 async function call(payload,files=[]){
- let body,headers={'cf-connecting-ip':'test-'+(++reqNo)};
+ let body,headers={authorization:'Bearer e30.'+Buffer.from(JSON.stringify({iat:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.test-signature','cf-connecting-ip':'test-'+(++reqNo)};
  if(files.length){body=new FormData();body.set('payload',JSON.stringify(payload));files.forEach((f,i)=>body.set('file_'+i,f));}
  else{body=JSON.stringify(payload);headers['content-type']='application/json';}
  const res=await handler(new Request('https://example.test/functions/professionalStandards',{method:'POST',headers,body}));return {httpStatus:res.status,...await res.json()};

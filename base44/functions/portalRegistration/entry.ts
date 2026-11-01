@@ -1,4 +1,13 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
+const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
+function __portalLoginIsCurrent(request){
+ try{
+  const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');
+  const encoded=token.split('.')[1];
+  const claims=JSON.parse(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')));
+  return Number(claims.iat)>=Math.floor(Date.parse(__portalReauthAfter)/1000);
+ }catch{return false;}
+}
 const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const clean=(v,n=250)=>String(v??'').trim().slice(0,n);
 const requestedTypes=['employee','student','visitor','client'];
@@ -7,6 +16,7 @@ export default async function(req){
  const base44=createClientFromRequest(req),db=base44.asServiceRole.entities;
  const me=await base44.auth.me().then(__limitFullAccess).catch(()=>null);
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
+ if(!__portalLoginIsCurrent(req))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  const savedIdentity=await db.User.get(me.id);
  const canonicalRoles=(savedIdentity.additional_roles||[]).filter(r=>r!=='full_access'||me.id==='6a72bbee2842d6338cbae513');
  if(['investigator','reviewer'].includes(savedIdentity.ps_role)&&!canonicalRoles.includes('ia'))canonicalRoles.push('ia');

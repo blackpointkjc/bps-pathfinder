@@ -1,4 +1,13 @@
 import {createClientFromRequest,text,roles,manager,psRole,identity,hash,random,fail,audit,notify,actorName} from './security.ts';
+const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
+function __portalLoginIsCurrent(request){
+ try{
+  const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');
+  const encoded=token.split('.')[1];
+  const claims=JSON.parse(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')));
+  return Number(claims.iat)>=Math.floor(Date.parse(__portalReauthAfter)/1000);
+ }catch{return false;}
+}
 
 const legacyEntities=new Set(['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview']);
 async function legacyRequest(base44,db,u,body,privileged=false){
@@ -100,6 +109,7 @@ export default async function(req){
    return Response.json({reference:c.reference,kind:c.kind,status:c.public_status||'Received',message:c.public_message||'',submitted_at:c.created_date,updated_at:c.updated_date});
   }
   const u=await identity(base44),role=psRole(u);
+ if(!__portalLoginIsCurrent(req))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   if(action==='legacy_entity')return await legacyRequest(base44,db,u,body,role==='reviewer');
   const review=role==='reviewer';

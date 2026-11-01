@@ -1,5 +1,14 @@
 import {companyDelivery} from './delivery.ts';
 import {createClientFromRequest} from 'npm:@base44/sdk';
+const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
+function __portalLoginIsCurrent(request){
+ try{
+  const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');
+  const encoded=token.split('.')[1];
+  const claims=JSON.parse(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')));
+  return Number(claims.iat)>=Math.floor(Date.parse(__portalReauthAfter)/1000);
+ }catch{return false;}
+}
 const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const URL='https://bpspf.blackpointkjc.com/Login?mode=register';
 const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7,6 +16,7 @@ export default async function(req){
  try{
  const base44=createClientFromRequest(req),me=await base44.auth.me().then(__limitFullAccess);
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
+ if(!__portalLoginIsCurrent(req))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  const b=await req.json(),roles=new Set(me.additional_roles||[]),admin=me.role==='admin'||roles.has('full_access');
  const type={pending:'employee',student_pending:'student',employee:'employee',student:'student',client:'client',visitor:'visitor'}[b.accountType];
  if(!type||!admin&&!(type==='student'&&roles.has('trainer'))&&!(type==='employee'&&roles.has('hr')))return Response.json({error:'Account creation is not permitted'},{status:403});

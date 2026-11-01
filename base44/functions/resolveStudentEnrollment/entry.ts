@@ -1,10 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
+const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
+function __portalLoginIsCurrent(request){
+ try{
+  const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');
+  const encoded=token.split('.')[1];
+  const claims=JSON.parse(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')));
+  return Number(claims.iat)>=Math.floor(Date.parse(__portalReauthAfter)/1000);
+ }catch{return false;}
+}
 
 Deno.serve(async req => {
   try {
     const api = createClientFromRequest(req);
     const me = await api.auth.me();
     if (!me?.id || !me?.email) return Response.json({ error: 'Sign-in required' }, { status: 401 });
+ if(!__portalLoginIsCurrent(req))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     const roles = new Set((me.additional_roles || []).map((role:unknown) => String(role).toLowerCase()));
     if (me.role === 'admin' || roles.size || me.rank === 'Student') return Response.json({ success: true, student_pending: false });
     const email = String(me.email).trim().toLowerCase();
