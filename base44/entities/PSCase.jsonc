@@ -119,6 +119,10 @@
     },
     "outcome_recorded_at": {
       "type": "string"
+    },
+    "category_detail": {
+      "type": "string",
+      "description": "Other category explanation, reviewed and classified by IA"
     }
   },
   "rls": {
