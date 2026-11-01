@@ -584,7 +584,7 @@ function wrappedEntity(name) {
           const request = async () => {
             const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args});
             if(response.data?.error)throw new Error(response.data.error);
-            if(response.data?.receipt?.tracking_code)window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:response.data.receipt}));
+            if((response.data?.receipt?.tracking_code||response.data?.receipt?.pending))window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:response.data.receipt}));
             return response.data?.result;
           };
           const key='entity:'+name+':'+String(property)+':'+stableKey(args);
@@ -632,7 +632,7 @@ const functions = new Proxy(rawBase44.functions, {
     return (name, payload) => {
       const functionName = String(name);
       const key = `function:${functionName}:${stableKey(payload || {})}`;
-      const task = async () => {try{const result=await value.call(target,name,payload);if(result.data?.receipt?.tracking_code)window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:result.data.receipt}));return result;}catch(error){if(error?.response?.data?.code==='SESSION_REAUTH_REQUIRED')window.dispatchEvent(new Event('bps:session-reauthentication-required'));throw error;}};
+      const task = async () => {try{const result=await value.call(target,name,payload);if((result.data?.receipt?.tracking_code||result.data?.receipt?.pending))window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:result.data.receipt}));return result;}catch(error){if(error?.response?.data?.code==='SESSION_REAUTH_REQUIRED')window.dispatchEvent(new Event('bps:session-reauthentication-required'));throw error;}};
       const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '',
         locationTransition: payload?.end_session === true || payload?.reset_gps === true || payload?.status_changed === true };
 

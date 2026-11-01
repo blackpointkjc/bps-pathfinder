@@ -118,6 +118,14 @@ export default async function(req){
   }
   const u=await identity(base44),role=psRole(u);
  if(!await __portalLoginIsCurrent(req,base44,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+  if(action==='report_receipt'){
+   const name=text(body.source_entity,80);
+   if(!legacyEntities.has(name))fail('Unsupported report.');
+   const report=await base44.entities[name].get(text(body.source_record_id,100));
+   if(!report?.id)fail('Report not available.',403);
+   if(String(report.status||'').toLowerCase()==='draft')fail('Submit the report before creating an IA case.');
+   return Response.json({receipt:await linkSubmittedReport(db,u,name,report)});
+  }
   if(action==='legacy_entity')return await legacyRequest(base44,db,u,body,role==='reviewer');
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   const review=role==='reviewer';
