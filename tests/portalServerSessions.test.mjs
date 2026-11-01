@@ -24,9 +24,9 @@ let response=await call('sign_in',{email:'test@example.test',password:'mock-corr
 assert.equal(JSON.stringify(records).includes('mock-native-token'),false);assert.equal(JSON.stringify(records).includes('mock-correct-password'),false);
 assert.equal((await call('check')).success,true);
 const start=records[0].last_activity_at;
-clock+=29*60000;assert.equal((await call('check')).success,true);assert.equal(records[0].last_activity_at,start,'background checks never extend inactivity');
+clock+=(13*60-1)*60000;assert.equal((await call('check')).success,true);assert.equal(records[0].last_activity_at,start,'background checks never extend inactivity');
 assert.equal((await call('activity')).success,true);assert.notEqual(records[0].last_activity_at,start);
-clock+=30*60000;assert.equal((await call('activity')).status,401,'activity cannot restore an expired session');
+clock+=13*60*60000;assert.equal((await call('activity')).status,401,'activity cannot restore an expired session');
 response=await call('sign_in',{email:'test@example.test',password:'mock-correct-password'});assert.equal(response.status,200);
 assert.equal((await call('sign_out')).success,true);assert.equal((await call('check')).status,401,'revoked sessions stay unusable');
 assert.equal((await call('check',{},'different-token')).status,401);

@@ -7,7 +7,7 @@ const tables={};
 const testHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('test-current-session')))).map(v=>v.toString(16).padStart(2,'0')).join('');
 tables.PortalAuthSession=[{id:'mock-session',token_hash:testHash,started_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),revoked:false}];
 
-const match=(row,q)=>Object.entries(q||{}).every(([k,v])=>k==='$or'?v.some(c=>match(row,c)):row[k]===v);
+const match=(row,q)=>Object.entries(q||{}).every(([k,v])=>k==='$or'?v.some(c=>match(row,c)):v&&typeof v==='object'&&v.$in?(Array.isArray(row[k])?row[k].some(x=>v.$in.includes(x)):v.$in.includes(row[k])):row[k]===v);
 const db=new Proxy({}, {get(_t,name){tables[name]??=[];return {
  create:async data=>{const row={...data,id:name+'-'+(++counter),created_date:new Date().toISOString(),updated_date:new Date().toISOString()};tables[name].push(row);return {...row};},
  get:async id=>{const r=tables[name].find(r=>r.id===id);if(!r)throw Error('missing');return {...r};},
@@ -17,8 +17,9 @@ const db=new Proxy({}, {get(_t,name){tables[name]??=[];return {
  };}});
 const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,integrations:{Core:{SendEmail:async p=>{mail.push(p);return{};},UploadPrivateFile:async()=>({file_uri:'private/mock/evidence'}),CreateFileSignedUrl:async()=>({signed_url:'https://example.test/private-signed'})}}}};
 const security=fs.readFileSync('base44/functions/professionalStandards/security.ts','utf8').replace(/^import .*;\n/m,'').replace(/^export \{.*\};?\n?/gm,'').replaceAll('export ','');
-const source=fs.readFileSync('base44/functions/professionalStandards/entry.ts','utf8').replace(/^import .*;\n/m,'').replace('export default async function(req){','return async function(req){');
-const handler=new Function('createClientFromRequest',security+'\n'+source)(()=>sdk);
+const source=fs.readFileSync('base44/functions/professionalStandards/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','return async function(req){');
+const caseTools=fs.readFileSync('base44/functions/professionalStandards/caseTools.ts','utf8').replaceAll('export ','');
+const handler=new Function('createClientFromRequest',security+'\n'+caseTools+'\n'+source)(()=>sdk);
 let reqNo=0;
 async function call(payload,files=[]){
  tables.PortalAuthSession[0].user_id=actor?.id;
@@ -67,6 +68,7 @@ assert.equal((await call({action:'finding',case_id:c.id,record_id:allegation.id,
 await call({action:'add_record',case_id:c.id,record:{kind:'corrective_action',title:'Test follow-up',body:'Test only'},ps_access:invToken});
 actor=reviewer;
 assert.equal((await call({action:'update',case_id:c.id,version:c.version,patch:{status:'closed'},ps_access:reviewToken})).httpStatus,400);
+assert.equal((await call({action:'document_outcome',case_id:c.id,outcome:'unfounded',summary:'A documented synthetic investigation result based on test-only evidence.'})).httpStatus,200);
 assert.equal((await call({action:'update',case_id:c.id,version:c.version,patch:{status:'approved'},ps_access:reviewToken})).httpStatus,200);
 assert.ok(tables.PSAudit.some(r=>r.action==='case_view'));assert.ok(tables.PSAudit.some(r=>r.action==='finding'));
 assert.equal((await call({action:'export',ps_access:reviewToken})).httpStatus,200);assert.ok(tables.PSAudit.some(r=>r.action==='restricted_export'));
@@ -85,6 +87,38 @@ const linkedSource=await db.Complaint.create({description:'An existing synthetic
 const linkedPayload={action:'create_case',ps_access:reviewToken,case:{source_entity:'Complaint',source_record_id:linkedSource.id}};let linked=await call(linkedPayload);assert.equal(linked.httpStatus,200);assert.equal(tables.PSCase.find(v=>v.id===linked.case_id).source_record_id,linkedSource.id);assert.equal((await call(linkedPayload)).existing,true);
 actor=investigator;assert.equal((await call({...linkedPayload,ps_access:invToken})).httpStatus,403);
 actor=null;assert.equal((await call({action:'public_followup',reference:receipt.reference,tracking_code:receipt.tracking_code,message:'Additional synthetic incident information.'})).httpStatus,200);assert.ok(tables.PSRecord.some(v=>v.case_id===c.id&&v.kind==='public_followup'));
+
+actor=reviewer;
+await call({action:'update',case_id:c.id,version:c.version,patch:{status:'investigating'}});
+const subject=await db.User.create({id:'subject',role:'user',additional_roles:['officer'],first_name:'Synthetic',last_name:'Subject',email:'subject@example.test',employment_status:'active',portal_approved:true,account_status:'approved',ssn:'DO_NOT_EXPOSE',bank_routing_number:'DO_NOT_EXPOSE'});
+assert.equal((await call({action:'officer_file',case_id:c.id,officer_id:subject.id})).httpStatus,403);
+assert.equal((await call({action:'link_officers',case_id:c.id,officer_ids:[subject.id]})).httpStatus,200);
+let personnel=await call({action:'officer_file',case_id:c.id,officer_id:subject.id});
+assert.equal(personnel.httpStatus,200);assert.equal(personnel.officer.ssn,undefined);assert.equal(personnel.officer.bank_routing_number,undefined);
+const requirement=await db.TrainingRequirement.create({training_name:'Synthetic remedial course',active:true,description:'Normal training instructions'});
+actor=investigator;
+assert.equal((await call({action:'assign_training',case_id:c.id,officer_id:subject.id,requirement_id:requirement.id,due_date:'2026-12-01',reason:'Synthetic documented corrective instruction.'})).httpStatus,403);
+actor=reviewer;
+const assignPayload={action:'assign_training',case_id:c.id,officer_id:subject.id,requirement_id:requirement.id,due_date:'2026-12-01',reason:'Private synthetic corrective action rationale.'};
+assert.equal((await call(assignPayload)).httpStatus,200);assert.equal((await call(assignPayload)).existing,true);
+const training=tables.TrainingAssignment.find(v=>v.ps_case_id===c.id);assert.ok(training);assert.equal(training.status,'assigned');assert.equal(training.description.includes('Private synthetic'),false);
+const corrective=tables.PSRecord.find(v=>v.linked_id===training.id);
+assert.equal((await call({action:'complete_record',case_id:c.id,record_id:corrective.id})).httpStatus,400);
+await db.TrainingAssignment.update(training.id,{status:'approved'});
+assert.equal((await call({action:'complete_record',case_id:c.id,record_id:corrective.id})).httpStatus,200);
+await db.PortalAuthSession.create({user_id:subject.id,revoked:false});
+await db.ActiveOfficer.create({officer_email:subject.email,session_active:true,status:'Available'});
+await db.Unit.create({user_id:subject.id,status:'Available'});
+assert.equal((await call({action:'suspend_officer',case_id:c.id,officer_id:subject.id,reason:'Synthetic documented suspension decision only.'})).httpStatus,200);
+assert.equal((await db.User.get(subject.id)).account_status,'suspended');assert.equal((await db.User.get(subject.id)).portal_approved,false);
+assert.equal(tables.PortalAuthSession.find(v=>v.user_id===subject.id).revoked,true);
+assert.equal(tables.ActiveOfficer.find(v=>v.officer_email===subject.email).session_active,false);
+const suspension=tables.PSRecord.find(v=>v.action_type==='suspension'&&v.officer_id===subject.id);
+assert.equal((await call({action:'complete_record',case_id:c.id,record_id:suspension.id})).httpStatus,400);
+assert.equal((await call({action:'lift_suspension',case_id:c.id,record_id:suspension.id,reason:'Synthetic authorized reinstatement decision only.'})).httpStatus,200);
+assert.equal((await db.User.get(subject.id)).employment_status,'active');assert.equal((await db.User.get(subject.id)).portal_approved,true);
+assert.equal(tables.AccountLock.find(v=>v.id===suspension.linked_id).locked,false);
+assert.ok(tables.PSAudit.some(v=>v.action==='officer_file_view'));assert.ok(tables.PSAudit.some(v=>v.action==='officer_suspended'));
 actor={...reviewer,termination_date:'2026-01-01'};
 assert.equal((await call({action:'list',ps_access:reviewToken})).httpStatus,401);
 for(const name of ['PSCase','PSRecord','PSAudit','PSAccess','PortalInvitation','PortalRegistration']){
