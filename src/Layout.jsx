@@ -1,3 +1,4 @@
+import {getRoleHome} from '@/lib/roleHome';
 import {hasIAAccess,hasWholeAppAccess} from '@/lib/portalAccess';
 import '@/components/map/mapWorkspace.css';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
@@ -490,7 +491,8 @@ function allowedCenters(user) {
   if (canAccessAccounting(user)) centers.push('accounting');
   if (roles.has('trainer')) centers.push('training');
   if(hasIAAccess(user))centers.push('standards');
-  return [...new Set(centers)];
+  const primary=getRoleHome(user).center;
+  return [...new Set([...(centers.includes(primary)?[primary]:[]),...centers])];
 }
 
 const CENTER_DEFAULT_PAGE = {
@@ -511,13 +513,8 @@ function defaultPageForCenter(center) {
   return CENTER_DEFAULT_PAGE[center] || 'CommandDashboard';
 }
 
-function defaultPageForUser(user, desktop = false) {
-  // Officer identities land in CAD, while clients/students remain isolated.
-  const roles = normalizedRoles(user);
-  const centers = allowedCenters(user);
-  if (centers.includes('cad') && (roles.has('officer') || roles.has('cad_access') || user?.dispatch_role === true)) return desktop ? 'CADCenter' : 'CommandDashboard';
-  const center = centers[0];
-  return desktop && DESKTOP_CENTER_PAGE[center] ? DESKTOP_CENTER_PAGE[center] : defaultPageForCenter(center);
+function defaultPageForUser(user) {
+  return getRoleHome(user).page;
 }
 
 function canAccessPage(user, pageName) {
@@ -1071,7 +1068,7 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     if (!user?.id || !currentPageName || roleHomeEntryHandledRef.current) return;
-    const primaryCenter = allowedCenters(user)[0] || 'cad';
+    const primaryCenter = getRoleHome(user).center;
     const target = defaultPageForUser(user, true);
     const routeKey = `bps-role-home-routed:${user.id}`;
     const isRootLanding = typeof window !== 'undefined' && window.location.pathname === '/';
@@ -1508,11 +1505,9 @@ export default function Layout({ children, currentPageName }) {
   // rewrite an inner-page URL back to a center landing page.
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = ['CADCenter','CommandDashboard','DispatchCenter'].includes(currentPageName) ? 'CAD Operations' : (CENTER_CONFIG[activeCenter]?.label || 'CAD Center');
-  const primaryCenter = allowedCenters(user)[0] || 'officer';
-  const userHomePage = defaultPageForUser(user, true);
-  const userHomeLabel = userHomePage === 'AdminCenter'
-    ? 'Admin Main'
-    : `${String(CENTER_CONFIG[primaryCenter]?.label || 'Pathfinder').replace(/\s+Center$/i, '')} Main`;
+  const userHome = getRoleHome(user);
+  const userHomePage = userHome.page;
+  const userHomeLabel = userHome.label;
 
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
@@ -1610,8 +1605,7 @@ export default function Layout({ children, currentPageName }) {
             title={`Return to ${userHomeLabel}`}
           >
             <Home className="h-4 w-4" />
-            <span className="sm:hidden">Main</span>
-            <span className="hidden sm:inline">{userHomeLabel}</span>
+            <span>{userHomeLabel}</span>
           </Link>
           {!['AdminCenter','CorporateBrowser','AdminBrowserControl','AdminReports'].includes(currentPageName) && <div className="pf-header-context hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
