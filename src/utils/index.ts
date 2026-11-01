@@ -1,4 +1,4 @@
-const IA_TOOLS:Record<string,string>={AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',SupervisorInspections:'inspections',SupervisorPerformanceReview:'supervisorReviews',SupervisorWriteUps:'writeups',SupervisorUseOfForce:'force',SupervisorComplaints:'supervisorComplaints',ConfidentialReport:'report',OfficerPerformanceReviews:'myreviews'};
+const IA_TOOLS:Record<string,string>={AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',};
 export function createPageUrl(pageName:string){
  const [page,query='']=pageName.split('?');
  if(IA_TOOLS[page])return '/ProfessionalStandards?section='+IA_TOOLS[page];

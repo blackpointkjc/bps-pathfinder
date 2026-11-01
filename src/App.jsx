@@ -371,8 +371,8 @@ const AuthenticatedApp = () => {
           key={path}
           path={`/${path}`}
           element={
-            ({AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',SupervisorInspections:'inspections',SupervisorPerformanceReview:'supervisorReviews',SupervisorWriteUps:'writeups',SupervisorUseOfForce:'force',SupervisorComplaints:'supervisorComplaints',ConfidentialReport:'report',OfficerPerformanceReviews:'myreviews'})[path]
-              ? <Navigate replace to={'/ProfessionalStandards?section='+({AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',SupervisorInspections:'inspections',SupervisorPerformanceReview:'supervisorReviews',SupervisorWriteUps:'writeups',SupervisorUseOfForce:'force',SupervisorComplaints:'supervisorComplaints',ConfidentialReport:'report',OfficerPerformanceReviews:'myreviews'})[path]} />
+            ({AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',})[path]
+              ? <Navigate replace to={'/ProfessionalStandards?section='+({AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',})[path]} />
               : <LayoutWrapper currentPageName={path}><Page /></LayoutWrapper>
           }
         />

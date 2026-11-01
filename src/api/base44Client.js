@@ -584,6 +584,7 @@ function wrappedEntity(name) {
           const request = async () => {
             const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args});
             if(response.data?.error)throw new Error(response.data.error);
+            if(response.data?.receipt?.tracking_code)window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:response.data.receipt}));
             return response.data?.result;
           };
           const key='entity:'+name+':'+String(property)+':'+stableKey(args);

@@ -17,6 +17,7 @@ async function legacyRequest(base44,db,u,body,privileged=false){
  const name=text(body.entity,80),method=text(body.method,30),args=Array.isArray(body.args)?body.args:[];
  if(name==='ClientFeedback'&&!privileged)fail('Reviewer access required.',403);
  if(!legacyEntities.has(name)||!['list','filter','get','create','update','delete'].includes(method))fail('Unsupported reporting operation.');
+ if(!privileged&&!u.portal_approved&&u.role!=='admin')fail('An approved staff account is required.',403);
  if(method==='delete'&&!manager(u))fail('Only main account administrators may delete legacy reports.',403);
  if(args.length>5)fail('Invalid operation arguments.');
  const entity=(privileged?base44.asServiceRole.entities:base44.entities)[name];
@@ -33,8 +34,22 @@ async function legacyRequest(base44,db,u,body,privileged=false){
   result=method==='create'?await entity.create(patch):await entity.update(text(args[0],100),patch);
  }
  if(method==='delete')result=await entity.delete(text(args[0],100));
+ let receipt=null;
+ if(['create','update'].includes(method)&&result?.id&&String(result.status||'').toLowerCase()!=='draft'){receipt=await linkSubmittedReport(db,u,name,result);}
  await audit(db,u,'legacy_'+method+'_completed','',name+' '+requestId);
- return Response.json({result});
+ return Response.json({result,receipt});
+}
+
+async function linkSubmittedReport(db,u,name,report){
+ const prior=await db.PSCase.filter({source_entity:name,source_record_id:report.id},'-created_date',1);
+ if(prior[0])return {reference:prior[0].reference,existing:true};
+ const tracking_code=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,'0');
+ const reference='IA-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
+ const description=text(report.description||report.observations||report.summary||report.supervisor_notes||report.incident_description||report.comments||JSON.stringify(report),12000);
+ const c=await db.PSCase.create({reference,tracking_hash:await hash(tracking_code),kind:name==='Commendation'?'commendation':'complaint',source_type:'staff_report',source_entity:name,source_record_id:report.id,anonymous:name==='ConfidentialReport'&&report.anonymous===true,complainant_name:actorName(u),contact_preference:'none',incident_date:text(report.incident_date||report.inspection_date||report.review_date||report.created_date||new Date().toISOString(),40),location:text(report.location||report.location_name||'Internal personnel report',500),officers:text(report.officer_name||report.officer_inspected||report.officer_email||'Not identified',1000),officer_ids:report.officer_id?[report.officer_id]:[],description,status:'new',public_status:'Received',public_message:'Your report was received by Professional Standards.',category:name,priority:'normal',version:1,legal_hold:false});
+ await db.PSRecord.create({case_id:c.id,kind:'source_report',title:'Submitted '+name,body:'Original report ID: '+report.id,source_entity:name,source_record_id:report.id,author_id:u.id,author_name:actorName(u),status:'linked'});
+ await audit(db,u,'staff_report_submitted',c.id,name+' '+report.id);
+ return {reference,tracking_code,submitted_at:c.created_date||new Date().toISOString()};
 }
 
 const kinds=['note','interview','task','allegation','corrective_action','policy','evidence'];
@@ -114,8 +129,8 @@ export default async function(req){
   }
   const u=await identity(base44),role=psRole(u);
  if(!await __portalLoginIsCurrent(req,base44,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
-  if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   if(action==='legacy_entity')return await legacyRequest(base44,db,u,body,role==='reviewer');
+  if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   const review=role==='reviewer';
   const canRead=c=>review||!c.investigator_id||c.investigator_id===u.id;
   const staff=await db.User.list('-created_date',1000);

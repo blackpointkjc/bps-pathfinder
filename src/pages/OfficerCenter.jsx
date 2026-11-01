@@ -1,3 +1,5 @@
+import ConfidentialReport from './ConfidentialReport';
+import OfficerPerformanceReviews from './OfficerPerformanceReviews';
 import { CalendarClock, ClipboardList, Shield, UserRound, Wrench } from 'lucide-react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
@@ -59,6 +61,7 @@ const TOOLS = {
     { id: 'subpoena', label: 'Witness Subpoena', component: WitnessSubpoenaRequest },
   ],
   reports: [
+    {id:'confidential',label:'Confidential report',component:ConfidentialReport},
     { id: 'dar', label: 'Daily Activity', component: DailyActivityReports },
     { id: 'incident', label: 'Incident Report', component: IncidentReports },
     { id: 'parking', label: 'Parking Notices', component: ParkingRecords },
@@ -77,6 +80,7 @@ const TOOLS = {
     { id: 'payroll', label: 'Payroll Dates', component: OfficerPayrollDates },
   ],
   profile: [
+    {id:'reviews',label:'Reviews & acknowledgments',component:OfficerPerformanceReviews},
     { id: 'profile', label: 'My Profile', component: OfficerProfile },
     { id: 'performance', label: 'My Performance', component: MyPerformanceAnalytics },
 

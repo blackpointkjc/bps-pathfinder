@@ -1,3 +1,8 @@
+import SupervisorComplaints from './SupervisorComplaints';
+import SupervisorUseOfForce from './SupervisorUseOfForce';
+import SupervisorWriteUps from './SupervisorWriteUps';
+import SupervisorPerformanceReview from './SupervisorPerformanceReview';
+import SupervisorInspections from './SupervisorInspections';
 import SupervisorScheduleWorkspace from '@/components/SupervisorScheduleWorkspace';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect } from 'react';
@@ -20,12 +25,21 @@ import SupervisorCommandBoard from './SupervisorCommandBoard';
 import { Radio } from 'lucide-react';
 
 const SECTIONS = [
+ {id:'oversight',label:'Personnel Reports',description:'Submit reports for officers within your assignment',icon:ShieldCheck},
   { id: 'overview', label: 'Overview & Alerts', description: 'Priority alerts, work queue and supervisor command status', icon: LayoutDashboard },
   { id: 'officer', label: 'My Officer Workspace', description: 'Your own shift, field tools, reports, schedule, profile and training', icon: Shield },
   { id: 'calendar', label: 'Duty Supervisor Coverage', description: 'Company duty supervisors and coverage areas', icon: Shield },
   { id: 'cad', label: 'My Platoon CAD', description: 'Assigned platoon calls, units and officer welfare', icon: Radio },
   { id: 'command', label: 'Live Command & Handoff', description: 'Field oversight, welfare, action items, communication and duty handoff', icon: ShieldCheck },
 
+];
+
+const REPORT_TOOLS = [
+ {id:'SupervisorInspections',label:'Inspections',component:SupervisorInspections},
+ {id:'SupervisorPerformanceReview',label:'Performance reviews',component:SupervisorPerformanceReview},
+ {id:'SupervisorWriteUps',label:'Write-ups',component:SupervisorWriteUps},
+ {id:'SupervisorUseOfForce',label:'Use of force',component:SupervisorUseOfForce},
+ {id:'SupervisorComplaints',label:'Officer complaints',component:SupervisorComplaints},
 ];
 
 const COMMAND_TOOLS = [
@@ -57,6 +71,7 @@ class SupervisorSectionBoundary extends React.Component {
 }
 
 function SupervisorSectionContent({ section, embedded }) {
+  if(section==='oversight')return <CenterToolSection tools={REPORT_TOOLS} queryParam={embedded?'supervisor_report_tool':'report_tool'}/>;
   if (section === 'overview') return <SupervisorOverview />;
   if (section === 'officer') return <OfficerCenter embedded />;
   if (section === 'cad') return <SupervisorCommandBoard />;

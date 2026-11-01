@@ -313,7 +313,7 @@ const CENTER_CONFIG = {
 };
 
 // Personnel investigations have one home: the authorized IA workspace.
-const IA_MOVED_PAGES = new Set(['AdminSupervisorReports','AdminComplaints','AdminCommendations','AdminConfidentialReports','AdminPerformanceReviews','SupervisorInspections','SupervisorPerformanceReview','SupervisorWriteUps','SupervisorUseOfForce','SupervisorComplaints','ConfidentialReport','OfficerPerformanceReviews']);
+const IA_MOVED_PAGES = new Set(['AdminSupervisorReports','AdminComplaints','AdminCommendations','AdminConfidentialReports','AdminPerformanceReviews']);
 Object.entries(CENTER_CONFIG).forEach(([key,config])=>{if(key!=='standards')config.groups.forEach(group=>{group.items=group.items.filter(([,page])=>!IA_MOVED_PAGES.has(page));});});
 
 const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, config]) => {
