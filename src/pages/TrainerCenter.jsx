@@ -1,3 +1,4 @@
+import IAEntryLinks from '@/components/ia/IAEntryLinks';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { GraduationCap, Users, BookOpen, ShieldCheck, ClipboardCheck, FileText, Search } from 'lucide-react';
@@ -27,7 +28,7 @@ export default function TrainerCenter({embedded=false}) {
  return <div className="min-h-full bg-[#080d18] text-slate-100">
   <header className="border-b border-violet-600/20 bg-gradient-to-r from-[#1d1539] to-[#0a1728] px-4 py-5 md:px-7">
    <div className="text-[10px] font-black uppercase tracking-[.2em] text-violet-300">Black Point · Training Department</div>
-   <h1 className="mt-1 text-3xl font-black">Trainer Workbench</h1>
+   <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="mt-1 text-3xl font-black">Trainer Workbench</h1><IAEntryLinks/></div>
    <p className="mt-1 text-sm text-slate-400">One workspace, organized around the job you need to finish—not a collection of separate dashboards.</p>
   </header>
   <div className="flex flex-col lg:min-h-[70vh] lg:flex-row">

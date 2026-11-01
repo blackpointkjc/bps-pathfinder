@@ -22,10 +22,6 @@ import {
 import AdminQRReports from './AdminQRReports';
 import ParkingRecords from './ParkingRecords';
 import AdminClientReports from './AdminClientReports';
-import AdminSupervisorReports from './AdminSupervisorReports';
-import AdminConfidentialReports from './AdminConfidentialReports';
-import AdminComplaints from './AdminComplaints';
-import AdminCommendations from './AdminCommendations';
 import AdminClientFeedback from './AdminClientFeedback';
 import PathfinderReports from './Reports';
 import AcceptableUseReport from '@/components/admin/AcceptableUseReport';
@@ -1609,11 +1605,7 @@ export default function AdminReports(){
     {active==='parking'&&<ParkingRecords mode="admin"/>}
     {active==='rentroll'&&<ParkingRecords mode="admin-rentroll"/>}
     {active==='clientreports'&&<AdminClientReports/>}
-    {active==='supervisorreports'&&<AdminSupervisorReports/>}
-    {active==='confidential'&&<AdminConfidentialReports/>}
     {active==='cadreports'&&<PathfinderReports/>}
-    {active==='complaints'&&<AdminComplaints/>}
-    {active==='commendations'&&<AdminCommendations/>}
     {active==='feedback'&&<AdminClientFeedback/>}
   </div>;
 }

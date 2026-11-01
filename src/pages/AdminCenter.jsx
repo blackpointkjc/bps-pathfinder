@@ -1,4 +1,4 @@
-import {hasIAAccess} from '@/lib/portalAccess';
+import IAEntryLinks from '@/components/ia/IAEntryLinks';
 import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { lazy, useEffect, useMemo, useState } from 'react';
@@ -35,10 +35,6 @@ const AdminLocations = lazy(() => import('./AdminLocations'));
 const AdminReports = lazy(() => import('./AdminReports'));
 const ParkingRecords = lazy(() => import('./ParkingRecords'));
 const AdminClientReports = lazy(() => import('./AdminClientReports'));
-const AdminSupervisorReports = lazy(() => import('./AdminSupervisorReports'));
-const AdminConfidentialReports = lazy(() => import('./AdminConfidentialReports'));
-const AdminComplaints = lazy(() => import('./AdminComplaints'));
-const AdminCommendations = lazy(() => import('./AdminCommendations'));
 const AdminClientFeedback = lazy(() => import('./AdminClientFeedback'));
 const AdminAnnouncements = lazy(() => import('./AdminAnnouncements'));
 const AdminPortalSettings = lazy(() => import('./AdminPortalSettings'));
@@ -57,11 +53,9 @@ const RankStructure = lazy(() => import('./RankStructure'));
 const HRCenter = lazy(() => import('./HRCenter'));
 const ClientCenter = lazy(() => import('./ClientCenter'));
 const TrainerCenter = lazy(() => import('./TrainerCenter'));
-const ProfessionalStandards = lazy(() => import('./ProfessionalStandards'));
 const StudentPortal = lazy(() => import('./StudentPortal'));
 
 const MASTER_SECTIONS = [
-  {id:'standards',label:'Professional Standards',description:'Internal affairs, investigations and personnel standards',icon:Shield},
   { id: 'admin', label: 'Administration', description: 'Administration-only command, scheduling, personnel, reports and system controls', icon: Settings },
   { id: 'cad', label: 'CAD', description: 'CAD tools only', icon: Radio },
   { id: 'officer', label: 'Officer', description: 'Officer tools only', icon: Shield },
@@ -78,7 +72,7 @@ const ADMIN_SECTIONS = [
   { id: 'supporttime', label: 'Support Clock In', description: 'Support and administrative staff time', icon: Calendar },
   { id: 'assets', label: 'Company Assets', description: 'Vehicles, equipment and maintenance', icon: Briefcase },
   { id: 'sites', label: 'Sites & Patrol', description: 'Locations, boundaries, dispatch rules, post orders and patrol requirements', icon: Building2 },
-  { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, complaints, commendations and feedback', icon: ClipboardList },
+  { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, parking records and service feedback', icon: ClipboardList },
   { id: 'communications', label: 'Announcements', description: 'Company announcements and staff communications', icon: MessageCircle },
   { id: 'system', label: 'System Settings', description: 'Portal access and application settings', icon: Settings },
 ];
@@ -266,7 +260,7 @@ export default function AdminCenter() {
   const [previewError, setPreviewError] = useState('');
   const [previewRetry, setPreviewRetry] = useState(0);
   const signedInRoles = new Set([signedInUser?.role, ...(Array.isArray(signedInUser?.additional_roles) ? signedInUser.additional_roles : signedInUser?.additional_roles ? [signedInUser.additional_roles] : [])].filter(Boolean).map(value => String(value).toLowerCase()));
-  const masterSections = MASTER_SECTIONS.filter(item => (item.id !== 'standards' || hasIAAccess(signedInUser)) && (item.id !== 'training' || signedInRoles.has('admin') || signedInRoles.has('trainer') || signedInRoles.has('full_access')));
+  const masterSections = MASTER_SECTIONS.filter(item => (item.id !== 'training' || signedInRoles.has('admin') || signedInRoles.has('trainer') || signedInRoles.has('full_access')));
 
   const canPreview = signedInRoles.has('admin') || signedInRoles.has('full_access');
   useEffect(() => {
@@ -394,13 +388,14 @@ export default function AdminCenter() {
       eyebrow="Master Administration"
       title="Admin Center"
       description="Administration and role-specific tools in one workspace. Choose a user in Preview as user to inspect their account workspace."
+      headerAction={<IAEntryLinks/>}
       sections={masterSections}
       defaultSection="admin"
       queryParam="admin_center"
       headerAction={() => canPreview ? previewPicker : null}
     >
       {section => {
-        const mirror = section === 'standards' && hasIAAccess(signedInUser) ? <ProfessionalStandards embedded /> : section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
+        const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
         return <div className="min-w-0">{mirror}</div>;
       }}
     </UnifiedCenter>

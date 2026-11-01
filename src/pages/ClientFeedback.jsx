@@ -1,3 +1,4 @@
+import IAEntryLinks from '@/components/ia/IAEntryLinks';
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";

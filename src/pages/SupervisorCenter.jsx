@@ -1,3 +1,4 @@
+import IAEntryLinks from '@/components/ia/IAEntryLinks';
 import SupervisorScheduleWorkspace from '@/components/SupervisorScheduleWorkspace';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect } from 'react';
