@@ -41,20 +41,15 @@ const investigator={id:'investigator',role:'user',additional_roles:['ia'],ps_rol
 const reviewer={id:'reviewer',role:'user',additional_roles:['ia'],ps_role:'reviewer',email:'reviewer@example.test',last_name:'Review'};
 tables.User=[investigator,reviewer];
 actor=reviewer;
-assert.equal((await call({action:'list'})).code,'PS_VERIFICATION_REQUIRED');
-const request=await call({action:'request_access'});assert.equal(request.httpStatus,200);
-const otp=mail.at(-1).body.match(/code is (\d{6})/)[1];
-assert.equal((await call({action:'verify_access',challenge_id:request.challenge_id,code:'wrong'})).httpStatus,403);
-const access=await call({action:'verify_access',challenge_id:request.challenge_id,code:otp});assert.ok(access.ps_access);
-assert.equal((await call({action:'verify_access',challenge_id:request.challenge_id,code:otp})).httpStatus,403);
-const reviewToken=access.ps_access;
+assert.equal((await call({action:'list'})).httpStatus,200,'IA role opens the staff workspace without a second email code');
+const reviewToken='';
 let result=await call({action:'list',ps_access:reviewToken});assert.equal(result.httpStatus,200);assert.equal(result.cases[0].tracking_hash,undefined);
 result=await call({action:'update',case_id:c.id,version:1,patch:{investigator_id:investigator.id,status:'investigating'},ps_access:reviewToken});assert.equal(result.httpStatus,200);
 actor=investigator;
 const invToken='investigator-secret';
 await db.PSAccess.create({user_id:actor.id,session_hash:await digest(invToken),verified:true,session_expires_at:new Date(Date.now()+60000).toISOString()});
 assert.equal((await call({action:'get',case_id:c.id,ps_access:invToken})).httpStatus,200);
-assert.equal((await call({action:'get',case_id:c.id,ps_access:reviewToken})).code,'PS_VERIFICATION_REQUIRED');
+assert.equal((await call({action:'get',case_id:c.id})).httpStatus,200);
 assert.equal((await call({action:'update',case_id:c.id,version:c.version,patch:{status:'approved'},ps_access:invToken})).httpStatus,403);
 assert.equal((await call({action:'update',case_id:c.id,version:c.version,patch:{public_message:'not authorized'},ps_access:invToken})).httpStatus,403);
 assert.equal((await call({action:'export',ps_access:invToken})).httpStatus,403);
@@ -93,4 +88,4 @@ for(const name of ['PSCase','PSRecord','PSAudit','PSAccess','PortalInvitation','
 }
 const user=JSON.parse(fs.readFileSync('base44/entities/User.jsonc'));
 for(const key of ['portal_approved','ps_role','additional_roles'])assert.equal(user.properties[key].rls.write,false);
-console.log('PASS: public intake, anonymous-field stripping, private evidence hashing, secret tracking, staff verification, role and assignment boundaries, findings approval, corrective action closure checks, audit logging, restricted exports, and privilege field protection.');
+console.log('PASS: public intake, anonymous-field stripping, private evidence hashing, secret tracking, normal staff sign-in, role and assignment boundaries, findings approval, corrective action closure checks, audit logging, restricted exports, and privilege field protection.');

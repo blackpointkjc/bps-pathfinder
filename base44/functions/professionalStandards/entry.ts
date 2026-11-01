@@ -101,28 +101,6 @@ export default async function(req){
   }
   const u=await identity(base44),role=psRole(u);
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
-  if(action==='request_access'){
-   const prior=await db.PSAccess.filter({user_id:u.id},'-created_date',1);
-   if(prior[0]&&Date.now()-Date.parse(prior[0].created_date)<60000)fail('Wait one minute before requesting another code.',429);
-   const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');
-   const row=await db.PSAccess.create({user_id:u.id,code_hash:await hash(code),session_hash:'',expires_at:new Date(Date.now()+600000).toISOString(),attempts:0,verified:false});
-   const sent=await notify(base44,u.email,'Your Professional Standards verification code','Your code is '+code+'. It expires in 10 minutes. Do not share it. If you did not request this code, contact administration.',u);
-   if(!sent)fail('The verification email could not be delivered. Contact administration or retry later.',503);
-   await audit(db,u,'staff_verification_requested');
-   return Response.json({challenge_id:row.id,success:true});
-  }
-  if(action==='verify_access'){
-   const row=await db.PSAccess.get(text(body.challenge_id,100)).catch(()=>null);
-   if(!row||row.user_id!==u.id||row.verified||row.attempts>=5||Date.parse(row.expires_at)<Date.now())fail('Verification expired. Request a new code.',403);
-   await db.PSAccess.update(row.id,{attempts:Number(row.attempts||0)+1});
-   if(await hash(text(body.code,10))!==row.code_hash)fail('Incorrect verification code.',403);
-   const session=random();
-   await db.PSAccess.update(row.id,{verified:true,code_hash:'',session_hash:await hash(session),session_expires_at:new Date(Date.now()+4*3600000).toISOString()});
-   await audit(db,u,'staff_verification_completed');
-   return Response.json({ps_access:session,success:true});
-  }
-  const grants=body.ps_access?await db.PSAccess.filter({user_id:u.id,session_hash:await hash(text(body.ps_access,100)),verified:true},'-created_date',1):[];
-  if(!grants[0]||Date.parse(grants[0].session_expires_at)<Date.now())return Response.json({error:'Additional email verification is required for confidential investigations.',code:'PS_VERIFICATION_REQUIRED'},{status:403});
   if(action==='legacy_entity')return await legacyRequest(base44,db,u,body,role==='reviewer');
   const review=role==='reviewer';
   const canRead=c=>review||!c.investigator_id||c.investigator_id===u.id;

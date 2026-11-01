@@ -582,7 +582,7 @@ function wrappedEntity(name) {
       if (['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview'].includes(name) && ['list','filter','get','create','update','delete'].includes(property)) {
         return (...args) => {
           const request = async () => {
-            const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args,ps_access:sessionStorage.getItem('bps:ps-access')||''});
+            const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args});
             if(response.data?.error)throw new Error(response.data.error);
             return response.data?.result;
           };
@@ -630,7 +630,6 @@ const functions = new Proxy(rawBase44.functions, {
     if (property !== 'invoke' || typeof value !== 'function') return typeof value === 'function' ? value.bind(target) : value;
     return (name, payload) => {
       const functionName = String(name);
-      if(['managePerformanceReviews','getSupervisorWorkspaceRecords','updateInspectionDraft'].includes(functionName))payload={...(payload||{}),ps_access:sessionStorage.getItem('bps:ps-access')||''};
       const key = `function:${functionName}:${stableKey(payload || {})}`;
       const task = () => value.call(target, name, payload);
       const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '',
