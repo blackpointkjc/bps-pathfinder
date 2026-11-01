@@ -312,6 +312,10 @@ const CENTER_CONFIG = {
   },
 };
 
+// Personnel investigations have one home: the authorized IA workspace.
+const IA_MOVED_PAGES = new Set(['AdminSupervisorReports','AdminComplaints','AdminCommendations','AdminConfidentialReports','AdminPerformanceReviews','SupervisorInspections','SupervisorPerformanceReview','SupervisorWriteUps','SupervisorUseOfForce','SupervisorComplaints','ConfidentialReport','OfficerPerformanceReviews']);
+Object.entries(CENTER_CONFIG).forEach(([key,config])=>{if(key!=='standards')config.groups.forEach(group=>{group.items=group.items.filter(([,page])=>!IA_MOVED_PAGES.has(page));});});
+
 const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, config]) => {
   config.groups.forEach(group => group.items.forEach(([, page]) => {
     map[page] = [...new Set([...(map[page] || []), center])];
@@ -353,7 +357,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
 };
 
 function _desktopToolRoute(pageName) {
-  if (["AdminComplaints", "AdminCommendations", "AdminConfidentialReports", "AdminPerformanceReviews", "SupervisorInspections", "SupervisorPerformanceReview", "SupervisorWriteUps", "SupervisorUseOfForce", "SupervisorComplaints", "ConfidentialReport", "OfficerPerformanceReviews"].includes(pageName)) return null;
+  if (["AdminSupervisorReports", "AdminComplaints", "AdminCommendations", "AdminConfidentialReports", "AdminPerformanceReviews", "SupervisorInspections", "SupervisorPerformanceReview", "SupervisorWriteUps", "SupervisorUseOfForce", "SupervisorComplaints", "ConfidentialReport", "OfficerPerformanceReviews"].includes(pageName)) return null;
   const route = DESKTOP_LEGACY_TOOL_ROUTES[pageName];
   if (!route) return null;
   const [center, section, tool, nestedParam, nestedTool] = route;

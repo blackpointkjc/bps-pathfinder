@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Star, Plus, MessageSquare, Award, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ClientFeedback() {
   const [showForm, setShowForm] = useState(false);
@@ -216,31 +215,7 @@ export default function ClientFeedback() {
                   />
                 </div>
 
-                <div className="flex gap-4 p-4 bg-slate-50 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="commendation"
-                      checked={formData.commendation}
-                      onCheckedChange={(checked) => setFormData({...formData, commendation: checked, complaint: false})}
-                    />
-                    <Label htmlFor="commendation" className="cursor-pointer flex items-center gap-2">
-                      <Award className="w-4 h-4 text-green-600" />
-                      <span>Submit as Commendation</span>
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="complaint"
-                      checked={formData.complaint}
-                      onCheckedChange={(checked) => setFormData({...formData, complaint: checked, commendation: false})}
-                    />
-                    <Label htmlFor="complaint" className="cursor-pointer flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-red-600" />
-                      <span>Submit as Complaint</span>
-                    </Label>
-                  </div>
-                </div>
+                <div className="rounded-lg border border-slate-300 bg-slate-50 p-4"><p className="mb-3 text-sm text-slate-700">Complaints and commendations are submitted directly to Professional Standards.</p><IAEntryLinks publicOnly/></div>
 
                 <div className="flex gap-3 justify-end">
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>

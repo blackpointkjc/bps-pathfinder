@@ -10,6 +10,11 @@ export async function globalCaseTools(ctx){
   const rows=await db.TrainingRequirement.list('training_name',500);
   return Response.json({training:rows.filter(v=>v.active!==false).map(v=>({id:v.id,name:v.training_name,category:v.category,description:v.description||''}))});
  }
+ if(action==='client_referrals'){
+  if(!review)fail('Reviewer access required.',403);
+  const rows=await db.ClientFeedback.filter({$or:[{complaint:true},{commendation:true}]},'-created_date',200);
+  return Response.json({referrals:rows});
+ }
  if(action==='notifications'){
   if(!review)fail('Reviewer access required.',403);
   const rows=await db.PSNotification.list('-created_date',100);

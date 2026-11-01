@@ -1,9 +1,8 @@
-import IAEntryLinks from '@/components/ia/IAEntryLinks';
 import SupervisorScheduleWorkspace from '@/components/SupervisorScheduleWorkspace';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect } from 'react';
 import { useLocation,useNavigate } from 'react-router-dom';
-import { ClipboardCheck, Shield, ShieldCheck, LayoutDashboard } from 'lucide-react';
+import { Shield, ShieldCheck, LayoutDashboard } from 'lucide-react';
 import React from 'react';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';

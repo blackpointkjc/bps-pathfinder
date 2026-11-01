@@ -11,9 +11,10 @@ async function __portalLoginIsCurrent(request,sdk,user){
  }catch{return false;}
 }
 
-const legacyEntities=new Set(['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview']);
+const legacyEntities=new Set(['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview','ClientFeedback']);
 async function legacyRequest(base44,db,u,body,privileged=false){
  const name=text(body.entity,80),method=text(body.method,30),args=Array.isArray(body.args)?body.args:[];
+ if(name==='ClientFeedback'&&!privileged)fail('Reviewer access required.',403);
  if(!legacyEntities.has(name)||!['list','filter','get','create','update','delete'].includes(method))fail('Unsupported reporting operation.');
  if(method==='delete'&&!manager(u))fail('Only main account administrators may delete legacy reports.',403);
  if(args.length>5)fail('Invalid operation arguments.');
@@ -133,7 +134,7 @@ export default async function(req){
    }
    const description=text(input.description||source?.description||source?.observations||source?.investigation_notes||source?.summary,12000);
    const location=text(input.location||source?.location||'Internal report',500);
-   const incident_date=text(input.incident_date||source?.incident_date||source?.inspection_date||source?.report_date||source?.created_date,40);
+   const incident_date=text(input.incident_date||source?.incident_date||source?.inspection_date||source?.shift_date||source?.report_date||source?.created_date,40);
    if(description.length<20)fail('Enter at least 20 characters describing the case.');
    if(!incident_date||!Number.isFinite(Date.parse(incident_date)))fail('A valid incident date is required.');
    const investigator_id=review?text(input.investigator_id,100):u.id;

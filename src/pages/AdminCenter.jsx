@@ -388,11 +388,10 @@ export default function AdminCenter() {
       eyebrow="Master Administration"
       title="Admin Center"
       description="Administration and role-specific tools in one workspace. Choose a user in Preview as user to inspect their account workspace."
-      headerAction={<IAEntryLinks/>}
       sections={masterSections}
       defaultSection="admin"
       queryParam="admin_center"
-      headerAction={() => canPreview ? previewPicker : null}
+      headerAction={() => <div className="flex items-center gap-2"><IAEntryLinks/>{canPreview?previewPicker:null}</div>}
     >
       {section => {
         const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
