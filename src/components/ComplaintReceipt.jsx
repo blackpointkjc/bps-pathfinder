@@ -14,7 +14,7 @@ export async function createReceiptPdf(receipt){
  pdf.setFontSize(10);pdf.setTextColor(100,83,35);pdf.text('COMPLAINT / COMMENDATION REFERENCE',25,108);
  pdf.setTextColor(15,15,15);pdf.setFont('helvetica','bold');pdf.setFontSize(17);pdf.text(String(receipt.reference),25,119);
  pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(100,83,35);pdf.text('PRIVATE TRACKING CODE',25,136);
- pdf.setTextColor(15,15,15);pdf.setFont('courier','bold');pdf.setFontSize(20);pdf.text(String(receipt.tracking_code),25,148);
+ pdf.setTextColor(15,15,15);pdf.setFont('courier','bold');pdf.setFontSize(String(receipt.tracking_code).length>8?11:20);pdf.text(pdf.splitTextToSize(String(receipt.tracking_code),160),25,148);
  pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.text('Check your status or add evidence:',18,178);pdf.setTextColor(116,86,21);pdf.textWithLink('https://bpspf.blackpointkjc.com/IAFORM',18,187,{url:'https://bpspf.blackpointkjc.com/IAFORM'});
  pdf.setTextColor(45,45,45);pdf.text('Internal Affairs: IA@blackpointkjc.com',18,207);pdf.text('855-8BPS911 ext. 707',18,215);pdf.text('Monday-Friday, 8 AM-6 PM Eastern',18,223);
  pdf.setFontSize(10);pdf.text('Anyone with this reference and code can view your approved status updates.',18,245,{maxWidth:174});pdf.text('Anonymous tracking details cannot be recovered by email.',18,256);
