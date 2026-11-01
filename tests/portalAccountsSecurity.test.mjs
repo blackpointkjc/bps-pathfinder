@@ -37,12 +37,12 @@ const student=await db.User.create({email:'student@example.test',role:'user',add
 r=await call(register,{action:'profile'});assert.equal(r.success,true);assert.equal(r.profile.rank,'Student Registration Pending');assert.equal(tables.StudentEnrollment?.length||0,0,'do not create an invalid enrollment before collecting birth date');r=await call(register,{action:'profile',date_of_birth:'2000-02-15'});assert.equal(r.success,true);assert.equal(tables.StudentEnrollment[0].user_id,student.id);assert.equal(tables.StudentEnrollment[0].date_of_birth,'2000-02-15');assert.equal(r.profile.portal_approved,false);
 actor=await db.User.create({email:'active@example.test',role:'user',additional_roles:['officer']});
 r=await call(register,{action:'profile',requested_type:'visitor',first_name:'Changed',last_name:'Changed'});assert.equal(r.profile.portal_approved,true);assert.deepEqual(r.profile.additional_roles,['officer']);assert.equal(r.pending,false);
-const activeId=actor.id;actor={id:'admin-real',role:'admin',additional_roles:[],email:'admin@example.test'};
+const activeId=actor.id;actor=tables.User.find(v=>v.email==='admin@example.test');
 assert.equal((await call(invite,{accountType:'pending',email:'active@example.test',first_name:'Do',last_name:'Not Wipe'})).httpStatus,409);
 assert.deepEqual(tables.User.find(v=>v.id===activeId).additional_roles,['officer']);
 const pending=await db.User.create({email:'declined@example.test',role:'user',additional_roles:[],requested_account_type:'visitor'});
 assert.equal((await call(register,{action:'review_account',user_id:pending.id,decision:'deny'})).success,true);
 actor=await db.User.get(pending.id);let denied=await call(register,{action:'profile'});assert.equal(denied.access_denied,true);assert.equal(denied.profile.portal_approved,false);
-actor={id:'admin-real',role:'admin',additional_roles:[],email:'admin@example.test'};assert.equal((await call(register,{action:'review_account',user_id:pending.id,decision:'restore_pending'})).success,true);assert.equal((await db.User.get(pending.id)).account_status,'pending');
+actor=tables.User.find(v=>v.email==='admin@example.test');assert.equal((await call(register,{action:'review_account',user_id:pending.id,decision:'restore_pending'})).success,true);assert.equal((await db.User.get(pending.id)).account_status,'pending');
 actor={...actor,disabled:true};assert.equal((await call(invite,{accountType:'visitor',email:'x@example.test',first_name:'No',last_name:'Access'})).httpStatus,401);
 console.log('PASS: registration cannot self-grant access; invitations retain identity without storing passwords; visitor and student accounts stay pending; trainer permissions are scoped; existing active accounts are preserved; invitation delivery is reported.');

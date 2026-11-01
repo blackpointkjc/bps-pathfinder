@@ -37,8 +37,8 @@ assert.equal((await call({action:'track',reference:receipt.reference,tracking_co
 assert.equal((await call({action:'public_evidence',reference:receipt.reference,tracking_code:'incorrect'},[new File(['bad'],'bad.txt',{type:'text/plain'})])).httpStatus,404);
 actor={id:'officer',role:'user',additional_roles:['officer'],email:'officer@example.test'};
 assert.equal((await call({action:'list'})).httpStatus,403);
-const investigator={id:'investigator',role:'user',ps_role:'investigator',email:'investigator@example.test',last_name:'Test'};
-const reviewer={id:'reviewer',role:'user',ps_role:'reviewer',email:'reviewer@example.test',last_name:'Review'};
+const investigator={id:'investigator',role:'user',additional_roles:['ia'],ps_role:'investigator',email:'investigator@example.test',last_name:'Test'};
+const reviewer={id:'reviewer',role:'user',additional_roles:['ia'],ps_role:'reviewer',email:'reviewer@example.test',last_name:'Review'};
 tables.User=[investigator,reviewer];
 actor=reviewer;
 assert.equal((await call({action:'list'})).code,'PS_VERIFICATION_REQUIRED');
