@@ -45,7 +45,7 @@ assert.equal((await call(invite,{accountType:'pending',email:'active@example.tes
 assert.deepEqual(tables.User.find(v=>v.id===activeId).additional_roles,['officer']);
 const pending=await db.User.create({email:'declined@example.test',role:'user',additional_roles:[],requested_account_type:'visitor'});
 assert.equal((await call(register,{action:'review_account',user_id:pending.id,decision:'deny'})).success,true);
-actor=await db.User.get(pending.id);let denied=await call(register,{action:'profile'});assert.equal(denied.access_denied,true);assert.equal(denied.profile.portal_approved,false);
+actor=await db.User.get(pending.id);let denied=await call(register,{action:'profile'});assert.equal(denied.httpStatus,401);assert.equal(denied.code,'SESSION_REAUTH_REQUIRED');
 actor=tables.User.find(v=>v.email==='admin@example.test');assert.equal((await call(register,{action:'review_account',user_id:pending.id,decision:'restore_pending'})).success,true);assert.equal((await db.User.get(pending.id)).account_status,'pending');
 actor={...actor,disabled:true};assert.equal((await call(invite,{accountType:'visitor',email:'x@example.test',first_name:'No',last_name:'Access'})).httpStatus,401);
 console.log('PASS: registration cannot self-grant access; invitations retain identity without storing passwords; visitor and student accounts stay pending; trainer permissions are scoped; existing active accounts are preserved; invitation delivery is reported.');
