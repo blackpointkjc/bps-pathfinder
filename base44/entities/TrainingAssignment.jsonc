@@ -106,10 +106,18 @@
       "description": "Email of admin who assigned"
     },
     "ps_case_id": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": false,
+        "write": false
+      }
     },
     "ps_case_reference": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": false,
+        "write": false
+      }
     }
   },
   "required": [

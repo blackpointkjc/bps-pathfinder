@@ -126,4 +126,4 @@ for(const name of ['PSCase','PSRecord','PSAudit','PSAccess','PortalInvitation','
 }
 const user=JSON.parse(fs.readFileSync('base44/entities/User.jsonc'));
 for(const key of ['portal_approved','ps_role','additional_roles'])assert.equal(user.properties[key].rls.write,false);
-console.log('PASS: public intake, anonymous-field stripping, private evidence hashing, secret tracking, normal staff sign-in, role and assignment boundaries, findings approval, corrective action closure checks, audit logging, restricted exports, and privilege field protection.');
+console.log('PASS: public intake, anonymous-field stripping, private evidence hashing, secret tracking, normal staff sign-in, role and assignment boundaries, findings approval, corrective action closure checks, audit logging, officer-file linking and privacy, real training assignments, suspension/session revocation, reinstatement, documented outcomes, restricted exports, and privilege field protection.');

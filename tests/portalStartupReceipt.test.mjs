@@ -15,7 +15,7 @@ const compiled=buildSync({entryPoints:['src/components/ComplaintReceipt.jsx'],bu
 const m={exports:{}},require=createRequire(import.meta.url);new Function('module','exports','require',compiled)(m,m.exports,require);
 const receipt={reference:'PS-2026-TESTONLY',tracking_code:'0427',submitted_at:'2026-11-01T12:00:00Z'};
 const pdf=await m.exports.createReceiptPdf(receipt);const bytes=pdf.output();
-assert.ok(bytes.startsWith('%PDF'));assert.ok(bytes.includes(receipt.reference));assert.ok(bytes.includes(receipt.tracking_code));assert.ok(bytes.includes('IA@blackpointkjc.com'));assert.ok(bytes.includes('/IAFORM'));
+assert.ok(bytes.startsWith('%PDF'));assert.ok(bytes.includes(receipt.reference));assert.ok(bytes.includes(receipt.tracking_code));assert.ok(bytes.includes('IA@blackpointkjc.com'));assert.ok(bytes.includes('ext. 799'));assert.ok(bytes.includes('/IAFORM'));
 const realDocument=globalThis.document,realURL=globalThis.URL,realTimer=globalThis.setTimeout;
 let attached=false,clicked=false,filename='',revoked=false;
 const anchor={hidden:false,set download(v){filename=v;},set href(v){this.url=v;},click(){assert.equal(attached,true,'download anchor must be connected before click');clicked=true;},remove(){attached=false;}};
