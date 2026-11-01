@@ -1,5 +1,29 @@
 import {createClientFromRequest,text,roles,manager,psRole,identity,hash,random,fail,audit,notify,actorName} from './security.ts';
 
+const legacyEntities=new Set(['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview']);
+async function legacyRequest(base44,db,u,body,privileged=false){
+ const name=text(body.entity,80),method=text(body.method,30),args=Array.isArray(body.args)?body.args:[];
+ if(!legacyEntities.has(name)||!['list','filter','get','create','update','delete'].includes(method))fail('Unsupported reporting operation.');
+ if(method==='delete'&&!manager(u))fail('Only main account administrators may delete legacy reports.',403);
+ if(args.length>5)fail('Invalid operation arguments.');
+ const entity=(privileged?base44.asServiceRole.entities:base44.entities)[name];
+ const requestId=random(8);
+ await audit(db,u,'legacy_'+method+'_requested','',name+' '+requestId+(typeof args[0]==='string'?' '+text(args[0],100):''));
+ let result;
+ if(method==='list')result=await entity.list(text(args[0],100)||'-created_date',Math.min(1000,Math.max(1,Number(args[1])||200)),Math.max(0,Number(args[2])||0));
+ if(method==='filter')result=await entity.filter(args[0]||{},text(args[1],100)||'-created_date',Math.min(1000,Math.max(1,Number(args[2])||200)),Math.max(0,Number(args[3])||0));
+ if(method==='get')result=await entity.get(text(args[0],100));
+ if(['create','update'].includes(method)){
+  const value=method==='create'?args[0]:args[1];
+  if(!value||typeof value!=='object'||Array.isArray(value))fail('Report data is required.');
+  const patch=Object.fromEntries(Object.entries(value).filter(([k])=>!['id','created_by','created_by_id','app_id','created_date','updated_date'].includes(k)));
+  result=method==='create'?await entity.create(patch):await entity.update(text(args[0],100),patch);
+ }
+ if(method==='delete')result=await entity.delete(text(args[0],100));
+ await audit(db,u,'legacy_'+method+'_completed','',name+' '+requestId);
+ return Response.json({result});
+}
+
 const kinds=['note','interview','task','allegation','corrective_action','policy','evidence'];
 const allowedFiles=/^(image\/(jpeg|png|webp|heic)|video\/(mp4|quicktime|webm)|audio\/(mpeg|mp4|wav|x-wav|ogg|webm)|application\/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)|text\/plain)$/;
 const publicStates=['Received','Under review','Investigation in progress','Review completed','Closed'];
@@ -60,6 +84,10 @@ export default async function(req){
    return Response.json({reference:c.reference,kind:c.kind,status:c.public_status||'Received',message:c.public_message||'',submitted_at:c.created_date,updated_at:c.updated_date});
   }
   const u=await identity(base44),role=psRole(u);
+  if(action==='legacy_entity'&&!role){
+   if(!manager(u)&&!(u.additional_roles||[]).length)fail('Approved staff access is required.',403);
+   return await legacyRequest(base44,db,u,body,false);
+  }
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   if(action==='request_access'){
    const prior=await db.PSAccess.filter({user_id:u.id},'-created_date',1);
@@ -83,6 +111,7 @@ export default async function(req){
   }
   const grants=body.ps_access?await db.PSAccess.filter({user_id:u.id,session_hash:await hash(text(body.ps_access,100)),verified:true},'-created_date',1):[];
   if(!grants[0]||Date.parse(grants[0].session_expires_at)<Date.now())return Response.json({error:'Additional email verification is required for confidential investigations.',code:'PS_VERIFICATION_REQUIRED'},{status:403});
+  if(action==='legacy_entity')return await legacyRequest(base44,db,u,body,role==='reviewer');
   const review=role==='reviewer';
   const canRead=c=>review||!c.investigator_id||c.investigator_id===u.id;
   const staff=await db.User.list('-created_date',1000);

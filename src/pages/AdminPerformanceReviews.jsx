@@ -71,7 +71,7 @@ export default function AdminPerformanceReviews() {
     queryFn: () => getCurrentDirectoryUser(),
   });
 
-  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
+  const hasHRAccess = user?.ps_role === 'reviewer' || user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
   const { data: directoryUsers = [], error: usersError } = useQuery({
     queryKey: ['directoryUsers', 'performanceReviews'],

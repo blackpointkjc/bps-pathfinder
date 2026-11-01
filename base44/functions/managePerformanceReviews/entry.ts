@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     const me = await base44.auth.me();
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = rolesOf(me);
-    if (me.role !== 'admin' && !roles.has('hr') && !roles.has('full_access')) {
+    if (me.role !== 'admin' && me.ps_role !== 'reviewer' && !roles.has('hr') && !roles.has('full_access')) {
       return Response.json({ error: 'HR access required' }, { status: 403 });
     }
 
@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'approve_pay_adjustment') {
+      if(me.role!=='admin'&&!roles.has('hr')&&!roles.has('full_access'))return Response.json({error:'HR payroll approval required'},{status:403});
       const review = await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id || ''));
       if (!review) return Response.json({ error: 'Performance review not found.' }, { status: 404 });
       const newRate = Number(review.suggested_hourly_rate);

@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 // Authenticated, server-side platoon/region/division/substation report reads.
 const n=(v:any)=>String(v??'').trim().toLowerCase();
 const role=(u:any)=>new Set([u.role,...(u.additional_roles||[])].map(n));
-const admin=(u:any)=>role(u).has('admin')||role(u).has('full_access');
+const admin=(u:any)=>role(u).has('admin')||role(u).has('full_access')||u.ps_role==='reviewer';
 const senior=(u:any)=>['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(u.rank));
 const rankOrder=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
 const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'');return rankOrder.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};

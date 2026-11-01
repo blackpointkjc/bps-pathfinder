@@ -578,6 +578,17 @@ function wrappedEntity(name) {
           return typeof callback === 'function' ? callback(event) : undefined;
         }, ...args);
       }
+      if (['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview'].includes(name) && ['list','filter','get','create','update','delete'].includes(property)) {
+        return (...args) => {
+          const request = async () => {
+            const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args,ps_access:sessionStorage.getItem('bps:ps-access')||''});
+            if(response.data?.error)throw new Error(response.data.error);
+            return response.data?.result;
+          };
+          const key='entity:'+name+':'+String(property)+':'+stableKey(args);
+          return READ_METHODS.has(property) ? queuedRead(key,request,{kind:'entity',name,method:String(property)}) : protectedWrite(key,request,{kind:'entity',name,method:String(property)});
+        };
+      }
       if (READ_METHODS.has(property)) {
         return (...args) => queuedRead(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args), { kind: 'entity', name, method: String(property) });
       }

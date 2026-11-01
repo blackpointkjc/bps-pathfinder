@@ -1579,7 +1579,6 @@ const REPORT_WORKSPACES = [
   ['parking','Property Parking & Notices'],
   ['rentroll','Property Rent Roll & Vehicles'],
   ['clientreports','Client Reports'],
-  ['supervisorreports','Supervisor Reports'],
   ['cadreports','CAD Reports'],
   ['feedback','Client Feedback'],
 ];

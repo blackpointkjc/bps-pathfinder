@@ -479,7 +479,7 @@ function allowedCenters(user) {
 
   // Combine ALL assigned workspaces. Previously an early return for dispatch,
   // supervisor or officer discarded HR/training/accounting and secondary roles.
-  const centers = ['standards'];
+  const centers = [];
   if (supervisor) centers.push('supervisor', 'cad', 'officer');
   if (roles.has('dispatch') || user?.role === 'dispatch' || roles.has('cad_access')) centers.push('cad');
   if (roles.has('officer')) centers.push('officer', 'cad');
@@ -487,7 +487,8 @@ function allowedCenters(user) {
   if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') centers.push('support');
   if (canAccessAccounting(user)) centers.push('accounting');
   if (roles.has('trainer')) centers.push('training');
-  return [...new Set(centers.length ? centers : ['officer'])];
+  centers.push('standards');
+  return [...new Set(centers)];
 }
 
 const CENTER_DEFAULT_PAGE = {

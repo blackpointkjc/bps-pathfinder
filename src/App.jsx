@@ -13,7 +13,7 @@ import { base44 } from '@/api/base44Client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
 import { pagesConfig } from './lib/lazyPages';
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -364,9 +364,9 @@ const AuthenticatedApp = () => {
           key={path}
           path={`/${path}`}
           element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
+            ({AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',SupervisorInspections:'inspections',SupervisorPerformanceReview:'supervisorReviews',SupervisorWriteUps:'writeups',SupervisorUseOfForce:'force',SupervisorComplaints:'supervisorComplaints',ConfidentialReport:'report',OfficerPerformanceReviews:'myreviews'})[path]
+              ? <Navigate replace to={'/ProfessionalStandards?section='+({AdminComplaints:'complaints',AdminCommendations:'commendations',AdminConfidentialReports:'confidential',AdminPerformanceReviews:'reviews',AdminSupervisorReports:'approvals',SupervisorInspections:'inspections',SupervisorPerformanceReview:'supervisorReviews',SupervisorWriteUps:'writeups',SupervisorUseOfForce:'force',SupervisorComplaints:'supervisorComplaints',ConfidentialReport:'report',OfficerPerformanceReviews:'myreviews'})[path]} />
+              : <LayoutWrapper currentPageName={path}><Page /></LayoutWrapper>
           }
         />
       ))}

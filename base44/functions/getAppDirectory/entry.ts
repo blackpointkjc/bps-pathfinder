@@ -45,6 +45,7 @@ function safeUser(entry: any, full = false, includePrivateSelf = false) {
   if (full) return entry;
   return {
     id: entry.id,
+    ps_role: entry.ps_role || 'none',
     approved_leave_windows: entry.approved_leave_windows || [],
     out_of_office_source: entry.out_of_office_source || '',
     command_seniority_order: entry.command_seniority_order,

@@ -35,7 +35,7 @@ export default function AdminCommendations({ embedded = false }) {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => listDirectoryUsers(),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: allCommendations } = useQuery({
@@ -113,7 +113,7 @@ Keep up the excellent work!`
 
   const activeOfficers = allUsers?.filter(u => !u.termination_date) || [];
 
-  if (user?.role !== 'admin') {
+  if ((user?.role !== 'admin' && user?.ps_role !== 'reviewer')) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />

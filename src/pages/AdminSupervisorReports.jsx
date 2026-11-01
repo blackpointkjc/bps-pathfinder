@@ -43,55 +43,55 @@ export default function AdminSupervisorReports() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => listDirectoryUsers(undefined, 1000, true),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: inspections } = useQuery({
     queryKey: ['allInspectionReports'],
     queryFn: () => base44.entities.InspectionReport.list('-inspection_date'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: writeUps } = useQuery({
     queryKey: ['allWriteUpReports'],
     queryFn: () => base44.entities.WriteUpReport.list('-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: timeEntries } = useQuery({
     queryKey: ['allTimeEntries'],
     queryFn: () => base44.entities.TimeEntry.list('-clock_in'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: schedules } = useQuery({
     queryKey: ['allSchedules'],
     queryFn: () => base44.entities.Schedule.list('-shift_date'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: incidentReports = [] } = useQuery({
     queryKey: ['allIncidentReports', 'officerPerformance'],
     queryFn: () => base44.entities.IncidentReport.list('-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: shiftBids } = useQuery({
     queryKey: ['allShiftBids'],
     queryFn: () => base44.entities.ShiftBid.list('-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: trainingCompletions } = useQuery({
     queryKey: ['allTrainingCompletions'],
     queryFn: () => base44.entities.TrainingCompletion.list(),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: siteChecks } = useQuery({
     queryKey: ['allSupervisorSiteChecks'],
     queryFn: () => base44.entities.SupervisorSiteCheck.list('-check_timestamp'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const getOfficerIdentifier = (officerRef) => {
@@ -261,7 +261,7 @@ export default function AdminSupervisorReports() {
     };
   }, [selectedOfficer, startDate, endDate, timeEntries, schedules, incidentReports, shiftBids, trainingCompletions, writeUps, inspections, allUsers]);
 
-  if (user?.role !== 'admin') {
+  if ((user?.role !== 'admin' && user?.ps_role !== 'reviewer')) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />

@@ -37,7 +37,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
   const { data: allReports } = useQuery({
     queryKey: ['allConfidentialReports'],
     queryFn: () => base44.entities.ConfidentialReport.list('-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: (user?.role === 'admin' || user?.ps_role === 'reviewer'),
   });
 
   const { data: allUsers } = useQuery({
@@ -475,7 +475,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
     no_contact: <UserX className="w-4 h-4" />
   };
 
-  if (user?.role !== 'admin') {
+  if ((user?.role !== 'admin' && user?.ps_role !== 'reviewer')) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />

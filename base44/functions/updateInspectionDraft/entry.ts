@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
 
     const roles = new Set((user.additional_roles || []).map((role) => String(role).toLowerCase()));
     const rank = String(user.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
-    const supervisor = user.role === 'admin' || user.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || ['corporal','first sergeant','sergeant','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(rank);
+    const supervisor = user.ps_role === 'reviewer' || user.role === 'admin' || user.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || ['corporal','first sergeant','sergeant','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(rank);
     if (!supervisor) return Response.json({ error: 'Supervisor access required' }, { status: 403 });
 
     const { inspection_id, inspection } = await req.json();
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Only inspection drafts can be completed here' }, { status: 409 });
     }
 
-    const isAdmin = user.role === 'admin' || roles.has('full_access');
+    const isAdmin = user.ps_role === 'reviewer' || user.role === 'admin' || roles.has('full_access');
     if(!isAdmin){
       const platoon=String(user.oversight_platoon||user.platoon||'').trim().toLowerCase();
       const candidates=await base44.asServiceRole.entities.User.filter({email:existing.officer_email},'-updated_date',1).catch(()=>[]);
