@@ -80,7 +80,11 @@ export const AuthProvider = ({ children }) => {
       if (String(event?.id || record?.id || '') !== String(user.id) || !record) return;
       const fields = ['role','additional_roles','ps_role','portal_approved','account_status','disabled','termination_date','employment_status','rank','unit_number','hourly_rate','first_name','last_name','full_name','profile_photo_url','division','platoon','oversight_platoon'];
       const patch = Object.fromEntries(fields.filter(key => record[key] !== undefined).map(key => [key,record[key]]));
-      if (Object.keys(patch).length) setUser(previous => previous ? { ...previous, ...patch } : previous);
+      if (Object.keys(patch).length) {
+        setUser(previous => previous ? { ...previous, ...patch } : previous);
+        queryClientInstance.setQueryData(['currentUser'],previous=>previous?{...previous,...patch}:previous);
+        if(['role','additional_roles','ps_role','account_status','portal_approved'].some(key=>patch[key]!==undefined))clearBase44ReadCache();
+      }
     });
     } catch (error) { console.warn('Profile identity stream unavailable', error?.message); }
     return typeof unsubscribe === 'function' ? unsubscribe : undefined;
