@@ -1,3 +1,4 @@
+import {hasIAAccess,hasWholeAppAccess} from '@/lib/portalAccess';
 import '@/components/map/mapWorkspace.css';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import HeaderClock from '@/components/HeaderClock';
@@ -475,7 +476,8 @@ function allowedCenters(user) {
   if (roles.has('client') || user?.user_type === 'client' || rank === 'client') return ['client'];
   if (roles.has('student') || user?.user_type === 'student') return ['student'];
   if (roles.has('visitor')) return ['visitor'];
-  if (hasFullAccess(user)) return ['admin', 'standards', ...(canAccessAccounting(user) ? ['accounting'] : []), ...(roles.has('trainer') ? ['training'] : [])];
+  if (hasWholeAppAccess(user)) return ['admin','standards','cad','officer','supervisor','hr','support','accounting','training','client','student'];
+  if (user?.role === 'admin') return ['admin',...(hasIAAccess(user)?['standards']:[]),...(canAccessAccounting(user)?['accounting']:[]),...(roles.has('trainer')?['training']:[])];
 
   // Combine ALL assigned workspaces. Previously an early return for dispatch,
   // supervisor or officer discarded HR/training/accounting and secondary roles.
@@ -487,7 +489,7 @@ function allowedCenters(user) {
   if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') centers.push('support');
   if (canAccessAccounting(user)) centers.push('accounting');
   if (roles.has('trainer')) centers.push('training');
-  centers.push('standards');
+  if(hasIAAccess(user))centers.push('standards');
   return [...new Set(centers)];
 }
 
@@ -519,8 +521,10 @@ function defaultPageForUser(user, desktop = false) {
 }
 
 function canAccessPage(user, pageName) {
+  if (pageName === 'ProfessionalStandards') return hasIAAccess(user);
+  if (hasWholeAppAccess(user)) return true;
   if ((user?.additional_roles||[]).includes('visitor')) return pageName === 'VisitorPortal';
-  if (pageName === 'ProfessionalStandards') return !['client','student','visitor'].some(r=>normalizedRoles(user).has(r));
+
   if (pageName.startsWith('Accounting') || ['PayrollDates','AdminPayroll','AdminPayrollConfig','AdminExpenseApproval'].includes(pageName)) return canAccessAccounting(user);
   // A client identity is exclusive: deny every non-client route, including
   // shared/unmapped pages and communication tools, regardless of stale roles.

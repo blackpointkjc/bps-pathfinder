@@ -1,3 +1,4 @@
+import {iaRole} from '@/lib/portalAccess';
 import {lazy,Suspense,useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {getPreparedTool} from '@/lib/lazyPages';
@@ -15,8 +16,8 @@ const findings=['sustained','not_sustained','unfounded','exonerated','policy_fai
 export default function ProfessionalStandards(){
  const {user}=useAuth(),params=new URLSearchParams(window.location.search);
  const roles=new Set([user?.role,...(user?.additional_roles||[])]);
- const reviewer=roles.has('admin')||roles.has('full_access')||user?.ps_role==='reviewer';
- const staff=reviewer||user?.ps_role==='investigator';
+ const reviewer=iaRole(user)==='reviewer';
+ const staff=!!iaRole(user);
  const supervisor=reviewer||roles.has('supervisor')||user?.is_supervisor;
  const [verified,setVerified]=useState(()=>!!sessionStorage.getItem('bps:ps-access')),[challenge,setChallenge]=useState(''),[code,setCode]=useState(''),[events,setEvents]=useState([]);
  const [tab,setTab]=useState(params.get('section')||'inbox'),[rows,setRows]=useState([]),[people,setPeople]=useState([]),[page,setPage]=useState(0),[more,setMore]=useState(false),[detail,setDetail]=useState(null),[section,setSection]=useState('overview'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[search,setSearch]=useState('');
@@ -40,6 +41,7 @@ export default function ProfessionalStandards(){
  const caseSections=['overview','evidence','interviews','tasks','findings','corrective_actions','audit'];
  const visibleRecords=records.filter(r=>section==='evidence'?r.kind==='evidence':section==='interviews'?['interview','note','public_followup'].includes(r.kind):section==='tasks'?r.kind==='task':section==='findings'?['allegation','policy'].includes(r.kind):section==='corrective_actions'?r.kind==='corrective_action':false);
  const eligible=rows.filter(c=>(filter==='all'||c.status===filter)&&[c.reference,c.officers,c.location,c.description].join(' ').toLowerCase().includes(search.toLowerCase()));
+ if(!staff)return <main className="portal-shell bp-ia h-full p-8"><h1>Internal Affairs access required</h1><p>An administrator must assign the Internal Affairs additional role to your account.</p></main>;
  if(staff&&!verified)return <main className="portal-shell bp-ia h-full overflow-y-auto"><div className="portal-wrap"><p className="portal-eyebrow">BPS Pathfinder · Professional Standards</p><h1>Verify your staff access.</h1><section className="portal-card max-w-xl"><p>Confidential investigations require an additional email verification. A verified session lasts four hours and is checked again for every case request.</p>{error&&<p role="alert" className="portal-message portal-error">{error}</p>}{message&&<p role="status" className="portal-message">{message}</p>}<button disabled={busy} onClick={async()=>{setBusy(true);setError('');try{const d=await psCall({action:'request_access'});setChallenge(d.challenge_id);setMessage('Check your account email for the six-digit code.');}catch(e){setError(e?.response?.data?.error||e.message);}finally{setBusy(false);}}}>{challenge?'Send a new code':'Email my verification code'}</button>{challenge&&<form className="mt-6" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{const d=await psCall({action:'verify_access',challenge_id:challenge,code});sessionStorage.setItem('bps:ps-access',d.ps_access);setVerified(true);setMessage('');}catch(e){setError(e?.response?.data?.error||e.message);}finally{setBusy(false);}}}><label>Verification code<input required pattern="[0-9]{6}" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e=>setCode(e.target.value)}/></label><button disabled={busy}>Verify & open workspace</button></form>}<p className="mt-6"><Link to="/IAFORM">Open public complaint services</Link></p></section></div></main>;
  return <div className={"portal-shell h-full overflow-y-auto"+(!Legacy?" bp-ia":"")}><div className="portal-wrap">
   <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="portal-eyebrow">BPS Pathfinder · Staff workspace</p><h1>Professional Standards</h1><p>Confidential investigations, accountability and personnel standards.</p></div><Link to="/IAFORM" target="_blank" className="portal-button portal-secondary">Public submission portal ↗</Link></div>

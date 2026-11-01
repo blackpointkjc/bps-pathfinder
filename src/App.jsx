@@ -300,7 +300,7 @@ const AuthenticatedApp = () => {
   // in restricted onboarding until an administrator assigns their category.
   const accessRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const approvedCategory = user?.role === 'admin' || user?.role === 'dispatch' ||
-    ['full_access','officer','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer','visitor'].some(role => accessRoles.has(role));
+    ['ia','full_access','officer','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer','visitor'].some(role => accessRoles.has(role));
   if (accountLock) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-950 p-6 text-slate-100">

@@ -1,3 +1,4 @@
+import AdditionalRolesEditor from '@/components/admin/AdditionalRolesEditor';
 import { canAccessAccounting } from '@/lib/accountingAccess';
 import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
@@ -126,15 +127,16 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       const requestedAdditionalRoles = [...new Set(userData.additional_roles || [])].sort();
       const existingAdditionalRoles = [...new Set(selectedUser?.additional_roles || [])].sort();
       const systemAccessChanged = selectedUser?.role !== requestedSystemRole
-        || JSON.stringify(existingAdditionalRoles) !== JSON.stringify(requestedAdditionalRoles);
+        || JSON.stringify(existingAdditionalRoles) !== JSON.stringify(requestedAdditionalRoles) || userData.ps_role !== selectedUser?.ps_role;
 
       if (systemAccessChanged) {
-        if (!isSystemAdmin) throw new Error('Only a current system administrator can change system roles and permissions.');
+        if (!isSystemAdmin && !userRoles.has('full_access')) throw new Error('Account administration access required.');
         const roleResult = await base44.functions.invoke('updateUser', {
           userId: id,
           updates: {
             role: requestedSystemRole,
             additional_roles: requestedAdditionalRoles,
+            ps_role: userData.ps_role || 'none',
           },
         });
         const rolePayload = roleResult?.data || roleResult || {};
@@ -144,6 +146,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       const profileUpdates = { ...userData };
       delete profileUpdates.role;
       delete profileUpdates.additional_roles;
+      delete profileUpdates.ps_role;
       if (portalContext === 'hr' || userRoles.has('hr') || userRoles.has('full_access')) {
         const result = await base44.functions.invoke('updateUser', { userId: id, updates: profileUpdates });
         const payload = result?.data || result || {};
@@ -171,7 +174,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const moveToPendingMutation = useMutation({
     mutationFn: async (userData) => {
       const newRoles = (userData.additional_roles || []).filter(r => r !== 'officer');
-      await base44.entities.User.update(userData.id, { additional_roles: newRoles });
+      const r=await base44.functions.invoke('updateUser',{userId:userData.id,updates:{additional_roles:newRoles}});if(r.data?.error)throw new Error(r.data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -291,6 +294,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       emergency_contact_phone: userData.emergency_contact_phone || "",
       role: userData.role || "user",
       additional_roles: userData.additional_roles || [],
+      ps_role:userData.ps_role || 'none',
       assigned_sites: userData.assigned_sites || [],
       profile_photo_url: userData.profile_photo_url || "",
       profile_photo_original_url: userData.profile_photo_original_url || "",
@@ -618,13 +622,6 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_220px]"><label className="text-xs text-slate-400">Find an employee<Input placeholder="Name, rank, unit, division or email" value={searchQuery} onChange={event=>setSearchQuery(event.target.value)} className="mt-1 border-slate-600 bg-slate-950 text-white"/></label><label className="text-xs text-slate-400">Platoon<select value={platoonFilter} onChange={event=>setPlatoonFilter(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="all">All platoons</option>{[...new Set(activeEmployees.map(person=>person.platoon||'unassigned'))].sort().map(name=><option key={name} value={name}>{name==='unassigned'?'Unassigned':name==='Command'?'Company Command':name.startsWith('Platoon ')?name:`Platoon ${name}`}</option>)}</select></label><label className="text-xs text-slate-400">View<select value={employeeView} onChange={event=>setEmployeeView(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white"><option value="directory">Employee directory</option><option value="structure">Permanent reporting structure</option></select></label></div>
       </header>
 
-      {canManageEmployees && <section className="mb-4 rounded-xl border border-cyan-800/60 bg-slate-900 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-base font-bold text-white">Corporate Internet Browser Access</h2><p className="text-xs text-slate-400">Review and assign approved browsing profiles alongside employee accounts.</p></div>
-          
-        </div>
-        <p className="mt-2 text-xs text-slate-300">Browser access is automatically based on each employee's existing account roles. Only the Admin account role bypasses mandatory restrictions. Supervisor, HR and Full Access use Limited Business Access; Officer uses Work Research; other employees default to Strict Search Only. No separate employee assignment is required.</p>}
-      </section>}
       {isLoading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -864,7 +861,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </Tabs>
 
             {/* Roles */}
-            <fieldset disabled={!isSystemAdmin} className="border-t pt-4 disabled:opacity-70">
+            <fieldset disabled={!(isSystemAdmin || userRoles.has('full_access'))} className="border-t pt-4 disabled:opacity-70">
               <Label className="text-base font-semibold mb-3 block">System Roles & Permissions</Label>
               <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
                 <Label className="text-xs font-bold uppercase tracking-wider text-amber-300">Account Type</Label>
@@ -886,32 +883,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   <AlertDescription>Only a system administrator can change account type or toolbar permissions.</AlertDescription>
                 </Alert>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  { id: 'cad_access', label: 'CAD Access', desc: 'Command, dispatch, live map, field unit and CAD records', color: 'text-sky-800' },
-                  { id: 'officer', label: 'Officer Role', desc: 'Company employee and Officer Center access', color: 'text-blue-800' },
-                  { id: 'supervisor', label: 'Supervisor Tools', desc: 'CAD, inspections, write-ups and supervisor chat', color: 'text-cyan-800' },
-                  { id: 'hr', label: 'HR Access', desc: 'PTO, time entries and employee management', color: 'text-emerald-800' },
-                  { id: 'accounting', label: 'Accounting Access', desc: 'Payroll, invoices and financial reports', color: 'text-amber-800' },
-                  { id: 'trainer', label: 'Trainer', desc: 'Training creation, compliance and student records', color: 'text-indigo-800' },
-                  { id: 'full_access', label: 'Full Access', desc: 'Internal operations access; accounting is restricted to Colonel Hiers', color: 'text-purple-800' },
-                ].filter(item => item.id !== 'accounting' || canAccessAccounting(selectedUser)).map(({ id, label, desc, color }) => (
-                  <div key={id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`emp_${id}`}
-                      checked={editFormData.additional_roles?.includes(id) || false}
-                      onCheckedChange={(checked) => {
-                        const roles = editFormData.additional_roles || [];
-                        setEditFormData({...editFormData, additional_roles: checked ? [...roles, id] : roles.filter(r => r !== id)});
-                      }}
-                    />
-                    <Label htmlFor={`emp_${id}`} className="cursor-pointer">
-                      <div className={`font-semibold text-sm ${color || ''}`}>{label}</div>
-                      <div className="text-xs text-slate-500">{desc}</div>
-                    </Label>
-                  </div>
-                ))}
-              </div>
+              <AdditionalRolesEditor account={selectedUser} value={editFormData} onChange={setEditFormData} />
+
             </fieldset>
 
             {/* Equipment */}

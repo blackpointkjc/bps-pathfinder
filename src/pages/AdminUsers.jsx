@@ -1,3 +1,4 @@
+import AdditionalRolesEditor from '@/components/admin/AdditionalRolesEditor';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { accessLabel } from '@/utils/accountLabels';
 import { isOutOfOffice } from '@/utils/outOfOffice';
@@ -1004,7 +1005,8 @@ export default function AdminUsers({ embedded = false }) {
 
               <div className="col-span-full rounded-xl border border-slate-700 bg-slate-950/50 p-3">
                 <h3 className="mb-2 text-sm font-semibold text-white">Officer region and division</h3>
-                <label className="block text-sm font-semibold">Professional Standards investigation access<select aria-label="Professional Standards role" value={editFormData.ps_role || 'none'} onChange={e=>setEditFormData(p=>({...p,ps_role:e.target.value}))} className="mt-2 w-full rounded border border-slate-500 bg-slate-950 p-3 text-white"><option value="none">No investigation access</option><option value="investigator">Investigator — assigned cases</option><option value="reviewer">Reviewer — all cases, approvals and exports</option></select><span className="block mt-1 text-xs text-slate-500">Only main account administrators may grant this access. Investigators cannot approve their own cases.</span></label>
+                <AdditionalRolesEditor account={selectedUser || {id:editingUser}} value={editFormData} onChange={setEditFormData} />
+
                 <OrgAssignmentFields divisions={divisions || []} value={editFormData} includeSubstation={canAssignSubstation(editFormData.rank)} onChange={next => setEditFormData(previous => ({ ...previous, division: next.division, subdivision: next.subdivision, substation: canAssignSubstation(previous.rank) ? next.substation || '' : '' }))} />
               </div>
 
