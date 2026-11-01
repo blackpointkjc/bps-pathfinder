@@ -1,0 +1,22 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter} from 'react-router-dom';
+import '@/lib/AuthContext';
+import {base44} from '@/api/base44Client';
+import ProfessionalStandards from '@/pages/ProfessionalStandards';
+import '@/index.css';
+import '@/responsive.css';
+const c={id:'sample-case',reference:'PS-2026-SAMPLE',kind:'complaint',officers:'Example Officer',officer_ids:['sample-officer'],location:'Sample location',status:'investigating',priority:'normal',investigator_id:'investigator',created_date:'2026-11-01T10:00:00Z',version:1,description:'Synthetic workflow preview. No real complaint or personnel data is used.'};
+const officer={id:'sample-officer',name:'Officer Example',first_name:'Example',last_name:'Officer',rank:'Officer',badge_number:'TEST',unit_number:'TEST',email:'example@example.invalid',employment_status:'active',division:'Sample division',dcjs_number:'SAMPLE',dcjs_expiration:'2027-12-01',firearm_expiration:'2027-12-01',certifications:[{id:'example-cert',training_name:'Example certification',expiration_date:'2027-12-01',status:'approved'}]};
+const user={id:'reviewer',role:'admin',rank:'Colonel',last_name:'Example',additional_roles:['ia'],ps_role:'reviewer'};
+base44.functions.invoke=async(name,payload)=>{
+if(name!=='professionalStandards')return {data:{success:true}};
+if(payload.action==='get')return {data:{case:c,records:[],audit:[],staff:[{id:'investigator',name:'Example Investigator'}]}};
+if(payload.action==='officer_directory')return {data:{officers:[officer]}};
+if(payload.action==='officer_file')return {data:{officer,training:[],writeups:[],inspections:[],reviews:[]}};
+if(payload.action==='training_options')return {data:{training:[]}};
+if(payload.action==='notifications')return {data:{notifications:[]}};
+return {data:{success:true,cases:[c],staff:[{id:'investigator',name:'Example Investigator'}],findings:{},has_more:false,events:[]}};
+};
+const Context=globalThis.__BPS_PATHFINDER_AUTH_CONTEXT__;
+createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/ProfessionalStandards?ps_area=investigations&section=cases']}><Context.Provider value={{user}}><div className="bg-[#080d16] text-white"><div className="border-b border-slate-700 p-3 text-xs text-cyan-200">PATHFINDER · SYNTHETIC WORKFLOW PREVIEW</div><ProfessionalStandards/></div></Context.Provider></MemoryRouter>);
