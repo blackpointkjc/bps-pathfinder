@@ -55,6 +55,12 @@
     },
     "last_reminder_day": {
       "type": "string"
+    },
+    "source_entity": {
+      "type": "string"
+    },
+    "source_record_id": {
+      "type": "string"
     }
   },
   "rls": {

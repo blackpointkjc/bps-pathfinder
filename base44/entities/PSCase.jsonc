@@ -95,6 +95,15 @@
     },
     "tracking_locked_until": {
       "type": "string"
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "source_entity": {
+      "type": "string"
+    },
+    "source_record_id": {
+      "type": "string"
     }
   },
   "rls": {

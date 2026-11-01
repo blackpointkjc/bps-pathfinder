@@ -77,7 +77,7 @@ export default async function(req){
    try{await upload(base44,db,null,c,files);}catch{evidence_error='Your report was saved, but one or more evidence files could not be attached. Use your reference and private code to retry from Check Status.';}
    return Response.json({reference,tracking_code,evidence_error,submitted_at:c.created_date||new Date().toISOString()});
   }
-  if(action==='track'||action==='public_evidence'){
+  if(action==='track'||action==='public_evidence'||action==='public_followup'){
    throttle(req,'track');
    const list=await db.PSCase.filter({reference:text(body.reference,80).toUpperCase()},'-created_date',1);
    const c=list[0],h=await hash(text(body.tracking_code,100));
@@ -89,6 +89,13 @@ export default async function(req){
     fail('Reference or private tracking code is incorrect.',404);
    }
    if(c.tracking_failures||c.tracking_locked_until)await db.PSCase.update(c.id,{tracking_failures:0,tracking_locked_until:''});
+   if(action==='public_followup'){
+    const message=text(body.message,6000);
+    if(message.length<10)fail('Enter at least 10 characters of additional information.');
+    await db.PSRecord.create({case_id:c.id,kind:'public_followup',title:'Additional information from complainant',body:message,author_name:'Complainant (private tracking code)',status:'received'});
+    await audit(db,null,'public_followup_received',c.id);
+    return Response.json({success:true});
+   }
    if(action==='public_evidence'){await upload(base44,db,null,c,files);await audit(db,null,'public_evidence_added',c.id);return Response.json({success:true});}
    return Response.json({reference:c.reference,kind:c.kind,status:c.public_status||'Received',message:c.public_message||'',submitted_at:c.created_date,updated_at:c.updated_date});
   }
@@ -103,7 +110,7 @@ export default async function(req){
    if(prior[0]&&Date.now()-Date.parse(prior[0].created_date)<60000)fail('Wait one minute before requesting another code.',429);
    const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');
    const row=await db.PSAccess.create({user_id:u.id,code_hash:await hash(code),session_hash:'',expires_at:new Date(Date.now()+600000).toISOString(),attempts:0,verified:false});
-   const sent=await notify(base44,u.email,'Your Professional Standards verification code','Your code is '+code+'. It expires in 10 minutes. Do not share it. If you did not request this code, contact administration.');
+   const sent=await notify(base44,u.email,'Your Professional Standards verification code','Your code is '+code+'. It expires in 10 minutes. Do not share it. If you did not request this code, contact administration.',u);
    if(!sent)fail('The verification email could not be delivered. Contact administration or retry later.',503);
    await audit(db,u,'staff_verification_requested');
    return Response.json({challenge_id:row.id,success:true});
@@ -126,6 +133,31 @@ export default async function(req){
   const staff=await db.User.list('-created_date',1000);
   const eligible=staff.filter(v=>psRole(v));
   const staffSummary=eligible.map(v=>({id:v.id,name:actorName(v),email:v.email,role:psRole(v)}));
+  if(action==='create_case'){
+   const input=body.case||{},sourceEntity=text(input.source_entity,80),sourceId=text(input.source_record_id,100);
+   let source=null;
+   if(sourceEntity||sourceId){
+    if(!review)fail('Only reviewers may open cases from existing personnel reports.',403);
+    if(!legacyEntities.has(sourceEntity)||!sourceId)fail('Select a valid source report.');
+    const previous=await db.PSCase.filter({source_entity:sourceEntity,source_record_id:sourceId},'-created_date',1);
+    if(previous[0])return Response.json({success:true,case_id:previous[0].id,reference:previous[0].reference,existing:true});
+    source=await db[sourceEntity].get(sourceId);
+   }
+   const description=text(input.description||source?.description||source?.observations||source?.investigation_notes||source?.summary,12000);
+   const location=text(input.location||source?.location||'Internal report',500);
+   const incident_date=text(input.incident_date||source?.incident_date||source?.inspection_date||source?.report_date||source?.created_date,40);
+   if(description.length<20)fail('Enter at least 20 characters describing the case.');
+   if(!incident_date||!Number.isFinite(Date.parse(incident_date)))fail('A valid incident date is required.');
+   const investigator_id=review?text(input.investigator_id,100):u.id;
+   if(investigator_id&&!eligible.some(p=>p.id===investigator_id))fail('Choose an active authorized investigator.');
+   const reference='IA-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
+   const created=await db.PSCase.create({reference,tracking_hash:await hash(random()),kind:input.kind==='commendation'?'commendation':'complaint',source_type:source?'existing_report':'staff_intake',source_entity:sourceEntity,source_record_id:sourceId,anonymous:false,complainant_name:'Staff intake',contact_preference:'none',incident_date,location,officers:text(input.officers||source?.officer_name||source?.officer_inspected||source?.officer_email,1000),description,status:investigator_id?'investigating':'triage',public_status:'Under review',public_message:'',category:text(input.category||source?.complaint_type||source?.violation_type||'unclassified',200),priority:['low','normal','high','critical'].includes(input.priority)?input.priority:'normal',investigator_id,due_date:text(input.due_date,40),version:1,legal_hold:false});
+   await audit(db,u,'staff_case_opened',created.id,source?sourceEntity+' '+sourceId:'Staff intake');
+   if(source)await db.PSRecord.create({case_id:created.id,kind:'source_report',title:'Linked '+sourceEntity,body:'Original report ID: '+sourceId,source_entity:sourceEntity,source_record_id:sourceId,author_id:u.id,author_name:actorName(u),status:'linked'});
+   let email_sent=null;
+   if(investigator_id)email_sent=await notify(base44,eligible.find(p=>p.id===investigator_id)?.email,'Professional Standards assignment '+reference,'A case has been assigned to you. Sign in to Pathfinder and open Professional Standards.',u);
+   return Response.json({success:true,case_id:created.id,reference,email_sent});
+  }
   if(action==='list'||action==='reports'){
    const page=Math.max(0,Math.min(10000,Number(body.page)||0)),limit=50;
    const query=review?{}:{$or:[{investigator_id:u.id},{investigator_id:''},{status:'new'}]};

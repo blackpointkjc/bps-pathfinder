@@ -19,8 +19,9 @@ export const actorName = u => [u?.rank,u?.last_name].filter(Boolean).join(' ')||
 export async function audit(db,u,action,caseId='',details='') {
   await db.PSAudit.create({case_id:caseId,actor_id:u?.id||'',actor_name:actorName(u),action,details:text(details,2000)});
 }
-export async function notify(base44,to,subject,body) {
+export async function notify(base44,to,subject,body,actor=null) {
   if(!to)return false;
-  try{await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});return true;}catch{try{const {companyDelivery}=await import('./delivery.ts');return await companyDelivery(base44,to,subject,body);}catch{return false;}}
+  try{const {companyDelivery}=await import('./delivery.ts');return await companyDelivery(base44,to,subject,body,actor);}catch{}
+  try{await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});return true;}catch{return false;}
 }
 export {createClientFromRequest};
