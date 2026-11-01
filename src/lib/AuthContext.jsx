@@ -1,4 +1,4 @@
-import {watchInactivity,requiresFreshLogin,tokenIssuedAt} from '@/lib/sessionPolicy';
+import {watchInactivity,requiresFreshLogin,activityKey} from '@/lib/sessionPolicy';
 import {offlineIdentity} from '@/lib/offlineSession';
 import {queryClientInstance} from '@/lib/query-client';
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
@@ -106,10 +106,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       let currentUser = await withRequestTimeout(base44.auth.me(), 12000, 'Authentication request');
-      if(requiresFreshLogin(appParams.token)){
+      const session=await base44.functions.invoke('portalSession',{action:'check'});
+      if(!session.data?.success){
         base44.auth.logout(window.location.origin+'/Login');
         throw new Error('Please sign in again to continue.');
       }
+      currentUser.__portal_session_started_at=session.data.session_started_at;
       const registration = await base44.functions.invoke('portalRegistration', {action:'profile'});
       if (registration.data?.error) throw new Error(registration.data.error);
       if (registration.data?.profile) currentUser = {...currentUser,...registration.data.profile};
@@ -212,7 +214,7 @@ export const AuthProvider = ({ children }) => {
     const requestId = ++requestSequence.current;
     if(navigator.onLine===false) {
       const saved=offlineIdentity();
-      if(saved&&!requiresFreshLogin(appParams.token)){setUser(saved);setIsAuthenticated(true);setAuthError(null);setIsLoadingAuth(false);setIsLoadingPublicSettings(false);queryClientInstance.setQueryData(['currentUser'],saved);return;}
+      if(saved&&!requiresFreshLogin(saved.__portal_session_started_at)){setUser(saved);setIsAuthenticated(true);setAuthError(null);setIsLoadingAuth(false);setIsLoadingPublicSettings(false);queryClientInstance.setQueryData(['currentUser'],saved);return;}
     }
     try {
       setIsLoadingPublicSettings(true);
@@ -351,7 +353,7 @@ export const AuthProvider = ({ children }) => {
         const now = Date.now();
         const control = controls.find(item => {
           const expiry = new Date(item.expires_at || '').getTime();
-          return Number.isFinite(expiry) && expiry > now && tokenIssuedAt(appParams.token) < Date.parse(item.issued_at||'');
+          return Number.isFinite(expiry) && expiry > now && Date.parse(user.__portal_session_started_at||'') < Date.parse(item.issued_at||'');
         });
         if (!control?.id) return;
 
@@ -510,6 +512,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.warn('[AUTH] Sign-out cache refresh partially failed:', error?.message);
     }
+    try { await base44.functions.invoke('portalSession',{action:'sign_out'}); } catch {}
     try { sessionStorage.removeItem('bps:ps-access'); } catch {}
     setUser(null);
     setIsAuthenticated(false);
@@ -526,7 +529,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if(!isAuthenticated||!user?.id)return;
-    return watchInactivity({userId:user.id,issuedAt:tokenIssuedAt(appParams.token),onExpire:()=>{
+    return watchInactivity({userId:user.id,issuedAt:Date.parse(user.__portal_session_started_at||''),onExpire:()=>{
       try{localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY,JSON.stringify({reason:'You were signed out after 30 minutes of inactivity. Please sign in again.',issuedBy:'Pathfinder session security',issuedAt:new Date().toISOString()}));}catch{}
       setUser(null);setIsAuthenticated(false);setAccountLock(null);
       clearBase44ReadCache();
@@ -534,6 +537,20 @@ export const AuthProvider = ({ children }) => {
       base44.auth.logout(publicPage?undefined:window.location.origin+'/Login');
       appParams.token=null;
     }});
+  },[isAuthenticated,user?.id]);
+
+  useEffect(()=>{
+    if(!isAuthenticated||!user?.id)return;
+    let lastSent=0,stopped=false;
+    const check=async()=>{
+      try{
+        const activity=Number(localStorage.getItem(activityKey(user.id))||0);
+        const response=await base44.functions.invoke('portalSession',{action:activity>lastSent?'activity':'check'});
+        if(response.data?.success)lastSent=activity;
+      }catch(error){if(error?.response?.data?.code==='SESSION_REAUTH_REQUIRED'&&!stopped)window.dispatchEvent(new Event('bps:session-reauthentication-required'));}
+    };
+    const timer=window.setInterval(check,60000);
+    return()=>{stopped=true;window.clearInterval(timer);};
   },[isAuthenticated,user?.id]);
 
   useEffect(()=>{

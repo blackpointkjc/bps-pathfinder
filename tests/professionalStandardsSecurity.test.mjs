@@ -4,6 +4,9 @@ import {webcrypto} from 'node:crypto';
 if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto});
 let actor=null,counter=0,mail=[];
 const tables={};
+const testHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('test-current-session')))).map(v=>v.toString(16).padStart(2,'0')).join('');
+tables.PortalAuthSession=[{id:'mock-session',token_hash:testHash,started_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),revoked:false}];
+
 const match=(row,q)=>Object.entries(q||{}).every(([k,v])=>k==='$or'?v.some(c=>match(row,c)):row[k]===v);
 const db=new Proxy({}, {get(_t,name){tables[name]??=[];return {
  create:async data=>{const row={...data,id:name+'-'+(++counter),created_date:new Date().toISOString(),updated_date:new Date().toISOString()};tables[name].push(row);return {...row};},
@@ -18,7 +21,8 @@ const source=fs.readFileSync('base44/functions/professionalStandards/entry.ts','
 const handler=new Function('createClientFromRequest',security+'\n'+source)(()=>sdk);
 let reqNo=0;
 async function call(payload,files=[]){
- let body,headers={authorization:'Bearer e30.'+Buffer.from(JSON.stringify({iat:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.test-signature','cf-connecting-ip':'test-'+(++reqNo)};
+ tables.PortalAuthSession[0].user_id=actor?.id;
+ let body,headers={authorization:'Bearer test-current-session','cf-connecting-ip':'test-'+(++reqNo)};
  if(files.length){body=new FormData();body.set('payload',JSON.stringify(payload));files.forEach((f,i)=>body.set('file_'+i,f));}
  else{body=JSON.stringify(payload);headers['content-type']='application/json';}
  const res=await handler(new Request('https://example.test/functions/professionalStandards',{method:'POST',headers,body}));return {httpStatus:res.status,...await res.json()};

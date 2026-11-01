@@ -3,6 +3,9 @@ import fs from 'node:fs';
 import {transformSync} from 'esbuild';
 let actor=null,serial=0,deliveries=[];
 const tables={};
+const testHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('test-current-session')))).map(v=>v.toString(16).padStart(2,'0')).join('');
+tables.PortalAuthSession=[{id:'mock-session',token_hash:testHash,started_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),revoked:false}];
+
 const match=(r,q)=>Object.entries(q||{}).every(([k,v])=>r[k]===v);
 const db=new Proxy({}, {get(_,name){tables[name]??=[];return {
  get:async id=>{const row=tables[name].find(v=>v.id===id);if(!row)throw Error('missing');return {...row};},
@@ -14,7 +17,7 @@ const db=new Proxy({}, {get(_,name){tables[name]??=[];return {
 const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,integrations:{Core:{SendEmail:async p=>{deliveries.push(p);}}}}};
 function load(name){let source=fs.readFileSync('base44/functions/'+name+'/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','async function handler(req){');source=transformSync(source,{loader:'ts',target:'es2022'}).code;return new Function('createClientFromRequest','companyDelivery',source+';return handler;')(()=>sdk,async(_sdk,to,subject,body)=>{deliveries.push({to,subject,body});return true;});}
 const register=load('portalRegistration'),invite=load('createPortalAccount');
-async function call(fn,payload){const r=await fn(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer e30.'+Buffer.from(JSON.stringify({iat:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.test-signature'},body:JSON.stringify(payload)}));return {httpStatus:r.status,...await r.json()};}
+async function call(fn,payload){tables.PortalAuthSession[0].user_id=actor?.id;const r=await fn(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer test-current-session'},body:JSON.stringify(payload)}));return {httpStatus:r.status,...await r.json()};}
 actor=await db.User.create({email:'new@example.test',role:'user',additional_roles:[]});
 let r=await call(register,{action:'profile',first_name:'New',last_name:'Applicant',requested_type:'visitor',role:'admin',ps_role:'reviewer',additional_roles:['full_access']});
 assert.equal(r.success,true);assert.equal(r.pending,true);

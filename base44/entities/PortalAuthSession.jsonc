@@ -1,0 +1,13 @@
+{
+ "name":"PortalAuthSession","type":"object",
+ "properties":{
+  "user_id":{"type":"string"},
+  "token_hash":{"type":"string"},
+  "started_at":{"type":"string","format":"date-time"},
+  "last_activity_at":{"type":"string","format":"date-time"},
+  "revoked":{"type":"boolean","default":false},
+  "revoked_at":{"type":"string","format":"date-time"}
+ },
+ "required":["user_id","token_hash","started_at","last_activity_at"],
+ "rls":{"create":false,"read":false,"update":false,"delete":false}
+}

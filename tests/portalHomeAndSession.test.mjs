@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {buildSync} from 'esbuild';
 import {createRequire} from 'node:module';
-import {INACTIVITY_LIMIT_MS,watchInactivity,recordLoginActivity,tokenIssuedAt,requiresFreshLogin,REAUTHENTICATE_AFTER} from '../src/lib/sessionPolicy.js';
+import {INACTIVITY_LIMIT_MS,watchInactivity,recordLoginActivity,requiresFreshLogin,REAUTHENTICATE_AFTER} from '../src/lib/sessionPolicy.js';
 const require=createRequire(import.meta.url),m={exports:{}};
 const output=buildSync({entryPoints:['src/lib/roleHome.js'],bundle:true,write:false,format:'cjs',platform:'node'}).outputFiles[0].text;
 new Function('require','module','exports',output)(require,m,m.exports);
@@ -36,11 +36,9 @@ clock+=28*60*1000;target.dispatchEvent(new Event('pointerdown'));assert.equal(ex
 cleanup();
 cleanup=watchInactivity(options);assert.equal(expired,3,'reload cannot restart an expired idle timer');cleanup();
 cleanup=watchInactivity({...options,issuedAt:clock});assert.equal(expired,3,'fresh login starts a new idle window');cleanup();
-const jwt=seconds=>'e30.'+Buffer.from(JSON.stringify({iat:seconds})).toString('base64url')+'.test-signature';
-const cutoff=Date.parse(REAUTHENTICATE_AFTER)/1000;
-assert.equal(requiresFreshLogin(jwt(cutoff-60)),true);
-assert.equal(requiresFreshLogin(jwt(cutoff+60)),false);
+const cutoff=Date.parse(REAUTHENTICATE_AFTER);
+assert.equal(requiresFreshLogin(new Date(cutoff-60000).toISOString()),true);
+assert.equal(requiresFreshLogin(new Date(cutoff+60000).toISOString()),false);
 assert.equal(requiresFreshLogin('invalid'),true);
-assert.equal(tokenIssuedAt(jwt(123)),123000);
 assert.equal(INACTIVITY_LIMIT_MS,1800000);
 console.log('PASS: highest-role home destinations and labels; 30-minute true inactivity; background events do not keep sessions alive; reload/resume and fresh-login behavior; release-wide token cutoff.');

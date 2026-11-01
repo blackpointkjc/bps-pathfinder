@@ -1,18 +1,19 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
 import {notify,audit,psRole,manager} from './security.ts';
 const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
-function __portalLoginIsCurrent(request){
+async function __portalLoginIsCurrent(request,sdk,user){
  try{
   const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');
-  const encoded=token.split('.')[1];
-  const claims=JSON.parse(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')));
-  return Number(claims.iat)>=Math.floor(Date.parse(__portalReauthAfter)/1000);
+  if(!token)return false;
+  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
+  const rows=await sdk.asServiceRole.entities.PortalAuthSession.filter({token_hash:hash},'-created_date',1),session=rows[0];
+  return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<30*60*1000;
  }catch{return false;}
 }
 export default async function(req){
  try{
  const sdk=createClientFromRequest(req),u=await sdk.auth.me().catch(()=>null),db=sdk.asServiceRole.entities;
- if(u&&!u.is_service&&!__portalLoginIsCurrent(req))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+ if(u&&!u.is_service&&!await __portalLoginIsCurrent(req,sdk,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  let service=false;
  if(!u&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);service=true;}catch{}}
  if(!service&&!manager(u)&&psRole(u)!=='reviewer')return Response.json({error:'Trusted workflow or main administrator access required'},{status:403});

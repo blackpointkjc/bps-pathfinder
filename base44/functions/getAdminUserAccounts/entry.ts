@@ -1,11 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
-function __portalLoginIsCurrent(request){
+async function __portalLoginIsCurrent(request,sdk,user){
  try{
   const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');
-  const encoded=token.split('.')[1];
-  const claims=JSON.parse(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')));
-  return Number(claims.iat)>=Math.floor(Date.parse(__portalReauthAfter)/1000);
+  if(!token)return false;
+  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
+  const rows=await sdk.asServiceRole.entities.PortalAuthSession.filter({token_hash:hash},'-created_date',1),session=rows[0];
+  return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<30*60*1000;
  }catch{return false;}
 }
 const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
@@ -20,7 +21,7 @@ Deno.serve(async req => {
     const api = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
     const __portalCaller = await api.auth.me().then(__limitFullAccess).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!__portalLoginIsCurrent(req))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,api,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await api.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
