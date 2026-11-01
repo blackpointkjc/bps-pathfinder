@@ -31,7 +31,7 @@ export default async function(req){
    const form=await req.formData(); body=JSON.parse(String(form.get('payload')||'{}'));files=[...form.entries()].filter(([key,f])=>key.startsWith('file_')&&f instanceof File).map(([,f])=>f);
   }else body=await req.json();
   const action=text(body.action,50);
-  if(action==='contact')return Response.json({phone:'(855) 827-7911',email:'info@blackpointkjc.com',office_hours:'Contact the office for current hours and language or accessibility assistance.',address:'701 E Franklin St, Suite 105 1052, Richmond, VA 23219',instructions:'For immediate danger or an emergency, call 911. This form is for complaints and commendations, not emergency dispatch. You may report anonymously. Keep your reference and private tracking code; anonymous codes cannot be recovered.'});
+  if(action==='contact')return Response.json({phone:'855-8BPS911 ext. 707',email:'IA@blackpointkjc.com',office_hours:'Monday–Friday, 8:00 AM–6:00 PM Eastern. Contact the office for language or accessibility assistance.',address:'701 E Franklin St, Suite 105 1052, Richmond, VA 23219',instructions:'For immediate danger or an emergency, call 911. This form is for complaints and commendations, not emergency dispatch. You may report anonymously. Keep your reference and private tracking code; anonymous codes cannot be recovered.'});
   if(action==='submit'){
    throttle(req,'submit');
    if(body.website)fail('Submission could not be accepted.');
