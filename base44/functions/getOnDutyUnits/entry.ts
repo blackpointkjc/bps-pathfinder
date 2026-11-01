@@ -2,7 +2,7 @@ import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { LIVE_LOCATION_PRIVACY_USER_ID, stripLiveLocation } from './privacy.ts';
 import { isRateLimitError, rateLimitWaitMillis } from './rateLimitRetry.ts';
-const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
+const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
   const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');

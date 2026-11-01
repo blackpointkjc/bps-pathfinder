@@ -1,5 +1,5 @@
 import {createClientFromRequest,text,roles,manager,psRole,identity,hash,random,fail,audit,notify,actorName} from './security.ts';
-const __portalReauthAfter = '2026-11-01T00:00:00.000Z';
+const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
   const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');

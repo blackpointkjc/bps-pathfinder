@@ -1,6 +1,6 @@
 export const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
 // Filled with the session-revocation cutoff when this release is published.
-export const REAUTHENTICATE_AFTER = '2026-11-01T00:00:00.000Z';
+export const REAUTHENTICATE_AFTER = '2026-11-01T22:38:04.000Z';
 export const requiresFreshLogin = sessionStartedAt => !Number.isFinite(Date.parse(sessionStartedAt||'')) || Date.parse(sessionStartedAt) < Date.parse(REAUTHENTICATE_AFTER);
 export const activityKey = userId => 'bps:auth-activity:'+userId;
 export function recordLoginActivity(userId,storage=localStorage,now=Date.now()){

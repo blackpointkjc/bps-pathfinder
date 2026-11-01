@@ -1,5 +1,5 @@
 import {createClient,createClientFromRequest} from 'npm:@base44/sdk';
-const __portalReauthAfter='2026-11-01T00:00:00.000Z';
+const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 const IDLE_MS=30*60*1000;
 const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
 const inactive=user=>!user||user.disabled||user.termination_date||['denied','terminated','suspended'].includes(String(user.account_status||user.employment_status||'').toLowerCase());
