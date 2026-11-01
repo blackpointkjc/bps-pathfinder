@@ -1,0 +1,41 @@
+{
+  "name": "Professional Standards \u2014 Daily Deadline Reminders",
+  "description": "At 9 AM Eastern on weekdays, notify authorized staff of overdue and next-day case, interview, task and corrective-action deadlines. One reminder per item per day; no case narratives are emailed.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 9 * * 1-5",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "professional_standards_deadlines",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_deadline_reminders": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "professionalStandardsDeadlines",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
