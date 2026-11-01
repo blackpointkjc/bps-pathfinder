@@ -1,4 +1,4 @@
-import React,{useState} from 'react';
+import {useState} from 'react';
 import {createClient} from '@base44/sdk';
 import {Link} from 'react-router-dom';
 import {base44,clearBase44ReadCache} from '@/api/base44Client';

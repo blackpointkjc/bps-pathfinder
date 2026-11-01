@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
     const __portalCaller = await base44.auth.me().catch(()=>null);
-    if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+    if (!__portalCaller || (__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
         
@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
           if (typeof merged.out_of_office !== 'boolean') return Response.json({error:'Out of office must be true or false'},{status:400});
           if (merged.out_of_office && (!Number.isFinite(Date.parse(merged.out_of_office_start)) || !Number.isFinite(Date.parse(merged.out_of_office_return)) || Date.parse(merged.out_of_office_return) <= Date.parse(merged.out_of_office_start))) return Response.json({error:'Return must be after the start date and time'},{status:400});
         }
+        if (['investigator','reviewer'].includes(updates.ps_role) && (target.additional_roles||[]).some(r=>['visitor','student','client'].includes(r))) return Response.json({error:'Professional Standards access requires a staff account, not a student, client or visitor account.'},{status:403});
         if (updates.ps_role !== undefined && (!isSystemManager || !['none','investigator','reviewer'].includes(updates.ps_role))) return Response.json({error:'Only administrators may assign a valid Professional Standards role'},{status:403});
         if (updates.portal_approved !== undefined) delete updates.portal_approved;
         const updatePayload: Record<string, unknown> = {};

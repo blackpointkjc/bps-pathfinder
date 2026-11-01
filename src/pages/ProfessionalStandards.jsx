@@ -1,4 +1,4 @@
-import React,{lazy,Suspense,useEffect,useState} from 'react';
+import {lazy,Suspense,useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {useAuth} from '@/lib/AuthContext';
 import {psCall,EvidenceInput} from './PublicProfessionalStandards';
