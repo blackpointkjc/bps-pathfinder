@@ -14,7 +14,7 @@ import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
   Building2, Car, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
-  FileWarning, Gauge, Globe, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
+  FileWarning, Gauge, GraduationCap, Layers, LogOut, Map as MapIcon, MapPin, Menu,
   Home, Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
   Siren, Trash2, UserCheck, UserX, Users, Wrench, X, RotateCw
 } from 'lucide-react';

@@ -1,5 +1,4 @@
 import AdditionalRolesEditor from '@/components/admin/AdditionalRolesEditor';
-import { canAccessAccounting } from '@/lib/accountingAccess';
 import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
@@ -21,13 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { listDirectoryUsers, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
 import { isCompanyEmployeeAccount } from '@/lib/directoryUtils';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
 
