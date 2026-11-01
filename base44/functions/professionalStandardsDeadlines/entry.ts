@@ -15,7 +15,7 @@ export default async function(req){
  try{
  const sdk=createClientFromRequest(req),u=await sdk.auth.me().catch(()=>null),db=sdk.asServiceRole.entities;
  if(u&&!u.is_service&&!await __portalLoginIsCurrent(req,sdk,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
- let service=false;
+ let service=u?.is_service===true;
  if(!u&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);service=true;}catch{}}
  if(!service&&psRole(u)!=='reviewer')return Response.json({error:'Trusted workflow or main administrator access required'},{status:403});
  if(u){const locks=await db.AccountLock.filter({user_id:u.id,locked:true},'-created_date',1);if(locks.length)return Response.json({error:'Your account is locked.'},{status:403});}
