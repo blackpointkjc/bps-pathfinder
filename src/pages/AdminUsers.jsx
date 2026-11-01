@@ -153,13 +153,13 @@ export default function AdminUsers({ embedded = false }) {
         processed_by: user?.email || '',
         processed_at: new Date().toISOString(),
       });
-      return request;
+      return {...request,email_sent:payload.email_sent,email_error:payload.email_error};
     },
     onSuccess: request => {
       queryClient.invalidateQueries({ queryKey: ['pendingAccessRequests'] });
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['portalInvitations'] });
-      alert(`Invitation sent to ${request.email}. The account will appear in Pending Users when Base44 finishes creating it.`);
+      alert(request.email_sent?`Invitation email accepted for ${request.email}. Access stays pending until approval.`:request.email_error||'Invitation saved, but email delivery failed. Retry from Account invitation delivery.');
     },
     onError: error => alert(`Unable to process access request: ${error.message}`),
   });
@@ -191,6 +191,7 @@ export default function AdminUsers({ embedded = false }) {
       queryClient.invalidateQueries({ queryKey: ['portalInvitations'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      if(!result?.email_sent){alert(result?.email_error||'Invitation saved, but no email was accepted. Use Resend email in Account invitation delivery.');return;}
       setShowCreateDialog(false);
       resetCreateForm();
       if (result?.provisioned) {
