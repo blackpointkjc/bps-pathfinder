@@ -40,9 +40,11 @@ async function upload(base44,db,u,c,files){
  if(files.length>5)fail('Attach at most five files.');
  if(files.some(f=>!allowedFiles.test(f.type)||f.size>20*1024*1024||f.size===0))fail('Use a supported photo, video, audio, PDF, Word or text file, up to 20 MB each.');
  for(const file of files){
+  const file_hash=await hash(new Uint8Array(await file.arrayBuffer()));
+  const existing=await db.PSRecord.filter({case_id:c.id,kind:'evidence',file_hash},'-created_date',1);
+  if(existing[0]){results.push(existing[0]);continue;}
   const {file_uri}=await base44.asServiceRole.integrations.Core.UploadPrivateFile({file});
   if(!file_uri)fail('Evidence upload was not confirmed.',503);
-  const file_hash=await hash(new Uint8Array(await file.arrayBuffer()));
   results.push(await db.PSRecord.create({case_id:c.id,kind:'evidence',title:text(file.name,200),file_name:text(file.name,200),file_uri,file_type:file.type,file_size:file.size,file_hash,author_id:u?.id||'',author_name:actorName(u),status:'received'}));
  }
  return results;
