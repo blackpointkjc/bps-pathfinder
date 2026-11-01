@@ -1,0 +1,33 @@
+{
+  "name": "PSAccess",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "code_hash": {
+      "type": "string"
+    },
+    "session_hash": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "session_expires_at": {
+      "type": "string"
+    },
+    "attempts": {
+      "type": "integer"
+    },
+    "verified": {
+      "type": "boolean"
+    }
+  },
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}
