@@ -46,7 +46,7 @@ export default function PortalLogin(){
   <header><div className="text-xs font-bold tracking-[.24em]">BLACK POINT SECURITY SOLUTIONS</div><div className="mt-2 text-xl font-bold">BPS Pathfinder</div></header>
   <div className="portal-wrap"><div className="portal-grid">
    <section><p className="portal-eyebrow">Your workspace starts here</p><h1>One team.<br/>A higher standard.</h1><p>Secure access for officers, students, clients, visitors and authorized staff.</p>
-    <div className="portal-card mt-8"><p className="portal-eyebrow">Public access · No account needed</p><h2>Professional Standards</h2><p>File a complaint, recognize an officer, submit evidence, or privately track a submission.</p><Link className="portal-button" to="/PublicProfessionalStandards">Open public portal →</Link><p><small>Anonymous submissions are welcome. Staff investigations remain restricted.</small></p></div>
+    <div className="portal-card mt-8"><p className="portal-eyebrow">Public access · No account needed</p><h2>Professional Standards</h2><p>File a complaint, recognize an officer, submit evidence, or privately track a submission.</p><Link className="portal-button" to="/IAFORM">Open public portal →</Link><p><small>Anonymous submissions are welcome. Staff investigations remain restricted.</small></p></div>
    </section>
    <section className="portal-card"><p className="portal-eyebrow">Pathfinder account</p><h2>{({login:'Welcome back',register:'Request an account',verify:'Verify your email',forgot:'Reset your password',reset:'Choose a new password'})[mode]}</h2>
     {error&&<div role="alert" className="portal-message portal-error">{error}</div>}

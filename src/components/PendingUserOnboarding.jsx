@@ -52,7 +52,7 @@ export default function PendingUserOnboarding({ user }) {
      <button disabled={busy} type="submit" className="rounded-lg bg-amber-500 px-5 py-3 font-bold text-black disabled:opacity-50 sm:col-span-2">{busy ? 'Saving…' : (isStudent ? 'Continue student registration' : 'Submit for administrator review')}</button>
     </form>
    </>}
-  <div className="mt-6 flex flex-wrap gap-3"><button onClick={checkAppState} className="rounded border border-slate-500 px-4 py-2 text-sm">Check approval status</button><button onClick={()=>logout(true)} className="rounded border border-slate-500 px-4 py-2 text-sm">Sign out</button><a href="/PublicProfessionalStandards" className="rounded border border-slate-500 px-4 py-2 text-sm">Public complaint services</a></div>
+  <div className="mt-6 flex flex-wrap gap-3"><button onClick={checkAppState} className="rounded border border-slate-500 px-4 py-2 text-sm">Check approval status</button><button onClick={()=>logout(true)} className="rounded border border-slate-500 px-4 py-2 text-sm">Sign out</button><a href="/IAFORM" className="rounded border border-slate-500 px-4 py-2 text-sm">Public complaint services</a></div>
   </section>
  </main>;
 }

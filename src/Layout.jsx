@@ -1785,3 +1785,4 @@ export default function Layout({ children, currentPageName }) {
         the header tools menu and obscured the work surface on phones/iPads. */}
   </div></MicrosoftMailSetupGate></AcceptableUseGate>;
 }
+export {canAccessPage};

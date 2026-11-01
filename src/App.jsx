@@ -12,7 +12,7 @@ import { queryClientInstance } from '@/lib/query-client';
 import { base44 } from '@/api/base44Client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
-import { pagesConfig } from './lib/lazyPages';
+import { pagesConfig,prepareWorkspace } from './lib/lazyPages';
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -235,6 +235,7 @@ const AuthenticatedApp = () => {
     navigateToLogin,
     navigateToMicrosoftLogin,
     checkAppState,
+    logout,
   } = useAuth();
 
   useEffect(() => {
@@ -258,20 +259,27 @@ const AuthenticatedApp = () => {
     playForcedSignOutLoginBeep();
   }, [needsLogin, forcedSignOutNotice]);
 
-  const [welcome,setWelcome] = useState(false);
-  useEffect(() => {
-    if (!user?.id || sessionStorage.getItem('bps:portal-welcome') !== '1') return;
-    sessionStorage.removeItem('bps:portal-welcome');
-    setWelcome(true);
-    const timer = window.setTimeout(() => setWelcome(false), 3000);
-    return () => window.clearTimeout(timer);
-  }, [user?.id]);
-  const welcomeOverlay = welcome && user ? <div className="portal-welcome" role="status" aria-live="polite"><div>
+  const publicEntry=['/iaform','/publicprofessionalstandards','/login'].includes(location.pathname.toLowerCase());
+  const [preparedUserId,setPreparedUserId]=useState('');
+  const [startupAttempt,setStartupAttempt]=useState(0);
+  const [startupProgress,setStartupProgress]=useState({completed:0,total:1,label:'Preparing your tools'});
+  const [startupError,setStartupError]=useState('');
+  useEffect(()=>{
+    if(!user?.id||publicEntry||preparedUserId===user.id)return;
+    let active=true;setStartupError('');
+    prepareWorkspace(user,progress=>{if(active)setStartupProgress(progress);})
+      .then(()=>{if(active){setPreparedUserId(user.id);sessionStorage.removeItem('bps:portal-welcome');}})
+      .catch(error=>{if(active)setStartupError(error.message);});
+    return()=>{active=false;};
+  },[user?.id,publicEntry,startupAttempt,preparedUserId]);
+  const welcomeOverlay = user && preparedUserId!==user.id && !publicEntry ? <div className="portal-welcome" role="status" aria-live="polite"><div>
     {(user.profile_photo_original_url || user.profile_photo_url) ? <img src={user.profile_photo_original_url || user.profile_photo_url} alt="Your profile" /> : <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full border-2 border-amber-400 text-4xl">{String(user.last_name || user.full_name || '?').slice(0,1)}</div>}
-    <p className="mb-3 text-xs tracking-[.25em] text-amber-300">BPS PATHFINDER</p><h1>Welcome, {[user.rank,user.last_name || user.full_name].filter(Boolean).join(' ')}</h1><p className="mt-3 text-slate-300">Preparing your workspace…</p><progress aria-label="Preparing workspace" /></div></div> : null;
-  if (location.pathname.toLowerCase() === '/publicprofessionalstandards') return <PublicProfessionalStandards />;
+    <p className="mb-3 text-xs tracking-[.25em] text-amber-300">BLACKPOINT · PATHFINDER</p><h1>Welcome, {[user.rank,user.last_name || user.full_name].filter(Boolean).join(' ')}</h1><p className="mt-3 text-slate-300">{startupError||startupProgress.label+'…'}</p><progress aria-label="Preparing workspace" max={startupProgress.total} value={startupProgress.completed}/>
+    {startupError&&<div className="mt-6 flex justify-center gap-3"><button type="button" className="rounded-full bg-amber-300 px-5 py-3 font-bold text-black" onClick={()=>setStartupAttempt(n=>n+1)}>Retry preparation</button><button type="button" className="rounded-full border border-slate-500 px-5 py-3" onClick={()=>logout(true)}>Sign out</button></div>}
+    </div></div> : null;
+  if (location.pathname.toLowerCase() === '/iaform') return <PublicProfessionalStandards />;
+  if (location.pathname.toLowerCase() === '/publicprofessionalstandards') return <Navigate replace to="/IAFORM" />;
   if (location.pathname.toLowerCase() === '/login') return <PortalLogin />;
-
 
   if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen />;
 
