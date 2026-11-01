@@ -33,9 +33,10 @@ const toolComponents=import.meta.glob('../components/**/*.jsx');
 const prepared=new Map();
 export function prepareWorkspace(user,onProgress){
  if(prepared.has(user.id))return prepared.get(user.id);
- const selected=[...routes].filter(([name])=>canAccessPage(user,name));
+ const approved=user.role==='admin'||user.role==='dispatch'||(user.additional_roles||[]).length||['investigator','reviewer'].includes(user.ps_role);
+ const selected=approved?[...routes].filter(([name])=>canAccessPage(user,name)):[];
  const loaders=[...new Set(selected.map(([name,file])=>browserRouteLoaders[name]||pageModules['../pages/'+file]))];
- const exclusive=(user.additional_roles||[]).some(r=>['visitor','student','client'].includes(r));
+ const exclusive=!approved||(user.additional_roles||[]).some(r=>['visitor','student','client'].includes(r));
  if(!exclusive)loaders.push(...Object.values(toolComponents));
  const task=prepareToolLoaders(loaders,{onProgress,minimumMs:3000,warmData:async()=>{
   queryClientInstance.setQueryData(['currentUser'],user);
