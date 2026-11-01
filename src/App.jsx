@@ -1,5 +1,7 @@
 import { registerDiagnosticPages } from '@/utils/appDiagnostics';
 import AppUpdateNotice from '@/components/AppUpdateNotice';
+import PortalLogin from '@/components/PortalLogin';
+import PublicProfessionalStandards from '@/pages/PublicProfessionalStandards';
 import React, { Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
@@ -256,16 +258,24 @@ const AuthenticatedApp = () => {
     playForcedSignOutLoginBeep();
   }, [needsLogin, forcedSignOutNotice]);
 
-  // Use the provider's actual sign-in route, never an intermediate Pathfinder
-  // sign-in page after a normal logout, session expiration, or forced logout.
+  const [welcome,setWelcome] = useState(false);
   useEffect(() => {
-    if (!needsLogin) return;
-    navigateToLogin();
-  }, [needsLogin, navigateToLogin]);
+    if (!user?.id || sessionStorage.getItem('bps:portal-welcome') !== '1') return;
+    sessionStorage.removeItem('bps:portal-welcome');
+    setWelcome(true);
+    const timer = window.setTimeout(() => setWelcome(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [user?.id]);
+  const welcomeOverlay = welcome && user ? <div className="portal-welcome" role="status" aria-live="polite"><div>
+    {(user.profile_photo_original_url || user.profile_photo_url) ? <img src={user.profile_photo_original_url || user.profile_photo_url} alt="Your profile" /> : <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full border-2 border-amber-400 text-4xl">{String(user.last_name || user.full_name || '?').slice(0,1)}</div>}
+    <p className="mb-3 text-xs tracking-[.25em] text-amber-300">BPS PATHFINDER</p><h1>Welcome, {[user.rank,user.last_name || user.full_name].filter(Boolean).join(' ')}</h1><p className="mt-3 text-slate-300">Preparing your workspace…</p><progress aria-label="Preparing workspace" /></div></div> : null;
+  if (location.pathname.toLowerCase() === '/publicprofessionalstandards') return <PublicProfessionalStandards />;
+  if (location.pathname.toLowerCase() === '/login') return <PortalLogin />;
+
 
   if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen />;
 
-  if (authError?.type === 'user_not_registered') return <UserNotRegisteredError />;
+  if (authError?.type === 'user_not_registered') return <PortalLogin />;
 
   // A former employee may still have a valid provider identity. Never mount
   // operational modules for a terminated profile, even after password reset.
@@ -283,7 +293,7 @@ const AuthenticatedApp = () => {
   // in restricted onboarding until an administrator assigns their category.
   const accessRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const approvedCategory = user?.role === 'admin' || user?.role === 'dispatch' ||
-    ['full_access','officer','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer'].some(role => accessRoles.has(role));
+    ['full_access','officer','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer','visitor'].some(role => accessRoles.has(role));
   if (accountLock) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-950 p-6 text-slate-100">
@@ -303,9 +313,9 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (isAuthenticated && user && !approvedCategory) return <PendingUserOnboarding user={user} />;
+  if (isAuthenticated && user && !approvedCategory && !['investigator','reviewer'].includes(user.ps_role)) return <>{welcomeOverlay}<PendingUserOnboarding user={user} /></>;
 
-  if (needsLogin) return <LoadingScreen />;
+  if (needsLogin) return <PortalLogin />;
 
 
   if (authError) {
@@ -330,6 +340,7 @@ const AuthenticatedApp = () => {
 
   return (
       <div className="fixed inset-0 overflow-hidden">
+        {welcomeOverlay}
         {/* One persistent GPS owner for the entire authenticated Pathfinder
             session. Route changes must never unmount/restart the shared browser
             or external GPS stream. Individual pages only consume this stream. */}

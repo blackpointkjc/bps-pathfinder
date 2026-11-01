@@ -69,19 +69,36 @@
   ],
   "rls": {
     "create": {
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "data.primary_officer_email": "{{user.email}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.primary_officer_email": "{{user.email}}"
+            }
+          ]
         }
       ]
     },
-    "read": true,
-    "update": {
+    "read": {
       "$or": [
         {
           "user_condition": {
@@ -89,14 +106,64 @@
           }
         },
         {
-          "data.primary_officer_email": "{{user.email}}"
+          "user_condition": {
+            "portal_approved": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.primary_officer_email": "{{user.email}}"
+            }
+          ]
         }
       ]
     },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }

@@ -102,6 +102,9 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       let currentUser = await withRequestTimeout(base44.auth.me(), 12000, 'Authentication request');
+      const registration = await base44.functions.invoke('portalRegistration', {action:'profile'});
+      if (registration.data?.error) throw new Error(registration.data.error);
+      if (registration.data?.profile) currentUser = {...currentUser,...registration.data.profile};
       if (requestId !== requestSequence.current) return;
 
       // The User record already carries the linked work/Microsoft aliases.
@@ -365,7 +368,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsAuthenticated(false);
         setAccountLock(null);
-        base44.auth.logout(window.location.href);
+        base44.auth.logout(window.location.origin + '/Login');
       } catch (error) {
         console.warn('[AUTH] Force sign-out check unavailable:', error?.message);
       } finally {checking=false;}
@@ -505,7 +508,7 @@ export const AuthProvider = ({ children }) => {
     
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
+      base44.auth.logout(window.location.origin + '/Login');
     } else {
       // Just remove the token without redirect
       base44.auth.logout();
@@ -556,7 +559,7 @@ export const AuthProvider = ({ children }) => {
 
   const navigateToLogin = useCallback(() => {
     try { sessionStorage.removeItem('bps:auth-provider'); } catch {}
-    base44.auth.redirectToLogin(window.location.href);
+    window.location.assign('/Login');
   }, []);
 
   const navigateToMicrosoftLogin = useCallback(() => {

@@ -168,29 +168,101 @@
   ],
   "rls": {
     "create": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
-    },
-    "read": {
-      "$or": [
+      "$and": [
         {
-          "data.client_email": "{{user.email}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
           "user_condition": {
             "id": "6a72bbee2842d6338cbae513"
           }
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "$or": [
+            {
+              "data.client_email": "{{user.email}}"
+            },
+            {
+              "user_condition": {
+                "id": "6a72bbee2842d6338cbae513"
+              }
+            }
+          ]
         }
       ]
     }

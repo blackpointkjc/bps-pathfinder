@@ -30,26 +30,113 @@
       "type": "string"
     },
     "ssn": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "date_of_birth": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "address": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "city": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "state": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "zip": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "rank": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "write": false
+      }
     },
     "dispatch_hold_new_calls": {
       "type": "boolean",
@@ -76,14 +163,23 @@
       "type": "string"
     },
     "division": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "write": false
+      }
     },
     "subdivision": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "write": false
+      }
     },
     "substation": {
       "type": "string",
-      "description": "Field posting within operating division; Lieutenant and above oversee at division/platoon level"
+      "description": "Field posting within operating division; Lieutenant and above oversee at division/platoon level",
+      "rls": {
+        "write": false
+      }
     },
     "hire_date": {
       "type": "string",
@@ -91,10 +187,28 @@
     },
     "termination_date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "rls": {
+        "write": false
+      }
     },
     "hourly_rate": {
-      "type": "number"
+      "type": "number",
+      "rls": {
+        "write": false,
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "overtime_rate_override": {
       "type": "number"
@@ -113,7 +227,10 @@
         "on_leave",
         "not_employee"
       ],
-      "default": "active"
+      "default": "active",
+      "rls": {
+        "write": false
+      }
     },
     "payment_method": {
       "type": "string",
@@ -125,10 +242,38 @@
       "default": "direct_deposit"
     },
     "bank_account_last4": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "bank_routing_number": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "tax_filing_status": {
       "type": "string",
@@ -175,6 +320,9 @@
       "type": "array",
       "items": {
         "type": "string"
+      },
+      "rls": {
+        "write": false
       }
     },
     "assigned_location": {
@@ -215,6 +363,9 @@
       "type": "array",
       "items": {
         "type": "string"
+      },
+      "rls": {
+        "write": false
       }
     },
     "pto_balance_hours": {
@@ -242,16 +393,58 @@
       "default": false
     },
     "emergency_contact_name": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "emergency_contact_relationship": {
       "type": "string"
     },
     "emergency_contact_phone": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "drivers_license_number": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "$or": [
+            {
+              "id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      }
     },
     "drivers_license_state": {
       "type": "string"
@@ -383,15 +576,40 @@
     "is_supervisor": {
       "type": "boolean",
       "default": false,
-      "description": "Current supervisor authorization flag"
+      "description": "Current supervisor authorization flag",
+      "rls": {
+        "write": false
+      }
     },
     "dispatch_role": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "rls": {
+        "write": false
+      }
     },
     "show_on_map": {
       "type": "boolean",
       "default": true
+    },
+    "ps_role": {
+      "type": "string",
+      "enum": [
+        "none",
+        "investigator",
+        "reviewer"
+      ],
+      "default": "none",
+      "rls": {
+        "write": false
+      }
+    },
+    "portal_approved": {
+      "type": "boolean",
+      "default": false,
+      "rls": {
+        "write": false
+      }
     }
   },
   "required": [
@@ -435,5 +653,46 @@
     "drivers_license_expiration",
     "certifications",
     "officer_certifications"
-  ]
+  ],
+  "rls": {
+    "create": false,
+    "read": {
+      "$or": [
+        {
+          "id": "{{user.id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

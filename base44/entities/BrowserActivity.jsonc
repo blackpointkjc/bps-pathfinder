@@ -58,24 +58,83 @@
   ],
   "rls": {
     "create": {
-      "$or": [
+      "$and": [
         {
-          "created_by_id": "{{user.id}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "user_condition": {
-            "id": "6a72bbee2842d6338cbae513"
-          }
+          "$or": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "id": "6a72bbee2842d6338cbae513"
+              }
+            }
+          ]
         }
       ]
     },
     "read": {
-      "$or": [
+      "$and": [
         {
-          "data.user_email": "{{user.email}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "created_by_id": "{{user.id}}"
+          "$or": [
+            {
+              "data.user_email": "{{user.email}}"
+            },
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "id": "6a72bbee2842d6338cbae513"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
           "user_condition": {
@@ -84,15 +143,28 @@
         }
       ]
     },
-    "update": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
-    },
     "delete": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
     }
   }
 }

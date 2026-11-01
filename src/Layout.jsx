@@ -53,6 +53,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 
 const CENTER_CONFIG = {
+  standards: {label:'Professional Standards', icon:ShieldCheck, groups:[{label:'Professional Standards',items:[['Standards Workspace','ProfessionalStandards',ShieldCheck]]}]},
+  visitor: {label:'Visitor Portal',icon:Users,groups:[{label:'Visitor Services',items:[['Visitor Portal','VisitorPortal',Users]]}]},
   cad: {
     label: 'CAD Center',
     icon: Radio,
@@ -99,7 +101,7 @@ const CENTER_CONFIG = {
         ['Records AI (People & Vehicles)', 'RecordsAssistant', Bot],
         ['Maintenance', 'MaintenanceReports', Wrench],
         ['Open Door', 'OpenDoorReports', DoorOpen],
-        ['Confidential', 'ConfidentialReport', ShieldCheck],
+
         ['Expense Report', 'ExpenseReports', DollarSign],
         ['QR Patrol Scan', 'QRPatrolScan', MapPin],
         ['Time Request', 'TimeRequests', CalendarClock],
@@ -117,7 +119,7 @@ const CENTER_CONFIG = {
       { label: 'Profile & Training', items: [
         ['My Profile', 'OfficerProfile', UserCheck],
         ['My Performance', 'MyPerformanceAnalytics', BarChart3],
-        ['My Reviews & Feedback', 'OfficerPerformanceReviews', ClipboardCheck],
+
         ['Training', 'OfficerTraining', GraduationCap],
         ['Rank Structure', 'RankStructure', Shield],
         ['Rank Duties', 'RankDuties', Shield],
@@ -148,7 +150,7 @@ const CENTER_CONFIG = {
         ['Incident Report', 'IncidentReports', AlertTriangle],
         ['Maintenance', 'MaintenanceReports', Wrench],
         ['Open Door', 'OpenDoorReports', DoorOpen],
-        ['Confidential', 'ConfidentialReport', ShieldCheck],
+
         ['Expense Report', 'ExpenseReports', DollarSign],
         ['QR Patrol Scan', 'QRPatrolScan', MapPin],
         ['Time Request', 'TimeRequests', CalendarClock],
@@ -163,18 +165,14 @@ const CENTER_CONFIG = {
         ['Action Items', 'SupervisorTasks', ClipboardList],
       ]},
       { label: 'Officer Oversight', items: [
-        ['Officer Inspections', 'SupervisorInspections', ClipboardCheck],
-        ['Performance Reviews', 'SupervisorPerformanceReview', ClipboardCheck],
-        ['Write-Ups', 'SupervisorWriteUps', FileWarning],
-        ['Use of Force', 'SupervisorUseOfForce', AlertTriangle],
-        ['Complaints', 'SupervisorComplaints', AlertTriangle],
+
       ]},
       { label: 'Communication & Profile', items: [
         ['Supervisor Chat', 'SupervisorChat', MessageCircle],
         ['Announcements', 'Announcements', Bell],
         ['My Profile', 'OfficerProfile', UserCheck],
         ['My Performance', 'MyPerformanceAnalytics', BarChart3],
-        ['My Reviews & Feedback', 'OfficerPerformanceReviews', ClipboardCheck],
+
         ['Training', 'OfficerTraining', GraduationCap],
         ['Rank Structure', 'RankStructure', Shield],
         ['Rank Duties', 'RankDuties', Shield],
@@ -243,7 +241,7 @@ const CENTER_CONFIG = {
       { label: 'Leave & Performance', items: [
         ['Manual PTO', 'AdminManualPTO', CalendarClock],
         ['PTO Loss Report', 'AdminPTOLossReport', AlertTriangle],
-        ['Performance Reviews', 'AdminPerformanceReviews', ClipboardCheck],
+
       ]},
     ],
   },
@@ -320,6 +318,7 @@ const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, conf
 }, {});
 
 const DESKTOP_CENTER_PAGE = {
+  standards:'ProfessionalStandards', visitor:'VisitorPortal',
   cad: 'CADCenter',
   officer: 'OfficerCenter',
   admin: 'AdminCenter',
@@ -352,6 +351,7 @@ const DESKTOP_LEGACY_TOOL_ROUTES = {
 };
 
 function _desktopToolRoute(pageName) {
+  if (["AdminComplaints", "AdminCommendations", "AdminConfidentialReports", "AdminPerformanceReviews", "SupervisorInspections", "SupervisorPerformanceReview", "SupervisorWriteUps", "SupervisorUseOfForce", "SupervisorComplaints", "ConfidentialReport", "OfficerPerformanceReviews"].includes(pageName)) return null;
   const route = DESKTOP_LEGACY_TOOL_ROUTES[pageName];
   if (!route) return null;
   const [center, section, tool, nestedParam, nestedTool] = route;
@@ -474,11 +474,12 @@ function allowedCenters(user) {
   // Student and client accounts are separate identities, never employee overlays.
   if (roles.has('client') || user?.user_type === 'client' || rank === 'client') return ['client'];
   if (roles.has('student') || user?.user_type === 'student') return ['student'];
-  if (hasFullAccess(user)) return ['admin', ...(canAccessAccounting(user) ? ['accounting'] : []), ...(roles.has('trainer') ? ['training'] : [])];
+  if (roles.has('visitor')) return ['visitor'];
+  if (hasFullAccess(user)) return ['admin', 'standards', ...(canAccessAccounting(user) ? ['accounting'] : []), ...(roles.has('trainer') ? ['training'] : [])];
 
   // Combine ALL assigned workspaces. Previously an early return for dispatch,
   // supervisor or officer discarded HR/training/accounting and secondary roles.
-  const centers = [];
+  const centers = ['standards'];
   if (supervisor) centers.push('supervisor', 'cad', 'officer');
   if (roles.has('dispatch') || user?.role === 'dispatch' || roles.has('cad_access')) centers.push('cad');
   if (roles.has('officer')) centers.push('officer', 'cad');
@@ -490,6 +491,7 @@ function allowedCenters(user) {
 }
 
 const CENTER_DEFAULT_PAGE = {
+  standards:'ProfessionalStandards', visitor:'VisitorPortal',
   cad: 'CommandDashboard',
   officer: 'Dashboard',
   supervisor: 'SupervisorTasks',
@@ -516,6 +518,8 @@ function defaultPageForUser(user, desktop = false) {
 }
 
 function canAccessPage(user, pageName) {
+  if ((user?.additional_roles||[]).includes('visitor')) return pageName === 'VisitorPortal';
+  if (pageName === 'ProfessionalStandards') return !['client','student','visitor'].some(r=>normalizedRoles(user).has(r));
   if (pageName.startsWith('Accounting') || ['PayrollDates','AdminPayroll','AdminPayrollConfig','AdminExpenseApproval'].includes(pageName)) return canAccessAccounting(user);
   // A client identity is exclusive: deny every non-client route, including
   // shared/unmapped pages and communication tools, regardless of stale roles.

@@ -120,56 +120,128 @@
   ],
   "rls": {
     "create": {
-      "$or": [
+      "$and": [
         {
-          "created_by_id": "{{user.id}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "user_condition": {
-            "id": "6a72bbee2842d6338cbae513"
-          }
+          "$or": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "id": "6a72bbee2842d6338cbae513"
+              }
+            }
+          ]
         }
       ]
     },
     "read": {
-      "$or": [
+      "$and": [
         {
-          "data.officer_email": "{{user.email}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "id": "6a72bbee2842d6338cbae513"
-          }
+          "$or": [
+            {
+              "data.officer_email": "{{user.email}}"
+            },
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "id": "6a72bbee2842d6338cbae513"
+              }
+            }
+          ]
         }
       ]
     },
     "update": {
-      "$or": [
+      "$and": [
         {
-          "created_by_id": "{{user.id}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "data.officer_email": "{{user.email}}"
-        },
-        {
-          "user_condition": {
-            "id": "6a72bbee2842d6338cbae513"
-          }
+          "$or": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "data.officer_email": "{{user.email}}"
+            },
+            {
+              "user_condition": {
+                "id": "6a72bbee2842d6338cbae513"
+              }
+            }
+          ]
         }
       ]
     },
     "delete": {
-      "$or": [
+      "$and": [
         {
-          "created_by_id": "{{user.id}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "user_condition": {
-            "id": "6a72bbee2842d6338cbae513"
-          }
+          "$or": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "user_condition": {
+                "id": "6a72bbee2842d6338cbae513"
+              }
+            }
+          ]
         }
       ]
     }

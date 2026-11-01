@@ -7,6 +7,8 @@ const pageModules = import.meta.glob('../pages/*.jsx');
 // Explicit load paths for security-sensitive browser routes. These pages must
 // remain available even when the builder regenerates pages.config.js.
 const browserRouteLoaders = {
+  ProfessionalStandards: () => import('../pages/ProfessionalStandards.jsx'),
+  VisitorPortal: () => import('../pages/VisitorPortal.jsx'),
   AdminBrowserControl: () => import('../pages/AdminBrowserControl.jsx'),
   CorporateBrowser: () => import('../pages/CorporateBrowser.jsx'),
 };
@@ -14,7 +16,7 @@ const imports = Object.fromEntries([...generatedConfig.matchAll(/^import\s+(\w+)
   .map(([, name, path]) => [name, path.endsWith('.jsx') ? path : path + '.jsx']));
 const registry = generatedConfig.match(/^export const PAGES\s*=\s*\{([\s\S]*?)\n\}/m)?.[1] || '';
 const entries = [...registry.matchAll(/["']([^"']+)["']\s*:\s*(\w+)/g)].map(([, name, component]) => [name, imports[component]]);
-const routes = new Map([...entries, ['ParkingRecords', 'ParkingRecords.jsx'], ['ClientParkingRecords', 'ClientParkingRecords.jsx'], ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx'], ['AdminBrowserControl', 'AdminBrowserControl.jsx'], ['CorporateBrowser', 'CorporateBrowser.jsx']]);
+const routes = new Map([...entries, ['ProfessionalStandards','ProfessionalStandards.jsx'], ['VisitorPortal','VisitorPortal.jsx'], ['ParkingRecords', 'ParkingRecords.jsx'], ['ClientParkingRecords', 'ClientParkingRecords.jsx'], ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx'], ['AdminBrowserControl', 'AdminBrowserControl.jsx'], ['CorporateBrowser', 'CorporateBrowser.jsx']]);
 const Pages = Object.fromEntries([...routes].map(([name, file]) => {
   const loader = browserRouteLoaders[name] || pageModules[`../pages/${file}`];
   if (!loader) throw new Error(`Missing route module: ${name}`);

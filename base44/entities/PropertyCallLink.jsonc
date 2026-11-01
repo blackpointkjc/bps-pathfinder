@@ -45,7 +45,20 @@
     "property_name"
   ],
   "rls": {
-    "read": true,
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "portal_approved": true
+          }
+        }
+      ]
+    },
     "create": false,
     "update": false,
     "delete": false

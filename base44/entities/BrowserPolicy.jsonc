@@ -103,24 +103,96 @@
   ],
   "rls": {
     "create": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
     },
     "read": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
     },
     "update": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
     },
     "delete": {
-      "user_condition": {
-        "id": "6a72bbee2842d6338cbae513"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "id": "6a72bbee2842d6338cbae513"
+          }
+        }
+      ]
     }
   }
 }

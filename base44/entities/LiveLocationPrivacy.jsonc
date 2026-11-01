@@ -20,24 +20,96 @@
   ],
   "rls": {
     "read": {
-      "user_condition": {
-        "role": "__service_only__"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "__service_only__"
+          }
+        }
+      ]
     },
     "create": {
-      "user_condition": {
-        "role": "__service_only__"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "__service_only__"
+          }
+        }
+      ]
     },
     "update": {
-      "user_condition": {
-        "role": "__service_only__"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "__service_only__"
+          }
+        }
+      ]
     },
     "delete": {
-      "user_condition": {
-        "role": "__service_only__"
-      }
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "user_condition": {
+            "role": "__service_only__"
+          }
+        }
+      ]
     }
   }
 }

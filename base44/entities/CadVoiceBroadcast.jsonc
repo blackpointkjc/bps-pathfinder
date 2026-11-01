@@ -39,18 +39,36 @@
     "update": false,
     "delete": false,
     "read": {
-      "$or": [
+      "$and": [
         {
-          "data.recipient_emails": {
-            "$in": [
-              "{{user.email}}"
-            ]
-          }
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
         },
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "$or": [
+            {
+              "data.recipient_emails": {
+                "$in": [
+                  "{{user.email}}"
+                ]
+              }
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     }

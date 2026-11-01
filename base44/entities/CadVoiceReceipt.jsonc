@@ -23,7 +23,25 @@
     "update": false,
     "delete": false,
     "read": {
-      "data.user_email": "{{user.email}}"
+      "$and": [
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "portal_approved": true
+              }
+            }
+          ]
+        },
+        {
+          "data.user_email": "{{user.email}}"
+        }
+      ]
     }
   }
 }
