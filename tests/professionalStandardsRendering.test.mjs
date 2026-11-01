@@ -23,11 +23,12 @@ const module={exports:{}};new Function('require','module','exports',result.outpu
 const Page=module.exports.default;
 globalThis.__iaRenderUser={id:'ia-staff',role:'user',additional_roles:['ia'],ps_role:'reviewer'};
 let html='';
-for(const [area,section] of [['intake','inbox'],['investigations','cases'],['personnel','approvals'],['insights','reports'],['resources','resources']]){
+for(const [area,section] of [['intake','inbox'],['investigations','cases'],['insights','reports'],['resources','resources']]){
  globalThis.__iaRenderLocation={pathname:'/ProfessionalStandards',search:'?ps_area='+area+'&section='+section};
  html+=renderToStaticMarkup(React.createElement(Page));
 }
-for(const heading of ['Complaint inbox','Case management','Evidence library','Interviews &amp; notes','Deadlines &amp; tasks','Findings &amp; approvals','Corrective actions','Reports &amp; trends','Audit history','Use of force','Write-ups','Inspections','Performance reviews','Confidential reports'])assert.ok(html.includes(heading),heading);
+for(const heading of ['Complaint inbox','Investigation workspace','Reports &amp; trends','Audit history','IA Reviewer'])assert.ok(html.includes(heading),heading);
+for(const repeated of ['Evidence library','Case management','Personnel Standards'])assert.equal(html.includes(repeated),false);
 assert.ok(html.includes('bps-command-theme'));
 assert.equal(html.includes('portal-shell'),false);
 assert.equal(html.includes('bp-ia'),false);

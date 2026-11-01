@@ -215,7 +215,7 @@ export default function ClientFeedback() {
                   />
                 </div>
 
-                <div className="rounded-lg border border-slate-300 bg-slate-50 p-4"><p className="mb-3 text-sm text-slate-700">Complaints and commendations are submitted directly to Professional Standards.</p><IAEntryLinks publicOnly/></div>
+                <fieldset className="rounded-lg border border-slate-300 p-4"><legend className="px-2 font-semibold">Professional Standards referral</legend><label className="mr-5 inline-flex items-center gap-2"><input id="complaint" type="checkbox" checked={formData.complaint} onChange={e=>setFormData(p=>({...p,complaint:e.target.checked,commendation:false}))}/>File a complaint</label><label className="inline-flex items-center gap-2"><input id="commendation" type="checkbox" checked={formData.commendation} onChange={e=>setFormData(p=>({...p,commendation:e.target.checked,complaint:false}))}/>Submit a commendation</label><p className="mt-2 text-xs text-slate-600">A referral creates an IA case and displays a private tracking receipt after submission.</p></fieldset>
 
                 <div className="flex gap-3 justify-end">
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>

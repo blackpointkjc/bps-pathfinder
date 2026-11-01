@@ -16,7 +16,6 @@ async function __portalLoginIsCurrent(request,sdk,user){
 const legacyEntities=new Set(['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview','ClientFeedback']);
 async function legacyRequest(base44,db,u,body,privileged=false){
  const name=text(body.entity,80),method=text(body.method,30),args=Array.isArray(body.args)?body.args:[];
- if(name==='ClientFeedback'&&!privileged)fail('Reviewer access required.',403);
  if(!legacyEntities.has(name)||!['list','filter','get','create','update','delete'].includes(method))fail('Unsupported reporting operation.');
  if(!privileged&&!u.portal_approved&&u.role!=='admin')fail('An approved staff account is required.',403);
  if(method==='delete'&&!manager(u))fail('Only main account administrators may delete legacy reports.',403);
@@ -36,7 +35,7 @@ async function legacyRequest(base44,db,u,body,privileged=false){
  }
  if(method==='delete')result=await entity.delete(text(args[0],100));
  let receipt=null;
- if(['create','update'].includes(method)&&result?.id&&String(result.status||'').toLowerCase()!=='draft'){receipt=await linkSubmittedReport(db,u,name,result);}
+ if(['create','update'].includes(method)&&result?.id&&(name!=='ClientFeedback'||result.complaint||result.commendation)&&String(result.status||'').toLowerCase()!=='draft'){receipt=await linkSubmittedReport(db,u,name,result);}
  await audit(db,u,'legacy_'+method+'_completed','',name+' '+requestId);
  return Response.json({result,receipt});
 }

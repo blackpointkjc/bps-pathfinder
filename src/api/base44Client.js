@@ -579,7 +579,7 @@ function wrappedEntity(name) {
           return typeof callback === 'function' ? callback(event) : undefined;
         }, ...args);
       }
-      if (['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview'].includes(name) && ['list','filter','get','create','update','delete'].includes(property)) {
+      if (['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview','ClientFeedback'].includes(name) && ['list','filter','get','create','update','delete'].includes(property)) {
         return (...args) => {
           const request = async () => {
             const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args});

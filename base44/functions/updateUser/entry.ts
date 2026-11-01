@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
         if (missingWrites.length) return Response.json({ error: 'Account data was not confirmed saved: ' + missingWrites.join(', '), unsaved_fields: missingWrites }, { status: 503 });
         try { await notifyPlatoonChange(base44.asServiceRole.entities, target, verifiedUser); }
         catch (error) { return Response.json({error:'Assignment saved, but reassignment notification failed. Contact command to confirm delivery.',assignment_saved:true},{status:503}); }
-        const warnings = await synchronizeOfficerIdentity(base44.asServiceRole.entities, { ...target, ...updatePayload, id:userId });
+        const warnings = await synchronizeOfficerIdentity(base44.asServiceRole.entities, { ...target, ...updatePayload, id:userId }, target);
 
         // On the first admin approval of an officer, create an actionable
         // certification review for trainers without changing employee roles.
