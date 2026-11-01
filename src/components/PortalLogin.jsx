@@ -1,3 +1,4 @@
+import {recordLoginActivity} from '@/lib/sessionPolicy';
 import {useState} from 'react';
 import {createClient} from '@base44/sdk';
 import {Link} from 'react-router-dom';
@@ -20,6 +21,7 @@ export default function PortalLogin(){
   clearBase44ReadCache();
   const r=await base44.functions.invoke('portalRegistration',{action:'profile',first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type,date_of_birth:form.date_of_birth});
   if(r.data?.error)throw new Error(r.data.error);
+  recordLoginActivity(r.data?.profile?.id||response.user?.id);
   sessionStorage.removeItem('bps:registration-draft');
   sessionStorage.setItem('bps:portal-welcome','1');
   window.location.assign('/');

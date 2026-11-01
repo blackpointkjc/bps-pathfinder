@@ -1,3 +1,4 @@
+import {watchInactivity,requiresFreshLogin,tokenIssuedAt} from '@/lib/sessionPolicy';
 import {offlineIdentity} from '@/lib/offlineSession';
 import {queryClientInstance} from '@/lib/query-client';
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
@@ -63,7 +64,6 @@ const withTimeout = (promise, milliseconds, label) => {
 
 export const AuthProvider = ({ children }) => {
   const requestSequence = useRef(0);
-  const operationalSessionHeartbeatRef = useRef(Date.now());
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -106,6 +106,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       let currentUser = await withRequestTimeout(base44.auth.me(), 12000, 'Authentication request');
+      if(requiresFreshLogin(appParams.token)){
+        base44.auth.logout(window.location.origin+'/Login');
+        throw new Error('Please sign in again to continue.');
+      }
       const registration = await base44.functions.invoke('portalRegistration', {action:'profile'});
       if (registration.data?.error) throw new Error(registration.data.error);
       if (registration.data?.profile) currentUser = {...currentUser,...registration.data.profile};
@@ -208,7 +212,7 @@ export const AuthProvider = ({ children }) => {
     const requestId = ++requestSequence.current;
     if(navigator.onLine===false) {
       const saved=offlineIdentity();
-      if(saved){setUser(saved);setIsAuthenticated(true);setAuthError(null);setIsLoadingAuth(false);setIsLoadingPublicSettings(false);queryClientInstance.setQueryData(['currentUser'],saved);return;}
+      if(saved&&!requiresFreshLogin(appParams.token)){setUser(saved);setIsAuthenticated(true);setAuthError(null);setIsLoadingAuth(false);setIsLoadingPublicSettings(false);queryClientInstance.setQueryData(['currentUser'],saved);return;}
     }
     try {
       setIsLoadingPublicSettings(true);
@@ -347,7 +351,7 @@ export const AuthProvider = ({ children }) => {
         const now = Date.now();
         const control = controls.find(item => {
           const expiry = new Date(item.expires_at || '').getTime();
-          return Number.isFinite(expiry) && expiry > now;
+          return Number.isFinite(expiry) && expiry > now && tokenIssuedAt(appParams.token) < Date.parse(item.issued_at||'');
         });
         if (!control?.id) return;
 
@@ -521,46 +525,26 @@ export const AuthProvider = ({ children }) => {
   }, [user?.id, user?.email]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) return undefined;
-    const roles = new Set([user.role, ...(user.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
-    const rank = String(user.rank || '').trim().toLowerCase();
-    const operational = roles.has('officer') || roles.has('cad_access') || roles.has('supervisor') || user.is_supervisor === true
-      || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(rank);
-    if (!operational) return undefined;
+    if(!isAuthenticated||!user?.id)return;
+    return watchInactivity({userId:user.id,onExpire:()=>{
+      try{localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY,JSON.stringify({reason:'You were signed out after 30 minutes of inactivity. Please sign in again.',issuedBy:'Pathfinder session security',issuedAt:new Date().toISOString()}));}catch{}
+      setUser(null);setIsAuthenticated(false);setAccountLock(null);
+      clearBase44ReadCache();
+      const publicPage=['/iaform','/publicprofessionalstandards'].includes(window.location.pathname.toLowerCase());
+      base44.auth.logout(publicPage?undefined:window.location.origin+'/Login');
+      appParams.token=null;
+    }});
+  },[isAuthenticated,user?.id]);
 
-    const staleAfterMs = 8 * 60 * 60 * 1000;
-    let signingOut = false;
-    operationalSessionHeartbeatRef.current = Date.now();
-    const markAlive = () => { if (!signingOut) operationalSessionHeartbeatRef.current = Date.now(); };
-    const verifyResume = () => {
-      if (signingOut) return;
-      const age = Date.now() - Number(operationalSessionHeartbeatRef.current || 0);
-      if (age >= staleAfterMs) {
-        signingOut = true;
-        // Authentication may expire after a very long idle period, but that is
-        // presence only. Never poison the local CAD-status cache with OOS; the
-        // open TimeEntry keeps duty status authoritative across the next login.
-        void logout(true);
-        return;
-      }
-      markAlive();
+  useEffect(()=>{
+    if(!isAuthenticated)return;
+    const expired=()=>{
+      setUser(null);setIsAuthenticated(false);setAccountLock(null);
+      base44.auth.logout(window.location.origin+'/Login');appParams.token=null;
     };
-    const onVisibility = () => { if (document.visibilityState === 'visible') verifyResume(); };
-    const interval = window.setInterval(markAlive, 60_000);
-    window.addEventListener('pageshow', verifyResume);
-    window.addEventListener('focus', verifyResume);
-    window.addEventListener('bps-background-location-tick', markAlive);
-    window.addEventListener('bps-live-location-persisted', markAlive);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('pageshow', verifyResume);
-      window.removeEventListener('focus', verifyResume);
-      window.removeEventListener('bps-background-location-tick', markAlive);
-      window.removeEventListener('bps-live-location-persisted', markAlive);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [isAuthenticated, user?.id, user?.role, user?.rank, user?.is_supervisor, user?.additional_roles, logout]);
+    window.addEventListener('bps:session-reauthentication-required',expired);
+    return()=>window.removeEventListener('bps:session-reauthentication-required',expired);
+  },[isAuthenticated]);
 
   const navigateToLogin = useCallback(() => {
     try { sessionStorage.removeItem('bps:auth-provider'); } catch {}
