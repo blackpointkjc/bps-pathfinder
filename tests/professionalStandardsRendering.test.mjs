@@ -15,7 +15,7 @@ const result=await build({entryPoints:['src/pages/ProfessionalStandards.jsx'],bu
  if(args.path.includes('base44Client'))contents='export const base44={};';
  if(args.path.includes('PublicProfessionalStandards'))contents='export const psCall=async()=>({});export const EvidenceInput=()=>null;';
  if(args.path==='react-router-dom')contents="import React from 'react';export const Link=({to,children,...rest})=>React.createElement('a',{href:to,...rest},children);";
- return {contents,loader:'js'};
+ return {contents,loader:'js',resolveDir:process.cwd()};
  });
 }}]});
 const module={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,module,module.exports);
