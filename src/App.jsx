@@ -1,3 +1,4 @@
+import {authEntry} from '@/lib/portalAuthFlow';
 import SubmissionReceipt from '@/components/ia/SubmissionReceipt';
 import { registerDiagnosticPages } from '@/utils/appDiagnostics';
 import AppUpdateNotice from '@/components/AppUpdateNotice';
@@ -260,7 +261,7 @@ const AuthenticatedApp = () => {
     playForcedSignOutLoginBeep();
   }, [needsLogin, forcedSignOutNotice]);
 
-  const publicEntry=['/iaform','/publicprofessionalstandards','/login'].includes(location.pathname.toLowerCase());
+  const publicEntry=['/iaform','/publicprofessionalstandards'].includes(location.pathname.toLowerCase())||authEntry(location).isEntry;
   const [preparedUserId,setPreparedUserId]=useState('');
   const [startupProgress,setStartupProgress]=useState({completed:0,total:1,label:'Preparing your tools'});
   const [startupError,setStartupError]=useState('');
@@ -279,7 +280,7 @@ const AuthenticatedApp = () => {
     </div></div> : null;
   if (location.pathname.toLowerCase() === '/iaform') return <PublicProfessionalStandards />;
   if (location.pathname.toLowerCase() === '/publicprofessionalstandards') return <Navigate replace to="/IAFORM" />;
-  if (location.pathname.toLowerCase() === '/login') return <PortalLogin />;
+  if (authEntry(location).isEntry) return <PortalLogin />;
 
   if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen />;
 

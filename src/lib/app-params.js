@@ -1,3 +1,4 @@
+import {authEntry} from './portalAuthFlow';
 const isNode = typeof window === 'undefined';
 const windowObj = isNode ? { localStorage: new Map() } : window;
 const storage = windowObj.localStorage;
@@ -38,11 +39,13 @@ const DEFAULT_APP_ID = "694de31c7e0f5645fb95de52";
 const DEFAULT_BACKEND_URL = "https://base44.app";
 
 const getAppParams = () => {
+ const resetting=!isNode&&authEntry(window.location).mode==='reset';
+ if(resetting)storage.removeItem('base44_from_url');
 	return {
 		appId: getAppParamValue("app_id", { defaultValue: import.meta.env.VITE_BASE44_APP_ID || DEFAULT_APP_ID }),
 		serverUrl: getAppParamValue("server_url", { defaultValue: import.meta.env.VITE_BASE44_BACKEND_URL || DEFAULT_BACKEND_URL }),
 		token: getAppParamValue("access_token", { removeFromUrl: true }),
-		fromUrl: getAppParamValue("from_url", { defaultValue: window.location.href }),
+		fromUrl: resetting?window.location.origin+'/Login':getAppParamValue("from_url", { defaultValue: window.location.href }),
 		functionsVersion: getAppParamValue("functions_version"),
 	}
 }
