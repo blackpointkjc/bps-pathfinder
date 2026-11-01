@@ -42,13 +42,12 @@ export default function PortalLogin(){
    setError(status===429?'Too many attempts. Wait a moment and try again.':mode==='login'?'Unable to sign in. Check your email and password, and verify your email if this is a new account.':mode==='verify'?'Verification failed. Check the code or request another.':err?.message||'Unable to complete this request.');
   }finally{setBusy(false);}
  };
- return <main className="portal-shell fixed inset-0 overflow-y-auto">
-  <header><div className="text-xs font-bold tracking-[.24em]">BLACK POINT SECURITY SOLUTIONS</div><div className="mt-2 text-xl font-bold">BPS Pathfinder</div></header>
-  <div className="portal-wrap"><div className="portal-grid">
-   <section><p className="portal-eyebrow">Your workspace starts here</p><h1>One team.<br/>A higher standard.</h1><p>Secure access for officers, students, clients, visitors and authorized staff.</p>
-    <div className="portal-card mt-8"><p className="portal-eyebrow">Public access · No account needed</p><h2>Professional Standards</h2><p>File a complaint, recognize an officer, submit evidence, or privately track a submission.</p><Link className="portal-button" to="/IAFORM">Open public portal →</Link><p><small>Anonymous submissions are welcome. Staff investigations remain restricted.</small></p></div>
-   </section>
-   <section className="portal-card"><p className="portal-eyebrow">Pathfinder account</p><h2>{({login:'Welcome back',register:'Request an account',verify:'Verify your email',forgot:'Reset your password',reset:'Choose a new password'})[mode]}</h2>
+ return <main className="portal-shell bp-login fixed inset-0 overflow-y-auto">
+  <div className="bp-login-backdrop" aria-hidden="true"/>
+  <header className="bp-login-header"><a className="bp-wordmark" href="https://home.blackpointkjc.com/" target="_blank" rel="noopener noreferrer"><img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/user_68f1b0512f3251072c89babf/5fb0eff7d_UntitledProject.png" alt="BlackPoint Security shield"/><div><strong>BLACK<span>POINT</span></strong><small>PATHFINDER · OPERATIONS PORTAL</small></div></a><nav aria-label="Public links"><a href="https://home.blackpointkjc.com/" target="_blank" rel="noopener noreferrer">BlackPoint home ↗</a><Link to="/IAFORM" target="_blank" rel="noopener noreferrer">Public complaints & commendations ↗</Link></nav></header>
+  <div className="bp-login-layout">
+   <section className="bp-login-hero"><span className="bp-login-badge">VIRGINIA DCJS LICENSED · #11-30423</span><h1>Your people.<br/><span>Your mission.</span><br/>One Pathfinder.</h1><p>One secure workspace for the people behind BlackPoint. Sign in to your assigned officer, student, client, or staff portal.</p><div className="bp-login-signature"><img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/user_68f1b0512f3251072c89babf/5fb0eff7d_UntitledProject.png" alt=""/><div><strong>Present. Prepared. Professional.</strong><small>Black Point KJC Security Solution LLC</small></div></div></section>
+   <section className="portal-card bp-login-card"><p className="portal-eyebrow">Secure account access</p><h2>{({login:'Welcome back',register:'Request an account',verify:'Verify your email',forgot:'Reset your password',reset:'Choose a new password'})[mode]}</h2>
     {error&&<div role="alert" className="portal-message portal-error">{error}</div>}
     {message&&<div role="status" className="portal-message">{message}</div>}
     <form onSubmit={submit}>
@@ -60,6 +59,7 @@ export default function PortalLogin(){
     </form>
     <div className="portal-actions">{mode!=='login'&&<button className="portal-secondary" onClick={()=>switchMode('login')}>Back to sign in</button>}{mode==='login'&&<><button className="portal-secondary" onClick={()=>switchMode('register')}>Create account</button><button className="portal-secondary" onClick={()=>switchMode('forgot')}>Forgot password?</button></>}{mode==='verify'&&<button disabled={busy} className="portal-secondary" onClick={async()=>{setBusy(true);try{await base44.auth.resendOtp(form.email);setMessage('A new code has been sent.');}catch{setError('Could not resend the code. Please wait and retry.');}finally{setBusy(false);}}}>Resend code</button>}</div>
    </section>
-  </div></div>
+  </div>
+  <footer className="bp-login-footer"><span>© {new Date().getFullYear()} KJC Security Solution LLC · BlackPoint</span><a href="https://home.blackpointkjc.com/Legal" target="_blank" rel="noopener noreferrer">Privacy & legal</a><span>Account access is reviewed by authorized BlackPoint staff.</span></footer>
  </main>;
 }
