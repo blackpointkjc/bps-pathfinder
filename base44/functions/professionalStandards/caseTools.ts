@@ -74,10 +74,13 @@ export async function linkedCaseTools(ctx){
  if(action==='assign_training'){
   if(!review)fail('Only an IA reviewer may require corrective training.',403);
   if(c.status==='closed')fail('Reopen the case before assigning training.');
-  const person=await getSubject(),requirement=await db.TrainingRequirement.get(text(body.requirement_id,100)),reason=text(body.reason,5000),due=text(body.due_date,10);
+  const person=await getSubject(),reason=text(body.reason,5000),due=text(body.due_date,10);
+  const requirement=body.requirement_id?await db.TrainingRequirement.get(text(body.requirement_id,100)):{id:'',training_name:text(body.training_name,300),description:text(body.training_instructions,5000),category:'in_service',required_proof_type:'document',requires_photos:false,requires_expiration_date:false,requires_certificate_number:false,active:true};
+  if(!body.requirement_id&&(requirement.training_name.length<3||requirement.description.length<20))fail('Enter a course name and at least 20 characters of completion instructions.');
+
   if(!requirement||requirement.active===false||reason.length<10||!/^\d{4}-\d{2}-\d{2}$/.test(due))fail('Select a course, due date, and documented reason.');
   const email=person.work_email||person.email;
-  const existing=await db.TrainingAssignment.filter({ps_case_id:c.id,officer_email:email,requirement_id:requirement.id},'-created_date',10);
+  const existing=await db.TrainingAssignment.filter({ps_case_id:c.id,officer_email:email,training_name:requirement.training_name},'-created_date',10);
   if(existing.some(v=>!['rejected','expired'].includes(v.status)))return Response.json({success:true,existing:true});
   const assignment=await db.TrainingAssignment.create({requirement_id:requirement.id,training_name:requirement.training_name,category:requirement.category,description:requirement.description||'',officer_email:email,officer_name:[person.first_name,person.last_name].filter(Boolean).join(' '),assigned_date:new Date().toISOString().slice(0,10),due_date:due,is_mandatory:true,priority:'high',status:'assigned',assigned_by:u.email,required_proof_type:requirement.required_proof_type||'',requires_photos:requirement.requires_photos===true,requires_expiration_date:requirement.requires_expiration_date===true,requires_certificate_number:requirement.requires_certificate_number===true,ps_case_id:c.id,ps_case_reference:c.reference,admin_notes:'Required training. Contact Training for completion instructions.'});
   await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:'training',officer_id:person.id,linked_entity:'TrainingAssignment',linked_id:assignment.id,title:'Required training: '+requirement.training_name,body:reason,due_date:due,status:'open',author_id:u.id,author_name:actorName(u)});
