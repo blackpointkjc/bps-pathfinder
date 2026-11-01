@@ -1,0 +1,62 @@
+import React,{useState} from 'react';
+import {Link} from 'react-router-dom';
+import {base44,clearBase44ReadCache} from '@/api/base44Client';
+import {appParams} from '@/lib/app-params';
+import './portal.css';
+
+export default function PortalLogin(){
+ const params=new URLSearchParams(window.location.search);
+ const [mode,setMode]=useState(params.has('reset_token')?'reset':params.get('mode')==='register'?'register':'login');
+ const [form,setForm]=useState({email:'',password:'',first_name:'',last_name:'',requested_type:'employee',otp:''});
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const change=(key,value)=>setForm(p=>({...p,[key]:value}));
+ const switchMode=m=>{setMode(m);setError('');setMessage('');};
+ async function enter(){
+  const response=await base44.auth.loginViaEmailPassword(form.email.trim().toLowerCase(),form.password);
+  if(response.access_token){base44.auth.setToken(response.access_token);appParams.token=response.access_token;}
+  clearBase44ReadCache();
+  const r=await base44.functions.invoke('portalRegistration',{action:'profile',first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type});
+  if(r.data?.error)throw new Error(r.data.error);
+  sessionStorage.setItem('bps:portal-welcome','1');
+  window.location.assign('/');
+ }
+ const submit=async e=>{
+  e.preventDefault();setBusy(true);setError('');setMessage('');
+  try{
+   if(mode==='login'){await enter();}
+   else if(mode==='register'){
+    await base44.auth.register({email:form.email.trim().toLowerCase(),password:form.password});
+    setMode('verify');setMessage('Check your email for the verification code. Your account will remain pending until approved.');
+   }else if(mode==='verify'){
+    await base44.auth.verifyOtp({email:form.email.trim().toLowerCase(),otpCode:form.otp.trim()});await enter();
+   }else if(mode==='forgot'){
+    await base44.auth.resetPasswordRequest(form.email.trim().toLowerCase());setMessage('If this email has an account, password reset instructions have been sent.');
+   }else if(mode==='reset'){
+    await base44.auth.resetPassword({resetToken:params.get('reset_token'),newPassword:form.password});setMode('login');setMessage('Password updated. Sign in to continue.');
+   }
+  }catch(err){
+   const status=err?.status||err?.response?.status;
+   setError(status===429?'Too many attempts. Wait a moment and try again.':mode==='login'?'Unable to sign in. Check your email and password, and verify your email if this is a new account.':mode==='verify'?'Verification failed. Check the code or request another.':err?.message||'Unable to complete this request.');
+  }finally{setBusy(false);}
+ };
+ return <main className="portal-shell fixed inset-0 overflow-y-auto">
+  <header><div className="text-xs font-bold tracking-[.24em]">BLACK POINT SECURITY SOLUTIONS</div><div className="mt-2 text-xl font-bold">BPS Pathfinder</div></header>
+  <div className="portal-wrap"><div className="portal-grid">
+   <section><p className="portal-eyebrow">Your workspace starts here</p><h1>One team.<br/>A higher standard.</h1><p>Secure access for officers, students, clients, visitors and authorized staff.</p>
+    <div className="portal-card mt-8"><p className="portal-eyebrow">Public access · No account needed</p><h2>Professional Standards</h2><p>File a complaint, recognize an officer, submit evidence, or privately track a submission.</p><Link className="portal-button" to="/PublicProfessionalStandards">Open public portal →</Link><p><small>Anonymous submissions are welcome. Staff investigations remain restricted.</small></p></div>
+   </section>
+   <section className="portal-card"><p className="portal-eyebrow">Pathfinder account</p><h2>{({login:'Welcome back',register:'Request an account',verify:'Verify your email',forgot:'Reset your password',reset:'Choose a new password'})[mode]}</h2>
+    {error&&<div role="alert" className="portal-message portal-error">{error}</div>}
+    {message&&<div role="status" className="portal-message">{message}</div>}
+    <form onSubmit={submit}>
+     {mode==='register'&&<><div className="portal-grid"><label>First name<input required autoComplete="given-name" value={form.first_name} onChange={e=>change('first_name',e.target.value)}/></label><label>Last name<input required autoComplete="family-name" value={form.last_name} onChange={e=>change('last_name',e.target.value)}/></label></div><label>Account requested<select value={form.requested_type} onChange={e=>change('requested_type',e.target.value)}>{['employee','student','visitor','client'].map(t=><option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}</select></label><small>Submitting a request does not grant access. Administration or Training must approve your account.</small></>}
+     {mode!=='reset'&&<label className="mt-4">Email address<input required type="email" autoComplete="username" value={form.email} onChange={e=>change('email',e.target.value)} readOnly={mode==='verify'}/></label>}
+     {['login','register','reset'].includes(mode)&&<label>Password<input required type="password" minLength={mode==='login'?1:12} autoComplete={mode==='login'?'current-password':'new-password'} value={form.password} onChange={e=>change('password',e.target.value)}/>{mode!=='login'&&<small>Use at least 12 characters, including upper and lowercase letters, numbers and a symbol.</small>}</label>}
+     {mode==='verify'&&<label>Email verification code<input required inputMode="numeric" autoComplete="one-time-code" value={form.otp} onChange={e=>change('otp',e.target.value)}/></label>}
+     <button disabled={busy} type="submit" className="w-full mt-2">{busy?'Please wait…':({login:'Sign in',register:'Create account & send verification',verify:'Verify & continue',forgot:'Send reset instructions',reset:'Save new password'})[mode]}</button>
+    </form>
+    <div className="portal-actions">{mode!=='login'&&<button className="portal-secondary" onClick={()=>switchMode('login')}>Back to sign in</button>}{mode==='login'&&<><button className="portal-secondary" onClick={()=>switchMode('register')}>Create account</button><button className="portal-secondary" onClick={()=>switchMode('forgot')}>Forgot password?</button></>}{mode==='verify'&&<button disabled={busy} className="portal-secondary" onClick={async()=>{setBusy(true);try{await base44.auth.resendOtp(form.email);setMessage('A new code has been sent.');}catch{setError('Could not resend the code. Please wait and retry.');}finally{setBusy(false);}}}>Resend code</button>}</div>
+   </section>
+  </div></div>
+ </main>;
+}
