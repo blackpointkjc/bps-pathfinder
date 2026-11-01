@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {transformSync} from 'esbuild';
 let actor={id:'staff',role:'user',additional_roles:['officer']},failLogin=false,clock=Date.now();
-const realNow=Date.now;Date.now=()=>clock;
+const NativeDate=Date;globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}};
 const records=[];
 const db={AccountLock:{filter:async()=>[]},PortalAuthSession:{
  filter:async q=>records.filter(r=>r.token_hash===q.token_hash),
@@ -30,5 +30,5 @@ clock+=30*60000;assert.equal((await call('activity')).status,401,'activity canno
 response=await call('sign_in',{email:'test@example.test',password:'mock-correct-password'});assert.equal(response.status,200);
 assert.equal((await call('sign_out')).success,true);assert.equal((await call('check')).status,401,'revoked sessions stay unusable');
 assert.equal((await call('check',{},'different-token')).status,401);
-Date.now=realNow;
+globalThis.Date=NativeDate;
 console.log('PASS: password-verified app sessions, hashed token storage, idle expiration on the server, background checks do not extend sessions, and revocation.');
