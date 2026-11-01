@@ -51,19 +51,16 @@ const SupervisorShiftHandover = lazy(() => import('./SupervisorShiftHandover'));
 const SupervisorTasks = lazy(() => import('./SupervisorTasks'));
 const SupervisorCallOuts = lazy(() => import('./SupervisorCallOuts'));
 const SupervisorDailyCode = lazy(() => import('./SupervisorDailyCode'));
-const SupervisorInspections = lazy(() => import('./SupervisorInspections'));
-const SupervisorPerformanceReview = lazy(() => import('./SupervisorPerformanceReview'));
-const SupervisorWriteUps = lazy(() => import('./SupervisorWriteUps'));
-const SupervisorUseOfForce = lazy(() => import('./SupervisorUseOfForce'));
-const SupervisorComplaints = lazy(() => import('./SupervisorComplaints'));
 const SupervisorChat = lazy(() => import('./SupervisorChat'));
 const RankStructure = lazy(() => import('./RankStructure'));
 const HRCenter = lazy(() => import('./HRCenter'));
 const ClientCenter = lazy(() => import('./ClientCenter'));
 const TrainerCenter = lazy(() => import('./TrainerCenter'));
+const ProfessionalStandards = lazy(() => import('./ProfessionalStandards'));
 const StudentPortal = lazy(() => import('./StudentPortal'));
 
 const MASTER_SECTIONS = [
+  {id:'standards',label:'Professional Standards',description:'Internal affairs, investigations and personnel standards',icon:Shield},
   { id: 'admin', label: 'Administration', description: 'Administration-only command, scheduling, personnel, reports and system controls', icon: Settings },
   { id: 'cad', label: 'CAD', description: 'CAD tools only', icon: Radio },
   { id: 'officer', label: 'Officer', description: 'Officer tools only', icon: Shield },
@@ -103,13 +100,6 @@ const ADMIN_SUPERVISOR_TOOLS = {
     { id: 'code', label: 'Daily Code', component: SupervisorDailyCode },
     { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
     { id: 'rank', label: 'Rank Structure', component: RankStructure },
-  ],
-  oversight: [
-    { id: 'inspections', label: 'Officer Inspections', component: SupervisorInspections },
-    { id: 'reviews', label: 'Performance Reviews', component: SupervisorPerformanceReview },
-    { id: 'writeups', label: 'Write-Ups', component: SupervisorWriteUps },
-    { id: 'force', label: 'Use of Force', component: SupervisorUseOfForce },
-    { id: 'complaints', label: 'Complaints', component: SupervisorComplaints },
   ],
 };
 
@@ -206,7 +196,7 @@ function AdminSupervisorToolsOnly() {
       if (section === 'overview') return <SupervisorOverview />;
       if (section === 'callouts') return <SupervisorCallOuts />;
       if (section === 'calendar') return <SupervisorScheduleWorkspace/>;
-      return <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section]} queryParam="admin_supervisor_tool" />;
+      return <CenterToolSection tools={ADMIN_SUPERVISOR_TOOLS[section] || ADMIN_SUPERVISOR_TOOLS.operations} queryParam="admin_supervisor_tool" />;
     }}
   </UnifiedCenter>;
 }
@@ -409,7 +399,7 @@ export default function AdminCenter() {
       headerAction={() => canPreview ? previewPicker : null}
     >
       {section => {
-        const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
+        const mirror = section === 'standards' ? <ProfessionalStandards /> : section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
         return <div className="min-w-0">{mirror}</div>;
       }}
     </UnifiedCenter>

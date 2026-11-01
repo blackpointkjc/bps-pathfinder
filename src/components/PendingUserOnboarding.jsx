@@ -4,18 +4,18 @@ import { base44 } from '@/api/base44Client';
 import StudentPortal from '@/pages/StudentPortal';
 
 const fields = [
- ['mobile_phone','Mobile phone','tel'],['address','Street address','text'],['city','City','text'],['state','State','text'],['zip','ZIP code','text'],
+ ['date_of_birth','Date of birth','date'],['mobile_phone','Mobile phone','tel'],['address','Street address','text'],['city','City','text'],['state','State','text'],['zip','ZIP code','text'],
  ['emergency_contact_name','Emergency contact full name','text'],['emergency_contact_relationship','Emergency contact relationship','text'],['emergency_contact_phone','Emergency contact phone','tel'],
  ['drivers_license_number','Driver license number','text'],['drivers_license_state','Driver license state','text'],['drivers_license_expiration','Driver license expiration','date'],
  ['dcjs_number','DCJS registration number (if applicable)','text'],['dcjs_expiration','DCJS expiration (if applicable)','date']
 ];
-const required = new Set(fields.filter(([name]) => !['dcjs_number','dcjs_expiration'].includes(name)).map(([name]) => name));
+const required = new Set(fields.filter(([name]) => !['date_of_birth','dcjs_number','dcjs_expiration'].includes(name)).map(([name]) => name));
 export default function PendingUserOnboarding({ user }) {
  const {checkAppState,logout}=useAuth();
  const limitedIntake=['visitor','client'].includes(user?.requested_account_type);
  const [registration,setRegistration]=useState({first_name:user?.first_name||'',last_name:user?.last_name||'',requested_type:user?.requested_account_type||'employee'});
  const isStudent = String(user?.rank || '').toLowerCase() === 'student registration pending';
- const visibleFields = limitedIntake ? fields.filter(([name])=>name==='mobile_phone') : isStudent ? fields.filter(([name]) => ['mobile_phone','address','city','state','zip','dcjs_number'].includes(name)) : fields;
+ const visibleFields = limitedIntake ? fields.filter(([name])=>name==='mobile_phone') : isStudent ? fields.filter(([name]) => ['date_of_birth','mobile_phone','address','city','state','zip','dcjs_number'].includes(name)) : fields.filter(([name])=>name!=='date_of_birth');
  const requiredFields = limitedIntake ? new Set(['mobile_phone']) : isStudent ? new Set(visibleFields.map(([name]) => name)) : required;
  const completed = requiredFields.size && [...requiredFields].every(name => String(user?.[name] || '').trim());
  const [values,setValues] = useState(() => Object.fromEntries(fields.map(([name]) => [name,String(user?.[name] || '')])));
@@ -25,7 +25,7 @@ export default function PendingUserOnboarding({ user }) {
  const submit = async event => {
    event.preventDefault(); setBusy(true); setError('');
    try {
-     const profile=await base44.functions.invoke('portalRegistration',{action:'profile',...registration});
+     const profile=await base44.functions.invoke('portalRegistration',{action:'profile',...registration,date_of_birth:values.date_of_birth||user?.date_of_birth||''});
      if(profile.data?.error)throw new Error(profile.data.error);
      const result = await base44.functions.invoke('completePendingProfile', {...values,first_name:registration.first_name,last_name:registration.last_name});
      const data = result?.data || result || {};

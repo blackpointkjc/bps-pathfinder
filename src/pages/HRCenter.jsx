@@ -6,7 +6,6 @@ import ManageTimeEntries from './ManageTimeEntries';
 import AdminDivisions from './AdminDivisions';
 import AdminManualPTO from './AdminManualPTO';
 import AdminPTOLossReport from './AdminPTOLossReport';
-import AdminPerformanceReviews from './AdminPerformanceReviews';
 import AdminSupportStaffClock from './AdminSupportStaffClock';
 import HROverview from './HROverview';
 
@@ -32,12 +31,11 @@ const TOOLS = {
     { id: 'manualpto', label: 'Manual PTO', component: AdminManualPTO },
     { id: 'ptoloss', label: 'PTO Loss Report', component: AdminPTOLossReport },
   ],
-  clients: [{ id: 'reviews', label: 'Performance Reviews', component: AdminPerformanceReviews }],
 };
 
 export default function HRCenter({ embedded = false }) {
   return (
-    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, PTO balances, performance, and support clock-in." sections={SECTIONS} defaultSection="overview" queryParam={embedded ? 'hr_section' : 'section'} embedded={embedded}>
+    <UnifiedCenter eyebrow="Human Resources" title="HR Center" description="One desktop workspace for employees, time records, PTO balances and support clock-in." sections={SECTIONS} defaultSection="overview" queryParam={embedded ? 'hr_section' : 'section'} embedded={embedded}>
       {section => <CenterToolSection tools={TOOLS[section]} queryParam={embedded ? 'hr_tool' : 'tool'} />}
     </UnifiedCenter>
   );

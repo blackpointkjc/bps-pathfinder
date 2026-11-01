@@ -8,7 +8,7 @@ import './portal.css';
 export default function PortalLogin(){
  const params=new URLSearchParams(window.location.search);
  const [mode,setMode]=useState(params.has('reset_token')?'reset':params.get('mode')==='register'?'register':'login');
- const [form,setForm]=useState({email:'',password:'',first_name:'',last_name:'',requested_type:'employee',otp:''});
+ const [form,setForm]=useState(()=>{let saved={};try{saved=JSON.parse(sessionStorage.getItem('bps:registration-draft')||'{}');}catch{}return {email:saved.email||'',password:'',first_name:saved.first_name||'',last_name:saved.last_name||'',date_of_birth:saved.date_of_birth||'',requested_type:saved.requested_type||'employee',otp:''};});
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const change=(key,value)=>setForm(p=>({...p,[key]:value}));
  const switchMode=m=>{setMode(m);setError('');setMessage('');};
@@ -18,8 +18,9 @@ export default function PortalLogin(){
   const response=await loginClient.auth.loginViaEmailPassword(form.email.trim().toLowerCase(),form.password);
   if(response.access_token){base44.auth.setToken(response.access_token);appParams.token=response.access_token;}
   clearBase44ReadCache();
-  const r=await base44.functions.invoke('portalRegistration',{action:'profile',first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type});
+  const r=await base44.functions.invoke('portalRegistration',{action:'profile',first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type,date_of_birth:form.date_of_birth});
   if(r.data?.error)throw new Error(r.data.error);
+  sessionStorage.removeItem('bps:registration-draft');
   sessionStorage.setItem('bps:portal-welcome','1');
   window.location.assign('/');
  }
@@ -28,6 +29,7 @@ export default function PortalLogin(){
   try{
    if(mode==='login'){await enter();}
    else if(mode==='register'){
+    sessionStorage.setItem('bps:registration-draft',JSON.stringify({email:form.email.trim().toLowerCase(),first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type,date_of_birth:form.date_of_birth}));
     await base44.auth.register({email:form.email.trim().toLowerCase(),password:form.password});
     setMode('verify');setMessage('Check your email for the verification code. Your account will remain pending until approved.');
    }else if(mode==='verify'){
@@ -51,7 +53,7 @@ export default function PortalLogin(){
     {error&&<div role="alert" className="portal-message portal-error">{error}</div>}
     {message&&<div role="status" className="portal-message">{message}</div>}
     <form onSubmit={submit}>
-     {mode==='register'&&<><div className="portal-grid"><label>First name<input required autoComplete="given-name" value={form.first_name} onChange={e=>change('first_name',e.target.value)}/></label><label>Last name<input required autoComplete="family-name" value={form.last_name} onChange={e=>change('last_name',e.target.value)}/></label></div><label>Account requested<select value={form.requested_type} onChange={e=>change('requested_type',e.target.value)}>{['employee','student','visitor','client'].map(t=><option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}</select></label><small>Submitting a request does not grant access. Administration or Training must approve your account.</small></>}
+     {mode==='register'&&<><div className="portal-grid"><label>First name<input required autoComplete="given-name" value={form.first_name} onChange={e=>change('first_name',e.target.value)}/></label><label>Last name<input required autoComplete="family-name" value={form.last_name} onChange={e=>change('last_name',e.target.value)}/></label></div><label>Account requested<select value={form.requested_type} onChange={e=>change('requested_type',e.target.value)}>{['employee','student','visitor','client'].map(t=><option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}</select></label>{form.requested_type==='student'&&<label>Date of birth<input required type="date" autoComplete="bday" value={form.date_of_birth} onChange={e=>change('date_of_birth',e.target.value)}/></label>}<small>Submitting a request does not grant access. Administration or Training must approve your account.</small></>}
      {mode!=='reset'&&<label className="mt-4">Email address<input required type="email" autoComplete="username" value={form.email} onChange={e=>change('email',e.target.value)} readOnly={mode==='verify'}/></label>}
      {['login','register','reset'].includes(mode)&&<label>Password<input required type="password" minLength={mode==='login'?1:12} autoComplete={mode==='login'?'current-password':'new-password'} value={form.password} onChange={e=>change('password',e.target.value)}/>{mode!=='login'&&<small>Use at least 12 characters, including upper and lowercase letters, numbers and a symbol.</small>}</label>}
      {mode==='verify'&&<label>Email verification code<input required inputMode="numeric" autoComplete="one-time-code" value={form.otp} onChange={e=>change('otp',e.target.value)}/></label>}

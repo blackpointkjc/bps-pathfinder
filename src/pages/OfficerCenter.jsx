@@ -19,7 +19,6 @@ import ParkingRecords from './ParkingRecords';
 import RecordsAssistant from './RecordsAssistant';
 import MaintenanceReports from './MaintenanceReports';
 import OpenDoorReports from './OpenDoorReports';
-import ConfidentialReport from './ConfidentialReport';
 import ExpenseReports from './ExpenseReports';
 import TimeRequests from './TimeRequests';
 import OfficerAvailability from './OfficerAvailability';
@@ -28,7 +27,6 @@ import OfficerPayrollDates from './OfficerPayrollDates';
 import Announcements from './Announcements';
 import OfficerProfile from './OfficerProfile';
 import MyPerformanceAnalytics from './MyPerformanceAnalytics';
-import OfficerPerformanceReviews from './OfficerPerformanceReviews';
 import OfficerTraining from './OfficerTraining';
 import RankStructure from './RankStructure';
 import RankDuties from './RankDuties';
@@ -37,9 +35,9 @@ const SECTIONS = [
   { id: 'today', label: 'Today', description: 'Dashboard, announcements, clock and schedule', icon: CalendarClock },
   { id: 'field', label: 'Patrol & Post', description: 'Post orders, QR patrol and shift handover', icon: Wrench },
   { id: 'messages', label: 'Enforcement & Legal', description: 'Law reference, trespass, complaints, summons and witness subpoenas', icon: Shield },
-  { id: 'reports', label: 'Reports', description: 'Daily, incident, maintenance and confidential reports', icon: ClipboardList },
+  { id: 'reports', label: 'Reports', description: 'Daily, incident, maintenance and patrol reports', icon: ClipboardList },
   { id: 'schedule', label: 'Schedule & Pay', description: 'Availability, requests, open shifts and payroll dates', icon: CalendarClock },
-  { id: 'profile', label: 'Career & Training', description: 'Profile, performance, reviews, training and rank', icon: UserRound },
+  { id: 'profile', label: 'Career & Training', description: 'Profile, performance, training and rank', icon: UserRound },
 ];
 
 const TOOLS = {

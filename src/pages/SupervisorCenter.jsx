@@ -12,11 +12,6 @@ import SupervisorTasks from './SupervisorTasks';
 import ParkingRecords from './ParkingRecords';
 import SupervisorCallOuts from './SupervisorCallOuts';
 import SupervisorDailyCode from './SupervisorDailyCode';
-import SupervisorInspections from './SupervisorInspections';
-import SupervisorPerformanceReview from './SupervisorPerformanceReview';
-import SupervisorWriteUps from './SupervisorWriteUps';
-import SupervisorUseOfForce from './SupervisorUseOfForce';
-import SupervisorComplaints from './SupervisorComplaints';
 import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
 import SupervisorShiftHandover from './SupervisorShiftHandover';
@@ -44,13 +39,6 @@ const COMMAND_TOOLS = [
   { id: 'rank', label: 'Rank Structure', component: RankStructure },
 ];
 
-const OVERSIGHT_TOOLS = [
-  { id: 'inspections', label: 'Officer Inspections', component: SupervisorInspections },
-  { id: 'reviews', label: 'Performance Reviews', component: SupervisorPerformanceReview },
-  { id: 'writeups', label: 'Write-Ups', component: SupervisorWriteUps },
-  { id: 'force', label: 'Use of Force', component: SupervisorUseOfForce },
-  { id: 'complaints', label: 'Complaints', component: SupervisorComplaints },
-];
 
 class SupervisorSectionBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -74,7 +62,7 @@ function SupervisorSectionContent({ section, embedded }) {
   if (section === 'cad') return <SupervisorCommandBoard />;
   if (section === 'calendar') return <SupervisorScheduleWorkspace/>;
   if (section === 'command') return <CenterToolSection tools={COMMAND_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
-  return <CenterToolSection tools={OVERSIGHT_TOOLS} queryParam={embedded ? 'supervisor_tool' : 'tool'} />;
+  return <SupervisorOverview />;
 }
 
 export default function SupervisorCenter({ embedded = false }) {

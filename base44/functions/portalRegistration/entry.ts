@@ -32,10 +32,12 @@ export default async function(req){
    if(!requestedTypes.includes(type))return Response.json({error:'Choose a valid account type'},{status:400});
    const patch={first_name:first,last_name:last,full_name:first+' '+last,requested_account_type:type};
    if(!me.rank||['Pending Assignment','Visitor Pending'].includes(me.rank))patch.rank=type==='student'?'Student Registration Pending':type==='visitor'?'Visitor Pending':'Pending Assignment';
-   for(const key of ['mobile_phone','date_of_birth'])if(p[key])patch[key]=clean(p[key]);
+   for(const key of ['mobile_phone'])if(p[key])patch[key]=clean(p[key]);
+   const birth=clean(p.date_of_birth||body.date_of_birth||me.date_of_birth,10);
+   if(birth){if(!/^\d{4}-\d{2}-\d{2}$/.test(birth)||!Number.isFinite(Date.parse(birth))||Date.parse(birth)>Date.now())return Response.json({error:'Enter a valid date of birth.'},{status:400});patch.date_of_birth=birth;}
    if(Object.keys(patch).some(k=>String(patch[k])!==String(me[k]||'')))await db.User.update(me.id,patch);
    if(!existing.length)await db.PortalRegistration.create({user_id:me.id,email:me.email,requested_type:type,submitted_at:new Date().toISOString()});
-   if(type==='student'){
+   if(type==='student'&&birth){
     const enrollments=await db.StudentEnrollment.filter({email:me.email},'-created_date',1);
     if(!enrollments.length)await db.StudentEnrollment.create({email:me.email,user_id:me.id,first_name:first,last_name:last,date_of_birth:clean(p.date_of_birth),status:'invited',invited_by:invitation?.invited_by||'self-registration'});
    }
