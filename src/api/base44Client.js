@@ -1,3 +1,4 @@
+import {isFullAccessOwner} from '@/lib/portalAccess';
 import {offlineIdentity,rememberOfflineIdentity,forgetOfflineIdentity} from '@/lib/offlineSession';
 import {offlineGet,offlinePut} from '@/lib/offlineWork';
 import { createClient } from '@base44/sdk';
@@ -670,7 +671,7 @@ const auth = new Proxy(rawBase44.auth, {
     const value = Reflect.get(target, property, receiver);
     if (typeof value !== 'function') return value;
     if (property === 'logout') return (...args) => { forgetOfflineIdentity(); return value.apply(target,args); };
-    if (property === 'me') return (...args) => queuedRead(`auth:me:${stableKey(args)}`, () => value.apply(target, args), { kind: 'auth', method: 'me' });
+    if (property === 'me') return (...args) => queuedRead(`auth:me:${stableKey(args)}`, async () => {const user=await value.apply(target,args);return user&&!isFullAccessOwner(user)?{...user,additional_roles:(user.additional_roles||[]).filter(role=>role!=='full_access')}:user;}, { kind: 'auth', method: 'me' });
     if (property === 'updateMe') return (...args) => protectedWrite(`auth:updateMe:${stableKey(args)}`, () => value.apply(target, args), { kind: 'auth', method: 'updateMe' });
     return value.bind(target);
   },
