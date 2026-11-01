@@ -29,8 +29,7 @@ export async function notify(base44,to,subject,body,actor=null,existingId='') {
   item=prior?await db.PSNotification.update(prior.id,value):await db.PSNotification.create(value);
  }catch{}
  let delivered=false,lastError='';
- try{const {companyDelivery}=await import('./delivery.ts');delivered=await companyDelivery(base44,to,subject,body,actor);}catch(error){lastError=/expired|authorization|Microsoft|management/i.test(String(error?.message||''))?'Management email authorization is unavailable or expired. Reconnect the management Microsoft mailbox in Mail settings.':'The configured company SMTP sender could not accept the message. Check the sender connection in account email settings.';}
- if(!delivered){try{const result=await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});if(result?.error||result?.success===false)throw new Error('Email provider rejected the message.');delivered=true;}catch{lastError=(lastError||'No authorized company sender is available.')+' Base44 email fallback also did not accept the message.';}}
+ try{const {companyDelivery}=await import('./delivery.ts');delivered=await companyDelivery(base44,to,subject,body,actor);}catch(error){lastError=String(error?.message||'The IA shared mailbox could not send the message. Reconnect Microsoft from Colonel Hiers’ Mail settings.').slice(0,600);}
  if(item)await db.PSNotification.update(item.id,{status:delivered?'sent':'failed',last_error:delivered?'':lastError,...(delivered?{sent_at:new Date().toISOString()}:{})});
  return delivered;
 }
