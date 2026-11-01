@@ -1,3 +1,4 @@
+import {verifiedPS} from './psVerification.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 // Authenticated, server-side platoon/region/division/substation report reads.
 const n=(v:any)=>String(v??'').trim().toLowerCase();
@@ -40,6 +41,8 @@ Deno.serve(async(req)=>{
  try{
   const sdk=createClientFromRequest(req),me=await sdk.auth.me().catch(()=>null);
   if(!me)return Response.json({error:'Sign in required'},{status:401});
+if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
+await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'legacy_workflow_access',details:'getSupervisorWorkspaceRecords'});
   if(!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
   const body=await req.json().catch(()=>({})),kind=n(body.kind),entity=entities[kind];
   if(kind==='portrait'){

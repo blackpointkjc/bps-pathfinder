@@ -629,6 +629,7 @@ const functions = new Proxy(rawBase44.functions, {
     if (property !== 'invoke' || typeof value !== 'function') return typeof value === 'function' ? value.bind(target) : value;
     return (name, payload) => {
       const functionName = String(name);
+      if(['managePerformanceReviews','getSupervisorWorkspaceRecords','updateInspectionDraft'].includes(functionName))payload={...(payload||{}),ps_access:sessionStorage.getItem('bps:ps-access')||''};
       const key = `function:${functionName}:${stableKey(payload || {})}`;
       const task = () => value.call(target, name, payload);
       const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '',

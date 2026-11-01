@@ -1,3 +1,4 @@
+import {verifiedPS} from './psVerification.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts';
 
@@ -131,6 +132,8 @@ Deno.serve(async (req) => {
 
     const me = await base44.auth.me();
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+if(!await verifiedPS(base44,me,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
+await base44.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'legacy_workflow_access',details:'managePerformanceReviews'});
     const roles = rolesOf(me);
     if (me.role !== 'admin' && me.ps_role !== 'reviewer' && !roles.has('hr') && !roles.has('full_access')) {
       return Response.json({ error: 'HR access required' }, { status: 403 });

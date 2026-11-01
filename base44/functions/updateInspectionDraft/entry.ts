@@ -1,3 +1,4 @@
+import {verifiedPS} from './psVerification.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const ALLOWED_FIELDS = [
@@ -18,6 +19,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+if(!await verifiedPS(base44,user,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
+await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:user.email,action:'legacy_workflow_access',details:'updateInspectionDraft'});
     const roles = new Set((user.additional_roles || []).map((role) => String(role).toLowerCase()));
     const rank = String(user.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
     const supervisor = user.ps_role === 'reviewer' || user.role === 'admin' || user.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || ['corporal','first sergeant','sergeant','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(rank);
