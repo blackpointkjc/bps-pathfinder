@@ -113,6 +113,7 @@ Deno.serve(async (req) => {
     // Pending account identities cannot call operational service-role endpoints.
     const __portalCaller = await base44.auth.me().catch(()=>null);
     if (!__portalCaller || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))) return Response.json({error:'Approved portal access required'},{status:403});
+    base44.auth.me = async () => __portalCaller;
 
     const requestingUser = await base44.auth.me().catch(() => null);
     if(requestingUser && String(requestingUser.id)!=='6a72bbee2842d6338cbae513') return Response.json({error:'Accounting access required'},{status:403});

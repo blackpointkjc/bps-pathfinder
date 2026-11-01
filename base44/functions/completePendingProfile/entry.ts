@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
-const allowed = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration','dcjs_number','dcjs_expiration'];
+const allowed = ['first_name','last_name','date_of_birth','mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration','dcjs_number','dcjs_expiration'];
 const required = ['mobile_phone','address','city','state','zip','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone','drivers_license_number','drivers_license_state','drivers_license_expiration'];
 Deno.serve(async req => {
   try {
@@ -19,7 +19,8 @@ Deno.serve(async req => {
     }
     const current = await base44.asServiceRole.entities.User.get(me.id);
     const combined = {...current,...updates};
-    const requiredForAccount = studentIntake ? ['mobile_phone','address','city','state','zip','dcjs_number'] : required;
+    const limitedIntake=['visitor','client'].includes(me.requested_account_type);
+    const requiredForAccount = limitedIntake ? ['first_name','last_name','mobile_phone'] : studentIntake ? ['mobile_phone','address','city','state','zip','dcjs_number'] : required;
     const missing = requiredForAccount.filter(field => !String(combined[field] || '').trim());
     if (missing.length) return Response.json({error:'Complete all required fields before submitting.',missing}, {status:400});
     await base44.asServiceRole.entities.User.update(me.id, updates);

@@ -119,6 +119,7 @@ export default async function(req){
   if(!editable)fail('Assign the case before editing it.',403);
   if(action==='update'){
    if(Number(body.version)!==Number(c.version))fail('This case changed. Reload it before saving.',409);
+   if(['approved','closed'].includes(c.status)&&!review)fail('Only a reviewer can reopen an approved or closed case.',403);
    const p=body.patch||{},updates={};
    for(const key of ['category','priority','due_date','retention_until'])if(p[key]!==undefined)updates[key]=text(p[key],200);
    if(p.legal_hold!==undefined){if(!review)fail('Only reviewers manage legal holds.',403);updates.legal_hold=p.legal_hold===true;}
@@ -131,7 +132,7 @@ export default async function(req){
     if(!['new','triage','investigating','pending_review','approved','closed','returned'].includes(p.status))fail('Invalid case status.');
     if(['approved','closed','returned'].includes(p.status)&&!review)fail('Reviewer approval is required.',403);
     if(['approved','closed'].includes(p.status)){
-     if(c.investigator_id===u.id)fail('An independent reviewer must approve an investigator’s case.',403);
+     if((p.investigator_id??c.investigator_id)===u.id)fail('An independent reviewer must approve an investigator’s case.',403);
      if(!['pending_review','approved'].includes(c.status))fail('Send the investigation for review first.');
      const allegations=records.filter(r=>r.kind==='allegation');
      if(c.kind==='complaint'&&(!allegations.length||allegations.some(r=>!r.finding||r.finding==='pending')))fail('Document a finding for every allegation before approval.');

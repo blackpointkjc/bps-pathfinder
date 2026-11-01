@@ -190,11 +190,11 @@ export default function AdminUsers({ embedded = false }) {
       setShowCreateDialog(false);
       resetCreateForm();
       if (result?.provisioned) {
-        alert('Account created and the Base44 login invitation processed. Assign Support Staff, Officer, Student, or Client access from Pending Users.');
+        alert('Account invitation saved. The recipient creates their password in Pathfinder, verifies their email, and awaits account approval.');
       } else if (result?.invitation_sent) {
-        alert('Base44 invitation sent. The person must accept the invitation to finish registration before their account appears in Pending Users. No password is emailed; they securely set their own password.');
+        alert('Pathfinder account email sent. The person creates their own password and verifies their email before review in Pending Users.');
       } else {
-        alert('An existing account was found, but a fresh invitation was not confirmed. Check the Base44 user dashboard.');
+        alert('Invitation saved, but email delivery was not confirmed. Retry the invitation or share the Pathfinder registration address directly.');
       }
     },
     onError: (error) => {

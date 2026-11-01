@@ -19,7 +19,7 @@ export default async function(req){
    if(!first||!last)return Response.json({needs_profile:true,profile:{portal_approved:false}});
    const type=existing[0]?.requested_type||invitation?.account_type||body.requested_type||'employee';
    if(!requestedTypes.includes(type))return Response.json({error:'Choose a valid account type'},{status:400});
-   const patch={first_name:first,last_name:last,full_name:first+' '+last};
+   const patch={first_name:first,last_name:last,full_name:first+' '+last,requested_account_type:type};
    if(!me.rank||['Pending Assignment','Visitor Pending'].includes(me.rank))patch.rank=type==='student'?'Student Registration Pending':type==='visitor'?'Visitor Pending':'Pending Assignment';
    for(const key of ['mobile_phone','date_of_birth'])if(p[key])patch[key]=clean(p[key]);
    if(Object.keys(patch).some(k=>String(patch[k])!==String(me[k]||'')))await db.User.update(me.id,patch);

@@ -19,10 +19,10 @@ export default async function(req){
  const record=rows[0]?await db.PortalInvitation.update(rows[0].id,payload):await db.PortalInvitation.create(payload);
  if(person)await db.User.update(person.id,{first_name:profile.first_name,last_name:profile.last_name,rank:type==='student'?'Student Registration Pending':type==='visitor'?'Visitor Pending':'Pending Assignment'});
  let providerSent=false,providerError='';
- try{await base44.users.inviteUser(email,'user');providerSent=true;}catch(e){providerError='The authentication invitation was not confirmed.';}
+ // Public registration uses the branded invitation below; credentials are created only by the recipient.
  let branded=false;
  try{await base44.asServiceRole.integrations.Core.SendEmail({to:email,subject:'Black Point — Create your Pathfinder account',body:'<h1>Welcome to BPS Pathfinder</h1><p>Hello '+esc(profile.first_name)+',</p><p>Your '+esc(type)+' account invitation is ready. Create your password and verify your email in the portal. Your workspace remains pending until authorized staff approve it.</p><p><a href="'+URL+'">Create your account</a></p><p>Use the same email address that received this message. Never share your password.</p>'});branded=true;}catch{}
  await db.PortalInvitation.update(record.id,{email_sent:branded||providerSent});
- return Response.json({success:true,provisioned:!!person,status:'invited_waiting_for_registration',invitation_sent:providerSent,branded_email_sent:branded,email_sent:branded||providerSent,email_error:branded||providerSent?'':'Invitation saved, but email delivery failed. Retry the invitation.',invitation_error:providerError||undefined,user_id:person?.id||null,assignment_pending:true});
+ return Response.json({success:true,provisioned:!!person,status:'invited_waiting_for_registration',invitation_sent:branded,branded_email_sent:branded,email_sent:branded||providerSent,email_error:branded||providerSent?'':'Invitation saved, but email delivery failed. Retry the invitation.',invitation_error:undefined,user_id:person?.id||null,assignment_pending:true});
  }catch{return Response.json({success:false,error:'Unable to create the invitation. Please retry.'},{status:500});}
 }

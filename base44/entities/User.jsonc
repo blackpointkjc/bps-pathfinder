@@ -610,6 +610,18 @@
       "rls": {
         "write": false
       }
+    },
+    "requested_account_type": {
+      "type": "string",
+      "enum": [
+        "employee",
+        "student",
+        "client",
+        "visitor"
+      ],
+      "rls": {
+        "write": false
+      }
     }
   },
   "required": [
