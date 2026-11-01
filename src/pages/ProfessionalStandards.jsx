@@ -19,6 +19,13 @@ const legacy={
 };
 const label=v=>String(v||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const findings=['sustained','not_sustained','unfounded','exonerated','policy_failure'];
+const normalizeSection=(requested,reviewer)=>{
+ const aliases={supervisorComplaints:'complaints',supervisorReviews:'reviews'};
+ const next=aliases[requested]||requested||'inbox';
+ const reviewerOnly=['approvals','complaints','force','writeups','inspections','reviews','confidential','commendations','client_referrals','audit','notifications'];
+ if(!reviewer&&reviewerOnly.includes(next))return 'cases';
+ return ['inbox','cases','officers','evidence','interviews','tasks','findings','corrective_actions','reports','resources','myreviews','report',...reviewerOnly].includes(next)?next:'inbox';
+};
 export default function ProfessionalStandards({embedded=false}){
  const {user}=useAuth(),location=useLocation(),navigate=useNavigate(),params=new URLSearchParams(location.search);
  const roles=new Set([user?.role,...(user?.additional_roles||[])]);
@@ -26,7 +33,7 @@ export default function ProfessionalStandards({embedded=false}){
  const staff=!!iaRole(user);
  
  const [events,setEvents]=useState([]);
- const [tab,setTab]=useState(params.get('section')||'inbox'),[rows,setRows]=useState([]),[people,setPeople]=useState([]),[page,setPage]=useState(0),[more,setMore]=useState(false),[detail,setDetail]=useState(null),[section,setSection]=useState('overview'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[search,setSearch]=useState('');
+ const [tab,setTab]=useState(()=>normalizeSection(params.get('section'),reviewer)),[rows,setRows]=useState([]),[people,setPeople]=useState([]),[page,setPage]=useState(0),[more,setMore]=useState(false),[detail,setDetail]=useState(null),[section,setSection]=useState('overview'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[search,setSearch]=useState('');
  const [patch,setPatch]=useState({}),[files,setFiles]=useState([]),[record,setRecord]=useState({kind:'note',title:'',body:'',person:'',policy:'',finding:'pending',assigned_to:'',due_date:''});
  const [notice,setNotice]=useState(false),[evidenceLinks,setEvidenceLinks]=useState({}),[outcomes,setOutcomes]=useState({});
  const [filter,setFilter]=useState('all');
@@ -55,7 +62,7 @@ export default function ProfessionalStandards({embedded=false}){
  const requestedArea=params.get('ps_area');
  const activeArea=workAreas.find(a=>a.id===(requestedArea||areaFor(tab)))||workAreas[0];
  const selectedTool=activeArea.tools.find(([id])=>id===tab)||activeArea.tools[0];
- useEffect(()=>{if(requestedArea&&areaFor(tab)!==activeArea.id){setTab(activeArea.tools[0][0]);setDetail(null);setShowCreate(false);}else{const next=params.get('section');if(next&&workAreas.some(a=>a.tools.some(([id])=>id===next))&&areaFor(next)===activeArea.id&&next!==tab){setTab(next);setDetail(null);}}},[location.search]);
+ useEffect(()=>{if(requestedArea&&areaFor(tab)!==activeArea.id){setTab(activeArea.tools[0][0]);setDetail(null);setShowCreate(false);}else{const next=normalizeSection(params.get('section'),reviewer);if(next&&workAreas.some(a=>a.tools.some(([id])=>id===next))&&areaFor(next)===activeArea.id&&next!==tab){setTab(next);setDetail(null);}}},[location.search]);
  useEffect(()=>{if(tab==='audit'&&staff)psCall({action:'audit_history'}).then(d=>setEvents(d.events)).catch(e=>setError(e?.response?.data?.error||e.message));},[tab,staff]);
  const legacyFiles={approvals:'AdminSupervisorReports',complaints:'AdminComplaints',force:'SupervisorUseOfForce',writeups:'SupervisorWriteUps',inspections:'SupervisorInspections',reviews:'AdminPerformanceReviews',confidential:'AdminConfidentialReports',commendations:'AdminCommendations',supervisorComplaints:'SupervisorComplaints',supervisorReviews:'SupervisorPerformanceReview',myreviews:'OfficerPerformanceReviews',report:'ConfidentialReport'};
  const Legacy=availableLegacy.some(([k])=>k===tab)?getPreparedTool(legacyFiles[tab]+'.jsx')||legacy[tab]:null;

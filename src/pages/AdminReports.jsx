@@ -1,3 +1,4 @@
+import {Navigate} from 'react-router-dom';
 import { findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, primaryDirectoryEmail } from '@/lib/appDirectory';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -1585,6 +1586,10 @@ export default function AdminReports(){
     return REPORT_WORKSPACES.some(([id])=>id===candidate)?candidate:'allreports';
   };
   const [active,setActive]=useState(initial);
+  const legacyParams=new URLSearchParams(window.location.search);
+  const legacyReview=legacyParams.get('report_view')||legacyParams.get('admin_reports_quality_tool');
+  const movedReview={supervisorreports:'approvals',complaints:'complaints',commendations:'commendations',confidential:'confidential'}[legacyReview];
+
   const change=view=>{
     setActive(view);
     const url=new URL(window.location.href);
@@ -1592,6 +1597,7 @@ export default function AdminReports(){
     url.searchParams.delete('admin_reports_quality_tool');
     window.history.replaceState({},'',url.pathname+url.search);
   };
+  if(movedReview)return <Navigate replace to={'/ProfessionalStandards?section='+movedReview}/>;
   return <div className="space-y-3">
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#314b65] bg-[#0b1c2e] px-3 py-3 text-white">
       <div className="min-w-0 flex-1"><h1 className="text-base font-bold">Report Review</h1><p className="text-xs text-slate-400">Reports, reviews, parking, residents and records — one workspace</p></div>
