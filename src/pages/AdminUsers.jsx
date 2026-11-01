@@ -594,6 +594,7 @@ export default function AdminUsers({ embedded = false }) {
   const approvedStaff=activeUsers.filter(person=>!isPendingUser(person));
 
   const assignUserCategory = async (userData, category) => {
+    if(userData.account_status==='denied'){alert('Restore this request to pending review before approving access.');return;}
     const categoryConfig = {
       visitor: { roles:['visitor'],rank:'Visitor',page:'VisitorPortal'},
       support: { roles: ['support_staff'], rank: 'Support Staff', page: 'AdminSupportStaffClock' },

@@ -67,6 +67,7 @@ Deno.serve(async (req) => {
           if (merged.out_of_office && (!Number.isFinite(Date.parse(merged.out_of_office_start)) || !Number.isFinite(Date.parse(merged.out_of_office_return)) || Date.parse(merged.out_of_office_return) <= Date.parse(merged.out_of_office_start))) return Response.json({error:'Return must be after the start date and time'},{status:400});
         }
         if (['investigator','reviewer'].includes(updates.ps_role) && (target.additional_roles||[]).some(r=>['visitor','student','client'].includes(r))) return Response.json({error:'Professional Standards access requires a staff account, not a student, client or visitor account.'},{status:403});
+        if(updates.account_status!==undefined&&!isSystemManager)return Response.json({error:'Only administrators can change account approval status'},{status:403});
         if (updates.ps_role !== undefined && (!isSystemManager || !['none','investigator','reviewer'].includes(updates.ps_role))) return Response.json({error:'Only administrators may assign a valid Professional Standards role'},{status:403});
         if (updates.portal_approved !== undefined) delete updates.portal_approved;
         const updatePayload: Record<string, unknown> = {};
@@ -180,8 +181,8 @@ Deno.serve(async (req) => {
           }
         }
         const mergedAccount={...target,...updatePayload};
-        if (updates.additional_roles !== undefined || updates.role !== undefined || updates.ps_role !== undefined) updatePayload.account_status = 'approved';
         if (updates.additional_roles !== undefined || updates.role !== undefined || updates.ps_role !== undefined) updatePayload.portal_approved = mergedAccount.role === 'admin' || (mergedAccount.additional_roles || []).length > 0 || ['investigator','reviewer'].includes(mergedAccount.ps_role);
+        if(updatePayload.portal_approved!==undefined)updatePayload.account_status=updatePayload.portal_approved?'approved':'pending';
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
         if(updates.ps_role!==undefined||updates.additional_roles!==undefined||updates.role!==undefined)await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:user.email,action:'account_permission_change_requested',details:JSON.stringify({user_id:userId,ps_role:updatePayload.ps_role,additional_roles:updatePayload.additional_roles,role:updatePayload.role})});
