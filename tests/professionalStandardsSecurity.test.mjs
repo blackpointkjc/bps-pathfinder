@@ -7,7 +7,7 @@ const tables={};
 const testHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('test-current-session')))).map(v=>v.toString(16).padStart(2,'0')).join('');
 tables.PortalAuthSession=[{id:'mock-session',token_hash:testHash,started_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),revoked:false}];
 
-const match=(row,q)=>Object.entries(q||{}).every(([k,v])=>k==='$or'?v.some(c=>match(row,c)):v&&typeof v==='object'&&v.$in?(Array.isArray(row[k])?row[k].some(x=>v.$in.includes(x)):v.$in.includes(row[k])):row[k]===v);
+const match=(row,q)=>Object.entries(q||{}).every(([k,v])=>k==='$or'?v.some(c=>match(row,c)):k==='$and'?v.every(c=>match(row,c)):v&&typeof v==='object'&&'$exists' in v?(v.$exists?row[k]!==undefined:row[k]===undefined):v&&typeof v==='object'&&v.$in?(Array.isArray(row[k])?row[k].some(x=>v.$in.includes(x)):v.$in.includes(row[k])):row[k]===v);
 const db=new Proxy({}, {get(_t,name){tables[name]??=[];return {
  create:async data=>{const row={...data,id:name+'-'+(++counter),created_date:new Date().toISOString(),updated_date:new Date().toISOString()};tables[name].push(row);return {...row};},
  get:async id=>{const r=tables[name].find(r=>r.id===id);if(!r)throw Error('missing');return {...r};},
@@ -51,8 +51,17 @@ actor=reviewer;
 assert.equal((await call({action:'list'})).httpStatus,200,'IA role opens the staff workspace without a second email code');
 const reviewToken='';
 let result=await call({action:'list',ps_access:reviewToken});assert.equal(result.httpStatus,200);assert.equal(result.cases[0].tracking_hash,undefined);
-result=await call({action:'update',case_id:c.id,version:1,patch:{investigator_id:investigator.id,status:'investigating'},ps_access:reviewToken});assert.equal(result.httpStatus,200);
+assert.ok((await call({action:'list',view:'inbox'})).cases.some(v=>v.id===c.id));
 actor=investigator;
+assert.deepEqual((await call({action:'list'})).cases,[]);
+assert.equal((await call({action:'get',case_id:c.id})).httpStatus,403);
+assert.equal((await call({action:'list',view:'inbox'})).httpStatus,403);
+assert.equal((await call({action:'reports'})).httpStatus,403);
+actor=reviewer;
+result=await call({action:'update',case_id:c.id,version:1,patch:{investigator_id:investigator.id,status:'investigating'},ps_access:reviewToken});assert.equal(result.httpStatus,200);
+assert.equal((await call({action:'list',view:'inbox'})).cases.some(v=>v.id===c.id),false);
+actor=investigator;
+const assignedCases=await call({action:'list'});assert.ok(assignedCases.cases.some(v=>v.id===c.id));assert.ok(assignedCases.cases.every(v=>v.investigator_id===investigator.id));
 const invToken='investigator-secret';
 await db.PSAccess.create({user_id:actor.id,session_hash:await digest(invToken),verified:true,session_expires_at:new Date(Date.now()+60000).toISOString()});
 assert.equal((await call({action:'get',case_id:c.id,ps_access:invToken})).httpStatus,200);

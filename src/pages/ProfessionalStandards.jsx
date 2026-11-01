@@ -6,10 +6,10 @@ import CasePersonnel from '@/components/ia/CasePersonnel';
 import NotificationOutbox from '@/components/ia/NotificationOutbox';
 import {iaRole} from '@/lib/portalAccess';
 import {lazy,Suspense,useEffect,useState} from 'react';
-import {Link,useLocation,useNavigate} from 'react-router-dom';
+import {useLocation,useNavigate} from 'react-router-dom';
 import UnifiedCenter from '@/components/UnifiedCenter';
 import AdaptiveSelector from '@/components/AdaptiveSelector';
-import {Inbox,FolderSearch,ClipboardCheck,BarChart3,BookOpen,Plus,ExternalLink,Users} from 'lucide-react';
+import {Inbox,FolderSearch,ClipboardCheck,BarChart3,Plus,ExternalLink} from 'lucide-react';
 import {getPreparedTool} from '@/lib/lazyPages';
 import {useAuth} from '@/lib/AuthContext';
 import {base44} from '@/api/base44Client';
@@ -44,7 +44,7 @@ export default function ProfessionalStandards({embedded=false}){
  useEffect(()=>{if(!staff)return;let active=true;setBusy(true);psCall({action:reviewer&&tab==='reports'?'reports':'list',view:tab==='inbox'?'inbox':'cases',page:0}).then(d=>{if(active){setRows(d.cases);setPeople(d.staff);setMore(d.has_more);setOutcomes(d.findings||{});}}).catch(e=>{if(active)setError(e?.response?.data?.error||e.message);}).finally(()=>{if(active)setBusy(false);});return()=>{active=false;};},[staff,user?.id,reviewer,tab]);
 
  const open=async (id,targetSection='overview')=>{setBusy(true);setError('');try{const d=await psCall({action:'get',case_id:id});setDetail(d);setPatch(d.case);setPeople(d.staff);setSection(targetSection);setRecord(p=>({...p,kind:({interviews:'interview',tasks:'task',findings:'allegation',corrective_actions:'corrective_action'})[targetSection]||'note'}));}catch(e){setError(e?.response?.data?.error||e.message);}finally{setBusy(false);}};
- const act=async(payload,attachment=[])=>{setBusy(true);setError('');setMessage('');try{const d=await psCall(payload,attachment);setMessage(d.existing?'This action is already recorded for this case.':d.email_sent===false?(reviewer?'Saved. The notification is queued under Reports & Accountability → Notification delivery.':'Saved. An IA reviewer can retry the queued notification.'):'Saved successfully.');if(detail){const next=await psCall({action:'get',case_id:detail.case.id});setDetail(next);setPatch(next.case);}await refresh();return true;}catch(e){setError(e?.response?.data?.error||e.message||'Request failed.');return false;}finally{setBusy(false);}};
+ const act=async(payload,attachment=[])=>{setBusy(true);setError('');setMessage('');try{const d=await psCall(payload,attachment);setMessage(d.existing?'This action is already recorded for this case.':d.email_sent===false?(reviewer?'Saved. The notification is queued under Reports & Accountability → Notification delivery.':'Saved. An IA reviewer can retry the queued notification.'):'Saved successfully.');if(detail){const next=await psCall({action:'get',case_id:detail.case.id});if(tab==='inbox'&&next.case.investigator_id){setDetail(null);setPatch({});setMessage('Case assigned and moved from intake to the assigned investigator’s workspace.');}else{setDetail(next);setPatch(next.case);}}await refresh();return true;}catch(e){setError(e?.response?.data?.error||e.message||'Request failed.');return false;}finally{setBusy(false);}};
  const choose=t=>{if(t==='audit')psCall({action:'audit_history'}).then(d=>setEvents(d.events)).catch(e=>setError(e?.response?.data?.error||e.message));setTab(t);setDetail(null);setShowCreate(false);setError('');setMessage('');const p=new URLSearchParams(location.search);p.set('section',t);p.set('ps_area',areaFor(t));navigate({pathname:location.pathname,search:'?'+p.toString()},{replace:true});};
 
  const totals={new:rows.filter(c=>!c.investigator_id&&['new','triage'].includes(c.status)).length,active:rows.filter(c=>!['approved','closed'].includes(c.status)).length,review:rows.filter(c=>c.status==='pending_review').length,overdue:rows.filter(c=>c.due_date&&new Date(c.due_date)<new Date()&&c.status!=='closed').length};

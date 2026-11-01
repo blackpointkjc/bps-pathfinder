@@ -23,17 +23,24 @@ const module={exports:{}};new Function('require','module','exports',result.outpu
 const Page=module.exports.default;
 globalThis.__iaRenderUser={id:'ia-staff',role:'user',additional_roles:['ia'],ps_role:'reviewer'};
 let html='';
-for(const [area,section] of [['intake','inbox'],['investigations','cases'],['insights','reports'],['resources','resources']]){
+for(const [area,section] of [['intake','inbox'],['investigations','cases'],['insights','reports']]){
  globalThis.__iaRenderLocation={pathname:'/ProfessionalStandards',search:'?ps_area='+area+'&section='+section};
  html+=renderToStaticMarkup(React.createElement(Page));
 }
 for(const heading of ['Complaint inbox','Investigation workspace','Reports &amp; trends','Audit history','IA Reviewer'])assert.ok(html.includes(heading),heading);
-for(const repeated of ['Evidence library','Case management','Personnel Standards'])assert.equal(html.includes(repeated),false);
+for(const repeated of ['Evidence library','Case management','Personnel Standards','Process &amp; Resources','/AdminUsers'])assert.equal(html.includes(repeated),false);
 assert.ok(html.includes('bps-command-theme'));
 assert.equal(html.includes('portal-shell'),false);
 assert.equal(html.includes('bp-ia'),false);
 assert.equal(html.includes('Verify your staff access'),false);
 assert.equal(html.includes('Email my verification code'),false);
+globalThis.__iaRenderUser={id:'assigned-investigator',role:'user',additional_roles:['ia'],ps_role:'investigator'};
+for(const search of ['', '?ps_area=intake&section=inbox','?ps_area=insights&section=reports','?ps_area=resources&section=resources']){
+ globalThis.__iaRenderLocation={pathname:'/ProfessionalStandards',search};
+ const restricted=renderToStaticMarkup(React.createElement(Page));
+ assert.ok(restricted.includes('Investigation workspace'));
+ for(const forbidden of ['Complaint Intake','Complaint inbox','Reports &amp; Accountability','Reports &amp; trends','Process &amp; Resources','/AdminUsers'])assert.equal(restricted.includes(forbidden),false,forbidden);
+}
 globalThis.__iaRenderUser={id:'ordinary-staff',role:'user',additional_roles:['officer']};
 html=renderToStaticMarkup(React.createElement(Page));
 assert.ok(html.includes('Internal Affairs access required'));
