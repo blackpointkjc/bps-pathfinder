@@ -400,7 +400,7 @@ export default function AdminCenter() {
       headerAction={() => canPreview ? previewPicker : null}
     >
       {section => {
-        const mirror = section === 'standards' && hasIAAccess(signedInUser) ? <ProfessionalStandards /> : section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
+        const mirror = section === 'standards' && hasIAAccess(signedInUser) ? <ProfessionalStandards embedded /> : section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <AdminSupervisorToolsOnly /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
         return <div className="min-w-0">{mirror}</div>;
       }}
     </UnifiedCenter>

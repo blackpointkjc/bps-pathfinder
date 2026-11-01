@@ -20,7 +20,7 @@ export function getRoleHome(user){
  if(roles.has('client')||user?.user_type==='client'||rank==='client')return HOME.client;
  if(roles.has('student')||user?.user_type==='student')return HOME.student;
  if(roles.has('visitor'))return HOME.visitor;
- if(roles.has('supervisor')||user?.is_supervisor===true||['corporal','sergeant','first sergeant','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(rank))return HOME.supervisor;
+ if(roles.has('supervisor')||user?.is_supervisor===true||['corporal','sergeant','sgt','first sergeant','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(rank))return HOME.supervisor;
  if(roles.has('hr')||rank==='human resources')return HOME.hr;
  if(roles.has('trainer'))return HOME.trainer;
  if(roles.has('accounting'))return HOME.accounting;

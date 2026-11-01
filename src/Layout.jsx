@@ -459,7 +459,7 @@ function hasRole(user, role) {
 function roleName(user) {
   if (user?.role === 'admin') return 'SYSTEM ADMIN';
   if (user?.role === 'dispatch') return 'DISPATCH';
-  if (hasRole(user, 'supervisor') || ['sergeant', 'sgt', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' '))) return 'SUPERVISOR';
+  if (hasRole(user, 'supervisor') || ['corporal', 'sergeant', 'sgt', 'first sergeant', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' '))) return 'SUPERVISOR';
   if (hasRole(user, 'hr') || String(user?.rank || '').toLowerCase() === 'human resources') return 'HUMAN RESOURCES';
   if (hasRole(user, 'support_staff') || String(user?.rank || '').toLowerCase() === 'support staff') return 'SUPPORT STAFF';
   if (canAccessAccounting(user)) return 'ACCOUNTING';
@@ -472,7 +472,7 @@ function roleName(user) {
 function allowedCenters(user) {
   const roles = normalizedRoles(user);
   const rank = String(user?.rank || '').trim().toLowerCase().replace(/[.]/g, '').replace(/\s+/g, ' ');
-  const supervisor = roles.has('supervisor') || ['sergeant', 'sgt', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(rank);
+  const supervisor = user?.is_supervisor === true || roles.has('supervisor') || ['corporal', 'sergeant', 'sgt', 'first sergeant', 'lieutenant', 'lt', 'lt colonel', 'lieutenant colonel', 'lt col', 'captain', 'major', 'colonel'].includes(rank);
   // Student and client accounts are separate identities, never employee overlays.
   if (roles.has('client') || user?.user_type === 'client' || rank === 'client') return ['client'];
   if (roles.has('student') || user?.user_type === 'student') return ['student'];
@@ -551,7 +551,7 @@ function canAccessPage(user, pageName) {
     const adminEmbedded = new Set(['admin','cad','officer','supervisor','hr','client']);
     if (centers.some(center => adminEmbedded.has(center))) return true;
   }
-  if (roles.has('supervisor') || ['sergeant','sgt','lieutenant','lt','lt colonel','lieutenant colonel','lt col','captain','major','colonel'].includes(rank)) {
+  if (roles.has('supervisor') || ['corporal','sergeant','sgt','first sergeant','lieutenant','lt','lt colonel','lieutenant colonel','lt col','captain','major','colonel'].includes(rank)) {
     if (centers.some(center => ['cad','supervisor','officer'].includes(center))) return true;
   }
   if (roles.has('trainer') && centers.includes('training')) return true;

@@ -1,0 +1,57 @@
+/* Staff workspace uses Pathfinder's operational navy/cyan palette.
+   Public IAFORM retains its separate black/gold stylesheet. */
+.ps-workspace{min-height:100%;background:#080d16;color:#dce7f3;font-family:Inter,Arial,sans-serif;color-scheme:dark}
+.ps-workspace *{box-sizing:border-box}
+.ps-toolbar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#0b1524;border-bottom:1px solid #21334a}
+.ps-toolbar>div{max-width:750px}
+.ps-current-tool{font-size:13px;font-weight:750;color:#dce7f3;padding:8px}
+.ps-primary-action,.ps-muted-action,.ps-icon-action,.ps-public-link{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}
+.ps-primary-action{border:1px solid #3b82f6;background:#2563eb;color:white}
+.ps-primary-action:hover{background:#1d4ed8}
+.ps-icon-action,.ps-muted-action,.ps-public-link{border:1px solid #30445c;background:#101e30;color:#bbd6ef}
+.ps-icon-action{width:38px;padding:8px}
+.ps-public-link{min-height:34px;padding:6px 9px;font-size:11px}
+.ps-section-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 20px 14px;border-bottom:1px solid #1c2a3d;background:#0b1422}
+.ps-section-heading h2{font-size:20px;line-height:1.3;font-weight:800;color:#f1f5f9;margin:0}
+.ps-section-heading p{font-size:12px;color:#89a2ba;margin:5px 0 0}
+.ps-canvas{padding:16px 20px 28px;min-width:0}
+.ps-legacy{min-width:0}
+.ps-canvas h2{font-size:16px;line-height:1.4;font-weight:750;color:#e7eff9;margin:0 0 14px}
+.ps-canvas p{font-size:13px;line-height:1.65}
+.ps-canvas small{font-size:11px;color:#91a6be;line-height:1.5}
+.ps-canvas a{color:#7dd3fc}
+.ps-canvas label{display:block;font-size:12px;font-weight:600;color:#b8c9db;margin-bottom:14px}
+.ps-canvas input:not([type=checkbox]),.ps-canvas select,.ps-canvas textarea{display:block;width:100%;padding:10px 11px;min-height:40px;border:1px solid #344a63;border-radius:6px;background:#080f1b;color:#edf5ff;font:inherit;margin-top:6px}
+.ps-canvas input::placeholder,.ps-canvas textarea::placeholder{color:#72879f}
+.ps-canvas input[type=checkbox]{width:16px;height:16px;accent-color:#38bdf8}
+.ps-canvas textarea{min-height:110px;resize:vertical}
+.ps-canvas :is(input,select,textarea):focus-visible{outline:2px solid #38bdf8;outline-offset:2px}
+.ps-canvas button,.ps-canvas .portal-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:37px;padding:8px 13px;border:1px solid #347bd8;border-radius:6px;background:#1d4ed8;color:#fff;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer}
+.ps-canvas button:hover{background:#2563eb}
+.ps-canvas button:disabled{opacity:.5;cursor:wait}
+.ps-canvas .portal-secondary{border-color:#334a65;background:#101f32;color:#bfdbf3}
+.ps-canvas .portal-card{background:#0d1929;border:1px solid #263a52;border-radius:9px;padding:18px;box-shadow:none}
+.ps-canvas .portal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.ps-canvas .portal-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.ps-canvas .portal-message{background:#0e2437;border:1px solid #285272;border-radius:6px;padding:12px 14px;margin:12px 0;font-size:12px;color:#b6d5ed;overflow-wrap:anywhere}
+.ps-canvas .portal-error{background:#3b151c;border-color:#933a4b;color:#fecdd3}
+.ps-canvas .portal-tabs{display:flex;gap:5px;flex-wrap:wrap;padding:0 0 12px;margin:14px 0;border-bottom:1px solid #263a52}
+.ps-canvas .portal-tabs button{border:1px solid transparent;border-radius:5px;background:transparent;color:#90aac3;font-size:11px;min-height:33px;padding:7px 10px}
+.ps-canvas .portal-tabs button[aria-current=true]{background:#123550;border-color:#246384;color:#b3edff}
+.ps-canvas .portal-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 12px}
+.ps-canvas .portal-stat{background:#0d1929;border:1px solid #263a52;border-left:3px solid #258fb8;border-radius:7px;padding:13px 16px}
+.ps-canvas .portal-stat small{color:#9bb2c9;font-size:11px}
+.ps-canvas .portal-stat strong{display:block;color:#eff7ff;font-size:27px;line-height:1.3;margin-top:5px}
+.ps-canvas .portal-table{width:100%;border-collapse:collapse;font-size:12px}
+.ps-canvas .portal-table th{background:#101f32;color:#9fb7cf;font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:11px 12px;border-bottom:1px solid #30455f;text-align:left;white-space:nowrap}
+.ps-canvas .portal-table td{padding:13px 12px;border-bottom:1px solid #22364d;text-align:left;vertical-align:middle}
+.ps-canvas .portal-table tbody tr:hover{background:#12243a}
+.ps-canvas .portal-pill{display:inline-flex;padding:4px 8px;background:#172d45;border:1px solid #34506f;border-radius:5px;color:#b8d3eb;font-size:10px;white-space:nowrap}
+.ps-canvas .portal-pill[data-status=new],.ps-canvas .portal-pill[data-status=triage]{background:#3b2d13;border-color:#795b26;color:#f5d68a}
+.ps-canvas .portal-pill[data-status=pending_review]{background:#302244;border-color:#5c4383;color:#dbbfff}
+.ps-canvas .portal-pill[data-status=closed],.ps-canvas .portal-pill[data-status=approved]{background:#0b322d;border-color:#21695e;color:#93e7cc}
+.ps-canvas .portal-record{padding:16px;border:1px solid #2a4059;border-radius:7px;background:#101d2e;margin:12px 0}
+.ps-canvas .portal-record p{white-space:pre-wrap}
+.ps-canvas .portal-record small{overflow-wrap:anywhere}
+.ps-canvas .portal-eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#67c7e7;font-weight:750}
+@media(max-width:760px){.ps-toolbar{flex-wrap:wrap;gap:7px}.ps-toolbar>div{flex-basis:100%;max-width:none}.ps-primary-action{flex:1}.ps-section-heading{padding:14px 12px}.ps-canvas{padding:12px}.ps-canvas .portal-grid{grid-template-columns:1fr}.ps-canvas .portal-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ps-canvas .portal-card{padding:13px}.ps-canvas .portal-table{min-width:690px}}
