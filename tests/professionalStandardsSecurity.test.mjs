@@ -74,7 +74,7 @@ assert.equal((await call({action:'export',ps_access:reviewToken})).httpStatus,20
 actor={...investigator,id:'other-investigator'};
 await db.PSAccess.create({user_id:actor.id,session_hash:await digest('other-secret'),verified:true,session_expires_at:new Date(Date.now()+60000).toISOString()});
 assert.equal((await call({action:'get',case_id:c.id,ps_access:'other-secret'})).httpStatus,403);
-actor=null;
+actor=null;c.tracking_failures=0;c.tracking_locked_until='';
 for(let i=0;i<5;i++)assert.equal((await call({action:'track',reference:receipt.reference,tracking_code:receipt.tracking_code==='9999'?'9998':'9999'})).httpStatus,404);
 assert.equal((await call({action:'track',reference:receipt.reference,tracking_code:receipt.tracking_code})).httpStatus,429,'four-digit codes must have persistent case-level attempt locks');
 c.tracking_locked_until=new Date(Date.now()-1000).toISOString();
