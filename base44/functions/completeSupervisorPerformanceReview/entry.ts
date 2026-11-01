@@ -1,3 +1,4 @@
+import {linkSubmittedReport} from './reportLink.ts';
 import { isOutOfOffice } from './absencePolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -129,7 +130,8 @@ Deno.serve(async (req) => {
       source_name: 'Performance Reviews',
     }).catch(() => null);
 
-    return Response.json({ success: true, workflow_stage: 'officer_pending' });
+    const receipt=await linkSubmittedReport(base44.asServiceRole.entities,me,'PerformanceReview',await base44.asServiceRole.entities.PerformanceReview.get(reviewId));
+    return Response.json({ success: true, workflow_stage: 'officer_pending',receipt });
   } catch (error) {
     console.error('completeSupervisorPerformanceReview failed', error);
     return Response.json({ error: error?.message || 'Unable to submit supervisor performance ratings' }, { status: 500 });

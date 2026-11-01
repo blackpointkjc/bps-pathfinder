@@ -1,3 +1,4 @@
+import {linkSubmittedReport} from './reportLink.ts';
 import {verifiedPS} from './psVerification.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -90,7 +91,8 @@ await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:
     }
 
     const updated = await base44.asServiceRole.entities.InspectionReport.update(inspection_id, clean);
-    return Response.json({ success: true, inspection: updated });
+    const receipt=await linkSubmittedReport(base44.asServiceRole.entities,user,'InspectionReport',{...existing,...clean,...updated,id:inspection_id});
+    return Response.json({ success: true, inspection: updated,receipt });
   } catch (error) {
     return Response.json({ error: error?.message || 'Unable to update inspection draft' }, { status: 500 });
   }

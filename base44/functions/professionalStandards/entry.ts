@@ -1,3 +1,4 @@
+import {linkSubmittedReport} from './reportLink.ts';
 import {globalCaseTools,linkedCaseTools} from './caseTools.ts';
 import {createClientFromRequest,text,roles,manager,psRole,identity,hash,random,fail,audit,notify,actorName} from './security.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -40,17 +41,6 @@ async function legacyRequest(base44,db,u,body,privileged=false){
  return Response.json({result,receipt});
 }
 
-async function linkSubmittedReport(db,u,name,report){
- const prior=await db.PSCase.filter({source_entity:name,source_record_id:report.id},'-created_date',1);
- if(prior[0])return {reference:prior[0].reference,existing:true};
- const tracking_code=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,'0');
- const reference='IA-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
- const description=text(report.description||report.observations||report.summary||report.supervisor_notes||report.incident_description||report.comments||JSON.stringify(report),12000);
- const c=await db.PSCase.create({reference,tracking_hash:await hash(tracking_code),kind:name==='Commendation'?'commendation':'complaint',source_type:'staff_report',source_entity:name,source_record_id:report.id,anonymous:name==='ConfidentialReport'&&report.anonymous===true,complainant_name:actorName(u),contact_preference:'none',incident_date:text(report.incident_date||report.inspection_date||report.review_date||report.created_date||new Date().toISOString(),40),location:text(report.location||report.location_name||'Internal personnel report',500),officers:text(report.officer_name||report.officer_inspected||report.officer_email||'Not identified',1000),officer_ids:report.officer_id?[report.officer_id]:[],description,status:'new',public_status:'Received',public_message:'Your report was received by Professional Standards.',category:name,priority:'normal',version:1,legal_hold:false});
- await db.PSRecord.create({case_id:c.id,kind:'source_report',title:'Submitted '+name,body:'Original report ID: '+report.id,source_entity:name,source_record_id:report.id,author_id:u.id,author_name:actorName(u),status:'linked'});
- await audit(db,u,'staff_report_submitted',c.id,name+' '+report.id);
- return {reference,tracking_code,submitted_at:c.created_date||new Date().toISOString()};
-}
 
 const kinds=['note','interview','task','allegation','corrective_action','policy','evidence'];
 const allowedFiles=/^(image\/(jpeg|png|webp|heic)|video\/(mp4|quicktime|webm)|audio\/(mpeg|mp4|wav|x-wav|ogg|webm)|application\/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)|text\/plain)$/;

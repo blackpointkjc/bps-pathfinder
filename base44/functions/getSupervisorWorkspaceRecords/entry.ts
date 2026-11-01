@@ -1,3 +1,4 @@
+import {linkSubmittedReport} from './reportLink.ts';
 import {verifiedPS} from './psVerification.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -172,9 +173,10 @@ await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.em
    else if(action==='create')result=await sdk.asServiceRole.entities[entity].create(data);
    else result=await sdk.asServiceRole.entities[entity].update(id,data);
    await sdk.asServiceRole.entities.AuditLog.create({entity_type:entity,entity_id:String(result?.id||id),action,actor_id:String(me.id),actor_name:String(me.email||''),timestamp:new Date().toISOString(),description:`Scoped supervisor ${action}: ${kind}`}).catch(()=>null);
-   return Response.json({success:true,record:result});
+   const receipt=action!=='delete'&&result?.id&&String(result.status||data.status||'').toLowerCase()!=='draft'?await linkSubmittedReport(sdk.asServiceRole.entities,me,entity,{...existing,...data,...result}):null;
+   return Response.json({success:true,record:result,receipt});
   }
-  return Response.json({success:true,platoon_commands:kind==='personnel'?platoon_commands:undefined,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_original_url||p.profile_photo_url||'',mobile_phone:p.mobile_phone||'',work_email:p.work_email||p.email,assigned_site_name:p.assigned_site_name||'',assigned_location:p.assigned_location||'',assigned_locations:p.assigned_locations||[],assigned_sites:p.assigned_sites||[],platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
+  return Response.json({success:true,platoon_commands:kind==='personnel'?platoon_commands:undefined,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_url||p.profile_photo_original_url||'',mobile_phone:p.mobile_phone||'',work_email:p.work_email||p.email,assigned_site_name:p.assigned_site_name||'',assigned_location:p.assigned_location||'',assigned_locations:p.assigned_locations||[],assigned_sites:p.assigned_sites||[],platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
         termination_date:p.termination_date||'',user_type:p.user_type||'',account_type:p.account_type||'',
         platoon:p.platoon,division:p.division,subdivision:p.subdivision,substation:p.substation,unit_number:p.unit_number})),locations:locations.map((p:any)=>({id:p.id,site_name:p.site_name,division:p.division,subdivision:p.subdivision,substation:p.substation}))});
  }catch(error:any){console.error('Scoped supervisor records failed',error);return Response.json({error:'Unable to load supervisor records safely; retry.'},{status:503});}
