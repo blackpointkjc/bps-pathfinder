@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {transformSync} from 'esbuild';
-let actor=null,serial=0,deliveries=[];
+let actor=null,serial=0,deliveries=[],companyAvailable=true,coreAvailable=true,nativeAvailable=true,nativeInvites=[];
 const tables={};
 const testHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('test-current-session')))).map(v=>v.toString(16).padStart(2,'0')).join('');
 tables.PortalAuthSession=[{id:'mock-session',token_hash:testHash,started_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),revoked:false}];
@@ -14,8 +14,8 @@ const db=new Proxy({}, {get(_,name){tables[name]??=[];return {
  filter:async(q,_sort,limit=1000)=>tables[name].filter(r=>match(r,q)).slice(0,limit).map(v=>({...v})),
  list:async()=>tables[name].map(v=>({...v}))
  };}});
-const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,integrations:{Core:{SendEmail:async p=>{deliveries.push(p);}}}}};
-function load(name){let source=fs.readFileSync('base44/functions/'+name+'/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','async function handler(req){');source=transformSync(source,{loader:'ts',target:'es2022'}).code;return new Function('createClientFromRequest','companyDelivery',source+';return handler;')(()=>sdk,async(_sdk,to,subject,body)=>{deliveries.push({to,subject,body});return true;});}
+const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,users:{inviteUser:async(email,role)=>{if(!nativeAvailable)throw Error('native unavailable');nativeInvites.push({email,role});await db.User.create({email,role,additional_roles:[]});return{success:true};}},integrations:{Core:{SendEmail:async p=>{if(!coreAvailable)throw Error('provider unavailable');deliveries.push(p);}}}}};
+function load(name){let source=fs.readFileSync('base44/functions/'+name+'/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','async function handler(req){');source=transformSync(source,{loader:'ts',target:'es2022'}).code;return new Function('createClientFromRequest','companyDelivery',source+';return handler;')(()=>sdk,async(_sdk,to,subject,body)=>{if(!companyAvailable)throw Error('company unavailable');deliveries.push({to,subject,body});return true;});}
 const register=load('portalRegistration'),invite=load('createPortalAccount');
 async function call(fn,payload){tables.PortalAuthSession[0].user_id=actor?.id;const r=await fn(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer test-current-session'},body:JSON.stringify(payload)}));return {httpStatus:r.status,...await r.json()};}
 actor=await db.User.create({email:'new@example.test',role:'user',additional_roles:[]});
@@ -49,3 +49,8 @@ actor=await db.User.get(pending.id);let denied=await call(register,{action:'prof
 actor=tables.User.find(v=>v.email==='admin@example.test');assert.equal((await call(register,{action:'review_account',user_id:pending.id,decision:'restore_pending'})).success,true);assert.equal((await db.User.get(pending.id)).account_status,'pending');
 actor={...actor,disabled:true};assert.equal((await call(invite,{accountType:'visitor',email:'x@example.test',first_name:'No',last_name:'Access'})).httpStatus,401);
 console.log('PASS: registration cannot self-grant access; invitations retain identity without storing passwords; visitor and student accounts stay pending; trainer permissions are scoped; existing active accounts are preserved; invitation delivery is reported.');
+
+actor=await db.User.create({email:'fallback-admin@example.test',role:'admin'});companyAvailable=false;coreAvailable=false;
+let fallback=await call(invite,{accountType:'visitor',email:'fallback-guest@example.test',first_name:'Fallback',last_name:'Guest'});assert.equal(fallback.email_sent,true);assert.equal(nativeInvites.at(-1).role,'user');assert.ok(tables.User.some(v=>v.email==='fallback-guest@example.test'&&v.account_status==='pending'&&v.portal_approved===false));
+nativeAvailable=false;fallback=await call(invite,{accountType:'visitor',email:'failed-guest@example.test',first_name:'Failed',last_name:'Guest'});assert.equal(fallback.email_sent,false);assert.ok(fallback.email_error);assert.equal(tables.PortalInvitation.filter(v=>v.email==='failed-guest@example.test').length,1);
+console.log('PASS: company-mail failures fall back to the native account invitation provider with pending access; complete delivery failure is reported without a false sent confirmation.');
