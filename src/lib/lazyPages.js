@@ -2,6 +2,7 @@ import { lazy,createElement,useState } from 'react';
 import Layout,{canAccessPage} from '@/Layout';
 import {prepareToolLoaders} from './workspacePreparation';
 import {queryClientInstance} from './query-client';
+import {withRequestTimeout} from './requestTimeout';
 import generatedConfig from '../pages.config.js?raw';
 
 // Read generated route metadata as text, preserving aliases without eager page imports.
@@ -58,7 +59,12 @@ export function prepareWorkspace(user,onProgress){
   }
   const photo=user.profile_photo_url || user.profile_photo_original_url;
   if(photo)await new Promise(resolve=>{const image=new Image();const timer=setTimeout(resolve,5000);const done=()=>{clearTimeout(timer);resolve();};image.onload=done;image.onerror=done;image.src=photo;if(image.complete)done();});
-  // Only startup requests above gate Welcome; ongoing GPS/chat polling cannot block entry.
+  // Await the initial visible workspace reads once. Their later polling cycles
+  // and unrelated background GPS traffic must never hold Welcome open.
+  const initialReads=queryClientInstance.getQueryCache().findAll({fetchStatus:'fetching'})
+    .filter(query=>query.getObserversCount()>0&&query.state.data===undefined)
+    .map(query=>query.promise).filter(Boolean);
+  if(initialReads.length)await withRequestTimeout(Promise.allSettled(initialReads),25000,'Initial workspace data');
  }}).catch(error=>{prepared.delete(user.id);throw error;});
  prepared.set(user.id,task);return task;
 }
