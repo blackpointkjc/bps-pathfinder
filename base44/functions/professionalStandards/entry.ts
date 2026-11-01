@@ -28,7 +28,7 @@ export default async function(req){
  try{
   let body,files=[];
   if(req.headers.get('content-type')?.includes('multipart/form-data')){
-   const form=await req.formData(); body=JSON.parse(String(form.get('payload')||'{}'));files=form.getAll('files').filter(f=>f instanceof File);
+   const form=await req.formData(); body=JSON.parse(String(form.get('payload')||'{}'));files=[...form.entries()].filter(([key,f])=>key.startsWith('file_')&&f instanceof File).map(([,f])=>f);
   }else body=await req.json();
   const action=text(body.action,50);
   if(action==='contact')return Response.json({phone:'(855) 827-7911',email:'info@blackpointkjc.com',office_hours:'Contact the office for current hours and language or accessibility assistance.',address:'701 E Franklin St, Suite 105 1052, Richmond, VA 23219',instructions:'For immediate danger or an emergency, call 911. This form is for complaints and commendations, not emergency dispatch. You may report anonymously. Keep your reference and private tracking code; anonymous codes cannot be recovered.'});
@@ -61,6 +61,28 @@ export default async function(req){
   }
   const u=await identity(base44),role=psRole(u);
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
+  if(action==='request_access'){
+   const prior=await db.PSAccess.filter({user_id:u.id},'-created_date',1);
+   if(prior[0]&&Date.now()-Date.parse(prior[0].created_date)<60000)fail('Wait one minute before requesting another code.',429);
+   const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');
+   const row=await db.PSAccess.create({user_id:u.id,code_hash:await hash(code),session_hash:'',expires_at:new Date(Date.now()+600000).toISOString(),attempts:0,verified:false});
+   const sent=await notify(base44,u.email,'Your Professional Standards verification code','Your code is '+code+'. It expires in 10 minutes. Do not share it. If you did not request this code, contact administration.');
+   if(!sent)fail('The verification email could not be delivered. Contact administration or retry later.',503);
+   await audit(db,u,'staff_verification_requested');
+   return Response.json({challenge_id:row.id,success:true});
+  }
+  if(action==='verify_access'){
+   const row=await db.PSAccess.get(text(body.challenge_id,100)).catch(()=>null);
+   if(!row||row.user_id!==u.id||row.verified||row.attempts>=5||Date.parse(row.expires_at)<Date.now())fail('Verification expired. Request a new code.',403);
+   await db.PSAccess.update(row.id,{attempts:Number(row.attempts||0)+1});
+   if(await hash(text(body.code,10))!==row.code_hash)fail('Incorrect verification code.',403);
+   const session=random();
+   await db.PSAccess.update(row.id,{verified:true,code_hash:'',session_hash:await hash(session),session_expires_at:new Date(Date.now()+4*3600000).toISOString()});
+   await audit(db,u,'staff_verification_completed');
+   return Response.json({ps_access:session,success:true});
+  }
+  const grants=body.ps_access?await db.PSAccess.filter({user_id:u.id,session_hash:await hash(text(body.ps_access,100)),verified:true},'-created_date',1):[];
+  if(!grants[0]||Date.parse(grants[0].session_expires_at)<Date.now())return Response.json({error:'Additional email verification is required for confidential investigations.',code:'PS_VERIFICATION_REQUIRED'},{status:403});
   const review=role==='reviewer';
   const canRead=c=>review||!c.investigator_id||c.investigator_id===u.id;
   const staff=await db.User.list('-created_date',1000);
@@ -78,6 +100,11 @@ export default async function(req){
    const rows=await db.PSCase.list('-created_date',1000);
    await audit(db,u,'restricted_export','',String(rows.length)+' case summaries');
    return Response.json({rows:rows.map(c=>({reference:c.reference,kind:c.kind,status:c.status,category:c.category,priority:c.priority,created_date:c.created_date,closed_at:c.closed_at||''})),limited:rows.length===1000});
+  }
+  if(action==='audit_history'){
+   if(!review)fail('Reviewer access required.',403);
+   await audit(db,u,'audit_history_view');
+   return Response.json({events:await db.PSAudit.list('-created_date',250)});
   }
   const c=await db.PSCase.get(text(body.case_id,100));
   if(!c||!canRead(c))fail('Case not available.',403);

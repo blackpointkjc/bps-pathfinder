@@ -1,4 +1,5 @@
 import React,{useState} from 'react';
+import {createClient} from '@base44/sdk';
 import {Link} from 'react-router-dom';
 import {base44,clearBase44ReadCache} from '@/api/base44Client';
 import {appParams} from '@/lib/app-params';
@@ -12,7 +13,9 @@ export default function PortalLogin(){
  const change=(key,value)=>setForm(p=>({...p,[key]:value}));
  const switchMode=m=>{setMode(m);setError('');setMessage('');};
  async function enter(){
-  const response=await base44.auth.loginViaEmailPassword(form.email.trim().toLowerCase(),form.password);
+  const loginClient=createClient({appId:appParams.appId,serverUrl:appParams.serverUrl,requiresAuth:false});
+  loginClient.auth.logout=()=>{};
+  const response=await loginClient.auth.loginViaEmailPassword(form.email.trim().toLowerCase(),form.password);
   if(response.access_token){base44.auth.setToken(response.access_token);appParams.token=response.access_token;}
   clearBase44ReadCache();
   const r=await base44.functions.invoke('portalRegistration',{action:'profile',first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type});

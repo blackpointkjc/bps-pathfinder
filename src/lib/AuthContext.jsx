@@ -502,6 +502,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.warn('[AUTH] Sign-out cache refresh partially failed:', error?.message);
     }
+    try { sessionStorage.removeItem('bps:ps-access'); } catch {}
     setUser(null);
     setIsAuthenticated(false);
     setAccountLock(null);

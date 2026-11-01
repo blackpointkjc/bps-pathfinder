@@ -4,10 +4,10 @@ import {base44} from '@/api/base44Client';
 import '@/components/portal.css';
 
 export async function psCall(payload,files=[]){
- let body=payload;
- if(files.length){body=new FormData();body.append('payload',JSON.stringify(payload));files.forEach(f=>body.append('files',f));}
+ let body={...payload,ps_access:sessionStorage.getItem('bps:ps-access')||''};
+ if(files.length){body={payload:JSON.stringify(body)};files.forEach((f,i)=>body['file_'+i]=f);}
  const r=await base44.functions.invoke('professionalStandards',body);
- if(r.data?.error)throw new Error(r.data.error);
+ if(r.data?.error)throw Object.assign(new Error(r.data.error),{code:r.data.code});
  return r.data;
 }
 export const EvidenceInput=({files,setFiles})=><label>Supporting evidence <small>(optional · up to 5 files, 20 MB each)</small><input type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm,audio/*,.pdf,.doc,.docx,.txt" onChange={e=>setFiles(Array.from(e.target.files||[]))}/><small>Photos, video, audio, PDF, Word or text. Uploads are private. Do not include files you do not have authority to share.</small>{files.map((f,i)=><span key={i} className="block text-xs mt-1">{f.name} ({Math.ceil(f.size/1024)} KB)</span>)}</label>;

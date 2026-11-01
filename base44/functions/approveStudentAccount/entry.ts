@@ -20,7 +20,7 @@ Deno.serve(async req => {
   const required = ['first_name','last_name','date_of_birth','email','ssn','mobile_phone','address','city','state','zip','dcjs_number'];
   const missing = required.filter(field => !String(target[field] || '').trim());
   if (missing.length) return Response.json({error:'Student intake is incomplete',missing},{status:400});
-  await api.asServiceRole.entities.User.update(target.id,{additional_roles:['student'],rank:'Student'});
+  await api.asServiceRole.entities.User.update(target.id,{additional_roles:['student'],rank:'Student',portal_approved:true});
   await api.asServiceRole.entities.StudentEnrollment.update(enrollment.id, {status:'approved',approved_by:actor.email || '',approved_at:new Date().toISOString(),user_id:target.id});
   return Response.json({success:true,student_id:target.id});
  } catch(error) {
