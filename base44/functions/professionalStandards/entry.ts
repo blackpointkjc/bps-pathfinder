@@ -171,6 +171,14 @@ export default async function(req){
   }
   const c=await db.PSCase.get(text(body.case_id,100));
   if(!c||!canRead(c))fail('Case not available.',403);
+  if(action==='resend_assignment'){
+   if(!review)fail('Reviewer access required.',403);
+   const person=eligible.find(p=>p.id===c.investigator_id);
+   if(!person)fail('Assign an active investigator before sending an alert.');
+   const email_sent=await notify(base44,person.email,'Professional Standards assignment '+c.reference,'A case is assigned to you. Sign in to Pathfinder and open Professional Standards.',u);
+   await audit(db,u,'assignment_notification_resent',c.id);
+   return Response.json({success:true,email_sent});
+  }
   const records=await db.PSRecord.filter({case_id:c.id},'created_date',1000);
   const caseTools=await linkedCaseTools({action,body,db,u,c,records,review,editable:review||c.investigator_id===u.id,base44,audit,notify,fail,text,actorName});
   if(caseTools)return caseTools;

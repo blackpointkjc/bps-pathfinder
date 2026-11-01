@@ -26,3 +26,20 @@ const fakeFetch=async(url,options)=>{
 const send=compile(fs.readFileSync('base44/functions/professionalStandards/graphDelivery.ts','utf8'),'sendManagementEmail',{fetch:fakeFetch,AbortSignal});
 assert.equal(await send(sdk,'test@example.invalid','Test subject','Test body'),true);assert.equal(requests.length,2);assert.equal(updated.refresh_token,'test-rotated');
 console.log('PASS: account invitations and IA mail use the existing management Outlook sender when SMTP is unavailable; unrelated employee mailboxes are never borrowed; token refresh and Graph delivery are validated without sending email.');
+const fullSecurity=fs.readFileSync('base44/functions/professionalStandards/security.ts','utf8');
+let notifySource=fullSecurity.slice(fullSecurity.indexOf('export async function notify'),fullSecurity.indexOf('export {createClientFromRequest}'));
+notifySource=notifySource.replace("const {companyDelivery}=await import('./delivery.ts');","const companyDelivery=deliver;");
+const notifications=[];
+const queueSdk={asServiceRole:{entities:{PSNotification:{
+ create:async value=>{const row={...value,id:'message-1'};notifications.push(row);return row;},
+ update:async(id,patch)=>{const row=notifications.find(v=>v.id===id);Object.assign(row,patch);return row;},
+ get:async id=>notifications.find(v=>v.id===id)
+}},integrations:{Core:{SendEmail:async()=>{throw Error('unavailable');}}}}};
+let connectionRestored=false;
+const queue=compile(notifySource,'notify',{deliver:async()=>{if(!connectionRestored)throw Error('Management Microsoft authorization expired');return true;}});
+assert.equal(await queue(queueSdk,'test@example.invalid','Test assignment','Test body',{id:'reviewer'}),false);
+assert.equal(notifications[0].status,'failed');assert.match(notifications[0].last_error,/Reconnect/);
+connectionRestored=true;
+assert.equal(await queue(queueSdk,'test@example.invalid','Test assignment','Test body',{id:'reviewer'},notifications[0].id),true);
+assert.equal(notifications.length,1);assert.equal(notifications[0].status,'sent');assert.equal(notifications[0].attempts,2);assert.equal(notifications[0].last_error,'');
+console.log('PASS: failed email is retained with its connection error and can be retried without duplicating the notification.');

@@ -101,6 +101,8 @@ assert.equal((await call({action:'assign_training',case_id:c.id,officer_id:subje
 actor=reviewer;
 const assignPayload={action:'assign_training',case_id:c.id,officer_id:subject.id,requirement_id:requirement.id,due_date:'2026-12-01',reason:'Private synthetic corrective action rationale.'};
 assert.equal((await call(assignPayload)).httpStatus,200);assert.equal((await call(assignPayload)).existing,true);
+assert.equal((await call({action:'assign_training',case_id:c.id,officer_id:subject.id,training_name:'Synthetic directed training',training_instructions:'Complete this test-only course and submit completion evidence.',due_date:'2026-12-02',reason:'Private synthetic documented remedial instruction.'})).httpStatus,200);
+assert.ok(tables.TrainingAssignment.some(v=>v.training_name==='Synthetic directed training'&&v.status==='assigned'));
 const training=tables.TrainingAssignment.find(v=>v.ps_case_id===c.id);assert.ok(training);assert.equal(training.status,'assigned');assert.equal(training.description.includes('Private synthetic'),false);
 const corrective=tables.PSRecord.find(v=>v.linked_id===training.id);
 assert.equal((await call({action:'complete_record',case_id:c.id,record_id:corrective.id})).httpStatus,400);
