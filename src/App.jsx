@@ -1,3 +1,4 @@
+import SubmissionReceipt from '@/components/ia/SubmissionReceipt';
 import { registerDiagnosticPages } from '@/utils/appDiagnostics';
 import AppUpdateNotice from '@/components/AppUpdateNotice';
 import PortalLogin from '@/components/PortalLogin';
@@ -455,7 +456,7 @@ function App() {
           <NavigationTracker />
           <AuthenticatedApp />
         </Router>
-        <Toaster />
+        <Toaster /><SubmissionReceipt />
         <VisualEditAgent />
       </QueryClientProvider>
     </AuthProvider>

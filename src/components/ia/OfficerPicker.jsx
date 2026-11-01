@@ -1,0 +1,7 @@
+import {useState} from 'react';
+export default function OfficerPicker({officers=[],value=[],onChange}){
+ const [search,setSearch]=useState('');
+ const selected=officers.filter(p=>value.includes(p.id));
+ const matches=officers.filter(p=>[p.name,p.badge_number,p.unit_number,p.email].join(' ').toLowerCase().includes(search.trim().toLowerCase()));
+ return <section className="my-3 rounded-xl border border-slate-700 p-4"><label>Find personnel by name, badge or unit<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search personnel…"/></label><div className="my-2 flex flex-wrap gap-2">{selected.map(p=><button type="button" key={p.id} onClick={()=>onChange(value.filter(id=>id!==p.id))} className="rounded-full border border-cyan-600 bg-cyan-950 px-3 py-1 text-sm">{p.name} ×</button>)}</div><div className="max-h-56 overflow-auto" aria-label="Officer search results">{matches.map(p=><label key={p.id} className="flex items-center gap-3 border-t border-slate-700 py-3"><input type="checkbox" style={{width:'auto'}} checked={value.includes(p.id)} onChange={e=>onChange(e.target.checked?[...new Set([...value,p.id])]:value.filter(id=>id!==p.id))}/>{p.profile_photo_url&&<img src={p.profile_photo_url} alt="" className="h-9 w-9 rounded-full object-cover"/>}<span className="flex-1"><strong>{p.name}</strong><small className="block text-slate-400">Badge {p.badge_number||'—'} · Unit {p.unit_number||'—'}</small></span></label>)}{!matches.length&&<p className="text-sm text-slate-400">No personnel match this search.</p>}</div></section>;
+}
