@@ -526,7 +526,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if(!isAuthenticated||!user?.id)return;
-    return watchInactivity({userId:user.id,onExpire:()=>{
+    return watchInactivity({userId:user.id,issuedAt:tokenIssuedAt(appParams.token),onExpire:()=>{
       try{localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY,JSON.stringify({reason:'You were signed out after 30 minutes of inactivity. Please sign in again.',issuedBy:'Pathfinder session security',issuedAt:new Date().toISOString()}));}catch{}
       setUser(null);setIsAuthenticated(false);setAccountLock(null);
       clearBase44ReadCache();
