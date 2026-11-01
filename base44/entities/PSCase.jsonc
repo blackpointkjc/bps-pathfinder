@@ -1,0 +1,96 @@
+{
+  "name": "PSCase",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string"
+    },
+    "tracking_hash": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "anonymous": {
+      "type": "boolean"
+    },
+    "complainant_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "contact_preference": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string"
+    },
+    "accessibility": {
+      "type": "string"
+    },
+    "incident_date": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "officers": {
+      "type": "string"
+    },
+    "witnesses": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "public_status": {
+      "type": "string"
+    },
+    "public_message": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string"
+    },
+    "investigator_id": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string"
+    },
+    "reviewer_id": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "closed_at": {
+      "type": "string"
+    },
+    "retention_until": {
+      "type": "string"
+    },
+    "legal_hold": {
+      "type": "boolean"
+    },
+    "version": {
+      "type": "integer"
+    }
+  },
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}
