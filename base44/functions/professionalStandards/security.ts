@@ -19,9 +19,19 @@ export const actorName = u => [u?.rank,u?.last_name].filter(Boolean).join(' ')||
 export async function audit(db,u,action,caseId='',details='') {
   await db.PSAudit.create({case_id:caseId,actor_id:u?.id||'',actor_name:actorName(u),action,details:text(details,2000)});
 }
-export async function notify(base44,to,subject,body,actor=null) {
-  if(!to)return false;
-  try{const {companyDelivery}=await import('./delivery.ts');return await companyDelivery(base44,to,subject,body,actor);}catch{}
-  try{await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});return true;}catch{return false;}
+export async function notify(base44,to,subject,body,actor=null,existingId='') {
+ if(!to)return false;
+ const db=base44.asServiceRole.entities;
+ let item;
+ try{
+  const prior=existingId?await db.PSNotification.get(existingId):null;
+  const value={to,subject,body,status:'sending',last_error:'',last_attempt_at:new Date().toISOString(),attempts:Number(prior?.attempts||0)+1};
+  item=prior?await db.PSNotification.update(prior.id,value):await db.PSNotification.create(value);
+ }catch{}
+ let delivered=false,lastError='';
+ try{const {companyDelivery}=await import('./delivery.ts');delivered=await companyDelivery(base44,to,subject,body,actor);}catch(error){lastError=/expired|authorization|Microsoft|management/i.test(String(error?.message||''))?'Management email authorization is unavailable or expired. Reconnect the management Microsoft mailbox in Mail settings.':'The configured company SMTP sender could not accept the message. Check the sender connection in account email settings.';}
+ if(!delivered){try{await base44.asServiceRole.integrations.Core.SendEmail({to,subject,body});delivered=true;}catch{lastError=(lastError||'No authorized company sender is available.')+' Base44 email fallback also did not accept the message.';}}
+ if(item)await db.PSNotification.update(item.id,{status:delivered?'sent':'failed',last_error:delivered?'':lastError,...(delivered?{sent_at:new Date().toISOString()}:{})});
+ return delivered;
 }
 export {createClientFromRequest};

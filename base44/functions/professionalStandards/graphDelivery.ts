@@ -38,7 +38,7 @@ async function graphToken(base44: any) {
         last_error: 'Microsoft session expired; interactive sign-in required.',
         active: false,
       }).catch(() => null);
-      throw new Error('The management Microsoft session has expired. An administrator must sign in again before BOLO email can be sent.');
+      throw new Error('The management Microsoft session has expired. An administrator must sign in again before Pathfinder email can be sent.');
     }
     throw new Error('Microsoft email authorization failed. An administrator should reconnect the management mailbox.');
   }

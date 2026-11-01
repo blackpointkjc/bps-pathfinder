@@ -104,6 +104,12 @@
     "assigned_by": {
       "type": "string",
       "description": "Email of admin who assigned"
+    },
+    "ps_case_id": {
+      "type": "string"
+    },
+    "ps_case_reference": {
+      "type": "string"
     }
   },
   "required": [

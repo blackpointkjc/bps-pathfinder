@@ -225,7 +225,8 @@
         "active",
         "terminated",
         "on_leave",
-        "not_employee"
+        "not_employee",
+        "suspended"
       ],
       "default": "active",
       "rls": {

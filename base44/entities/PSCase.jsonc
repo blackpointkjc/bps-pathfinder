@@ -104,6 +104,21 @@
     },
     "source_record_id": {
       "type": "string"
+    },
+    "officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "outcome_summary": {
+      "type": "string"
+    },
+    "outcome_recorded_by": {
+      "type": "string"
+    },
+    "outcome_recorded_at": {
+      "type": "string"
     }
   },
   "rls": {

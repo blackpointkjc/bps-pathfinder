@@ -1,0 +1,36 @@
+{
+  "name": "PSNotification",
+  "type": "object",
+  "properties": {
+    "to": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "attempts": {
+      "type": "integer"
+    },
+    "last_attempt_at": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

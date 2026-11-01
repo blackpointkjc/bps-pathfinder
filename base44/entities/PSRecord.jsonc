@@ -61,6 +61,24 @@
     },
     "source_record_id": {
       "type": "string"
+    },
+    "officer_id": {
+      "type": "string"
+    },
+    "action_type": {
+      "type": "string"
+    },
+    "linked_entity": {
+      "type": "string"
+    },
+    "linked_id": {
+      "type": "string"
+    },
+    "previous_account_state": {
+      "type": "object"
+    },
+    "suspension_until": {
+      "type": "string"
     }
   },
   "rls": {

@@ -1,4 +1,4 @@
-export const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
+export const INACTIVITY_LIMIT_MS = 13 * 60 * 60 * 1000;
 // Filled with the session-revocation cutoff when this release is published.
 export const REAUTHENTICATE_AFTER = '2026-11-01T22:38:04.000Z';
 export const requiresFreshLogin = sessionStartedAt => !Number.isFinite(Date.parse(sessionStartedAt||'')) || Date.parse(sessionStartedAt) < Date.parse(REAUTHENTICATE_AFTER);

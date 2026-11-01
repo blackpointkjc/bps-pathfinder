@@ -531,7 +531,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if(!isAuthenticated||!user?.id)return;
     return watchInactivity({userId:user.id,issuedAt:Date.parse(user.__portal_session_started_at||''),onActivity:()=>window.dispatchEvent(new Event('bps:auth-activity')),onExpire:()=>{
-      try{localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY,JSON.stringify({reason:'You were signed out after 30 minutes of inactivity. Please sign in again.',issuedBy:'Pathfinder session security',issuedAt:new Date().toISOString()}));}catch{}
+      try{localStorage.setItem(FORCED_SIGN_OUT_NOTICE_KEY,JSON.stringify({reason:'You were signed out after 13 hours of inactivity. Please sign in again.',issuedBy:'Pathfinder session security',issuedAt:new Date().toISOString()}));}catch{}
       setUser(null);setIsAuthenticated(false);setAccountLock(null);
       clearBase44ReadCache();
       const publicPage=['/iaform','/publicprofessionalstandards'].includes(window.location.pathname.toLowerCase());
