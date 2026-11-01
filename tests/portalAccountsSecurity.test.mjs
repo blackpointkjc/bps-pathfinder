@@ -12,7 +12,7 @@ const db=new Proxy({}, {get(_,name){tables[name]??=[];return {
  list:async()=>tables[name].map(v=>({...v}))
  };}});
 const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,integrations:{Core:{SendEmail:async p=>{deliveries.push(p);}}}}};
-function load(name){let source=fs.readFileSync('base44/functions/'+name+'/entry.ts','utf8').replace(/^import .*;\n/gm,'');source=transformSync(source,{loader:'ts',target:'es2022'}).code.replace('export default async function','async function').replace(/export\s*\{[^}]*\};?/g,'');const fn=new Function('createClientFromRequest','companyDelivery',source+';return '+(source.match(/async function (\w+)\(/)?.[1]||'')+';');return fn(()=>sdk,async(_sdk,to,subject,body)=>{deliveries.push({to,subject,body});return true;});}
+function load(name){let source=fs.readFileSync('base44/functions/'+name+'/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','async function handler(req){');source=transformSync(source,{loader:'ts',target:'es2022'}).code;return new Function('createClientFromRequest','companyDelivery',source+';return handler;')(()=>sdk,async(_sdk,to,subject,body)=>{deliveries.push({to,subject,body});return true;});}
 const register=load('portalRegistration'),invite=load('createPortalAccount');
 async function call(fn,payload){const r=await fn(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}));return {httpStatus:r.status,...await r.json()};}
 actor=await db.User.create({email:'new@example.test',role:'user',additional_roles:[]});
