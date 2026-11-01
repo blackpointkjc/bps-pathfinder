@@ -141,7 +141,9 @@ export default async function(req){
    const investigator_id=review?text(input.investigator_id,100):u.id;
    if(investigator_id&&!eligible.some(p=>p.id===investigator_id))fail('Choose an active authorized investigator.');
    const reference='IA-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
-   const created=await db.PSCase.create({reference,tracking_hash:await hash(random()),kind:input.kind==='commendation'?'commendation':'complaint',source_type:source?'existing_report':'staff_intake',source_entity:sourceEntity,source_record_id:sourceId,anonymous:false,complainant_name:'Staff intake',contact_preference:'none',incident_date,location,officers:text(input.officers||source?.officer_name||source?.officer_inspected||source?.officer_email,1000),description,status:investigator_id?'investigating':'triage',public_status:'Under review',public_message:'',category:text(input.category||source?.complaint_type||source?.violation_type||'unclassified',200),priority:['low','normal','high','critical'].includes(input.priority)?input.priority:'normal',investigator_id,due_date:text(input.due_date,40),version:1,legal_hold:false});
+   const officer_ids=[...new Set(Array.isArray(input.officer_ids)?input.officer_ids.map(v=>text(v,100)):staff.filter(v=>source?.officer_email&&[v.email,v.work_email,v.pathfinder_email].includes(source.officer_email)).map(v=>v.id))];
+   if(officer_ids.length>25||officer_ids.some(id=>!staff.some(v=>v.id===id&&!['client','student','visitor'].some(r=>(v.additional_roles||[]).includes(r)||v.user_type===r))))fail('Choose valid involved officers.');
+   const created=await db.PSCase.create({reference,tracking_hash:await hash(random()),kind:input.kind==='commendation'?'commendation':'complaint',source_type:source?'existing_report':'staff_intake',source_entity:sourceEntity,source_record_id:sourceId,officer_ids,anonymous:false,complainant_name:'Staff intake',contact_preference:'none',incident_date,location,officers:text(input.officers||source?.officer_name||source?.officer_inspected||source?.officer_email,1000),description,status:investigator_id?'investigating':'triage',public_status:'Under review',public_message:'',category:text(input.category||source?.complaint_type||source?.violation_type||'unclassified',200),priority:['low','normal','high','critical'].includes(input.priority)?input.priority:'normal',investigator_id,due_date:text(input.due_date,40),version:1,legal_hold:false});
    await audit(db,u,'staff_case_opened',created.id,source?sourceEntity+' '+sourceId:'Staff intake');
    if(source)await db.PSRecord.create({case_id:created.id,kind:'source_report',title:'Linked '+sourceEntity,body:'Original report ID: '+sourceId,source_entity:sourceEntity,source_record_id:sourceId,author_id:u.id,author_name:actorName(u),status:'linked'});
    let email_sent=null;
@@ -242,7 +244,7 @@ export default async function(req){
   if(action==='complete_record'||action==='finding'){
    const r=records.find(r=>r.id===body.record_id);
    if(!r)fail('Record not found.',404);
-   if(['closed','approved'].includes(c.status))fail('Reopen the case before changing records.');
+   if(c.status==='closed'||action==='finding'&&c.status==='approved')fail('Reopen the case before changing findings or closed records.');
    let patch={};
    if(action==='finding'){
     if(r.kind!=='allegation'||!['sustained','not_sustained','unfounded','exonerated','policy_failure'].includes(body.finding))fail('Choose a valid allegation finding.');
