@@ -1,3 +1,4 @@
+import {IA_CATEGORIES,PUBLIC_UPDATE_MESSAGES,publicMessage} from './publicPolicy.ts';
 import {linkSubmittedReport} from './reportLink.ts';
 import {globalCaseTools,linkedCaseTools} from './caseTools.ts';
 import {createClientFromRequest,text,roles,manager,psRole,identity,hash,random,fail,audit,notify,actorName} from './security.ts';
@@ -43,7 +44,15 @@ async function legacyRequest(base44,db,u,body,privileged=false){
 
 const kinds=['note','interview','task','allegation','corrective_action','policy','evidence'];
 const allowedFiles=/^(image\/(jpeg|png|webp|heic)|video\/(mp4|quicktime|webm)|audio\/(mpeg|mp4|wav|x-wav|ogg|webm)|application\/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)|text\/plain)$/;
-const publicStates=['Received','Under review','Investigation in progress','Review completed','Closed'];
+const publicStates=Object.keys(PUBLIC_UPDATE_MESSAGES);
+const categoryValues=new Set(IA_CATEGORIES.map(([id])=>id));
+function caseCategory(value='unclassified',detail=''){
+ const category=text(value,100),category_detail=category==='other'?text(detail,300):'';
+ if(!categoryValues.has(category))fail('Choose a listed complaint category or Other.');
+ if(category==='other'&&category_detail.length<3)fail('Describe the Other category in at least three characters.');
+ return {category,category_detail};
+}
+const publicStateFor=status=>({new:'Received',triage:'Under review',investigating:'Investigation in progress',pending_review:'Under review',returned:'Investigation in progress',approved:'Review completed',closed:'Closed'})[status]||'Received';
 const buckets=new Map();
 function throttle(req,action){
  const key=String(req.headers.get('cf-connecting-ip')||req.headers.get('x-forwarded-for')||'shared').split(',')[0]+':'+action;
@@ -84,11 +93,10 @@ export default async function(req){
    if(Date.parse(body.incident_date)>Date.now()+86400000)fail('Incident date cannot be in the future.');
    if(files.length>5||files.some(f=>!allowedFiles.test(f.type)||f.size>20*1024*1024||f.size===0))fail('Check file types and the five-file / 20 MB per file limits.');
    const anonymous=body.anonymous===true;
-   if(!anonymous&&(!text(body.complainant_name)||!['email','phone','none'].includes(body.contact_preference)))fail('Enter your name and a contact preference, or choose anonymous.');
-   if(!anonymous&&body.contact_preference==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text(body.contact_email)))fail('Enter a valid email address.');
-   if(!anonymous&&body.contact_preference==='phone'&&!text(body.contact_phone))fail('Enter a phone number.');
+   if(!anonymous&&!text(body.complainant_name))fail('Enter your name or choose anonymous.');
+   const category=caseCategory(body.category||'unclassified',body.category_detail);
    const tracking_code=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,'0'),reference='PS-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
-   const c=await db.PSCase.create({reference,tracking_hash:await hash(tracking_code),kind:body.kind,anonymous,complainant_name:anonymous?'Anonymous':text(body.complainant_name,200),contact_email:anonymous?'':text(body.contact_email,250),contact_phone:anonymous?'':text(body.contact_phone,80),contact_preference:anonymous?'none':text(body.contact_preference,30),language:text(body.language,100),accessibility:text(body.accessibility,1000),incident_date:text(body.incident_date,40),location:text(body.location,500),officers:text(body.officers,1000),witnesses:text(body.witnesses,2000),description:text(body.description,12000),status:'new',public_status:'Received',public_message:'Your submission has been received for intake review.',category:'unclassified',priority:'normal',version:1,legal_hold:false});
+   const c=await db.PSCase.create({reference,tracking_hash:await hash(tracking_code),kind:body.kind,anonymous,complainant_name:anonymous?'Anonymous':text(body.complainant_name,200),contact_email:'',contact_phone:'',contact_preference:'none',language:text(body.language,100),accessibility:text(body.accessibility,1000),incident_date:text(body.incident_date,40),location:text(body.location,500),officers:text(body.officers,1000),witnesses:text(body.witnesses,2000),description:text(body.description,12000),status:'new',public_status:'Received',public_message:'Your submission has been received for intake review.',...category,priority:'normal',version:1,legal_hold:false});
    await audit(db,null,'public_submission',c.id,body.kind);
    let evidence_error='';
    try{await upload(base44,db,null,c,files);}catch{evidence_error='Your report was saved, but one or more evidence files could not be attached. Use your reference and private code to retry from Check Status.';}
@@ -114,7 +122,19 @@ export default async function(req){
     return Response.json({success:true});
    }
    if(action==='public_evidence'){await upload(base44,db,null,c,files);await audit(db,null,'public_evidence_added',c.id);return Response.json({success:true});}
-   return Response.json({reference:c.reference,kind:c.kind,status:c.public_status||'Received',message:c.public_message||'',submitted_at:c.created_date,updated_at:c.updated_date});
+   const state=publicStates.includes(c.public_status)?c.public_status:publicStateFor(c.status);
+   let investigator=null;
+   if(c.investigator_id){
+    const person=await db.User.get(c.investigator_id).catch(()=>null);
+    if(person&&psRole(person)){
+     const email=[person.work_email,person.pathfinder_email,person.email].find(v=>/^[^@\s]+@blackpointkjc\.com$/i.test(String(v||'')))||'IA@blackpointkjc.com';
+     const photo=String(person.profile_photo_url||'');
+     investigator={name:actorName(person),email,photo:/^(https:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(photo)?photo:''};
+    }
+   }
+   const history=await db.PSRecord.filter({case_id:c.id,kind:'public_update'},'-created_date',50);
+   const updates=history.filter(r=>publicStates.includes(r.title)).map(r=>({status:r.title,message:publicMessage(r.title,r.body),posted_at:r.created_date}));
+   return Response.json({reference:c.reference,kind:c.kind,status:state,message:publicMessage(state,c.public_message),investigator,updates,submitted_at:c.created_date,updated_at:c.updated_date});
   }
   const u=await identity(base44),role=psRole(u);
  if(!await __portalLoginIsCurrent(req,base44,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
@@ -153,9 +173,10 @@ export default async function(req){
    const investigator_id=review?text(input.investigator_id,100):u.id;
    if(investigator_id&&!eligible.some(p=>p.id===investigator_id))fail('Choose an active authorized investigator.');
    const reference='IA-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
+   const category=caseCategory(input.category||'unclassified',input.category_detail);
    const officer_ids=[...new Set(Array.isArray(input.officer_ids)?input.officer_ids.map(v=>text(v,100)):staff.filter(v=>source?.officer_email&&[v.email,v.work_email,v.pathfinder_email].includes(source.officer_email)).map(v=>v.id))];
    if(officer_ids.length>25||officer_ids.some(id=>!staff.some(v=>v.id===id&&!['client','student','visitor'].some(r=>(v.additional_roles||[]).includes(r)||v.user_type===r))))fail('Choose valid involved officers.');
-   const created=await db.PSCase.create({reference,tracking_hash:await hash(random()),kind:input.kind==='commendation'?'commendation':'complaint',source_type:source?'existing_report':'staff_intake',source_entity:sourceEntity,source_record_id:sourceId,officer_ids,anonymous:false,complainant_name:'Staff intake',contact_preference:'none',incident_date,location,officers:text(input.officers||source?.officer_name||source?.officer_inspected||source?.officer_email,1000),description,status:investigator_id?'investigating':'triage',public_status:'Under review',public_message:'',category:text(input.category||source?.complaint_type||source?.violation_type||'unclassified',200),priority:['low','normal','high','critical'].includes(input.priority)?input.priority:'normal',investigator_id,due_date:text(input.due_date,40),version:1,legal_hold:false});
+   const created=await db.PSCase.create({reference,tracking_hash:await hash(random()),kind:input.kind==='commendation'?'commendation':'complaint',source_type:source?'existing_report':'staff_intake',source_entity:sourceEntity,source_record_id:sourceId,officer_ids,anonymous:false,complainant_name:'Staff intake',contact_preference:'none',incident_date,location,officers:officer_ids.length?officer_ids.map(id=>actorName(staff.find(v=>v.id===id))).join('; '):text(input.officers||source?.officer_name||source?.officer_inspected||source?.officer_email,1000),description,status:'triage',public_status:investigator_id?'Investigator assigned':'Under review',public_message:publicMessage(investigator_id?'Investigator assigned':'Under review',''),...category,priority:['low','normal','high','critical'].includes(input.priority)?input.priority:'normal',investigator_id,due_date:text(input.due_date,40),version:1,legal_hold:false});
    await audit(db,u,'staff_case_opened',created.id,source?sourceEntity+' '+sourceId:'Staff intake');
    if(source)await db.PSRecord.create({case_id:created.id,kind:'source_report',title:'Linked '+sourceEntity,body:'Original report ID: '+sourceId,source_entity:sourceEntity,source_record_id:sourceId,author_id:u.id,author_name:actorName(u),status:'linked'});
    let email_sent=null;
@@ -206,7 +227,8 @@ export default async function(req){
    if(Number(body.version)!==Number(c.version))fail('This case changed. Reload it before saving.',409);
    if(['approved','closed'].includes(c.status)&&!review)fail('Only a reviewer can reopen an approved or closed case.',403);
    const p=body.patch||{},updates={};
-   for(const key of ['category','priority','due_date','retention_until'])if(p[key]!==undefined)updates[key]=text(p[key],200);
+   for(const key of ['priority','due_date','retention_until'])if(p[key]!==undefined)updates[key]=text(p[key],200);
+   if(p.category!==undefined||p.category_detail!==undefined)Object.assign(updates,caseCategory(p.category??c.category,p.category_detail??c.category_detail));
    if(p.legal_hold!==undefined){if(!review)fail('Only reviewers manage legal holds.',403);updates.legal_hold=p.legal_hold===true;}
    if(p.investigator_id!==undefined){
     if(!review)fail('Only reviewers assign investigators.',403);
@@ -229,22 +251,30 @@ export default async function(req){
     updates.status=p.status;
    }
    if(p.public_status!==undefined||p.public_message!==undefined){
-    if(!review)fail('Only reviewers publish complainant updates.',403);
-    if(p.public_status&&!publicStates.includes(p.public_status))fail('Invalid public status.');
-    if(p.public_status)updates.public_status=p.public_status;
-    if(p.public_message!==undefined)updates.public_message=text(p.public_message,2000);
+    if(!review)fail('Only reviewers select approved public updates.',403);
+    const state=p.public_status||c.public_status||'Received';
+    if(!publicStates.includes(state))fail('Invalid public status.');
+    if(p.public_message!==undefined&&!PUBLIC_UPDATE_MESSAGES[state].includes(p.public_message))fail('Choose a preapproved public message. Confidential findings and personnel actions cannot be published.');
+    updates.public_status=state;updates.public_message=publicMessage(state,p.public_message);
+   }
+   if(updates.status!==undefined&&updates.status!==c.status){
+    updates.public_status=publicStateFor(updates.status);
+    updates.public_message=publicMessage(updates.public_status,'');
+   }else if(updates.investigator_id&&updates.investigator_id!==c.investigator_id&&!['approved','closed'].includes(c.status)){
+    updates.public_status='Investigator assigned';updates.public_message=publicMessage('Investigator assigned','');
    }
    updates.version=Number(c.version||0)+1;
    await audit(db,u,'case_update_requested',c.id,JSON.stringify(updates));
    await db.PSCase.update(c.id,updates);
    await audit(db,u,'case_updated',c.id,Object.keys(updates).join(', '));
+   if(updates.public_status&&(updates.public_status!==c.public_status||updates.public_message!==c.public_message))await db.PSRecord.create({case_id:c.id,kind:'public_update',title:updates.public_status,body:publicMessage(updates.public_status,updates.public_message),author_id:u.id,author_name:actorName(u),status:'published'});
    let email_sent=null;
-   if(updates.investigator_id){const person=eligible.find(v=>v.id===updates.investigator_id);email_sent=await notify(base44,person?.email,'Professional Standards assignment '+c.reference,'A case has been assigned to you. Sign in to BPS Pathfinder and open Professional Standards.',u);}
-   if(body.send_notice===true&&c.contact_preference==='email'&&c.contact_email){
-    if(!review)fail('Reviewer access required.',403);
-    email_sent=await notify(base44,c.contact_preference==='email'?c.contact_email:'','Professional Standards update '+c.reference,(updates.public_message||c.public_message||'A status update is available using your reference and private tracking code.'),u);
-    await audit(db,u,'approved_notice',c.id,email_sent?'sent':'not delivered / no email preference');
+   const assignedId=updates.investigator_id??c.investigator_id,assigned=eligible.find(v=>v.id===assignedId);
+   if(assigned&&((updates.investigator_id&&updates.investigator_id!==c.investigator_id)||(updates.status&&updates.status!==c.status))){
+    const assignmentChanged=updates.investigator_id&&updates.investigator_id!==c.investigator_id;
+    email_sent=await notify(base44,assigned.work_email||assigned.email,'Professional Standards '+(assignmentChanged?'assignment ':'case status ')+c.reference,assignmentChanged?'A case has been assigned to you. Sign in to Pathfinder and open Professional Standards.':'The status of your assigned case changed to '+text(updates.status,80)+'. Sign in to Pathfinder for the confidential investigation record. Public tracking displays only approved status information.',u);
    }
+   // Complainants are never emailed, including when an older client sends send_notice.
    return Response.json({success:true,email_sent});
   }
   if(action==='add_record'){

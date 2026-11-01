@@ -23,7 +23,8 @@ export async function globalCaseTools(ctx){
  if(action==='retry_notification'){
   if(!review)fail('Reviewer access required.',403);
   const item=await db.PSNotification.get(String(body.notification_id||''));
-  if(!item||item.status==='sent')fail('Choose an unsent notification.');
+  if(item&&/^Professional Standards update /i.test(item.subject||'')){await db.PSNotification.update(item.id,{status:'cancelled',last_error:'Submitter email is disabled. Updates remain on the private tracking webpage.'});fail('Submitter email is disabled. Updates are available on the tracking webpage.');}
+  if(!item||['sent','cancelled'].includes(item.status))fail('Choose an unsent notification.');
   const sent=await notify(base44,item.to,item.subject,item.body,u,item.id);
   await audit(db,u,'notification_retry','',item.id);
   return Response.json({success:true,email_sent:sent});
