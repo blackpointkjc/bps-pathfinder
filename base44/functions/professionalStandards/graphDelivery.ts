@@ -1,4 +1,5 @@
-const MANAGEMENT='management@blackpointkjc.com';
+const MANAGEMENT='ia@blackpointkjc.com';
+const IA_OWNER='6a72bbee2842d6338cbae513';
 const GRAPH='https://graph.microsoft.com/v1.0';
 const CLIENT='5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
 const TENANT='07f32330-fc73-4d73-a835-e9c47ba798c7';
@@ -6,17 +7,18 @@ const ORIGIN='https://bpspf.blackpointkjc.com';
 async function graphToken(base44: any) {
   const mailboxes = await base44.asServiceRole.entities.OutlookSharedMailbox.filter({
     mailbox_email: MANAGEMENT,
+    user_id: IA_OWNER,
     active: true,
   }, '-updated_date', 1);
   const mailbox = mailboxes?.[0];
-  if (!mailbox) throw new Error('Management Outlook mailbox is not configured.');
+  if (!mailbox) throw new Error('The IA shared mailbox is not configured under Colonel Hiers.');
 
   const credentials = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({
     user_id: mailbox.user_id,
     active: true,
   }, '-last_refreshed_at', 1);
   const credential = credentials?.[0];
-  if (!credential?.refresh_token) throw new Error('Management Outlook authorization is unavailable.');
+  if (!credential?.refresh_token) throw new Error('Colonel Hiers must reconnect Microsoft in Mail to authorize the IA shared mailbox.');
 
   const scope = String(credential.scope || 'Mail.Send Mail.Send.Shared User.Read offline_access');
   const response = await fetch(`https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`, {
@@ -38,9 +40,9 @@ async function graphToken(base44: any) {
         last_error: 'Microsoft session expired; interactive sign-in required.',
         active: false,
       }).catch(() => null);
-      throw new Error('The management Microsoft session has expired. An administrator must sign in again before Pathfinder email can be sent.');
+      throw new Error('Colonel Hiers must reconnect Microsoft in Mail before the IA shared mailbox can send messages.');
     }
-    throw new Error('Microsoft email authorization failed. An administrator should reconnect the management mailbox.');
+    throw new Error('Microsoft email authorization failed. Colonel Hiers must reconnect Microsoft for the IA shared mailbox.');
   }
   await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
     refresh_token: String(payload.refresh_token || credential.refresh_token),
@@ -54,7 +56,7 @@ async function graphToken(base44: any) {
 
 export async function sendManagementEmail(base44,to,subject,body,html=false){
  const access=await graphToken(base44);
- const response=await fetch(GRAPH+'/users/'+encodeURIComponent(MANAGEMENT)+'/sendMail',{method:'POST',headers:{Authorization:'Bearer '+access,'content-type':'application/json'},signal:AbortSignal.timeout(15000),body:JSON.stringify({message:{subject,body:{contentType:html?'HTML':'Text',content:body},from:{emailAddress:{address:MANAGEMENT,name:html?'BlackPoint Pathfinder Accounts':'BlackPoint Professional Standards'}},replyTo:[{emailAddress:{address:html?MANAGEMENT:'IA@blackpointkjc.com'}}],toRecipients:[{emailAddress:{address:to}}]},saveToSentItems:true})});
- if(!response.ok)throw new Error('The management mailbox did not accept the email for delivery.');
+ const response=await fetch(GRAPH+'/users/'+encodeURIComponent(MANAGEMENT)+'/sendMail',{method:'POST',headers:{Authorization:'Bearer '+access,'content-type':'application/json'},signal:AbortSignal.timeout(15000),body:JSON.stringify({message:{subject,body:{contentType:html?'HTML':'Text',content:body},from:{emailAddress:{address:MANAGEMENT,name:html?'BlackPoint Pathfinder Accounts':'BlackPoint Professional Standards'}},replyTo:[{emailAddress:{address:MANAGEMENT}}],toRecipients:[{emailAddress:{address:to}}]},saveToSentItems:true})});
+ if(!response.ok)throw new Error('The IA shared mailbox did not accept the email. Verify that Colonel Hiers has Microsoft Send As permission for ia@blackpointkjc.com.');
  return true;
 }
