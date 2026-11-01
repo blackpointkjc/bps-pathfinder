@@ -39,7 +39,7 @@ export default async function(req){
    if(sent?.error||sent?.success===false)throw new Error('Native invitation rejected.');
    providerSent=true;
    if(!person)person=(await db.User.filter({email},'-created_date',1))[0];
-   if(person&&person.role!=='admin'&&!(person.additional_roles||[]).length)await db.User.update(person.id,{...profile,requested_account_type:type,portal_approved:false,account_status:'pending',rank:type==='student'?'Student Registration Pending':type==='visitor'?'Visitor Pending':'Pending Assignment'});
+   if(person&&person.role!=='admin')await db.User.update(person.id,{...profile,additional_roles:[],ps_role:'none',requested_account_type:type,portal_approved:false,account_status:'pending',rank:type==='student'?'Student Registration Pending':type==='visitor'?'Visitor Pending':'Pending Assignment'});
   }catch{providerError='The account email provider could not accept this invitation.';}
  }
  // Public registration uses the branded invitation below; credentials are created only by the recipient.
