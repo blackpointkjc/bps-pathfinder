@@ -72,6 +72,23 @@ export async function linkedCaseTools(ctx){
   await audit(db,u,'case_outcome_documented',c.id,outcome);
   return Response.json({success:true});
  }
+ if(action==='issue_directive'){
+  if(!review)fail('Only an IA reviewer may issue personnel directives.',403);
+  if(c.status==='closed')fail('Reopen the case before issuing a directive.');
+  const person=await getSubject(),type=text(body.directive_type,60),instructions=text(body.instructions,5000),reason=text(body.reason,5000),due=text(body.due_date,10);
+  if(person.id===u.id)fail('Another reviewer must issue personnel actions involving you.',403);
+  if(!['counseling','written_warning','final_warning','duty_restriction','external_referral'].includes(type)||instructions.length<20||reason.length<20)fail('Select a directive and document both private rationale and employee instructions in at least 20 characters.');
+  if(['written_warning','final_warning'].includes(type)&&c.status!=='approved')fail('Approve the investigation findings before issuing a written or final warning.');
+  const existing=records.find(r=>r.action_type===type&&r.officer_id===person.id&&r.status!=='completed');
+  if(existing)return Response.json({success:true,existing:true});
+  let linked=null;
+  if(['written_warning','final_warning'].includes(type))linked=await db.WriteUpReport.create({report_date:new Date().toISOString(),officer_name:[person.first_name,person.last_name].filter(Boolean).join(' ')||person.full_name,officer_email:person.email,incident_date:c.incident_date||new Date().toISOString(),location:c.location||'Professional Standards',violation_type:'conduct_violation',severity:type,description:instructions,corrective_action:instructions,status:'approved',reviewed_by:u.email,reviewed_date:new Date().toISOString(),acknowledged_by_officer:false});
+  const record=await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:type,officer_id:person.id,title:type.replaceAll('_',' '),body:reason+'\nEmployee instructions: '+instructions,due_date:due,status:'open',linked_entity:linked?'WriteUpReport':'',linked_id:linked?.id||'',author_id:u.id,author_name:actorName(u)});
+  await db.Notification.create({recipient_email:person.email,title:'Personnel directive: '+type.replaceAll('_',' '),message:instructions+(due?' · Due '+due:''),type:'general',read:false});
+  await audit(db,u,'personnel_directive_issued',c.id,person.id+' '+type+' '+record.id);
+  const email_sent=await notify(base44,person.work_email||person.email,'BlackPoint personnel directive','A personnel directive has been issued. Sign in to Pathfinder to review your notification'+(linked?' and acknowledge the write-up.':'.'),u);
+  return Response.json({success:true,email_sent});
+ }
  if(action==='assign_training'){
   if(!review)fail('Only an IA reviewer may require corrective training.',403);
   if(c.status==='closed')fail('Reopen the case before assigning training.');
