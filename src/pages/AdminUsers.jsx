@@ -184,7 +184,8 @@ export default function AdminUsers({ embedded = false }) {
       if (payload.error || payload.success !== true) throw new Error(payload.error || 'Account invitation was not confirmed');
       return payload;
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      if(result.existing_account){setShowCreateDialog(false);if(result.user_id){try{const existing=await base44.entities.User.get(result.user_id);handleEditUser(existing);}catch{alert(result.message);}}else alert(result.message);return;}
       invalidateAppDirectory();
       queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
