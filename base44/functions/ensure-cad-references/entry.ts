@@ -34,6 +34,11 @@ Deno.serve(async req=>{
  let migration:any=null,migrationApi:any=null;
  try{
   const api=createClientFromRequest(req),actor=await api.auth.me().catch(()=>null);
+ const __portalCaller=await api.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await api.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ api.auth.me=async()=>__portalCaller;
+
   const roles=new Set([actor?.role,...(actor?.additional_roles||[])].map((v:any)=>String(v||'').toLowerCase()));
   let trustedService=false;
   if(!actor&&req.headers.get('Authorization')){try{await api.entities.CadCounter.filter({counter_key:'dispatch_call'},undefined,1);trustedService=true;}catch{}}

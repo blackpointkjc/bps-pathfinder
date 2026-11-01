@@ -244,6 +244,11 @@ async function applyApprovedPromotion(entities:any,event:any){
 Deno.serve(async req=>{
  try{
   const sdk=createClientFromRequest(req),actor=await sdk.auth.me().catch(()=>null);
+ const __portalCaller=await sdk.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ sdk.auth.me=async()=>__portalCaller;
+
   const roles=new Set((actor?.additional_roles||[]).map((role:any)=>trim(role).toLowerCase()));
   if(!actor||(actor.role!=='admin'&&!roles.has('full_access'))||roles.has('client')||actor.user_type==='client')return fail('Administrator command authorization required.',403);
   const input=await req.json().catch(()=>({}));

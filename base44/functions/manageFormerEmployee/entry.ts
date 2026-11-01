@@ -2,6 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 Deno.serve(async req=>{
  try{
   const base44=createClientFromRequest(req),actor=await base44.auth.me().catch(()=>null);
+ const __portalCaller=await base44.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ base44.auth.me=async()=>__portalCaller;
+
   const roles=new Set((actor?.additional_roles||[]).map((v:any)=>String(v).toLowerCase()));
   if(!actor || (actor.role!=='admin'&&!roles.has('full_access')))return Response.json({error:'Administrator authorization required'},{status:403});
   const body=await req.json().catch(()=>({}));

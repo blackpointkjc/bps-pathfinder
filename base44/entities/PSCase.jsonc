@@ -85,6 +85,9 @@
     },
     "version": {
       "type": "integer"
+    },
+    "last_reminder_day": {
+      "type": "string"
     }
   },
   "rls": {

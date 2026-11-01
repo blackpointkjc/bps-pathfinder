@@ -1,5 +1,5 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
-import {notify,audit,psRole,manager} from '../professionalStandards/security.ts';
+import {notify,audit,psRole,manager} from './security.ts';
 export default async function(req){
  try{
  const sdk=createClientFromRequest(req),u=await sdk.auth.me().catch(()=>null),db=sdk.asServiceRole.entities;

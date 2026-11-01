@@ -183,6 +183,7 @@ Deno.serve(async (req) => {
         if (updates.additional_roles !== undefined || updates.role !== undefined || updates.ps_role !== undefined) updatePayload.portal_approved = mergedAccount.role === 'admin' || (mergedAccount.additional_roles || []).length > 0 || ['investigator','reviewer'].includes(mergedAccount.ps_role);
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
+        if(updates.ps_role!==undefined||updates.additional_roles!==undefined||updates.role!==undefined)await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:user.email,action:'account_permission_change_requested',details:JSON.stringify({user_id:userId,ps_role:updatePayload.ps_role,additional_roles:updatePayload.additional_roles,role:updatePayload.role})});
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
         // Confirm edits to identity/contact/onboarding fields reached persistent User.
         // A successful SDK call alone is not proof that every field was retained.

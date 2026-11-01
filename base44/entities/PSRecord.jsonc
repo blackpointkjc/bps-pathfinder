@@ -52,6 +52,9 @@
     },
     "author_name": {
       "type": "string"
+    },
+    "last_reminder_day": {
+      "type": "string"
     }
   },
   "rls": {

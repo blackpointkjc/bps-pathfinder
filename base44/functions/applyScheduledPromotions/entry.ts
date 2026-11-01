@@ -80,6 +80,11 @@ async function runOne(entities:any,event:any,clock:any){
 Deno.serve(async req=>{
  try{
   const sdk=createClientFromRequest(req),body=await req.json().catch(()=>({}));
+ const __portalCaller=await sdk.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ sdk.auth.me=async()=>__portalCaller;
+
   const actor=await sdk.auth.me().catch(()=>null);
   const roleSet=new Set([actor?.role,...(actor?.additional_roles||[])].map((r:any)=>text(r).toLowerCase()));
   // The recurring automation has no interactive account. A manual call needs

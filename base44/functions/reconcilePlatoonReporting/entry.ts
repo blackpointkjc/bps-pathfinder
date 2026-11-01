@@ -4,6 +4,11 @@ const norm=(value:any)=>String(value||'').trim().toLowerCase();
 Deno.serve(async req=>{
  try{
   const sdk=createClientFromRequest(req),user=await sdk.auth.me().catch(()=>null);
+ const __portalCaller=await sdk.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ sdk.auth.me=async()=>__portalCaller;
+
   if(!user)return Response.json({error:'Authentication required'},{status:401});
   const roles=new Set([user.role,...(user.additional_roles||[])].map(norm));
   if(!roles.has('admin')&&!roles.has('full_access'))return Response.json({error:'Only administrators may reconcile reporting links'},{status:403});

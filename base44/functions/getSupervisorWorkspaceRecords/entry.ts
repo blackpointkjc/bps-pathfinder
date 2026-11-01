@@ -40,6 +40,11 @@ const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',forc
 Deno.serve(async(req)=>{
  try{
   const sdk=createClientFromRequest(req),me=await sdk.auth.me().catch(()=>null);
+ const __portalCaller=await sdk.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ sdk.auth.me=async()=>__portalCaller;
+
   if(!me)return Response.json({error:'Sign in required'},{status:401});
 if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
 await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'legacy_workflow_access',details:'getSupervisorWorkspaceRecords'});

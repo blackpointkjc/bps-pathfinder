@@ -4,6 +4,11 @@ const siteKey=(value:any)=>key(String(value||'').split(/\s*(?::|\s-\s)\s*/)[0]);
 Deno.serve(async req=>{
  try{
   const api=createClientFromRequest(req),actor=await api.auth.me().catch(()=>null);
+ const __portalCaller=await api.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await api.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ api.auth.me=async()=>__portalCaller;
+
   if(!actor)return Response.json({error:'Sign in required'},{status:401});
   const roles=new Set((actor.additional_roles||[]).map(key)),preview=actor.role==='admin'||roles.has('full_access');
   if(!preview&&!roles.has('client')&&key(actor.rank)!=='client'&&key(actor.user_type)!=='client')return Response.json({error:'Client access required'},{status:403});

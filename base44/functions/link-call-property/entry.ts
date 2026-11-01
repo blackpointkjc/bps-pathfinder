@@ -2,6 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 Deno.serve(async req=>{
  try{
  const client=createClientFromRequest(req),me=await client.auth.me();
+ const __portalCaller=await client.auth.me().catch(()=>null);
+ let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await client.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
+ if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
+ client.auth.me=async()=>__portalCaller;
+
  if(!me)return Response.json({error:'Unauthorized'},{status:401});
  const roles=new Set((me.additional_roles||[]).map((r:string)=>r.toLowerCase()));
  if(me.role!=='admin'&&me.role!=='dispatch'&&me.dispatch_role!==true&&!['full_access','dispatch','dispatcher','supervisor'].some(r=>roles.has(r)))return Response.json({error:'Dispatch or command access required'},{status:403});
