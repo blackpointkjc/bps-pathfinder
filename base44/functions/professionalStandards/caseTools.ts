@@ -95,6 +95,8 @@ export async function linkedCaseTools(ctx){
   if(records.some(r=>r.action_type==='suspension'&&r.officer_id===person.id&&r.status!=='completed'))return Response.json({success:true,existing:true});
   const now=new Date().toISOString(),previous={employment_status:person.employment_status||'active',account_status:person.account_status||'approved',portal_approved:person.portal_approved!==false};
   const lock=await db.AccountLock.create({user_id:person.id,user_email:person.email,locked:true,reason:'Professional Standards suspension · '+c.reference,message:'Your account is suspended. Contact BlackPoint administration.',locked_by_email:u.email,locked_by_name:actorName(u),locked_at:now});
+  let suspension;
+  try{suspension=await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:'suspension',officer_id:person.id,linked_entity:'AccountLock',linked_id:lock.id,previous_account_state:previous,title:'Officer suspension',body:reason,status:'applying',suspension_until:text(body.suspension_until,40),author_id:u.id,author_name:actorName(u)});}catch(error){await db.AccountLock.update(lock.id,{locked:false,unlocked_at:now,unlocked_by_email:u.email});throw error;}
   await db.User.update(person.id,{employment_status:'suspended',account_status:'suspended',portal_approved:false,status:'Out of Service'});
   const sessions=await db.PortalAuthSession.filter({user_id:person.id},'-created_date',1000);
   for(const session of sessions)await db.PortalAuthSession.update(session.id,{revoked:true,revoked_at:now});
@@ -102,7 +104,7 @@ export async function linkedCaseTools(ctx){
   for(const row of active)await db.ActiveOfficer.update(row.id,{session_active:false,status:'Out of Service',last_update:now});
   const units=await db.Unit.filter({user_id:person.id},'-created_date',100);
   for(const row of units)await db.Unit.update(row.id,{status:'Out of Service',last_updated:now});
-  await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:'suspension',officer_id:person.id,linked_entity:'AccountLock',linked_id:lock.id,previous_account_state:previous,title:'Officer suspension',body:reason,status:'open',suspension_until:text(body.suspension_until,40),author_id:u.id,author_name:actorName(u)});
+  await db.PSRecord.update(suspension.id,{status:'open'});
   await audit(db,u,'officer_suspended',c.id,person.id);
   const email_sent=await notify(base44,person.work_email||person.email,'BlackPoint account suspension','Your Pathfinder access has been suspended. Contact BlackPoint administration for instructions.',u);
   return Response.json({success:true,email_sent});
