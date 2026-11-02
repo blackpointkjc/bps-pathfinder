@@ -8,9 +8,7 @@ let generator,queue=Promise.resolve();
 async function model(id){
  if(!generator){generator=(async()=>{
   const progress_callback=event=>{if(event.status==='progress')self.postMessage({id,type:'progress',message:'Downloading local rewrite model… '+Math.round(event.progress||0)+'%'});else if(event.status==='initiate')self.postMessage({id,type:'progress',message:'Preparing the local rewrite model…'});};
-  let gpu=false;try{gpu=!!(self.navigator.gpu&&await self.navigator.gpu.requestAdapter());}catch{}
-  try{return await pipeline('text2text-generation',LOCAL_REWRITE_MODEL,{dtype:'q8',device:gpu?'webgpu':'wasm',progress_callback});}
-  catch(error){if(!gpu)throw error;self.postMessage({id,type:'progress',message:'Preparing the browser CPU model…'});return await pipeline('text2text-generation',LOCAL_REWRITE_MODEL,{dtype:'q8',device:'wasm',progress_callback});}
+  return await pipeline('text2text-generation',LOCAL_REWRITE_MODEL,{dtype:'q8',device:'wasm',progress_callback});
  })().catch(error=>{generator=null;throw error;});}
  return generator;
 }
