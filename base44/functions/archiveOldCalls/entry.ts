@@ -55,6 +55,9 @@ Deno.serve(async (req) => {
         const archiveCandidates = (activeCalls || [])
             .map(call => ({ call, stamp: callTimestamp(call) }))
             .filter(item => item.stamp > 0 && now.getTime() - item.stamp >= ARCHIVE_AFTER_MS)
+            // Website requests are not external feed events. Never archive
+            // open/unassigned Help Me calls on the one-hour timer.
+            .filter(item => item.call.source !== 'public_helpme' || ['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(item.call.status||'').toLowerCase()) || item.call.manual_dismissed === true)
             .sort((a, b) => a.stamp - b.stamp)
             .slice(0, ARCHIVE_BATCH_LIMIT);
 

@@ -1548,6 +1548,10 @@ Deno.serve(async (req) => {
     const currentExternalKeys = new Set(incoming.map(call => call.external_call_id));
     const currentLegacyKeys = new Set(incoming.map(call => legacyKey(call)));
     for (const record of existingCalls || []) {
+      // This reconciliation owns only calls imported from GRAC. A public
+      // Help Me request is not part of that upstream feed and must stay open
+      // until an authorized operator/officer explicitly clears it.
+      if (record.source === 'public_helpme' || record.public_request_id) continue;
       const external = externalKey(record);
       const legacy = legacyKey(record);
       if (recordKey(record) && !currentExternalKeys.has(external) && !currentLegacyKeys.has(legacy)) {
