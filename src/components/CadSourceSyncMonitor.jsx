@@ -49,12 +49,12 @@ export default function CadSourceSyncMonitor({ user }) {
     // On returning from a suspended tab, recover promptly rather than waiting
     // for the next scheduled interval.
     const first = window.setTimeout(sync, 4500);
-    const timer = window.setInterval(sync, 30_000);
+    const timer = window.setInterval(sync, 60_000);
     const resume = () => {
       if (!navigator.onLine || document.visibilityState !== 'visible') return;
       if (Date.now() - lastResumeAt < 15_000) return;
       lastResumeAt = Date.now();
-      lastSyncAttemptAt = 0;
+      // Returning focus does not reset the throttle or start a second ingestion.
       void sync();
     };
     window.addEventListener('online', resume);
@@ -72,6 +72,6 @@ export default function CadSourceSyncMonitor({ user }) {
       window.removeEventListener('bps-operational-resume', resume);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [user?.email, user?.role, user?.employment_status, location.pathname, location.search]);
+  }, [user?.email, user?.role, user?.employment_status]);
   return null;
 }

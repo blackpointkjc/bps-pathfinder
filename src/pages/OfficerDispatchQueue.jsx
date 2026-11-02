@@ -54,7 +54,7 @@ export default function OfficerDispatchQueue() {
       if(!data.success)throw new Error(data.error||'Shared notes are unavailable');
       return Array.isArray(data.notes)?data.notes:[];
     },
-    staleTime:5000,refetchInterval:20000,refetchIntervalInBackground:false,
+    staleTime:15000,refetchInterval:45000,refetchIntervalInBackground:false,
     refetchOnWindowFocus:true,
   });
   useEffect(()=>{
