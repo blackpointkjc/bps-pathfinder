@@ -781,7 +781,7 @@ export default function AdminUsers({ embedded = false }) {
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button>{canManagePrivileged&&userData.termination_date&&<Button variant="outline" size="sm" onClick={()=>accountAccessAction(userData,'clear_termination')}>Clear Termination Date</Button>}
+                    <div className="flex flex-wrap gap-2">{canManagePrivileged&&<><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button></>}{canManagePrivileged&&userData.termination_date&&<Button variant="outline" size="sm" onClick={()=>accountAccessAction(userData,'clear_termination')}>Clear Termination Date</Button>}
                     <Button
                       variant="outline"
                       size="sm"

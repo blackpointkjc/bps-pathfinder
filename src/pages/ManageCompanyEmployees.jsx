@@ -211,7 +211,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     && !['client','student','student registration pending'].includes(String(u.rank||'').toLowerCase()));
 
   const transitionFormerEmployee = async (person, action) => {
-    if (!isSystemAdmin) return alert('Administrator authorization required.');
+    if (!canEditAccountRoles) return alert('Only Colonel Hiers may change account access.');
     const question=action==='clear_termination'?'Clear this account’s current termination date while keeping the original date in permanent audit history?':action==='rehire'?'Rehire this employee on the existing profile? Prior termination remains in the permanent employee history. Access permissions will require administrator review.':action==='restore'?'Restore to pending review without operational permissions?':'Convert to client and remove all CAD roles?';
     if(!await confirmInApp(question+' '+person.email))return;
     try {

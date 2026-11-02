@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 
 export const text = (v, max=500) => String(v ?? '').trim().slice(0,max);
 export const roles = u => new Set([u?.role,...(u?.additional_roles||[])].map(v=>String(v).toLowerCase()));
-export const terminated = u => !u || u.disabled || u.termination_date || ['terminated','suspended','denied'].includes(String(u.account_status||u.employment_status||'').toLowerCase());
+export const terminated = u => !u || u.disabled || (u.termination_date && Number.isFinite(Date.parse(u.termination_date)) && Date.parse(u.termination_date)<=Date.now()) || ['terminated','suspended','denied'].includes(String(u.account_status||u.employment_status||'').toLowerCase());
 export const manager = u => !terminated(u) && (u.role==='admin'||String(u.id)==='6ae7d733d4b1a647cd3e6f38'&&roles(u).has('full_access'));
 export const psRole = u => terminated(u) || ['visitor','student','client'].some(r=>roles(u).has(r)||u.user_type===r) ? '' : (roles(u).has('ia') || String(u.id)==='6ae7d733d4b1a647cd3e6f38'&&roles(u).has('full_access')) ? u.ps_role==='reviewer'?'reviewer':'investigator' : '';
 export const hash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',value instanceof Uint8Array ? value : new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');

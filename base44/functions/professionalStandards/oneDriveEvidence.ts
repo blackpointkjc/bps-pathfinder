@@ -94,7 +94,11 @@ export async function oneDriveStorageStatus(_db:any){
   try{
     const token=await serviceToken();
     const drive=await authorizedDrive(token);
-    return {ready:true,provider:'Microsoft SharePoint private library',path,drive_type:drive.driveType,message:'Company document library access verified. Authorized reviewers and assigned investigators can access files through Pathfinder.'};
+    // Verify write access too: ensure the two private parent folders exist.
+    // A read-only Sites.Selected grant must not be misreported as ready.
+    const root=await ensureFolder(token,drive.id,null,ROOT);
+    await ensureFolder(token,drive.id,root,'IA Case Evidence');
+    return {ready:true,provider:'Microsoft SharePoint private library',path,drive_type:drive.driveType,message:'Company document library access verified. Secure IA Case Evidence folder is created and writable; case folders will be created on upload.'};
   }catch(error:any){
     return {ready:false,provider:'Microsoft SharePoint private library',code:'SERVER_STORAGE_VERIFICATION_FAILED',path,message:String(error?.message||'Microsoft private document library is unavailable').slice(0,280)};
   }
