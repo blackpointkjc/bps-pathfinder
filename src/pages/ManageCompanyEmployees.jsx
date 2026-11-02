@@ -399,7 +399,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           console.warn('Full-resolution original unavailable; using high-resolution crop:', error?.message);
         }
       }
-      if (!file || photoUrl === dataUrl) throw new Error('The cropped photo could not be stored.');
+      if (!photoUrl) throw new Error('The cropped photo is empty.');
       if (!originalUrl) originalUrl = photoUrl;
       const result = await base44.functions.invoke('updateUser', {
         userId: editingUser,

@@ -472,7 +472,7 @@ export default function AdminUsers({ embedded = false }) {
           throw new Error('Cropped photo upload failed: ' + (uploadError?.message || uploadError));
         }
       }
-      if (!file || photoUrl === dataUrl) throw new Error('The cropped photo could not be stored.');
+      if (!photoUrl) throw new Error('The cropped photo is empty.');
       if (photoToCrop) {
         try {
           const original = await uploadInternalFile(photoToCrop);
