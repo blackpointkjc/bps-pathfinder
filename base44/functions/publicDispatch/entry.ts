@@ -68,6 +68,14 @@ async function allocateReference(db:any){
 export default async function(req:Request){
  try{
  const sdk=createClientFromRequest(req),db=sdk.asServiceRole.entities,b=await req.json();
+ if(b?.action==='request_status'){
+   const requestId=clean(b.request_id,80);
+   if(!/^[-\w]{20,80}$/.test(requestId))return invalid('request_id','Invalid request reference.');
+   const recorded=(await db.PublicDispatchRequest.filter({request_id:requestId},'-created_date',1))[0];
+   const call=(await db.DispatchCall.filter({public_request_id:requestId},'-created_date',1))[0];
+   const reference=call?.bps_reference||call?.call_id||recorded?.reference||'';
+   return Response.json({success:Boolean(reference),reference:reference||null,status:reference?'received':'pending'});
+ }
  if(b?.action==='form_config')return Response.json({
    version:'helpme-2026-11-02-v2',service:'helpme',categories:kinds,
    fields:[
