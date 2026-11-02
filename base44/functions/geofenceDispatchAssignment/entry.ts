@@ -98,9 +98,16 @@ Deno.serve(async (req) => {
     // Resolve the exact alert/property first, then load only operational datasets.
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
     if (!simulation && ['cleared', 'cancelled', 'canceled', 'closed', 'resolved'].includes(lower(call.status))) return Response.json({ success: true, skipped: true, reason: 'Call is no longer active' });
-    const alert = input.property_alert_id
+    const publicCall=call.source==='public_helpme';
+    if(publicCall){
+      const [people,sessions]=await Promise.all([base44.asServiceRole.entities.User.list('-updated_date',750),base44.asServiceRole.entities.ActiveOfficer.list('-last_update',300)]);
+      const dispatchEmails=new Set(people.filter((p:any)=>!p.disabled&&!p.termination_date&&(Boolean(p.dispatch_role)||['dispatch','dispatcher'].some(r=>(p.additional_roles||[]).includes(r)))).map((p:any)=>lower(p.email)));
+      if(sessions.some((p:any)=>dispatchEmails.has(lower(p.officer_email))&&p.session_active!==false&&Date.parse(p.last_update||p.updated_date||'')>Date.now()-5*60*1000))return Response.json({success:true,skipped:true,reason:'An active dispatcher will review this public request.'});
+    }
+    let alert = input.property_alert_id
       ? await withRetry(() => base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id))).catch(() => null)
       : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)))?.[0] || null;
+    if(!alert&&publicCall){alert=await base44.asServiceRole.entities.PropertyAlert.create({callId,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callTime:call.time_received,time_received:call.time_received,callStatus:call.status,callPriority:call.priority,source_key:'public-helpme:'+callId,acknowledged:false});}
     if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
     if (!simulation && (alert.is_test === true || ['resolved','false_alarm','test'].includes(lower(alert.lifecycle_status)))) return Response.json({ success:true, skipped:true, reason:'Alert is not active' });
     // Do not dispatch historical feed items when a unit comes online later.
@@ -132,7 +139,8 @@ Deno.serve(async (req) => {
       if (renewed.updated !== 1) throw new Error('Automatic-dispatch lease expired; retry safely');
     };
 
-    const property = await withRetry(() => base44.asServiceRole.entities.Location.get(String(alert.propertyId))).catch(() => null);
+    const publicFallback=publicCall&&alert.propertyId==='public-helpme';
+    const property = publicFallback?{id:'public-helpme',site_name:'Public assistance',address:call.location,latitude:call.latitude,longitude:call.longitude,auto_dispatch_enabled:true,auto_dispatch_mode:'live',auto_dispatch_live_approved_at:call.time_received,auto_dispatch_live_approved_by:'public-dispatch-policy',auto_dispatch_response_radius_miles:5}:await withRetry(() => base44.asServiceRole.entities.Location.get(String(alert.propertyId))).catch(() => null);
     if (!property) return Response.json({ error: 'Linked property configuration was not found' }, { status: 400 });
 
     // Automatic assignment is opt-in per property. Shadow remains the default;
