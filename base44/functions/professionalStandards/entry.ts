@@ -1,3 +1,4 @@
+import {putOneDriveEvidence,oneDriveEvidenceLink,oneDriveStorageStatus} from './oneDriveEvidence.ts';
 import {IA_CATEGORIES,PUBLIC_UPDATE_MESSAGES,publicMessage} from './publicPolicy.ts';
 import {linkSubmittedReport} from './reportLink.ts';
 import {globalCaseTools,linkedCaseTools} from './caseTools.ts';
@@ -82,7 +83,7 @@ async function upload(base44,db,u,c,files){
   const file_hash=await hash(new Uint8Array(await file.arrayBuffer()));
   const existing=await db.PSRecord.filter({case_id:c.id,kind:'evidence',file_hash},'-created_date',1);
   if(existing[0]){results.push(existing[0]);continue;}
-  const {file_uri}=await base44.asServiceRole.integrations.Core.UploadPrivateFile({file});
+  const file_uri=await putOneDriveEvidence(db,c.reference,file,file_hash);
   if(!file_uri)fail('Evidence upload was not confirmed.',503);
   results.push(await db.PSRecord.create({case_id:c.id,kind:'evidence',title:text(file.name,200),file_name:text(file.name,200),file_uri,file_type:file.type,file_size:file.size,file_hash,author_id:u?.id||'',author_name:actorName(u),status:'received'}));
  }
@@ -366,7 +367,8 @@ export default async function(req){
    const r=records.find(r=>r.id===body.record_id&&r.kind==='evidence');
    if(!r?.file_uri)fail('Evidence not found.',404);
    await audit(db,u,'evidence_view',c.id,r.id);
-   return Response.json(await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({file_uri:r.file_uri,expires_in:300}));
+   if(!String(r.file_uri).startsWith('onedrive:'))fail('Legacy private evidence needs migration to OneDrive before download without Base44 integration credits.',409);
+   return Response.json(await oneDriveEvidenceLink(db,String(r.file_uri)));
   }
   fail('Unknown action.');
  }catch(error){return Response.json({error:error.status?error.message:'The request could not be completed. Please retry or contact an administrator.'},{status:error.status||500});}

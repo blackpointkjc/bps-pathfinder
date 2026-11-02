@@ -217,7 +217,7 @@ export async function disconnectOutlook(userId) {
   } catch {}
 }
 
-export async function beginOutlookConnection(userId) {
+export async function beginOutlookConnection(userId, {evidenceStorage=false}={}) {
   const config = await getMicrosoftMailConfig();
   const clientId = config?.clientId;
   if (!config?.enabled || !clientId) throw new Error('Microsoft 365 has not been configured by the administrator.');
@@ -234,7 +234,7 @@ export async function beginOutlookConnection(userId) {
     response_type: 'code',
     redirect_uri: getOutlookRedirectUri(),
     response_mode: 'query',
-    scope: DEFAULT_SCOPES.join(' '),
+    scope: [...DEFAULT_SCOPES,...(evidenceStorage?['Files.ReadWrite']:[])].join(' '),
     state,
     nonce,
     code_challenge: challenge,
@@ -292,7 +292,7 @@ async function completeOutlookOAuthCallback(userId, callback = {}, { cleanBrowse
     code,
     redirect_uri: getOutlookRedirectUri(),
     code_verifier: saved.verifier,
-    scope: DEFAULT_SCOPES.join(' '),
+    scope: [...DEFAULT_SCOPES,...(evidenceStorage?['Files.ReadWrite']:[])].join(' '),
   });
 
   const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/token`, {
