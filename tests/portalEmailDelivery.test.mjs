@@ -14,7 +14,7 @@ for(const folder of ['professionalStandards','professionalStandardsDeadlines']){
 }
 let requests=[],updated;
 const sdk={asServiceRole:{entities:{
- OutlookSharedMailbox:{filter:async query=>{assert.equal(query.mailbox_email,'ia@blackpointkjc.com');assert.equal(query.user_id,'6a72bbee2842d6338cbae513');return [{user_id:'6a72bbee2842d6338cbae513'}];}},
+ OutlookSharedMailbox:{filter:async query=>{assert.equal(query.mailbox_email,'ia@blackpointkjc.com');assert.equal(query.user_id,'6ae7d733d4b1a647cd3e6f38');return [{user_id:'6ae7d733d4b1a647cd3e6f38'}];}},
  MicrosoftOAuthCredential:{filter:async()=>[{id:'test-credential',refresh_token:'test-refresh',scope:'Mail.Send Mail.Send.Shared User.Read offline_access'}],update:async(_id,patch)=>{updated=patch;}}
 }}};
 const fakeFetch=async(url,options)=>{

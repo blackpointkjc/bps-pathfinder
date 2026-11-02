@@ -4,7 +4,7 @@ import {transformSync} from 'esbuild';
 const compile=(s,deps={})=>new Function(...Object.keys(deps),transformSync(s.replace(/^import .*;\n/gm,'').replaceAll('export ',''),{loader:'ts',target:'es2022'}).code)(...Object.values(deps));
 const policy=fs.readFileSync('src/lib/portalAccess.js','utf8').replaceAll('export ','');
 const {hasIAAccess,hasWholeAppAccess,iaRole}=new Function(policy+';return {hasIAAccess,hasWholeAppAccess,iaRole}')();
-const hiers='6a72bbee2842d6338cbae513';
+const hiers='6ae7d733d4b1a647cd3e6f38';
 assert.equal(hasIAAccess({id:'admin',role:'admin',additional_roles:[]}),false);
 assert.equal(hasIAAccess({id:'officer',additional_roles:['officer']}),false);
 assert.equal(hasIAAccess({id:'staff',additional_roles:['ia']}),true);
