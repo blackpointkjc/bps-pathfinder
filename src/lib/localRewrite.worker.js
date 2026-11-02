@@ -1,5 +1,5 @@
-import wasmURL from 'onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url';
-import wasmModuleURL from 'onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
+import wasmURL from '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url';
+import wasmModuleURL from '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
 import {pipeline,env} from '@huggingface/transformers';
 import {LOCAL_REWRITE_MODEL,rewriteMessages,rewriteChunks,validateRewrite} from './rewritePolicy';
 env.backends.onnx.wasm.wasmPaths={wasm:wasmURL,mjs:wasmModuleURL};

@@ -33,7 +33,7 @@ export default async function(req){
  const record=rows[0]?await db.PortalInvitation.update(rows[0].id,payload):await db.PortalInvitation.create(payload);
  if(person)await db.User.update(person.id,{first_name:profile.first_name,last_name:profile.last_name,rank:type==='student'?'Student Registration Pending':type==='visitor'?'Visitor Pending':'Pending Assignment'});
  let providerSent=false,providerError='';
- if(!person){
+ {
   try{
    const sent=await base44.users.inviteUser(email,'user');
    if(sent?.error||sent?.success===false)throw new Error('Native invitation rejected.');
