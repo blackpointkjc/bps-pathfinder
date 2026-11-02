@@ -14,21 +14,21 @@ export default async function(req:Request){
  const profile=Object.fromEntries(Object.entries(job.source_profile).filter(([k])=>!omit.has(k)));
  if(!job.manifest.profile_applied)await db.User.update(destinationId,{...profile,role:'admin',profile_photo_original_url:profile.profile_photo_url,portal_approved:true,account_status:'active',transferred_from_user_id:sourceId});
  const counts:any={...(job.manifest.counts||{})};
- const cursor=Number(job.manifest.cursor||0);
+ const cursor=Number(job.manifest.cursor||0);let nextCursor=cursor;
  for(const entry of job.manifest.entities.slice(cursor,cursor+1)){
   const fields=Object.keys(entry.fields),query={$or:fields.flatMap(k=>[{[k]:sourceId},{[k]:source.email}])};let changed=0;
   for(let batch=0;batch<1;batch++){
    const rows=await db[entry.entity].filter(query,'created_date',20);if(!rows.length)break;
    for(const row of rows){const patch:any={};for(const field of fields){const v=row[field];if(v===sourceId)patch[field]=destinationId;else if(v===source.email)patch[field]=destination.email;else if(Array.isArray(v)&&v.some(x=>x===sourceId||x===source.email))patch[field]=[...new Set(v.map(x=>x===sourceId?destinationId:x===source.email?destination.email:x))];}if(Object.keys(patch).length){await db[entry.entity].update(row.id,patch);changed++;}}
    if(rows.length<100)break;
-  }counts[entry.entity]=(counts[entry.entity]||0)+changed;
+  }nextCursor=cursor+(changed<20?1:0);counts[entry.entity]=(counts[entry.entity]||0)+changed;
  await db.PersonnelTransferBackup.update(job.id,{manifest:{...job.manifest,counts,profile_applied:true,cursor:job.manifest.entities.indexOf(entry)+(changed<20?1:0)}});
  }
- if(cursor+1<job.manifest.entities.length||Object.values(counts).some(v=>false))return Response.json({success:true,pending:true,cursor:cursor+1,total:job.manifest.entities.length});
+ if(nextCursor<job.manifest.entities.length)return Response.json({success:true,pending:true,cursor:nextCursor,total:job.manifest.entities.length});
  // Reassign current reporting lines without rewriting historical audit actors.
  const people=await db.User.list('-updated_date',500);for(const p of people){const patch:any={};for(const prefix of ['supervisor','next_level_supervisor'])if(p[prefix+'_id']===sourceId||p[prefix+'_email']===source.email){patch[prefix+'_id']=destinationId;patch[prefix+'_email']=destination.email;patch[prefix+'_name']=[source.rank,source.last_name].filter(Boolean).join(' ');}if(Object.keys(patch).length)await db.User.update(p.id,patch);}
  await db.User.update(sourceId,{role:'user',rank:'Support Staff',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none',hidden_portals:[],portal_approved:true,account_status:'active',transferred_to_user_id:destinationId,unit_number:'',badge_number:'',profile_photo_url:'',profile_photo_original_url:''});
- for(const id of [sourceId,destinationId]){const sessions=await db.PortalAuthSession.filter({user_id:id},'-created_date',500);for(const session of sessions)await db.PortalAuthSession.update(session.id,{revoked:true,revoked_at:new Date().toISOString()});}
+
  await db.PersonnelTransferBackup.update(job.id,{status:'complete',manifest:{...job.manifest,counts},capability_hash:''});
  return Response.json({success:true,counts});
  }catch(error){await db.PersonnelTransferBackup.update(job.id,{status:'failed',last_error:String(error?.message||error).slice(0,300)});return Response.json({error:'Transfer stopped safely; the protected backup is retained.'},{status:500});}
