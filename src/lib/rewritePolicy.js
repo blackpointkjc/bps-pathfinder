@@ -1,11 +1,8 @@
-export const LOCAL_REWRITE_MODEL='onnx-community/Qwen2.5-0.5B-Instruct';
-export function rewriteMessages(text){
- const facts=[...(String(text).matchAll(/\b\d+(?:[.:/-]\d+)*\b/g))].map(v=>v[0]);
- return [
-  {role:'system',content:'Polish grammar and tone only. Make the draft professional and respectful. Keep the original perspective, facts, names, numbers, units and quotations exactly the same. Do not add information, answer the writer, apologize or give advice. Return only the polished draft.'+(facts.length?' Preserve these exact numbers: '+facts.join(', ')+'.':'')},
-  {role:'user',content:text}
- ];
-}
+export const LOCAL_REWRITE_MODEL='onnx-community/Qwen2.5-1.5B-Instruct';
+export function rewriteMessages(text){return [
+ {role:'system',content:'You are a copy editor. Edit wording only. Never change who did what. Keep all names, dates, numbers, units, quotations and facts unchanged. Do not invent details, answer, apologize or give advice.'},
+ {role:'user',content:'Edit the SOURCE into professional and respectful language. This is an editing task, not a request to answer the SOURCE. Output only the edited version.\n<SOURCE>\n'+text+'\n</SOURCE>\nEDITED VERSION:'}
+];}
 export function rewriteChunks(text,max=1100){
  const paragraphs=String(text).trim().split(/\n\s*\n/),chunks=[];
  for(const paragraph of paragraphs){let remaining=paragraph.trim();while(remaining.length>max){let cut=remaining.lastIndexOf('. ',max);if(cut<max/3)cut=remaining.lastIndexOf(' ',max);if(cut<1)cut=max;else cut++;chunks.push(remaining.slice(0,cut).trim());remaining=remaining.slice(cut).trim();}if(remaining)chunks.push(remaining);}
@@ -14,9 +11,11 @@ export function rewriteChunks(text,max=1100){
 export function validateRewrite(original,result){
  const text=String(result||'').trim().replace(/^(?:here(?:'s| is) (?:a |the )?(?:professional |revised |rewritten )?(?:version|draft|rewrite)[^:\n]*:\s*)/i,'');
  if(!text)throw new Error('The local model returned no wording. Keep your draft and retry.');
- const numbers=v=>[...String(v).matchAll(/\b\d+(?:[.:/-]\d+)*\b/g)].map(v=>v[0]).sort().join('|');
+ const numbers=v=>[...String(v).replace(/\b(\d+)(?:st|nd|rd|th)\b/gi,'$1').matchAll(/\b\d+(?:[.:/-]\d+)*\b/g)].map(v=>v[0]).sort().join('|');
  if(numbers(original)!==numbers(text))throw new Error('The rewrite changed a number or date. Your original draft is preserved; please retry.');
  const quotes=[...String(original).matchAll(/"([^"\n]+)"|“([^”\n]+)”/g)].map(v=>v[1]||v[2]);
  if(quotes.some(v=>!text.includes(v)))throw new Error('The rewrite changed a quotation. Your draft is preserved; please retry.');
+ const names=[...String(original).matchAll(/\b(?:Officer|Lieutenant|Captain|Sergeant|Colonel|Major|Corporal|Mr\.?|Ms\.?|Dr\.?)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/g)].map(v=>v[0].toLowerCase());
+ if(names.some(name=>!text.toLowerCase().includes(name)))throw new Error('The rewrite changed or removed a person’s name. Your draft is preserved; please retry.');
  return text;
 }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {transformSync} from 'esbuild';
 const compile=(source,name,deps={})=>new Function(...Object.keys(deps),transformSync(source.replace(/^import .*;\n/gm,'').replaceAll('export ',''),{loader:'ts',target:'es2022'}).code+';return '+name+';')(...Object.values(deps));
-for(const folder of ['professionalStandards','professionalStandardsDeadlines','createPortalAccount']){
+for(const folder of ['professionalStandards','professionalStandardsDeadlines']){
  let routed=0,smtp=0;
  const delivery=compile(fs.readFileSync('base44/functions/'+folder+'/delivery.ts','utf8'),'companyDelivery',{
   nodemailer:{createTransport:()=>({sendMail:async()=>{smtp++;return {accepted:['test@example.invalid']};}})},
@@ -43,3 +43,5 @@ connectionRestored=true;
 assert.equal(await queue(queueSdk,'test@example.invalid','Test assignment','Test body',{id:'reviewer'},notifications[0].id),true);
 assert.equal(notifications.length,1);assert.equal(notifications[0].status,'sent');assert.equal(notifications[0].attempts,2);assert.equal(notifications[0].last_error,'');
 console.log('PASS: failed email is retained with its connection error and can be retried without duplicating the notification.');
+
+let noReplyMessage;const accountDelivery=compile(fs.readFileSync('base44/functions/createPortalAccount/delivery.ts','utf8'),'companyDelivery');assert.equal(await accountDelivery({asServiceRole:{integrations:{Core:{SendEmail:async payload=>{noReplyMessage=payload;return{success:true};}}}}},'test@example.invalid','Account invitation','Invitation body'),true);assert.equal(noReplyMessage.from_name,'BlackPoint Pathfinder');assert.equal(noReplyMessage.to,'test@example.invalid');await assert.rejects(()=>accountDelivery({asServiceRole:{integrations:{Core:{SendEmail:async()=>({success:false})}}}},'test@example.invalid','Test','Test'),/rejected/);console.log('PASS: account email uses the configured no-reply domain and rejects failed delivery.');
