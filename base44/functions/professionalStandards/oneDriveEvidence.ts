@@ -16,10 +16,16 @@ async function responseError(result:Response,action:string){
 async function credentialToken(db:any){
  const rows=await db.MicrosoftOAuthCredential.filter({user_id:OWNER_ID,active:true},'-last_refreshed_at',5);
  const record=rows.find((v:any)=>/\bFiles\.ReadWrite(?:\.All)?\b/i.test(String(v.scope||'')));
- if(!record?.refresh_token)throw new Error('OneDrive evidence storage is not authorized. Colonel Hiers must connect Microsoft 365 with OneDrive file access before uploading evidence. No Base44 upload credits were used.');
+ if(!record?.refresh_token)throw new Error('Pathfinder has no new Files.ReadWrite credential. Reconnect from the IA OneDrive button after Microsoft admin consent. Approving Entra alone does not update an existing sign-in token.');
  const form=new URLSearchParams({client_id:CLIENT,grant_type:'refresh_token',refresh_token:String(record.refresh_token),scope:String(record.scope||'')});
  const reply=await fetch(`https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:form,signal:AbortSignal.timeout(18000)});
- if(!reply.ok)await responseError(reply,'OneDrive authorization');
+ if(!reply.ok){
+  const info=await reply.json().catch(()=>({}));
+  const code=String(info?.error||'');
+  const message=String(info?.error_description||'');
+  if(/AADSTS9002327|AADSTS700084|cross.origin token redemption|single page app|spa/i.test(message)) throw new Error('The Microsoft file permission was granted, but the existing single-page-app refresh token cannot be used by Pathfinder’s backend. A confidential Microsoft server application or SharePoint application credential is needed for unattended IA storage.');
+  throw new Error('Microsoft file token refresh failed: '+String(message||code||reply.status).slice(0,180));
+ }
  const data=await reply.json();
  if(!data.access_token)throw new Error('Microsoft did not grant a OneDrive access token. Reconnect the evidence storage account.');
  if(data.refresh_token&&data.refresh_token!==record.refresh_token){
