@@ -250,6 +250,12 @@ export default async function(req){
    const title=text(body.title,140),message=text(body.message,6000);
    if(title.length<5||message.length<20)fail('Enter a public release title and at least 20 characters of approved information.');
    if(body.confirm_public_safe!==true)fail('Confirm this release contains no restricted or identifying investigation information.');
+   // Explicit publication gate. Names of involved people, contact information,
+   // or raw identifiers must never be released through public case tracking.
+   const releaseText=title+' '+message;
+   if(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/.test(releaseText)||/(?:\+?1[-. ]?)?\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}/.test(releaseText)||/\b(?:ssn|social security number|date of birth|home address|driver.?s license)\b/i.test(releaseText))fail('Remove personal contact information and restricted identifiers before publishing.');
+   const identifiers=[String(c.complainant_name||''),...String(c.officers||'').split(/[;,]/),...String(c.witnesses||'').split(/[;,]/)].map(v=>v.trim()).filter(v=>v.length>=4&&!/^(anonymous|unknown|none|n\/?a)$/i.test(v));
+   if(identifiers.some(v=>releaseText.toLowerCase().includes(v.toLowerCase())))fail('Remove the names of people involved before publishing. Use an anonymous summary.');
    const published=await db.PSRecord.create({case_id:c.id,kind:'public_release',title,body:message,author_id:u.id,author_name:actorName(u),status:'published'});
    await audit(db,u,'public_information_released',c.id,published.id+' '+title);
    return Response.json({success:true,release_id:published.id});

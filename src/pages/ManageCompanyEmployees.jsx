@@ -651,6 +651,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </Alert>
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {isSystemAdmin&&<div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-slate-900"><Label className="mb-2 block font-bold">Account access — Admin or User</Label><Select value={editFormData.role==='admin'?'admin':'user'} onValueChange={role=>setEditFormData(previous=>({...previous,role}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">User · standard employee access</SelectItem><SelectItem value="admin">Admin · system administrator access</SelectItem></SelectContent></Select><p className="mt-2 text-xs">Changing the account type saves when you select Save Changes. Other role permissions remain in the Roles tab.</p></div>}
             {/* Photo */}
             <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-lg border">
               <div className="relative">

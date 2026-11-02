@@ -53,8 +53,8 @@ export async function linkedCaseTools(ctx){
   return Response.json({success:true});
  }
  if(action==='officer_file'){
-  const person=await getSubject(),emails=[...new Set([person.email,person.work_email,person.pathfinder_email,...(person.email_aliases||[])].filter(Boolean))];
-  const q={$or:[{officer_email:{$in:emails}},{officer_id:person.id}]};
+  const person=await getSubject(),legacyHiers=person.id==='6ae7d733d4b1a647cd3e6f38',emails=[...new Set([person.email,person.work_email,person.pathfinder_email,...(person.email_aliases||[]),...(legacyHiers?['kavonhiers@team-hsg.com']:[])].filter(Boolean))];
+  const q={$or:[{officer_email:{$in:emails}},{officer_id:{$in:legacyHiers?[person.id,'6a72bbee2842d6338cbae513']:[person.id]}}]};
   const [training,writeups,inspections,reviews,profileEvents]=await Promise.all([
    db.TrainingAssignment.filter({officer_email:{$in:emails}},'-created_date',50),
    db.WriteUpReport.filter(q,'-created_date',50),db.InspectionReport.filter(q,'-created_date',50),db.PerformanceReview.filter(q,'-created_date',50),
