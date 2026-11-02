@@ -3,7 +3,10 @@
 
 /* BlackPoint's official black / gold identity. */
 .bp-login{position:relative;isolation:isolate;background:#080808;color:#f6f5f1;}
-.bp-login-backdrop{position:fixed;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(5,5,5,.9),rgba(5,5,5,.74)),url("https://base44.app/api/apps/695082fe4bf609d41ba10d76/files/public/695082fe4bf609d41ba10d76/07b9c84bc_IMG_0943.jpeg") center/cover no-repeat;}
+.bp-login-backdrop{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:#080808 url("https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg") center/cover no-repeat;}
+.bp-login-background-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;pointer-events:none;}
+.bp-login-video-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,7,8,.86) 0%,rgba(4,7,8,.64) 48%,rgba(4,7,8,.76) 100%);pointer-events:none;}
+@media(prefers-reduced-motion:reduce){.bp-login-background-video{display:none;}}
 .bp-login .bp-login-header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px max(28px,calc((100vw - 1200px)/2));background:linear-gradient(#080808ed,#08080880);border:0;}
 .bp-wordmark{display:inline-flex;align-items:center;gap:14px;text-decoration:none!important;color:white!important;}
 .bp-wordmark img{height:48px;width:42px;object-fit:contain;}

@@ -55,7 +55,12 @@ export default function PortalLogin(){
   }finally{setBusy(false);}
  };
  return <main className="portal-shell bp-login fixed inset-0 overflow-y-auto">
-  <div className="bp-login-backdrop" aria-hidden="true"/>
+  <div className="bp-login-backdrop" aria-hidden="true">
+    <video className="bp-login-background-video" autoPlay muted loop playsInline preload="metadata" poster="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg">
+      <source src="https://media.base44.com/videos/public/694de31c7e0f5645fb95de52/8b3f7aa83_pathfinder-sign-in-background.mp4" type="video/mp4"/>
+    </video>
+    <div className="bp-login-video-shade"/>
+  </div>
   <header className="bp-login-header"><a className="bp-wordmark" href="https://home.blackpointkjc.com/" target="_blank" rel="noopener noreferrer"><img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/user_68f1b0512f3251072c89babf/5fb0eff7d_UntitledProject.png" alt="BlackPoint Security shield"/><div><strong>BLACK<span>POINT</span></strong><small>PATHFINDER · OPERATIONS PORTAL</small></div></a><nav aria-label="Public links"><a href="https://home.blackpointkjc.com/" target="_blank" rel="noopener noreferrer">BlackPoint home ↗</a></nav></header>
   <div className="bp-login-layout">
    <section className="bp-login-hero"><span className="bp-login-badge">VIRGINIA DCJS LICENSED · #11-30423</span><h1>Your people.<br/><span>Your mission.</span><br/>One Pathfinder.</h1><p>One secure workspace for the people behind BlackPoint. Sign in to your assigned officer, student, client, or staff portal.</p><div className="bp-login-signature"><img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/user_68f1b0512f3251072c89babf/5fb0eff7d_UntitledProject.png" alt=""/><div><strong>Present. Prepared. Professional.</strong><small>Black Point KJC Security Solution LLC</small></div></div></section>
