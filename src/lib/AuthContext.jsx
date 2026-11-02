@@ -472,69 +472,40 @@ export const AuthProvider = ({ children }) => {
     };
   }, [isAuthenticated, user?.id, user?.email]);
 
+  const logoutInProgress = useRef(false);
   const logout = useCallback(async (shouldRedirect = true) => {
-    // Before clearing the auth token, close browser presence through the duty
-    // status backend and then end the live-location session. If a TimeEntry is
-    // still open, both operations preserve the officer's CAD status; Clock Out
-    // remains the only self-service transition to Out of Service.
-    try {
-      const response = await base44.functions.invoke('enforceOfficerDutyStatus', { action: 'logout' });
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-    } catch (error) {
-      console.warn('[AUTH] Duty-status logout function failed:', error?.message);
-    }
-    try {
-      await endOfficerLocationSession();
-    } catch (locationError) {
-      console.warn('[AUTH] Live-location session close failed:', locationError?.message);
-    }
-
-    try {
-      const userKey = String(user?.email || user?.id || '').trim().toLowerCase();
-      if (userKey) {
-        localStorage.setItem(`bps-last-active:${userKey}`, new Date().toISOString());
-        sessionStorage.removeItem(`bps-welcome-session:${userKey}`);
-        sessionStorage.removeItem(`bps:pathfinder:tracking-session:${userKey}`);
-      }
-    } catch {}
-
-    // Clear this app's cached bundles and reads on each sign-out. Preserve
-    // pending offline reports, GPS settings, and other non-cache user work.
-    try {
-      clearBase44ReadCache();
-      queryClientInstance.clear();
-      if ('caches' in window) {
-        const names = await window.caches.keys();
-        await Promise.all(names.filter(name =>
-          name.startsWith('pathfinder-') || name.startsWith('workbox-') || name.startsWith('bps-')
-        ).map(name => window.caches.delete(name)));
-      }
-      for (let index = localStorage.length - 1; index >= 0; index--) {
-        const key = localStorage.key(index);
-        if (key && /^(bps:analytics:|bps:performance-cache:|bps:app-directory:|bps:cache:rotated-day:|pathfinder-offline-prime)/.test(key)) localStorage.removeItem(key);
-      }
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map(registration => registration.update().catch(()=>null)));
-      }
-    } catch (error) {
-      console.warn('[AUTH] Sign-out cache refresh partially failed:', error?.message);
-    }
-    try { await base44.functions.invoke('portalSession',{action:'sign_out'}); } catch {}
-    try { sessionStorage.removeItem('bps:ps-access'); } catch {}
+    if (logoutInProgress.current) return;
+    logoutInProgress.current = true;
+    // Revoke on the backend first, while the caller token is still available.
+    // Do not wait indefinitely for hardware, map, offline cache or telemetry.
+    const revoke = Promise.race([
+      base44.functions.invoke('portalSession', {action:'sign_out'}).catch(error => console.warn('[AUTH] Session revocation retry required', error?.message)),
+      new Promise(resolve => window.setTimeout(resolve, 1100)),
+    ]);
+    try { await revoke; } catch {}
+    // Remove authenticated UI state and cached identity synchronously.
+    requestSequence.current += 1;
     setUser(null);
     setIsAuthenticated(false);
     setAccountLock(null);
-    
-    if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.origin + '/Login');
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
-    }
-  }, [user?.id, user?.email]);
+    appParams.token = null;
+    clearBase44ReadCache();
+    queryClientInstance.clear();
+    try {
+      sessionStorage.removeItem('bps:ps-access');
+      sessionStorage.removeItem('bps:auth-provider');
+      localStorage.removeItem('bps:offline-identity');
+      for(let i=localStorage.length-1;i>=0;i--){
+        const key=localStorage.key(i);
+        if(key && (/^bps:microsoft-verified:/.test(key)||/^bps:outlook-token:/.test(key)||/^bps:app-directory:/.test(key)||/^bps:analytics:/.test(key)))localStorage.removeItem(key);
+      }
+    } catch {}
+    // SDK sign-out must run without blocking a deterministic redirect.
+    try { base44.auth.logout(); } catch(error) { console.warn('[AUTH] SDK logout error',error?.message); }
+    if(shouldRedirect){ window.location.replace(window.location.origin+'/Login?logged_out=1'); }
+    // Closing GPS and presence is a follow-up and must never delay redirect.
+    void endOfficerLocationSession().catch(()=>null);
+  }, []);
 
   useEffect(() => {
     if(!isAuthenticated||!user?.id)return;
