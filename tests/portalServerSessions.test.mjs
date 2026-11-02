@@ -10,7 +10,7 @@ const db={AccountLock:{filter:async()=>[]},PortalAuthSession:{
  update:async(id,p)=>{const row=records.find(r=>r.id===id);Object.assign(row,p);return row;}
 }};
 const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db}};
-const client={auth:{loginViaEmailPassword:async(email,password)=>{if(failLogin||password!=='mock-correct-password')throw Error('invalid');return {access_token:'mock-native-token'};},me:async()=>actor}};
+const client={auth:{loginViaEmailPassword:async(email,password)=>{if(failLogin||password!=='mock-correct-password')throw Object.assign(Error('invalid'),{status:400});return {access_token:'mock-native-token'};},me:async()=>actor}};
 let source=fs.readFileSync('base44/functions/portalSession/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','async function handler(req){');
 source=transformSync(source,{loader:'ts',target:'es2022'}).code;
 const handler=new Function('createClientFromRequest','createClient',source+';return handler;')(()=>sdk,()=>client);
