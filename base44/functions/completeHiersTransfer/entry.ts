@@ -1,6 +1,6 @@
 import {createClientFromRequest} from 'npm:@base44/sdk';
 const sourceId='6a72bbee2842d6338cbae513',destinationId='6ae7d733d4b1a647cd3e6f38';
-export default async function(req:Request){
+export default async function(req:Request){try{
  const db=createClientFromRequest(req).asServiceRole.entities;
  const body=await req.json().catch(()=>({}));if(!/^[a-f0-9]{64}$/.test(body.capability||''))return Response.json({error:'Unauthorized'},{status:401});
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body.capability)))).map(v=>v.toString(16).padStart(2,'0')).join('');
@@ -32,4 +32,4 @@ export default async function(req:Request){
  await db.PersonnelTransferBackup.update(job.id,{status:'complete',manifest:{...job.manifest,counts},capability_hash:''});
  return Response.json({success:true,counts});
  }catch(error){await db.PersonnelTransferBackup.update(job.id,{status:'failed',last_error:String(error?.message||error).slice(0,300)});return Response.json({error:'Transfer stopped safely; the protected backup is retained.'},{status:500});}
-}
+}catch(error){console.error('Transfer runtime',error?.message);return Response.json({error:String(error?.message||error).slice(0,350)},{status:503});}}
