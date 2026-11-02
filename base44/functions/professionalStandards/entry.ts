@@ -324,10 +324,19 @@ export default async function(req){
    const r=body.record||{};
    if(!kinds.includes(r.kind)||r.kind==='evidence')fail('Choose a valid record type.');
    if(!text(r.title))fail('A title is required.');
+   if(r.public_release===true&&!review)fail('Reviewer approval is required for public release.',403);
    if(r.assigned_to&&!eligible.some(v=>v.id===r.assigned_to))fail('Choose an authorized staff assignee.');
    const finding=['pending','sustained','not_sustained','unfounded','exonerated','policy_failure'].includes(r.finding)?r.finding:'pending';
    await audit(db,u,'record_add_requested',c.id,r.kind);
    await db.PSRecord.create({case_id:c.id,kind:r.kind,title:text(r.title,300),body:text(r.body,12000),person:text(r.person,300),policy:text(r.policy,500),finding:r.kind==='allegation'?finding:'',status:'open',assigned_to:text(r.assigned_to,100),due_date:text(r.due_date,40),author_id:u.id,author_name:actorName(u)});
+   if(r.public_release===true){
+    if(!review)fail('Only IA reviewers can authorize a public release.',403);
+    const safeMessage=({interview:'An interview has been documented as part of the case review. Personal identities and testimony remain confidential.',note:'A case review update was recorded. Internal notes and identities remain confidential.',allegation:'An allegation has been added to the case review. No final public determination has been issued.',policy:'Relevant policies are being examined as part of the review.'} as Record<string,string>)[r.kind];
+    if(safeMessage){
+      await db.PSRecord.create({case_id:c.id,kind:'public_release',title:'Case review progress',body:safeMessage,author_id:u.id,author_name:actorName(u),status:'published'});
+      await audit(db,u,'safe_public_record_released',c.id,r.kind);
+    }
+   }
    let email_sent=null;
    if(r.assigned_to)email_sent=await notify(base44,eligible.find(v=>v.id===r.assigned_to)?.email,'Professional Standards task '+c.reference,'A task or follow-up has been assigned. Open Professional Standards to review the deadline.',u);
    await audit(db,u,'record_added',c.id,r.kind);

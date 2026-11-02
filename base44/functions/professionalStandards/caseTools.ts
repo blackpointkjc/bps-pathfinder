@@ -55,13 +55,14 @@ export async function linkedCaseTools(ctx){
  if(action==='officer_file'){
   const person=await getSubject(),emails=[...new Set([person.email,person.work_email,person.pathfinder_email,...(person.email_aliases||[])].filter(Boolean))];
   const q={$or:[{officer_email:{$in:emails}},{officer_id:person.id}]};
-  const [training,writeups,inspections,reviews]=await Promise.all([
+  const [training,writeups,inspections,reviews,profileEvents]=await Promise.all([
    db.TrainingAssignment.filter({officer_email:{$in:emails}},'-created_date',50),
-   db.WriteUpReport.filter(q,'-created_date',50),db.InspectionReport.filter(q,'-created_date',50),db.PerformanceReview.filter(q,'-created_date',50)
+   db.WriteUpReport.filter(q,'-created_date',50),db.InspectionReport.filter(q,'-created_date',50),db.PerformanceReview.filter(q,'-created_date',50),
+   db.AuditLog.filter({entity_type:'User',entity_id:person.id},'-timestamp',500).catch(()=>[])
   ]);
   const cleanReview=row=>Object.fromEntries(Object.entries(row).filter(([key])=>!/pay|salary|hourly|bank|ssn|tax|signature/i.test(key)));
   await audit(db,u,'officer_file_view',c.id,person.id);
-  return Response.json({officer:{...officerSummary(person),dcjs_number:person.dcjs_number||'',dcjs_expiration:person.dcjs_expiration||'',firearm_expiration:person.firearm_expiration||'',hire_date:person.hire_date||'',certifications:person.officer_certifications||[]},training,writeups,inspections,reviews:reviews.map(cleanReview)});
+  return Response.json({officer:{...officerSummary(person),dcjs_number:person.dcjs_number||'',dcjs_expiration:person.dcjs_expiration||'',firearm_expiration:person.firearm_expiration||'',hire_date:person.hire_date||'',certifications:person.officer_certifications||[]},training,writeups,inspections,reviews:reviews.map(cleanReview),profileEvents:profileEvents.map((row:any)=>({id:row.id,action:row.action,field_changed:row.field_changed,actor_name:row.actor_name,timestamp:row.timestamp||row.created_date,description:row.description,before_value:row.before_value,after_value:row.after_value}))});
  }
  if(action==='document_outcome'){
   if(!review)fail('Reviewer access required to document the case decision.',403);
