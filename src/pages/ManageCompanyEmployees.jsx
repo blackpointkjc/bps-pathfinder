@@ -82,6 +82,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isSystemAdmin = user?.role === 'admin';
+  const canEditAccountRoles = user?.id === '6ae7d733d4b1a647cd3e6f38';
   const canManageEmployees = isSystemAdmin || userRoles.has('full_access') || userRoles.has('hr');
   const isHrReadOnly = false;
   const hasAccess = canManageEmployees;
@@ -136,7 +137,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
       // Commit role, employment, and profile changes in one audited server update.
       // Two sequential writes previously allowed a partial success to look saved.
-      if (systemAccessChanged && !isSystemAdmin) throw new Error('Only a system administrator may change account access.');
+      if (systemAccessChanged && !canEditAccountRoles) throw new Error('Only Colonel Hiers may change account roles.');
       const payloadToSave = { ...userData,
         role: requestedSystemRole,
         additional_roles: requestedAdditionalRoles,
@@ -488,11 +489,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {isTerminated && isSystemAdmin && <><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'rehire')}>Rehire · retain history</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button></>}
+            {isTerminated && canEditAccountRoles && <><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'rehire')}>Rehire · retain history</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button></>}
             <Button variant="outline" size="sm" onClick={() => handleEditUser(userData)}>
               <Edit className="w-4 h-4 mr-2" />{canManageEmployees ? 'Edit' : 'View'}
             </Button>
-            {isSystemAdmin && !isTerminated && userData.id!==user?.id && (
+            {canEditAccountRoles && !isTerminated && userData.id!==user?.id && (
               <Button
                 variant="outline"
                 size="sm"
@@ -506,7 +507,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 <UserMinus className="w-4 h-4 mr-2" />Move to Pending
               </Button>
             )}
-            {isSystemAdmin && userData.termination_date && <Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'clear_termination')}>Clear Termination Date</Button>}
+            {canEditAccountRoles && userData.termination_date && <Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'clear_termination')}>Clear Termination Date</Button>}
           </div>
         </div>
       </CardHeader>
@@ -540,7 +541,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         <div className="mt-2 space-y-1 border-t border-slate-700 pt-2 text-[11px]"><div className="break-all text-slate-300">{person.email || 'No email'}</div><div className="text-slate-300">{person.mobile_phone || 'No phone recorded'}</div></div>
         {commandRanks.has(person.rank) && <div className="mt-2 text-xs text-amber-200">Reports to {reportingLabel(person, users || [], p=>`${p.rank} ${p.last_name || p.first_name}`)}</div>}
         <Button type="button" size="sm" variant="outline" className="mt-3 w-full border-amber-500/70 bg-slate-900 text-white hover:bg-slate-700" onClick={() => handleEditUser(person)}><Edit className="mr-2 h-3.5 w-3.5"/> Edit Personnel</Button>
-        {canManageEmployees && person.additional_roles?.includes('officer') && <button type="button" className="mt-2 w-full text-center text-[11px] text-amber-300 underline underline-offset-2" onClick={async () => { if (await confirmInApp(`Move ${person.first_name} ${person.last_name} back to Pending Users? This removes their Officer role.`)) moveToPendingMutation.mutate(person); }}>Move to Pending Users</button>}
+        {canEditAccountRoles && person.additional_roles?.includes('officer') && <button type="button" className="mt-2 w-full text-center text-[11px] text-amber-300 underline underline-offset-2" onClick={async () => { if (await confirmInApp(`Move ${person.first_name} ${person.last_name} back to Pending Users? This removes their Officer role.`)) moveToPendingMutation.mutate(person); }}>Move to Pending Users</button>}
       </div>
       {children.length > 0 && <><div className="h-6 w-px bg-amber-600/70"/><div className="flex items-start justify-center gap-4 border-t border-amber-600/60 pt-4">{children.map(child => renderHierarchyNode(child,group,depth+1))}</div></>}
     </div>;
@@ -651,7 +652,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </Alert>
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {isSystemAdmin&&<div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-slate-900"><Label className="mb-2 block font-bold">Account access — Admin or User</Label><Select value={editFormData.role==='admin'?'admin':'user'} onValueChange={role=>setEditFormData(previous=>({...previous,role}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">User · standard employee access</SelectItem><SelectItem value="admin">Admin · system administrator access</SelectItem></SelectContent></Select><p className="mt-2 text-xs">Changing the account type saves when you select Save Changes. Other role permissions remain in the Roles tab.</p></div>}
+            {canEditAccountRoles&&<div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-slate-900"><Label className="mb-2 block font-bold">Account access — Admin or User</Label><Select value={editFormData.role==='admin'?'admin':'user'} onValueChange={role=>setEditFormData(previous=>({...previous,role}))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">User · standard employee access</SelectItem><SelectItem value="admin">Admin · system administrator access</SelectItem></SelectContent></Select><p className="mt-2 text-xs">Changing the account type saves when you select Save Changes. Other role permissions remain in the Roles tab.</p></div>}
             {/* Photo */}
             <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-lg border">
               <div className="relative">
@@ -840,7 +841,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </Tabs>
 
             {/* Roles */}
-            <fieldset disabled={!(isSystemAdmin || userRoles.has('full_access'))} className="border-t pt-4 disabled:opacity-70">
+            <fieldset disabled={!canEditAccountRoles} className="border-t pt-4 disabled:opacity-70">
               <Label className="text-base font-semibold mb-3 block">System Roles & Permissions</Label>
               <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
                 <Label className="text-xs font-bold uppercase tracking-wider text-amber-300">Account Type</Label>
@@ -856,13 +857,13 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 </Select>
                 <div className="mt-2 text-xs text-slate-400">Every account is a User unless an existing system administrator explicitly changes it to Admin.</div>
               </div>
-              {!isSystemAdmin && (
+              {!canEditAccountRoles && (
                 <Alert className="mb-4">
                   <Shield className="h-4 w-4" />
-                  <AlertDescription>Only a system administrator can change account type or toolbar permissions.</AlertDescription>
+                  <AlertDescription>Only Colonel Hiers can change account roles and permissions.</AlertDescription>
                 </Alert>
               )}
-              <AdditionalRolesEditor account={selectedUser} value={editFormData} onChange={setEditFormData} />
+              <AdditionalRolesEditor account={selectedUser} value={editFormData} onChange={setEditFormData} canEditRoles={canEditAccountRoles} />
 
             </fieldset>
 
