@@ -23,6 +23,7 @@ Deno.serve(async req=>{
 
   const roles=new Set((actor?.additional_roles||[]).map((v:any)=>String(v).toLowerCase()));
   if(!actor || (actor.role!=='admin'&&!roles.has('full_access')))return Response.json({error:'Administrator authorization required'},{status:403});
+  if(actor.id!=='6ae7d733d4b1a647cd3e6f38')return Response.json({error:'Only Colonel Hiers may change account roles or move an account to Pending.'},{status:403});
   const body=await req.json().catch(()=>({}));
   if(!['restore','rehire','convert_client','move_pending','clear_termination'].includes(body.action)||!body.user_id)return Response.json({error:'Select an employee and valid account action'},{status:400});
   const target=await base44.asServiceRole.entities.User.get(String(body.user_id)).catch(()=>null);
