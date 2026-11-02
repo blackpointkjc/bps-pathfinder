@@ -593,7 +593,7 @@ export default function GlobalMessageBanner({ user }) {
         // PropertyAlert realtime and CallStatusLog are two delivery paths for ONE
         // announcement; whichever arrives first claims it and the other becomes
         // a fallback instead of producing duplicate speech.
-        const propertyEventKey = `call:${callKey}:initial`;
+        const propertyEventKey = `property-alert:${record.id}:created`;
         const cadNumber = String(record.cadNumber || '');
         const announcementText = `Active call for service at ${record.propertyName || 'monitored property'}. ${record.callIncident || 'Call for service'} at ${record.callLocation || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
 
@@ -681,7 +681,7 @@ export default function GlobalMessageBanner({ user }) {
       if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
 
       const summary = propertyCallSummary(record, call);
-      const propertyEventKey = `call:${callKey}:initial`;
+      const propertyEventKey = `property-alert:${record.id}:created`;
       const email = normalized(user.email);
       const priorAcknowledgements = email
         ? await Promise.all([
@@ -779,9 +779,14 @@ export default function GlobalMessageBanner({ user }) {
       const showCadAnnouncementEvent = async incoming => {
         // All initial delivery paths share one identity, even duplicate property rows.
         const initial = ['property_alert', 'new_call', 'priority_call'].includes(incoming?.event_type);
-        const record = initial && incoming.call_id
-          ? { ...incoming, event_key: `call:${incoming.call_id}:initial` }
-          : incoming;
+        // The monitored-property horn + address announcement is distinct from
+        // a general new-call notification. Never let a generic CAD receipt
+        // consume a property alert's per-user speech entitlement.
+        const record = incoming?.event_type === 'property_alert'
+          ? incoming
+          : initial && incoming?.call_id
+            ? { ...incoming, event_key: `call:${incoming.call_id}:initial` }
+            : incoming;
         if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
         // BOLOAlert owns its own reliable speech path. Property alerts deliberately
         // remain enabled here as the durable fallback when the raw PropertyAlert
@@ -884,16 +889,18 @@ export default function GlobalMessageBanner({ user }) {
       });
       if (typeof statusLogUnsubscribe === 'function') unsubscribers.push(statusLogUnsubscribe);
 
-      // Recover property announcements created while the realtime subscription was
-      // connecting. Older history is seeded as known and never replayed. The server
-      // claim also prevents a refresh from repeating a call already announced to
-      // this user.
+      // Recover property announcements missed while subscriptions connected.
+      // Do not replay historical CAD activity on login or refresh. The receipt
+      // claim is per user/event, so another tab cannot duplicate the audio.
       base44.entities.CallStatusLog.list('-created_date', 150).then(records => {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.event_key) return;
-          // Recovery/history loads are seeded silently. Only a realtime create
-          // owns CAD audio; reconnecting must never make an old record beep.
-          knownIds.current.add(`CallStatusLog:${record.event_key}`);
+          const age=Date.now()-new Date(record.created_date||0).getTime();
+          if(record.event_type==='property_alert'&&age>=0&&age<=90_000&&record.audio_enabled!==false){
+            void showCadAnnouncementEvent(record);
+          }else{
+            knownIds.current.add(`CallStatusLog:${record.event_key}`);
+          }
         });
       }).catch(() => null);
 
@@ -914,7 +921,9 @@ export default function GlobalMessageBanner({ user }) {
 
             const created = new Date(record.created_date || 0).getTime();
             if (Number.isFinite(created) && created >= propertyCutoff) {
-              void showPropertyCall(record, { allowAudio: false });
+              // A verified property alert arriving during connection is still
+              // actionable for a short interval. Claim once, never replay later.
+              void showPropertyCall(record, { allowAudio: Date.now()-created <= 90_000 });
             } else {
               // Old alerts stay available in history but are never replayed as a
               // new live voice/banner event.
