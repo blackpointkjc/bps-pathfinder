@@ -108,10 +108,16 @@ export default async function(req:Request){
  }
  const reference=call.bps_reference||call.call_id;
  await db.PublicDispatchRequest.update(reservation.id,{status:'received',reference,call_id:call.id});
+ // Persist a durable dispatch event before invoking the assignment evaluator.
+ // This lets the existing monitor retry if an inner function fails or is rate-limited.
+ let alert=(await db.PropertyAlert.filter({callId:call.id,propertyId:'public-helpme'},'-created_date',1))[0];
+ if(!alert){
+  alert=await db.PropertyAlert.create({callId:call.id,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callPriority:call.priority,callStatus:call.status,cadNumber:reference,callTime:call.time_received,time_received:call.time_received,source_key:'public-helpme:'+call.id,acknowledged:false,lifecycle_status:'active'});
+ }
  // Assignment must still respect live dispatcher presence, unit eligibility,
  // verified GPS and operational safety constraints; never fabricate an officer.
  try{
-  const evaluated=await sdk.asServiceRole.functions.invoke('geofenceDispatchAssignment',{call_id:call.id,public_fallback:true});
+  const evaluated=await sdk.asServiceRole.functions.invoke('geofenceDispatchAssignment',{call_id:call.id,property_alert_id:alert.id,public_fallback:true});
   const result=evaluated?.data||evaluated;
   if(result?.error)console.error('Public CAD auto-dispatch evaluation deferred',result.error);
  }catch(error:any){console.error('Public CAD auto-dispatch evaluation deferred',String(error?.message||error).slice(0,150));}
