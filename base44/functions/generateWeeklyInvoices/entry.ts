@@ -1,4 +1,4 @@
-import {sendCreditFreeEmail} from '../creditFreeEmail.ts';
+import {sendCreditFreeEmail} from './creditFreeEmail.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
