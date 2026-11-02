@@ -1,3 +1,4 @@
+import {iaCaseEmail} from './assignmentEmail.ts';
 import {putOneDriveEvidence,oneDriveEvidenceLink,oneDriveStorageStatus} from './oneDriveEvidence.ts';
 import {IA_CATEGORIES,PUBLIC_UPDATE_MESSAGES,publicMessage} from './publicPolicy.ts';
 import {linkSubmittedReport} from './reportLink.ts';
@@ -264,7 +265,7 @@ export default async function(req){
    await audit(db,u,'staff_case_opened',created.id,source?sourceEntity+' '+sourceId:'Staff intake');
    if(source)await db.PSRecord.create({case_id:created.id,kind:'source_report',title:'Linked '+sourceEntity,body:'Original report ID: '+sourceId,source_entity:sourceEntity,source_record_id:sourceId,author_id:u.id,author_name:actorName(u),status:'linked'});
    let email_sent=null;
-   if(investigator_id)email_sent=await notify(base44,eligible.find(p=>p.id===investigator_id)?.email,'Professional Standards assignment '+reference,'A case has been assigned to you. Sign in to Pathfinder and open Professional Standards.',u);
+   if(investigator_id){const person=eligible.find(p=>p.id===investigator_id);const message=iaCaseEmail(created,person,'assignment');email_sent=await notify(base44,person?.work_email||person?.email,message.subject,message.html,u,'',true);}
    return Response.json({success:true,case_id:created.id,reference,email_sent});
   }
   if(action==='list'||action==='reports'){
@@ -294,7 +295,8 @@ export default async function(req){
    if(!review)fail('Reviewer access required.',403);
    const person=eligible.find(p=>p.id===c.investigator_id);
    if(!person)fail('Assign an active investigator before sending an alert.');
-   const email_sent=await notify(base44,person.email,'Professional Standards assignment '+c.reference,'A case is assigned to you. Sign in to Pathfinder and open Professional Standards.',u);
+   const message=iaCaseEmail(c,person,'assignment');
+   const email_sent=await notify(base44,person.work_email||person.email,message.subject,message.html,u,'',true);
    await audit(db,u,'assignment_notification_resent',c.id);
    return Response.json({success:true,email_sent});
   }
@@ -404,7 +406,8 @@ export default async function(req){
    const assignedId=updates.investigator_id??c.investigator_id,assigned=eligible.find(v=>v.id===assignedId);
    if(assigned&&((updates.investigator_id&&updates.investigator_id!==c.investigator_id)||(updates.status&&updates.status!==c.status))){
     const assignmentChanged=updates.investigator_id&&updates.investigator_id!==c.investigator_id;
-    email_sent=await notify(base44,assigned.work_email||assigned.email,'Professional Standards '+(assignmentChanged?'assignment ':'case status ')+c.reference,assignmentChanged?'A case has been assigned to you. Sign in to Pathfinder and open Professional Standards.':'The status of your assigned case changed to '+text(updates.status,80)+'. Sign in to Pathfinder for the confidential investigation record. Public tracking displays only approved status information.',u);
+    const message=iaCaseEmail({...c,...updates},assigned,assignmentChanged?'assignment':'status');
+    email_sent=await notify(base44,assigned.work_email||assigned.email,message.subject,message.html,u,'',true);
    }
    // Complainants are never emailed, including when an older client sends send_notice.
    return Response.json({success:true,email_sent});

@@ -20,7 +20,7 @@ export const actorName = u => [u?.rank,u?.last_name].filter(Boolean).join(' ')||
 export async function audit(db,u,action,caseId='',details='') {
   await db.PSAudit.create({case_id:caseId,actor_id:u?.id||'',actor_name:actorName(u),action,details:text(details,2000)});
 }
-export async function notify(base44,to,subject,body,actor=null,existingId='') {
+export async function notify(base44,to,subject,body,actor=null,existingId='',html=false) {
  if(!to)return false;
  const db=base44.asServiceRole.entities;
  let item;
@@ -30,7 +30,7 @@ export async function notify(base44,to,subject,body,actor=null,existingId='') {
   item=prior?await db.PSNotification.update(prior.id,value):await db.PSNotification.create(value);
  }catch{}
  let delivered=false,lastError='';
- try{const {companyDelivery}=await import('./delivery.ts');delivered=await companyDelivery(base44,to,subject,body,actor);}catch(error){lastError=String(error?.message||'The IA shared mailbox could not send the message. Reconnect Microsoft from Colonel Hiers’ Mail settings.').slice(0,600);}
+ try{const {companyDelivery}=await import('./delivery.ts');delivered=await companyDelivery(base44,to,subject,body,actor,html);}catch(error){lastError=String(error?.message||'The IA shared mailbox could not send the message. Reconnect Microsoft from Colonel Hiers’ Mail settings.').slice(0,600);}
  if(item)await db.PSNotification.update(item.id,{status:delivered?'sent':'failed',last_error:delivered?'':lastError,...(delivered?{sent_at:new Date().toISOString()}:{})});
  return delivered;
 }

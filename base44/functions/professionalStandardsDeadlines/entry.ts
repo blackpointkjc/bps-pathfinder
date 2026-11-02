@@ -1,6 +1,7 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClientFromRequest} from 'npm:@base44/sdk';
 import {notify,audit,psRole,manager} from './security.ts';
+import {iaCaseEmail} from '../professionalStandards/assignmentEmail.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
@@ -26,11 +27,12 @@ export default async function(req){
  const eligible=new Map(users.filter(v=>psRole(v)).map(v=>[v.id,v])),open=new Map(cases.filter(v=>v.status!=='closed').map(v=>[v.id,v]));
  let delivered=0,failed=0;
  const reminders=[];
- for(const c of open.values())if(c.due_date&&c.due_date<=tomorrow&&c.investigator_id&&c.last_reminder_day!==day)reminders.push({entity:'PSCase',item:c,user_id:c.investigator_id,reference:c.reference,label:'Case deadline: '+c.due_date});
- for(const r of records)if(['task','corrective_action','interview'].includes(r.kind)&&r.status!=='completed'&&r.due_date&&r.due_date<=tomorrow&&r.assigned_to&&r.last_reminder_day!==day&&open.has(r.case_id))reminders.push({entity:'PSRecord',item:r,user_id:r.assigned_to,reference:open.get(r.case_id).reference,label:r.title+' · due '+r.due_date});
+ for(const c of open.values())if(c.due_date&&c.due_date<=tomorrow&&c.investigator_id&&c.last_reminder_day!==day)reminders.push({entity:'PSCase',item:c,caseInfo:c,user_id:c.investigator_id,reference:c.reference,label:'Case deadline: '+c.due_date});
+ for(const r of records)if(['task','corrective_action','interview'].includes(r.kind)&&r.status!=='completed'&&r.due_date&&r.due_date<=tomorrow&&r.assigned_to&&r.last_reminder_day!==day&&open.has(r.case_id))reminders.push({entity:'PSRecord',item:r,caseInfo:open.get(r.case_id),user_id:r.assigned_to,reference:open.get(r.case_id).reference,label:r.title+' · due '+r.due_date});
  for(const r of reminders.slice(0,100)){
   const person=eligible.get(r.user_id);if(!person)continue;
-  const sent=await notify(sdk,person.email,'Professional Standards deadline · '+r.reference,r.label+'. Sign in to BPS Pathfinder and open Professional Standards to review your assignment. Do not forward case information outside authorized staff.');
+  const message=iaCaseEmail(r.caseInfo,person,r.entity==='PSCase'?'reminder':'task',{taskTitle:r.entity==='PSRecord'?r.item.title:undefined,taskDue:r.entity==='PSRecord'?r.item.due_date:undefined});
+  const sent=await notify(sdk,person.work_email||person.email,message.subject,message.html,null,'',true);
   if(sent){await db[r.entity].update(r.item.id,{last_reminder_day:day});delivered++;}else failed++;
   await audit(db,u,'deadline_reminder',r.entity==='PSCase'?r.item.id:r.item.case_id,(sent?'accepted for delivery':'delivery failed')+' · '+r.item.id);
  }
