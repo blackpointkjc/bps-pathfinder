@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import{transform}from'esbuild';import{webcrypto}from'node:crypto';if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto});
+let rows=[],calls=[],fail=false,now=0;
+const db={PublicDispatchRequest:{filter:async q=>q.request_id?rows.filter(r=>r.request_id===q.request_id):rows.filter(r=>r.source_hash===q.source_hash),create:async x=>{const r={...x,id:'request'+(++now)};rows.push(r);return r;},update:async(id,p)=>Object.assign(rows.find(r=>r.id===id),p)}};
+const sdk={asServiceRole:{entities:db,functions:{invoke:async(name,body)=>{assert.equal(name,'createDispatchCall');calls.push(body);if(fail)throw Error('provider failure');return{data:{success:true,call:{id:'call-'+now,bps_reference:'BPS-202611-'+now}}};}}}};
+const source=fs.readFileSync('base44/functions/publicDispatch/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function','async function handle');const code=(await transform(source,{loader:'ts',format:'esm'})).code;
+const handler=new Function('createClientFromRequest',code+';return handle;')(()=>sdk);
+const valid={request_id:'synthetic-request-1234567890',incident:'Security assistance',location:'100 Test Street, Richmond, VA',description:'Synthetic intake test only.',caller_name:'Test Person',caller_phone:'5551234567',acknowledged:true,selected_units:['must-not-be-trusted'],priority:'critical'};
+async function call(body){const r=await handler(new Request('https://example.test',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'192.0.2.1'},body:JSON.stringify(body)}));return{status:r.status,...await r.json()};}
+assert.equal((await call({})).status,400);assert.equal((await call({...valid,website:'spam'})).status,400);assert.equal((await call({...valid,caller_phone:'123'})).status,400);
+let r=await call(valid);assert.equal(r.status,200);assert.ok(r.reference.startsWith('BPS-'));assert.equal(calls.length,1);assert.deepEqual(calls[0].selected_units,[]);assert.equal(calls[0].data.source,'public_helpme');assert.notEqual(calls[0].data.priority,'critical');
+assert.equal((await call(valid)).reference,r.reference);assert.equal(calls.length,1,'duplicate request must not create a second call');
+fail=true;r=await call({...valid,request_id:'synthetic-request-failure-1234'});assert.equal(r.status,503);assert.ok(!r.reference);assert.equal(rows.at(-1).status,'needs_attention');
+console.log('PASS: anonymous dispatch intake validates required data, ignores client assignment/priority, creates real CAD requests, reuses receipt on retry and never reports failed calls as received.');

@@ -19,7 +19,8 @@ export default async function(req:Request){try{
   const fields=Object.keys(entry.fields),query={$or:fields.flatMap(k=>[{[k]:sourceId},{[k]:source.email}])};let changed=0;
   for(let batch=0;batch<1;batch++){
    const rows=await db[entry.entity].filter(query,'created_date',20);if(!rows.length)break;
-   for(const row of rows){const patch:any={};for(const field of fields){const v=row[field];if(v===sourceId)patch[field]=destinationId;else if(v===source.email)patch[field]=destination.email;else if(Array.isArray(v)&&v.some(x=>x===sourceId||x===source.email))patch[field]=[...new Set(v.map(x=>x===sourceId?destinationId:x===source.email?destination.email:x))];}if(Object.keys(patch).length){await db[entry.entity].update(row.id,patch);changed++;}}
+   const patches:any[]=[];for(const row of rows){const patch:any={};for(const field of fields){const v=row[field];if(v===sourceId)patch[field]=destinationId;else if(v===source.email)patch[field]=destination.email;else if(Array.isArray(v)&&v.some(x=>x===sourceId||x===source.email))patch[field]=[...new Set(v.map(x=>x===sourceId?destinationId:x===source.email?destination.email:x))];}if(Object.keys(patch).length){patches.push({id:row.id,...patch});changed++;}}
+   if(patches.length)await db[entry.entity].bulkUpdate(patches);
    if(rows.length<100)break;
   }nextCursor=cursor+(changed<20?1:0);counts[entry.entity]=(counts[entry.entity]||0)+changed;
  await db.PersonnelTransferJob.update(job.id,{manifest:{...job.manifest,counts,profile_applied:true,cursor:job.manifest.entities.indexOf(entry)+(changed<20?1:0)}});
