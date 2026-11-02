@@ -21,7 +21,7 @@ self.onmessage=event=>{const {id,text}=event.data;queue=queue.catch(()=>{}).then
    self.postMessage({id,type:'progress',message:'Rewriting on this device… '+(index+1)+'/'+chunks.length});
    const result=await generate('Rewrite in professional, respectful English. Preserve facts, names, dates, numbers and quotations: '+respectfulDraft(chunks[index]),{max_new_tokens:Math.min(850,Math.max(160,Math.ceil(chunks[index].length/2))),do_sample:false,repetition_penalty:1.05});
    const generated=result[0]?.generated_text;const candidate=Array.isArray(generated)?generated.at(-1)?.content:generated;
-   output.push(validateRewrite(chunks[index],candidate));
+   try{output.push(validateRewrite(chunks[index],candidate));}catch{output.push(validateRewrite(chunks[index],respectfulDraft(chunks[index])));}
   }
   self.postMessage({id,type:'result',text:output.join('\n\n')});
  }catch(error){self.postMessage({id,type:'error',message:String(error?.message||error||'The local AI model could not start. Your draft is preserved.').slice(0,400)});}
