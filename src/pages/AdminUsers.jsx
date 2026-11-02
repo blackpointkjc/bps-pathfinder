@@ -564,6 +564,7 @@ export default function AdminUsers({ embedded = false }) {
   // employee login and must never require an Officer/reporting-officer role.
   const isPendingUser = (u) => {
     const roles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
+    if(String(u.account_status||'').toLowerCase()==='pending' && u.role!=='admin' && roles.size===0) return true;
     return !['investigator','reviewer'].includes(u.ps_role) && u.role !== 'admin' &&
       !['ia','full_access','officer','client','student','support','support_staff','hr','accounting','trainer','dispatch','cad_access','visitor'].some(role => roles.has(role)) &&
       !['support staff','human resources'].includes(String(u.rank || '').trim().toLowerCase());
