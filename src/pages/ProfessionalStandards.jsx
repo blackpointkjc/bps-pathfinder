@@ -51,7 +51,7 @@ export default function ProfessionalStandards({embedded=false}){
 
  const totals={new:rows.filter(c=>!c.investigator_id&&['new','triage'].includes(c.status)).length,active:rows.filter(c=>!['approved','closed'].includes(c.status)).length,review:rows.filter(c=>c.status==='pending_review').length,overdue:rows.filter(c=>c.due_date&&new Date(c.due_date)<new Date()&&c.status!=='closed').length};
  const legacyTabs=reviewer?[['approvals','Officer report approvals'],['complaints','Officer complaints'],['force','Use of force'],['writeups','Write-ups'],['inspections','Inspections'],['reviews','Performance reviews'],['confidential','Confidential reports'],['commendations','Commendations'],['client_referrals','Client referrals']]:[];
- const availableLegacy=[...legacyTabs,['myreviews','My reviews & acknowledgments'],['report','Confidential reporting']];
+ const availableLegacy=reviewer?[...legacyTabs,['myreviews','My reviews & acknowledgments'],['report','Confidential reporting']]:[];
 
  const workAreas=[
   ...(reviewer?[{id:'intake',label:'Complaint Intake',description:'Review complaints and commendations',icon:Inbox,tools:[['inbox','Complaint inbox']]}]:[]),
@@ -68,7 +68,7 @@ export default function ProfessionalStandards({embedded=false}){
  const Legacy=availableLegacy.some(([k])=>k===tab)?getPreparedTool(legacyFiles[tab]+'.jsx')||legacy[tab]:null;
  const c=detail?.case;
  const records=detail?.records||[];
- const caseSections=['overview','reporter_messages','public_releases','officers','evidence','interviews','tasks','findings','corrective_actions','audit'];
+ const caseSections=reviewer?['overview','reporter_messages','public_releases','officers','evidence','interviews','tasks','findings','corrective_actions','audit']:['overview','reporter_messages','officers','evidence','interviews','tasks','findings','corrective_actions'];
  const visibleRecords=records.filter(r=>section==='reporter_messages'?['public_followup','evidence'].includes(r.kind):section==='public_releases'?['public_update','public_release'].includes(r.kind):section==='evidence'?r.kind==='evidence':section==='interviews'?['interview','note','public_followup'].includes(r.kind):section==='tasks'?r.kind==='task':section==='findings'?['allegation','policy','disposition'].includes(r.kind):section==='corrective_actions'?r.kind==='corrective_action':false);
  const eligible=rows.filter(c=>(reviewer||c.investigator_id===user?.id)&&(tab!=='inbox'||!c.investigator_id&&['new','triage'].includes(c.status))&&(filter==='all'||c.status===filter)&&[c.reference,c.officers,c.location,c.description].join(' ').toLowerCase().includes(search.toLowerCase()));
  if(!staff)return <main className="bg-[#080d16] text-slate-100 h-full p-8"><h1>Internal Affairs access required</h1><p>An administrator must assign the Internal Affairs additional role to your account.</p></main>;

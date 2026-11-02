@@ -20,9 +20,15 @@ export default function PortalLogin(){
   if(!response?.access_token)throw new Error(response?.error||'Sign-in could not be confirmed.');
   if(response.access_token){base44.auth.setToken(response.access_token);appParams.token=response.access_token;}
   clearBase44ReadCache();
-  const r=await base44.functions.invoke('portalRegistration',{action:'profile',first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type,date_of_birth:form.date_of_birth});
-  if(r.data?.error)throw new Error(r.data.error);
-  recordLoginActivity(r.data?.profile?.id||response.user?.id);
+  // Once the identity provider accepted credentials, optional onboarding sync
+  // must never turn a valid login into an incorrect-password error.
+  let profileId=response.user?.id;
+  try {
+    const r=await base44.functions.invoke('portalRegistration',{action:'profile',first_name:form.first_name,last_name:form.last_name,requested_type:form.requested_type,date_of_birth:form.date_of_birth});
+    if(!r.data?.error)profileId=r.data?.profile?.id||profileId;
+    else console.warn('Post-login profile sync pending:',r.data.error);
+  } catch(syncError) { console.warn('Post-login profile sync deferred:',syncError?.message); }
+  recordLoginActivity(profileId);
   sessionStorage.removeItem('bps:registration-draft');
   sessionStorage.setItem('bps:portal-welcome','1');
   window.location.assign('/');

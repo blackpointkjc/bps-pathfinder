@@ -15,6 +15,7 @@ export default async function(req){
    const client=createClient({appId:'694de31c7e0f5645fb95de52',serverUrl:'https://base44.app',requiresAuth:false});
    let result;try{result=await client.auth.loginViaEmailPassword(email,password);}catch(error){const status=Number(error?.status||error?.response?.status)||503;console.error('Native sign-in rejected',{status,code:String(error?.data?.error_type||error?.response?.data?.error_type||'provider_error')});return Response.json({error:status===429?'Too many sign-in attempts. Please wait and retry.':status>=500?'The sign-in provider is unavailable. Your password was not checked; please retry.':'The account provider did not accept this email and password. If you previously used Microsoft sign-in, use Forgot password to create your Pathfinder password.',code:status>=500?'AUTH_PROVIDER_UNAVAILABLE':'AUTH_PROVIDER_REJECTED'},{status:status>=500?503:status===429?429:401});}
    if(!result.access_token)return Response.json({error:'Sign-in could not be confirmed.'},{status:401});
+   client.auth.setToken(result.access_token);
    const user=await client.auth.me().then(__portalAppIdentity);
    if(inactive(user))return Response.json({error:'Your account is not active. Contact administration.'},{status:403});
    const locks=await db.AccountLock.filter({user_id:user.id,locked:true},'-created_date',1);
