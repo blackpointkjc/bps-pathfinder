@@ -117,7 +117,27 @@ Deno.serve(async (req) => {
       5,
     );
     if (existing?.length) {
-      return Response.json({ success: true, claimed: false, receipt: existing[0] });
+      const prior=existing[0];
+      // A browser-blocked speech attempt is not a delivered announcement.
+      // Allow one bounded recovery claim while the original event is fresh;
+      // never replay a completed or historical dispatch event.
+      const originalEvent=clean(body.event_id)
+        ? await base44.asServiceRole.entities.CallStatusLog.get(clean(body.event_id)).catch(()=>null)
+        : null;
+      const eventAge=Date.now()-Date.parse(originalEvent?.created_date||'');
+      if (prior.state==='blocked' && originalEvent?.event_key===eventKey
+          && Number.isFinite(eventAge) && eventAge>=0 && eventAge<=90_000
+          && !clean(prior.error).includes('retry_attempted')) {
+        const changed=await base44.asServiceRole.entities.CadAnnouncementReceipt.updateMany(
+          {id:prior.id,state:'blocked'},
+          {$set:{state:'quiet',error:'retry_attempted',processed_at:new Date().toISOString()}}
+        );
+        if(changed.updated===1)return Response.json({success:true,claimed:true,retry:true,
+          announcement_text:announcementText||clean(originalEvent.announcement_text),
+          property_announcement_text:propertyAnnouncementText,
+          assignment_announcement_text:assignmentAnnouncementText,receipt:{...prior,state:'quiet'}});
+      }
+      return Response.json({ success: true, claimed: false, receipt: prior });
     }
 
     const receipt = await base44.asServiceRole.entities.CadAnnouncementReceipt.create({

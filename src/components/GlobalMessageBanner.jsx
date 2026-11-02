@@ -142,6 +142,10 @@ async function finalizeAnnouncementEvent(claim, eventKey, state, error = '') {
     state,
     error,
   }).catch(() => null);
+  if (state === 'blocked' || state === 'failed') {
+    localAnnouncementClaims.delete(eventKey);
+    try { localStorage.removeItem(localClaimKey(eventKey)); } catch {}
+  }
 }
 
 function playNotificationChime(urgent = false) {
@@ -804,7 +808,6 @@ export default function GlobalMessageBanner({ user }) {
           if (claim?.not_recipient || claim?.local_duplicate || (!claim?.error && claim?.receipt)) knownIds.current.add(key);
           return;
         }
-        knownIds.current.add(key);
         // The claimed initial speech item owns its horn; no parallel chime.
         const autoAssignment = record.triggering_action === 'geofenceDispatchAssignment.live'
           && ['unit_dispatched', 'additional_unit'].includes(record.event_type);
@@ -840,6 +843,7 @@ export default function GlobalMessageBanner({ user }) {
           record.event_key,
           accepted ? 'played' : (record.event_type === 'property_alert' ? 'blocked' : (isVoiceEnabled() ? 'blocked' : 'quiet')),
         );
+        if (accepted) knownIds.current.add(key);
         if (initialClaim?.claimed) await finalizeAnnouncementEvent(
           initialClaim, initialKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'),
         );
