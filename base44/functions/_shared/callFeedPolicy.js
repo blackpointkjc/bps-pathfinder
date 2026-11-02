@@ -20,5 +20,5 @@ export function isVisibleActiveCall(call, now = Date.now()) {
   if (!isValidCallRecord(call) || call.manual_dismissed === true || call.time_cleared
     || TERMINAL.has(String(call.status || '').trim().toLowerCase())) return false;
   const stamp = callTimestamp(call);
-  return stamp > 0 && stamp <= now + 120000 && now - stamp <= ACTIVE_WINDOW_MS;
+  return stamp > 0 && stamp <= now + 120000 && (call.source === 'public_helpme' || now - stamp <= ACTIVE_WINDOW_MS);
 }

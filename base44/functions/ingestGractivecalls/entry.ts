@@ -1208,7 +1208,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
     return receivedAt >= now - 3 * 60 * 60_000 && receivedAt <= now &&
       !['Cleared','Cancelled'].includes(String(row.status || '')) &&
-      row.manual_dismissed !== true && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
+      row.manual_dismissed !== true && row.source !== 'public_helpme' && !row.public_request_id && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
   }).slice(0, 20);
   for (let offset = 0; offset < disappeared.length; offset += 4) {
     await Promise.all(disappeared.slice(offset, offset + 4).map((row: any) =>
