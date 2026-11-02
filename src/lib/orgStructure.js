@@ -154,7 +154,7 @@ export function officerOrgContext(user = {}, locations = []) {
 // not acquire company-wide officer visibility through an empty field.
 export function withinPersonnelOversightScope(viewer = {}, officer = {}) {
   const roles = new Set([viewer.role, ...(viewer.additional_roles || [])].map(lower));
-  if (roles.has('admin') || roles.has('full_access')) return true;
+  if (roles.has('admin') || roles.has('full_access') || ['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(lower(viewer.rank).replace(/[.]/g,''))) return true;
   if (!supervisorOutranks(viewer,officer)) return false;
   const platoon = text(viewer.oversight_platoon) || text(viewer.platoon);
   if ((!lower(platoon) || lower(platoon)==='command') || lower(officer.platoon) !== lower(platoon)) return false;

@@ -94,7 +94,7 @@ function AreaMember({ person, onOpen, onPhotoOpen }) {
 // A focused, rank-sorted command board for one regional platoon at a time.
 function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = [], regionsDirectory = [], onOpen, onPhotoOpen }) {
   const roles = new Set([viewer?.role,...(viewer?.additional_roles||[])].map(value=>String(value||'').toLowerCase()));
-  const companyAccess = roles.has('admin') || roles.has('full_access');
+  const companyAccess = roles.has('admin') || roles.has('full_access') || ['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(String(viewer?.rank||'').toLowerCase().replace(/[.]/g,''));
   const [chosenPlatoon,setChosenPlatoon]=useState(()=>viewer?.oversight_platoon||viewer?.platoon||'');
   const [chosenRegion,setChosenRegion]=useState(()=>viewer?.division||'');
   const distinct=values=>[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
@@ -152,8 +152,9 @@ export default function RankStructure(){
   const [printRequested,setPrintRequested]=useState(false);
   const { user } = useAuth();
   const isAdmin=user?.role==='admin'||(user?.additional_roles||[]).includes('full_access');
+  const isCompanyCommand=isAdmin||['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(String(user?.rank||'').toLowerCase().replace(/[.]/g,''));
   const {data:rosterData={officers:[],commands:[],platoons:[],regions:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({
-    queryKey:['rankStructureSnapshotV3',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
+    queryKey:['rankStructureSnapshotV4',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
     queryFn:async()=>{
       const response=await new Promise((resolve,reject)=>{
         const timer=setTimeout(()=>reject(new Error('Rank Structure could not load within 18 seconds because the service is busy. Retry after the request limit clears.')),18000);
@@ -192,7 +193,7 @@ export default function RankStructure(){
   // An officer on approved leave is still assigned to their substation.
   // The command card uses availability, but assignment rosters must not
   // silently remove people merely because they're off duty or on leave.
-  const active=useMemo(()=>users.filter(person=>isOperational(person) && (isAdmin || !hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,isAdmin,user?.id,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
+  const active=useMemo(()=>users.filter(person=>isOperational(person) && (isCompanyCommand || !hasSupervisorAccess(user) || withinPersonnelOversightScope(user, person))).sort(comparePersonnel),[users,isAdmin,user?.id,user?.platoon,user?.oversight_platoon,user?.division,user?.subdivision,user?.substation,user?.rank,availabilityTick]);
 
   if(!allowed) return <div className="p-8 text-center"><Shield className="mx-auto mb-3 h-12 w-12 text-slate-500"/><h2 className="text-xl font-bold">Access Required</h2></div>;
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-7"><div className="mx-auto max-w-7xl space-y-5">
@@ -203,7 +204,7 @@ export default function RankStructure(){
     <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-2xl font-black tracking-wide">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Company command and regional platoons are organized by rank, with each officer’s current assignment shown on their card.</p></div></div></div>
 
     {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>setPrintRequested(true)} className="inline-flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-600"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
-    {isAdmin && <section className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5">
+    {isCompanyCommand && <section className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5">
       <button type="button" aria-expanded={companyExpanded} onClick={()=>setCompanyExpanded(value=>!value)} className="flex w-full items-center justify-between gap-3 text-left"><span className="flex items-center gap-2 text-lg font-black text-white"><Shield className="h-5 w-5 text-amber-300"/>Company Command</span><span className="text-xs font-semibold text-amber-200">{companyExpanded?'Minimize':'Expand'}</span></button>
       {companyExpanded&&<div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson} onPhotoOpen={setPhotoPerson}/></div>}
     </section>}
