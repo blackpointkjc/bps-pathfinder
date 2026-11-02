@@ -179,7 +179,7 @@ export default async function(req){
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   const review=role==='reviewer';
   if(action==='evidence_storage_status'){
-   if(!review)fail('IA reviewer authorization required.',403);
+   if(!review && u.id!=='6ae7d733d4b1a647cd3e6f38')fail('IA reviewer or Colonel Hiers authorization required.',403);
    return Response.json(await oneDriveStorageStatus(db));
   }
   const canRead=c=>review||c.investigator_id===u.id;

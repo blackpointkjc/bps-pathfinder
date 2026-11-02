@@ -227,7 +227,7 @@ export async function beginOutlookConnection(userId, {evidenceStorage=false}={})
   const challenge = b64url(await sha256(verifier));
   const nonce = randomString(32);
   const state = randomString(40);
-  localStorage.setItem(oauthStateKey(userId), JSON.stringify({ verifier, state, nonce, created_at: Date.now() }));
+  localStorage.setItem(oauthStateKey(userId), JSON.stringify({ verifier, state, nonce, created_at: Date.now(), requestedScopes: [...DEFAULT_SCOPES,...(evidenceStorage?['Files.ReadWrite']:[])] }));
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -292,7 +292,7 @@ async function completeOutlookOAuthCallback(userId, callback = {}, { cleanBrowse
     code,
     redirect_uri: getOutlookRedirectUri(),
     code_verifier: saved.verifier,
-    scope: [...DEFAULT_SCOPES,...(evidenceStorage?['Files.ReadWrite']:[])].join(' '),
+    scope: (saved.requestedScopes || DEFAULT_SCOPES).join(' '),
   });
 
   const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/token`, {
@@ -309,6 +309,8 @@ async function completeOutlookOAuthCallback(userId, callback = {}, { cleanBrowse
     }
     return { handled: true, success: false, error: payload.error_description || payload.error || 'Microsoft sign-in failed.' };
   }
+
+  if ((saved.requestedScopes||[]).includes('Files.ReadWrite') && !String(payload.scope||'').toLowerCase().split(/\s+/).includes('files.readwrite')) return {handled:true,success:false,error:'Microsoft did not grant Files.ReadWrite. The permission must be approved in Entra before continuing.'};
 
   // Persist the refresh credential on the backend before declaring the account
   // connected. This makes the Microsoft link durable across browsers/devices.
