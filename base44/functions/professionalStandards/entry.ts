@@ -154,6 +154,9 @@ export default async function(req){
     .filter(r=>r.kind!=='public_release'||r.status==='published')
     .map(r=>({id:r.id,kind:r.kind,title:r.kind==='public_followup'?'Your message received':r.kind==='evidence'?'Evidence received':r.title||'Public update',message:r.kind==='public_update'?publicMessage(r.title,r.body):r.kind==='public_release'?text(r.body,6000):r.kind==='public_followup'?text(r.body,6000):text(r.file_name||r.title,200),posted_at:r.created_date}))
     .reverse();
+   // The intake receipt is the first public event, even for older cases that
+   // predate the dedicated release-history records.
+   timeline.unshift({id:'intake-'+c.id,kind:'receipt',title:'Submission received',message:'Your report was securely received by Professional Standards.',posted_at:c.created_date});
    return Response.json({reference:c.reference,kind:c.kind,status:state,message:publicMessage(state,c.public_message),investigator,updates,timeline,submitted_at:c.created_date,updated_at:c.updated_date});
   }
   const u=await identity(base44),role=psRole(u);
