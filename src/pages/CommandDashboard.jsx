@@ -36,19 +36,18 @@ function fmtTime(dateStr) {
     return formatEasternTime(d);
 }
 
-// Elapsed since call was received — uses created_date as reliable fallback
-function elapsed(call) {
-    // Prefer time_received if it's within 24h of created_date (scraper stored it correctly)
-    // Otherwise fall back to created_date (scraper had timezone bug)
+// One trusted received-time source for both the elapsed timer and incident order.
+// Ignore an imported received timestamp that differs from creation by >=24h.
+function elapsedAnchor(call) {
     const created = call?.created_date ? parseServerTimestamp(call.created_date)?.getTime() : null;
     const received = call?.time_received ? parseServerTimestamp(call.time_received)?.getTime() : null;
-    let ref = created;
-    if (received && created && Math.abs(received - created) < 24 * 3600 * 1000) {
-        ref = received; // time_received is trustworthy
-    }
+    if (received && created && Math.abs(received - created) < 24 * 3600 * 1000) return received;
+    return created || received || null;
+}
+function elapsed(call) {
+    const ref = elapsedAnchor(call);
     if (!ref) return '';
-    const secs = Math.floor((Date.now() - ref) / 1000);
-    if (secs < 0) return '0s';
+    const secs = Math.max(0, Math.floor((Date.now() - ref) / 1000));
     if (secs < 60) return `${secs}s`;
     if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
     return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
@@ -210,7 +209,7 @@ function CommandDashboardInner() {
       <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
-        priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} isExternal={isPulsePointCall}
+        priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} isExternal={isPulsePointCall}
         actions={<><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />

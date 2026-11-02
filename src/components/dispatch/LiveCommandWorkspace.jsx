@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { Radio, RefreshCw, Search, Users } from 'lucide-react';
 
-export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,isExternal,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
+export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,isExternal,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
  const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
  const [utilityPanel,setUtilityPanel]=useState(null);
  const needsDispatch=call=>!(call.assigned_units||[]).length&&!call.source;
@@ -12,7 +12,16 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const available=units.filter(u=>u.status==='Available'&&!u.connection_stale&&(u.presence_online===true||u.session_active===true));
  const priorities={critical:{label:'P1 · Critical',style:'border-red-500/60 bg-red-950/50 text-red-200'},high:{label:'P2 · High',style:'border-orange-500/50 bg-orange-950/40 text-orange-200'},medium:{label:'P3 · Standard',style:'border-amber-600/40 bg-amber-950/30 text-amber-200'},low:{label:'P4 · Low',style:'border-sky-500/40 bg-sky-950/30 text-sky-200'}};
  const visible=calls.filter(c=>(agency==='all'||agency==='external'&&isExternal(c)||c.agency===agency)&&(focus==='all'||focus==='unassigned'&&needsDispatch(c)||focus==='urgent'&&['critical','high'].includes(priorityOf(c)))&&[incidentOf(c),c.location,c.cross_street,identifierOf(c).value].join(' ').toLowerCase().includes(query.toLowerCase()));
- visible.sort((a,b)=>['critical','high','medium','low'].indexOf(priorityOf(a))-['critical','high','medium','low'].indexOf(priorityOf(b))||Date.parse(b.time_received||b.created_date||0)-Date.parse(a.time_received||a.created_date||0));
+ // Chronological board, not priority-sorted: newest/shortest elapsed first,
+ // oldest/longest elapsed last. Use the same timestamp as the visible timer.
+ // Unknown timestamps remain at the bottom with a deterministic tie-break.
+ visible.sort((a,b)=>{
+  const at=elapsedTimestampOf?.(a),bt=elapsedTimestampOf?.(b);
+  if(!at&&!bt)return String(a.id||'').localeCompare(String(b.id||''));
+  if(!at)return 1;
+  if(!bt)return -1;
+  return bt-at||String(a.id||'').localeCompare(String(b.id||''));
+ });
  const officers=units.filter(u=>[u.rank,u.last_name,u.unit_number,u.platoon,u.status].join(' ').toLowerCase().includes(unitSearch.toLowerCase())).sort(comparePersonnel);
  const detail=selectedCall?(allCalls.find(call=>call.id===selectedCall.id)||selectedCall):null;
  const run=async(key,task)=>{if(working)return;setWorking(key);setError('');try{await task();}catch(e){setError(e?.response?.data?.error||e.message||'Action could not be saved.');}finally{setWorking('');}};
@@ -34,6 +43,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
     <div className="border-b border-slate-700 p-4"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-lg font-semibold"><Radio className="h-5 w-5 text-cyan-300"/>Active calls for service <span className="ml-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300">{visible.length}</span></h2><div className="flex gap-1">{[['all','All calls'],['unassigned','Needs dispatch'],['urgent','Priority']].map(([id,label])=><button type="button" key={id} onClick={()=>setFocus(id)} aria-pressed={focus===id} className="rounded-lg px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 aria-pressed:bg-cyan-900 aria-pressed:text-cyan-100">{label}</button>)}</div></div>
      <div className="flex flex-wrap gap-2"><label className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3"><Search className="h-4 w-4 text-slate-500"/><input aria-label="Search live incidents" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search incident, address or reference" className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-white outline-none"/></label><select aria-label="Filter live command by agency" value={agency} onChange={e=>setAgency(e.target.value)} className="min-h-11 rounded-lg border border-slate-600 bg-slate-950 px-3 text-sm"><option value="all">All agencies</option>{[...new Set(allCalls.map(c=>c.agency).filter(Boolean))].sort().map(a=><option key={a}>{a}</option>)}{allCalls.some(isExternal)&&<option value="external">PulsePoint</option>}</select></div>
     </div>
+    <div className="px-4 py-2 text-xs text-slate-400">Sorted by elapsed time: shortest first → oldest last. Priority remains visible but does not affect row order.</div>
     <div className="cad-incident-scroll"><table role="table" aria-label="Active calls for service" className="cad-incident-table"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">PRI</th><th role="columnheader" scope="col">CAD / received</th><th role="columnheader" scope="col">Incident / location</th><th role="columnheader" scope="col">Status / units</th><th role="columnheader" scope="col">Elapsed</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">
     {visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;return <tr role="row" key={call.id} data-priority={priorityOf(call)} aria-selected={detail?.id===call.id}>
      <td role="cell" data-label="Priority"><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span></td>
