@@ -100,9 +100,10 @@ Deno.serve(async (req) => {
     if (!simulation && ['cleared', 'cancelled', 'canceled', 'closed', 'resolved'].includes(lower(call.status))) return Response.json({ success: true, skipped: true, reason: 'Call is no longer active' });
     const publicCall=call.source==='public_helpme';
     if(publicCall){
-      const [people,sessions]=await Promise.all([base44.asServiceRole.entities.User.list('-updated_date',750),base44.asServiceRole.entities.ActiveOfficer.list('-last_update',300)]);
+      const [people,sessions,portalSessions]=await Promise.all([base44.asServiceRole.entities.User.list('-updated_date',750),base44.asServiceRole.entities.ActiveOfficer.list('-last_update',300),base44.asServiceRole.entities.PortalAuthSession.filter({revoked:false,last_activity_at:{$gte:new Date(Date.now()-5*60*1000).toISOString()}},'-last_activity_at',300)]);
       const dispatchEmails=new Set(people.filter((p:any)=>!p.disabled&&!p.termination_date&&(Boolean(p.dispatch_role)||['dispatch','dispatcher'].some(r=>(p.additional_roles||[]).includes(r)))).map((p:any)=>lower(p.email)));
-      if(sessions.some((p:any)=>dispatchEmails.has(lower(p.officer_email))&&p.session_active!==false&&Date.parse(p.last_update||p.updated_date||'')>Date.now()-5*60*1000))return Response.json({success:true,skipped:true,reason:'An active dispatcher will review this public request.'});
+      const dispatchIds=new Set(people.filter((p:any)=>dispatchEmails.has(lower(p.email))).map((p:any)=>p.id));
+      if(portalSessions.some((s:any)=>dispatchIds.has(s.user_id))||sessions.some((p:any)=>dispatchEmails.has(lower(p.officer_email))&&p.session_active!==false&&Date.parse(p.last_update||p.updated_date||'')>Date.now()-5*60*1000))return Response.json({success:true,skipped:true,reason:'An active dispatcher will review this public request.'});
     }
     let alert = input.property_alert_id
       ? await withRetry(() => base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id))).catch(() => null)
@@ -153,7 +154,7 @@ Deno.serve(async (req) => {
     const liveApproved = Boolean(property.auto_dispatch_live_approved_at && property.auto_dispatch_live_approved_by);
     const requestedMode = ['disabled', 'manual_review', 'live'].includes(configuredMode) ? configuredMode : 'shadow';
     // A stale/direct data edit cannot bypass the Phase 2B administrator approval gate.
-    const mode = fourUnitCall ? 'live' : requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
+    const mode = fourUnitCall || publicCall ? 'live' : requestedMode === 'live' && !liveApproved ? 'manual_review' : requestedMode;
     // Use the property's saved response-radius rule for both recommendations
     // and LIVE assignment. The prior hardcoded 500-meter limit ignored the Admin
     // setting and rejected otherwise eligible clocked-in officers.
