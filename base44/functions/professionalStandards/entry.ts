@@ -172,7 +172,7 @@ export default async function(req){
   const canRead=c=>review||c.investigator_id===u.id;
   // Most actions only operate on the selected case and its records. Avoid
   // a global User.list for each click, message, upload, or audit refresh.
-  const requiresPersonnel=['list','reports','create_case','update','resend_assignment','link_officers','officer_directory'].includes(action);
+  const requiresPersonnel=['list','reports','create_case','get','update','resend_assignment','link_officers','officer_directory'].includes(action);
   const staff=requiresPersonnel?await casePersonnel(db):[];
   const eligible=staff.filter(v=>psRole(v));
   const staffSummary=eligible.map(v=>({id:v.id,name:actorName(v),email:v.email,role:psRole(v)}));
