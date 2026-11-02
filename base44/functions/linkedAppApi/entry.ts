@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const BRIDGE_URL = 'https://bpsc.base44.app/api/functions/linkedAppBridge';
@@ -5,7 +6,7 @@ const BRIDGE_URL = 'https://bpsc.base44.app/api/functions/linkedAppBridge';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
+        const user = await base44.auth.me().then(__portalAppIdentity);
         if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
         const apiKey = Deno.env.has('LINKED_APP_API_KEY') ? Deno.env.get('LINKED_APP_API_KEY') : null;

@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { blackPointEmail } from './blackPointEmail.ts';
 import { easternDateKey, loadPerformanceMetricData } from './metrics.ts';
@@ -527,7 +528,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__limitFullAccess).catch(()=>null);
+    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
     if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
@@ -539,7 +540,7 @@ Deno.serve(async (req) => {
     const manual = action === 'send_now' || action === 'preview';
     let caller: any = null;
     if (manual) {
-      caller = await base44.auth.me().then(__limitFullAccess).catch(() => null);
+      caller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(() => null);
       if (!caller?.id) return json({ error: 'Authentication required.' }, 401);
       if (caller.role !== 'admin') return json({ error: 'Administrator access is required.' }, 403);
     }

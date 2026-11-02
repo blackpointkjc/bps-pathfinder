@@ -1,3 +1,4 @@
+import {effectivePortalIdentity} from '@/lib/portalAccess';
 import {watchInactivity,requiresFreshLogin,activityKey} from '@/lib/sessionPolicy';
 import {offlineIdentity} from '@/lib/offlineSession';
 import {queryClientInstance} from '@/lib/query-client';
@@ -121,6 +122,7 @@ export const AuthProvider = ({ children }) => {
       const registration = await base44.functions.invoke('portalRegistration', {action:'profile'});
       if (registration.data?.error) throw new Error(registration.data.error);
       if (registration.data?.profile) currentUser = {...currentUser,...registration.data.profile};
+      currentUser=effectivePortalIdentity(currentUser);
       if (requestId !== requestSequence.current) return;
 
       // The User record already carries the linked work/Microsoft aliases.

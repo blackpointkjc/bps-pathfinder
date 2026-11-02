@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {companyDelivery} from './delivery.ts';
 import {createClientFromRequest} from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -16,7 +17,7 @@ const URL='https://bpspf.blackpointkjc.com/Login?mode=register';
 const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export default async function(req){
  try{
- const base44=createClientFromRequest(req),me=await base44.auth.me().then(__limitFullAccess);
+ const base44=createClientFromRequest(req),me=await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess);
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
  if(!await __portalLoginIsCurrent(req,base44,me))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  const b=await req.json(),roles=new Set(me.additional_roles||[]),admin=me.role==='admin'||roles.has('full_access');

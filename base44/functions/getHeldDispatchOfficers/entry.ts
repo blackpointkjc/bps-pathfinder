@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
@@ -15,14 +16,14 @@ Deno.serve(async req => {
   try {
     const api=createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await api.auth.me().then(__limitFullAccess).catch(()=>null);
+    const __portalCaller = await api.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
     if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,api,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await api.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     api.auth.me = async () => __portalCaller;
 
-    const me=await api.auth.me().then(__limitFullAccess).catch(()=>null);
+    const me=await api.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
     const roles=new Set((me?.additional_roles||[]).map((s:string)=>String(s).toLowerCase()));
     if(!me || !(me.role==='admin'||me.role==='dispatch'||me.dispatch_role||me.is_supervisor||roles.has('full_access')||roles.has('cad_access')||roles.has('dispatch')||roles.has('supervisor')))return Response.json({error:'Dispatch access required'},{status:403});
     const rows=await api.asServiceRole.entities.User.filter({dispatch_hold_new_calls:true},'-dispatch_hold_at',200);

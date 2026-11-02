@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const LOGO_URL = 'https://bpspf.blackpointkjc.com/black-point-shield.webp';
@@ -36,7 +37,7 @@ function branded(payload: any) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const actor = await base44.auth.me().catch(() => null);
+    const actor = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
     if (!actor) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if(actor.role!=='admin'&&!(actor.additional_roles||[]).some(r=>['hr','trainer'].includes(r)))return Response.json({error:'Account administrator access required.'},{status:403});
     const session=await base44.functions.invoke('portalSession',{action:'check'});if(!session.data?.success)return Response.json({error:'Sign in again before sending email.'},{status:401});

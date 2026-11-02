@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
@@ -60,13 +61,13 @@ Deno.serve(async req => {
   try {
     const api=createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await api.auth.me().then(__limitFullAccess).catch(()=>null);
+    const __portalCaller = await api.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
     if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,api,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await api.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     api.auth.me = async () => __portalCaller;
- const actor=await api.auth.me().then(__limitFullAccess);
+ const actor=await api.auth.me().then(__portalAppIdentity).then(__limitFullAccess);
     const roles=new Set([actor?.role,...(actor?.additional_roles||[])].map(lower));
     if(!actor || !(roles.has('admin') || roles.has('supervisor') || roles.has('full_access') || actor.is_supervisor===true || supervisorRanks.has(lower(actor.rank)))) return Response.json({error:'Supervisor authorization required'},{status:403});
     const input=await req.json();const email=lower(input.officer_email);const date=String(input.call_out_date||'');

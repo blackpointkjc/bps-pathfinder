@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClient,createClientFromRequest} from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 const IDLE_MS=13*60*60*1000;
@@ -14,7 +15,7 @@ export default async function(req){
    const client=createClient({appId:'694de31c7e0f5645fb95de52',serverUrl:'https://base44.app',requiresAuth:false});
    let result;try{result=await client.auth.loginViaEmailPassword(email,password);}catch{return Response.json({error:'Unable to sign in. Check your email and password, and verify your email if this is a new account.'},{status:401});}
    if(!result.access_token)return Response.json({error:'Sign-in could not be confirmed.'},{status:401});
-   const user=await client.auth.me();
+   const user=await client.auth.me().then(__portalAppIdentity);
    if(inactive(user))return Response.json({error:'Your account is not active. Contact administration.'},{status:403});
    const locks=await db.AccountLock.filter({user_id:user.id,locked:true},'-created_date',1);
    if(locks.length)return Response.json({error:'Your account is locked. Contact administration.'},{status:403});
@@ -24,7 +25,7 @@ export default async function(req){
    if(existing[0])await db.PortalAuthSession.update(existing[0].id,value);else await db.PortalAuthSession.create(value);
    return Response.json({access_token:result.access_token,user:{id:user.id},session_started_at:now});
   }
-  const user=await sdk.auth.me().catch(()=>null);
+  const user=await sdk.auth.me().then(__portalAppIdentity).catch(()=>null);
   if(inactive(user))return expired();
   const token=String(req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
   if(!token)return expired();

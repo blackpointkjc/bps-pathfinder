@@ -1,3 +1,4 @@
+const __portalAppIdentity=(user:any)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
@@ -17,7 +18,7 @@ const required = ['mobile_phone','address','city','state','zip','emergency_conta
 Deno.serve(async req => {
   try {
     const base44 = createClientFromRequest(req);
-    const me = await base44.auth.me().then(__limitFullAccess);
+    const me = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess);
     if (!me?.id) return Response.json({error:'Sign in required'}, {status:401});
  if(!await __portalLoginIsCurrent(req,base44,me))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     const roles = (me.additional_roles || []).map(value => String(value).toLowerCase());
