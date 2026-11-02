@@ -111,6 +111,14 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     enabled: hasAccess,
   });
 
+  // AuditLog is append-only from the employee editor. IA reviewers can also
+  // inspect the same canonical log in the linked professional file.
+  const { data: personnelHistory = [], isFetching: personnelHistoryLoading, refetch: reloadPersonnelHistory } = useQuery({
+    queryKey: ['personnel-history', editingUser],
+    queryFn: () => base44.entities.AuditLog.filter({entity_type:'User',entity_id:editingUser},'-timestamp',300),
+    enabled: Boolean(editingUser && isSystemAdmin), staleTime: 60_000,
+  });
+
   const { data: equipment } = useQuery({
     queryKey: ['equipment'],
     queryFn: () => base44.entities.Equipment.list(),
@@ -144,6 +152,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     },
     onSuccess: (result) => {
       invalidateAppDirectory();
+      queryClient.invalidateQueries({queryKey:['personnel-history',editingUser]});
       queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('trainingcompliancematrix');
@@ -874,6 +883,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
               </div>
             </fieldset>
 
+            {isSystemAdmin && <section className="rounded-lg border border-slate-300 bg-white p-4 text-slate-900" aria-label="Permanent personnel history">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Permanent Personnel History</h3><Button type="button" size="sm" variant="outline" onClick={()=>reloadPersonnelHistory()} disabled={personnelHistoryLoading}>{personnelHistoryLoading?'Loading…':'Refresh History'}</Button></div>
+              <p className="mb-3 text-xs text-slate-600">Dates of termination, rehire, rank changes, permission changes, assignments and available previous profile events remain attached to this employee. The current profile may change without deleting its historical records.</p>
+              <div className="max-h-64 space-y-2 overflow-y-auto">{personnelHistory.map(event=><article key={event.id} className="rounded border border-slate-200 p-2 text-xs"><strong>{event.description||event.field_changed||event.action}</strong><div className="text-slate-600">{event.timestamp?new Date(event.timestamp).toLocaleString():event.created_date||'Date unavailable'} · {event.actor_name||'Pathfinder'}</div>{event.field_changed&&<div className="break-all">{event.field_changed}: {event.before_value||'—'} → {event.after_value||'—'}</div>}</article>)}{!personnelHistory.length&&<p className="text-xs text-slate-500">No historical events were found for this profile. New changes will appear here after they are saved.</p>}</div>
+            </section>}
             {editFormData.termination_date && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
