@@ -1,3 +1,4 @@
+import {beginOutlookConnection} from '@/lib/outlookGraph';
 import AIRewriteField from '@/components/AIRewriteField';
 import CategorySelect from '@/components/ia/CategorySelect';
 import {PUBLIC_UPDATE_MESSAGES,publicMessage} from '@/lib/iaPolicy';
@@ -33,6 +34,10 @@ export default function ProfessionalStandards({embedded=false}){
  const reviewer=iaRole(user)==='reviewer';
  const staff=!!iaRole(user);
  
+ const [storageStatus,setStorageStatus]=useState(null);
+ const [storageChecking,setStorageChecking]=useState(false);
+ const refreshEvidenceStorage=async()=>{setStorageChecking(true);try{const result=await psCall({action:'evidence_storage_status'});setStorageStatus(result);}catch(error){setError(error?.message||'Could not verify OneDrive storage');}finally{setStorageChecking(false);}};
+ useEffect(()=>{if(reviewer && user?.id==='6ae7d733d4b1a647cd3e6f38')void refreshEvidenceStorage();},[reviewer,user?.id]);
  const [events,setEvents]=useState([]);
  const [tab,setTab]=useState(()=>normalizeSection(params.get('section'),reviewer)),[rows,setRows]=useState([]),[people,setPeople]=useState([]),[page,setPage]=useState(0),[more,setMore]=useState(false),[detail,setDetail]=useState(null),[section,setSection]=useState('overview'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[search,setSearch]=useState('');
  const [patch,setPatch]=useState({}),[files,setFiles]=useState([]),[record,setRecord]=useState({kind:'note',title:'',body:'',person:'',policy:'',finding:'pending',assigned_to:'',due_date:'',public_release:false});
@@ -75,6 +80,7 @@ export default function ProfessionalStandards({embedded=false}){
 
  return <div className="ps-workspace">
  <UnifiedCenter eyebrow="Internal Affairs" title="Professional Standards" description="Internal investigations and personnel accountability" sections={workAreas} defaultSection={areaFor(tab)} queryParam="ps_area" embedded={embedded} headerAction={<a className="ps-public-link" href="https://bpspf.blackpointkjc.com/IAFORM" target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5"/><span className="hidden sm:inline">Public form</span></a>}>
+  {reviewer&&user?.id==='6ae7d733d4b1a647cd3e6f38'&&<section className="mx-4 mt-3 rounded-lg border border-cyan-600/40 bg-slate-900 p-3 text-xs text-slate-200"><strong>Private OneDrive case evidence storage</strong><p className="mt-1">{storageStatus?.ready?'Microsoft file authorization detected. Private evidence will be organized in a separate OneDrive folder per IA case.':'OneDrive file authorization is required. New evidence uploads will not use Base44 integration credits; an authorized Microsoft connection is needed before evidence can be stored.'}</p><div className="mt-2 flex flex-wrap gap-2"><button type="button" className="rounded border border-cyan-500 bg-cyan-950 px-3 py-2" onClick={async()=>{try{await beginOutlookConnection(user.id,{evidenceStorage:true});}catch(e){setError(e?.message||'OneDrive authorization could not start');}}}>Connect Microsoft OneDrive for IA evidence</button><button type="button" className="rounded border border-slate-500 px-3 py-2" disabled={storageChecking} onClick={refreshEvidenceStorage}>{storageChecking?'Checking…':'Verify storage permission'}</button></div><p className="mt-2 text-slate-400">Uses direct Microsoft Graph access through Colonel Hiers’s Microsoft account. No anonymous sharing permissions are created. Existing Base44 evidence requires a separate migration.</p></section>}
   <div className="mx-4 mt-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-300"><strong className="text-cyan-200">{reviewer?'IA Reviewer':'IA Investigator'}</strong> · {reviewer?'All investigations, investigator assignments, independent approvals, personnel actions and restricted exports.':'Your assigned investigations only. Collect evidence, conduct interviews and recommend findings; reviewers approve results and issue personnel actions.'}</div>
   <div className="ps-toolbar">
    <div className="min-w-0 flex-1">{activeArea.tools.length>1?<AdaptiveSelector label="Tool" options={activeArea.tools.map(([id,label])=>({id,label}))} value={selectedTool[0]} onChange={choose} accent="blue"/>:<div className="ps-current-tool">{selectedTool[1]}</div>}</div>

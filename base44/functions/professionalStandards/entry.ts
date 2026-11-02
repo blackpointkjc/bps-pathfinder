@@ -178,6 +178,10 @@ export default async function(req){
   if(action==='legacy_entity')return await legacyRequest(base44,db,u,body,role==='reviewer');
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   const review=role==='reviewer';
+  if(action==='evidence_storage_status'){
+   if(!review)fail('IA reviewer authorization required.',403);
+   return Response.json(await oneDriveStorageStatus(db));
+  }
   const canRead=c=>review||c.investigator_id===u.id;
   // Most actions only operate on the selected case and its records. Avoid
   // a global User.list for each click, message, upload, or audit refresh.
