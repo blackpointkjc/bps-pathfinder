@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
     const alerts = await base44.asServiceRole.entities.PropertyAlert.list('-created_date', 500);
     const assignments = await base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 1000);
     const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000);
+    for(const call of calls.filter((c:any)=>c.source==='public_helpme'&&['new','pending'].includes(String(c.status||'').toLowerCase())&&Date.parse(c.time_received||c.created_date)>Date.now()-15*60*1000).slice(0,10)){await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment',{call_id:call.id,public_fallback:true}).catch(()=>null);}
     const locations = await base44.asServiceRole.entities.Location.list('-updated_date', 500);
     const users = await base44.asServiceRole.entities.User.list('-updated_date', 500);
     const notifications = await base44.asServiceRole.entities.Notification.list('-created_date', 1000);
