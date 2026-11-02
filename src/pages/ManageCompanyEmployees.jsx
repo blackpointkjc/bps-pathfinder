@@ -202,7 +202,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   // HR/member directory contains only internal employees. Client and student
   // accounts stay in their dedicated menus and never appear in this list.
-  const isTerminated = u => Boolean(u.termination_date) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated';
+  const isTerminated = u => (Boolean(u.termination_date) && Number.isFinite(Date.parse(u.termination_date)) && Date.parse(u.termination_date) <= Date.now()) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated';
   const allEmployees = (users || []).filter(u => !isClientAccount(u)&&(isCompanyEmployeeAccount(u) || isTerminated(u)));
   const activeEmployees = allEmployees.filter(u => !isTerminated(u));
   const terminatedEmployees = allEmployees.filter(isTerminated);
@@ -515,7 +515,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           <div className="flex items-center gap-2"><Mail className="w-4 h-4" />{userData.email}</div>
           {userData.mobile_phone && <div className="flex items-center gap-2"><Phone className="w-4 h-4" />{userData.mobile_phone}</div>}
           {userData.hire_date && <div className="flex items-center gap-2"><Calendar className="w-4 h-4" />Hired: {format(new Date(userData.hire_date), 'MMM d, yyyy')}</div>}
-          {isTerminated && userData.termination_date && <div className="flex items-center gap-2 text-red-600"><Calendar className="w-4 h-4" />Terminated: {format(new Date(userData.termination_date), 'MMM d, yyyy')}</div>}
+          {userData.termination_date && <div className="flex items-center gap-2 text-red-600"><Calendar className="w-4 h-4" />{isTerminated ? 'Terminated' : 'Scheduled termination'}: {format(new Date(userData.termination_date), 'MMM d, yyyy')}</div>}
         </div>
       </CardContent>
     </Card>

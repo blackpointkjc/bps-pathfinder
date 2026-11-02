@@ -58,7 +58,12 @@ export async function linkedCaseTools(ctx){
   const [training,writeups,inspections,reviews,profileEvents]=await Promise.all([
    db.TrainingAssignment.filter({officer_email:{$in:emails}},'-created_date',50),
    db.WriteUpReport.filter(q,'-created_date',50),db.InspectionReport.filter(q,'-created_date',50),db.PerformanceReview.filter(q,'-created_date',50),
-   db.AuditLog.filter({entity_type:'User',entity_id:person.id},'-timestamp',500).catch(()=>[])
+   (async()=>{
+    const primary=await db.AuditLog.filter({entity_type:'User',entity_id:person.id},'-timestamp',500).catch(()=>[]);
+    if(person.id!=='6ae7d733d4b1a647cd3e6f38')return primary;
+    const legacy=await db.AuditLog.filter({entity_type:'User',entity_id:'6a72bbee2842d6338cbae513'},'-timestamp',500).catch(()=>[]);
+    return [...primary,...legacy.map((event:any)=>({...event,id:'legacy-'+event.id,description:'Prior Hiers account · '+String(event.description||'Profile event')}))].sort((a:any,b:any)=>String(b.timestamp||b.created_date).localeCompare(String(a.timestamp||a.created_date)));
+   })()
   ]);
   const cleanReview=row=>Object.fromEntries(Object.entries(row).filter(([key])=>!/pay|salary|hourly|bank|ssn|tax|signature/i.test(key)));
   await audit(db,u,'officer_file_view',c.id,person.id);

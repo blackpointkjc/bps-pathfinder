@@ -3,7 +3,7 @@ import {createClient,createClientFromRequest} from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 const IDLE_MS=13*60*60*1000;
 const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
-const inactive=user=>!user||user.disabled||user.termination_date||['denied','terminated','suspended'].includes(String(user.account_status||user.employment_status||'').toLowerCase());
+const inactive=user=>!user||user.disabled||(user.termination_date&&Date.parse(user.termination_date)<=Date.now())||['denied','terminated','suspended'].includes(String(user.account_status||user.employment_status||'').toLowerCase());
 const expired=()=>Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
 export default async function(req){
  try{
