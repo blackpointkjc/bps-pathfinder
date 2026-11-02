@@ -166,12 +166,15 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const moveToPendingMutation = useMutation({
     mutationFn: async (userData) => {
-      const newRoles = (userData.additional_roles || []).filter(r => r !== 'officer');
-      const r=await base44.functions.invoke('updateUser',{userId:userData.id,updates:{additional_roles:newRoles}});if(r.data?.error)throw new Error(r.data.error);
+      const response=await base44.functions.invoke('manageFormerEmployee',{user_id:userData.id,action:'move_pending'});
+      const result=response?.data||response||{};
+      if(!result.success||result.error)throw new Error(result.error||'The account was not moved to Pending.');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      alert('✅ User moved back to Pending Users.');
+      invalidateAppDirectory();
+      void refetchUsers();
+      queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
+      alert('Account moved to Pending User. Existing administrator and officer access revoked; the change is logged.');
     },
     onError: (error) => { alert('Failed: ' + error.message); }
   });
@@ -202,13 +205,13 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const allEmployees = (users || []).filter(u => !isClientAccount(u)&&(isCompanyEmployeeAccount(u) || isTerminated(u)));
   const activeEmployees = allEmployees.filter(u => !isTerminated(u));
   const terminatedEmployees = allEmployees.filter(isTerminated);
-  const pendingOnboarding = (users||[]).filter(u => !isClientAccount(u)&&u.email && !isTerminated(u) && u.role!=='admin'
+  const pendingOnboarding = (users||[]).filter(u => !isClientAccount(u)&&u.email && !isTerminated(u) && u.role!=='admin' && (String(u.account_status||'').toLowerCase()==='pending' || u.portal_approved===false || !(u.additional_roles||[]).length)
     && !(u.additional_roles||[]).some(role=>['officer','cad_access','support','support_staff','client','student','hr','accounting','trainer','supervisor','full_access'].includes(String(role).toLowerCase()))
     && !['client','student','student registration pending'].includes(String(u.rank||'').toLowerCase()));
 
   const transitionFormerEmployee = async (person, action) => {
     if (!isSystemAdmin) return alert('Administrator authorization required.');
-    const question=action==='rehire'?'Rehire this employee on the existing profile? Prior termination remains in the permanent employee history. Access permissions will require administrator review.':action==='restore'?'Restore to pending review without operational permissions?':'Convert to client and remove all CAD roles?';
+    const question=action==='clear_termination'?'Clear this account’s current termination date while keeping the original date in permanent audit history?':action==='rehire'?'Rehire this employee on the existing profile? Prior termination remains in the permanent employee history. Access permissions will require administrator review.':action==='restore'?'Restore to pending review without operational permissions?':'Convert to client and remove all CAD roles?';
     if(!await confirmInApp(question+' '+person.email))return;
     try {
       const response=await base44.functions.invoke('manageFormerEmployee',{user_id:person.id,action});
@@ -216,7 +219,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       if(!payload.success)throw new Error(payload.error||'Transition failed');
       invalidateAppDirectory();
       await refetchUsers();
-      alert(action==='rehire'?'Rehired on the existing profile. Original termination is retained in the personnel audit log. Review and approve appropriate roles.':action==='restore'?'Restored pending administrator role review.':'Converted to client. Verify property permissions separately.');
+      alert(action==='clear_termination'?'Current termination date cleared. Prior date retained in the audit history.':action==='rehire'?'Rehired on the existing profile. Original termination is retained in the personnel audit log. Review and approve appropriate roles.':action==='restore'?'Restored pending administrator role review.':'Converted to client. Verify property permissions separately.');
     }catch(error){alert(error?.response?.data?.error||error.message||'Transition failed');}
   };
   const filterBySearch=list=>list.filter(person=>{
@@ -489,7 +492,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             <Button variant="outline" size="sm" onClick={() => handleEditUser(userData)}>
               <Edit className="w-4 h-4 mr-2" />{canManageEmployees ? 'Edit' : 'View'}
             </Button>
-            {canManageEmployees && userData.additional_roles?.includes('officer') && !isTerminated && (
+            {isSystemAdmin && !isTerminated && userData.id!==user?.id && (
               <Button
                 variant="outline"
                 size="sm"
@@ -503,6 +506,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 <UserMinus className="w-4 h-4 mr-2" />Move to Pending
               </Button>
             )}
+            {isSystemAdmin && userData.termination_date && <Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'clear_termination')}>Clear Termination Date</Button>}
           </div>
         </div>
       </CardHeader>
