@@ -1,6 +1,6 @@
 import {effectivePortalIdentity} from '@/lib/portalAccess';
 import {watchInactivity,requiresFreshLogin,activityKey} from '@/lib/sessionPolicy';
-import {offlineIdentity} from '@/lib/offlineSession';
+import {offlineIdentity,forgetOfflineIdentity} from '@/lib/offlineSession';
 import {queryClientInstance} from '@/lib/query-client';
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { base44, clearBase44ReadCache } from '@/api/base44Client';
@@ -489,12 +489,14 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     setAccountLock(null);
     appParams.token = null;
+    forgetOfflineIdentity();
+    try { localStorage.removeItem('base44_access_token'); localStorage.removeItem('base44_from_url'); } catch {}
     clearBase44ReadCache();
     queryClientInstance.clear();
     try {
       sessionStorage.removeItem('bps:ps-access');
       sessionStorage.removeItem('bps:auth-provider');
-      localStorage.removeItem('bps:offline-identity');
+      localStorage.removeItem('pathfinder-offline-session-v1');
       for(let i=localStorage.length-1;i>=0;i--){
         const key=localStorage.key(i);
         if(key && (/^bps:microsoft-verified:/.test(key)||/^bps:outlook-token:/.test(key)||/^bps:app-directory:/.test(key)||/^bps:analytics:/.test(key)))localStorage.removeItem(key);
