@@ -1,13 +1,16 @@
 import CategorySelect from '@/components/ia/CategorySelect';
 import {useEffect,useState} from 'react';
-import {publicBase44 as base44} from '@/api/publicClient';
+import {publicBase44 as publicBase44} from '@/api/publicClient';
+import {base44 as staffBase44} from '@/api/base44Client';
 import '@/components/portal.css';
 import ComplaintReceipt,{preloadReceiptPdf} from '@/components/ComplaintReceipt';
 
 export async function psCall(payload,files=[]){
  let body={...payload};
  if(files.length){body={payload:JSON.stringify(body)};files.forEach((f,i)=>body['file_'+i]=f);}
- const r=await base44.functions.invoke('professionalStandards',body);
+ const publicActions=new Set(['contact','submit','track','public_followup','public_evidence']);
+ const client=publicActions.has(String(payload?.action||''))?publicBase44:staffBase44;
+ const r=await client.functions.invoke('professionalStandards',body);
  if(r.data?.error)throw Object.assign(new Error(r.data.error),{code:r.data.code});
  return r.data;
 }

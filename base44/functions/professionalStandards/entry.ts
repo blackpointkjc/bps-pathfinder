@@ -366,10 +366,11 @@ export default async function(req){
    if(p.status!==undefined){
     if(!['new','triage','investigating','pending_review','approved','closed','returned'].includes(p.status))fail('Invalid case status.');
     if(['approved','closed','returned'].includes(p.status)&&!review)fail('Reviewer approval is required.',403);
+    if(p.status==='closed'&&c.status!=='closed')fail('Use the Close Case button above the case sections to record the final decision and close in one operation.');
     if(['approved','closed'].includes(p.status)){
-     if(!text(c.outcome_summary,12000))fail('Document the investigation outcome before approval.');
+     if(!text(c.outcome_summary,12000)&&!records.some(r=>r.kind==='disposition'&&text(r.body,12000)))fail('Document an investigation outcome in Findings & review before approving.');
      if(c.status!=='approved'&&(p.investigator_id??c.investigator_id)===u.id)fail('An independent reviewer must approve an investigator’s case.',403);
-     if(!['pending_review','approved'].includes(c.status))fail('Send the investigation for review first.');
+     if(!['pending_review','approved'].includes(c.status))fail('Send the investigation for review first, then approve.');
      const allegations=records.filter(r=>r.kind==='allegation');
      if(c.kind==='complaint'&&(!allegations.length||allegations.some(r=>!r.finding||r.finding==='pending')))fail('Document a finding for every allegation before approval.');
      if(p.status==='closed'&&records.some(r=>['task','corrective_action'].includes(r.kind)&&r.status!=='completed'))fail('Complete outstanding tasks and corrective actions before closing.');
