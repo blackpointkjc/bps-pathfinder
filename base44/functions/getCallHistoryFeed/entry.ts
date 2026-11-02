@@ -162,12 +162,17 @@ Deno.serve(async (req) => {
     // authoritative core records using no extra cross-entity roundtrips.
     const includeDetails=input.include_details===true;
     const emptyRead={data:[],error:''};
-    const [alertRead,assignmentRead,linkedRead,propertyLinksRead] = includeDetails ? await Promise.all([
-      readWithRetry('Property alerts',()=>ids.length?base44.asServiceRole.entities.PropertyAlert.filter({callId:{$in:ids}},'-created_date',300):Promise.resolve([]),[]),
+    // Property history is core CAD data, not an optional detail join.
+    // The old normal list path set alertRead to [] when include_details=false,
+    // making every property call disappear from the Property tab.
+    const [alertRead,propertyLinksRead] = await Promise.all([
+      readWithRetry('Property alerts',()=>base44.asServiceRole.entities.PropertyAlert.list('-created_date',300),[]),
+      readWithRetry('Manual property links',()=>base44.asServiceRole.entities.PropertyCallLink.list('-linked_at',200),[])
+    ]);
+    const [assignmentRead,linkedRead] = includeDetails ? await Promise.all([
       readWithRetry('Call assignments',()=>ids.length?base44.asServiceRole.entities.CallAssignment.filter(callFilter,'-assigned_at',300):Promise.resolve([]),[]),
-      readWithRetry('Linked reports',()=>ids.length?base44.asServiceRole.entities.ReportCallLink.filter({$or:[callFilter,{call_number:{$in:numbers}}]},'-linked_at',300):Promise.resolve([]),[]),
-      readWithRetry('Manual property links',()=>ids.length?base44.asServiceRole.entities.PropertyCallLink.filter({$or:[callFilter,{archive_id:{$in:ids}}]},'-linked_at',300):Promise.resolve([]),[])
-    ]) : [emptyRead,emptyRead,emptyRead,emptyRead];
+      readWithRetry('Linked reports',()=>ids.length?base44.asServiceRole.entities.ReportCallLink.filter({$or:[callFilter,{call_number:{$in:numbers}}]},'-linked_at',300):Promise.resolve([]),[])
+    ]) : [emptyRead,emptyRead];
     const alerts:any[] = alertRead.data || [];
     const unitIds = [...new Set([
       ...(assignmentRead.data||[]).map((row:any)=>String(row.unit_id||'')),
@@ -299,9 +304,26 @@ Deno.serve(async (req) => {
       const links=manualLinks.filter(link=>ids.includes(String(link.call_id))||ids.includes(String(link.archive_id||'')));
       return links.length?{...row,_propertyLinks:links,_propertyCall:true,_propertyName:[row._propertyName,...links.map(l=>l.property_name)].filter(Boolean).join(' / '),_propertyId:row._propertyId||links[0].property_id}:row;
     });
+    // Preserve durable property-alert history even after an associated
+    // DispatchCall leaves the active queue or its archived page is not loaded.
+    // These are property alert records, not fabricated cleared CAD calls.
+    const existingCallIds=new Set(decorated.flatMap(row=>[String(row.id||''),String(row.original_call_id||'')]).filter(Boolean));
+    const orphanAlerts=(alerts||[]).filter(alert=>{
+      const stamp=callTimestamp({time_received:alert.callTime||alert.time_received||alert.created_date});
+      return stamp>=Date.parse(since)&&stamp<=Date.parse(until)&&!existingCallIds.has(String(alert.callId||''));
+    }).map(alert=>({
+      id:'property-alert:'+alert.id,original_call_id:String(alert.callId||''),
+      call_id:alert.cadNumber||'',bps_reference:/^BPS-/i.test(String(alert.cadNumber||''))?alert.cadNumber:'',
+      incident:alert.callIncident||'Property alert',location:alert.callLocation||'',
+      time_received:alert.callTime||alert.time_received||alert.created_date,
+      agency:'BPS',status:alert.callStatus||alert.lifecycle_status||'Recorded',
+      _source:'property',_archived:false,_propertyCall:true,_propertyAlert:alert,
+      _propertyName:alert.propertyName||'',_propertyId:alert.propertyId||'',
+      _propertyLifecycle:alert.lifecycle_status||'',_referenceEntity:'PropertyAlert',_referenceId:String(alert.id)
+    }));
     return Response.json({
       success: true,
-      rows: decorated.sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
+      rows: [...decorated,...orphanAlerts].sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
       next_cursor: nextCursor,
       has_more: hasMore,
       days:90, since, snapshot_at:snapshot,
@@ -309,7 +331,7 @@ Deno.serve(async (req) => {
         active: activeRows.length,
         archived: archivedRows.length,
         propertyAlerts: alertByCallId.size,
-        loaded: decorated.length,
+        loaded: decorated.length+orphanAlerts.length,
       },
       warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
     });
