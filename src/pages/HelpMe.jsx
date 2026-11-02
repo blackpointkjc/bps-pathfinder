@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {base44} from '@/api/base44Client';
+import {publicBase44 as base44} from '@/api/publicClient';
 import '@/components/portal.css';
 const logo='https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/user_68f1b0512f3251072c89babf/5fb0eff7d_UntitledProject.png';
 const kinds=['Security assistance','Suspicious activity','Disturbance / noise','Trespassing','Theft / property damage','Welfare concern','Parking / access issue','Lost property','Other'];

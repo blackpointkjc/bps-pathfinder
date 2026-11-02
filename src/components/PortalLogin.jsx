@@ -1,3 +1,4 @@
+import {publicBase44} from '@/api/publicClient';
 import {authEntry,assertAuthResponse,requestPasswordReset,completePasswordReset} from '@/lib/portalAuthFlow';
 import {recordLoginActivity} from '@/lib/sessionPolicy';
 import {useState} from 'react';
@@ -14,7 +15,7 @@ export default function PortalLogin(){
  const change=(key,value)=>setForm(p=>({...p,[key]:value}));
  const switchMode=m=>{if(m==='login')sessionStorage.removeItem('bps:verification-email');setMode(m);setError('');setMessage('');};
  async function enter(){
-  const login=await base44.functions.invoke('portalSession',{action:'sign_in',email:form.email.trim().toLowerCase(),password:form.password});
+  const login=await publicBase44.functions.invoke('portalSession',{action:'sign_in',email:form.email.trim().toLowerCase(),password:form.password});
   const response=login.data;
   if(!response?.access_token)throw new Error(response?.error||'Sign-in could not be confirmed.');
   if(response.access_token){base44.auth.setToken(response.access_token);appParams.token=response.access_token;}

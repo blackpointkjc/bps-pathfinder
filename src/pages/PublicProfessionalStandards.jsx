@@ -1,7 +1,7 @@
 import AIRewriteField from '@/components/AIRewriteField';
 import CategorySelect from '@/components/ia/CategorySelect';
 import {useEffect,useState} from 'react';
-import {base44} from '@/api/base44Client';
+import {publicBase44 as base44} from '@/api/publicClient';
 import '@/components/portal.css';
 import ComplaintReceipt,{preloadReceiptPdf} from '@/components/ComplaintReceipt';
 
