@@ -20,7 +20,7 @@ export default async function(req){
  }catch(error){
   const detail=String(error?.data?.detail||error?.response?.data?.detail||error?.message||'');
   const credits=/credit|quota|billing|balance|payment/i.test(detail);
-  console.error('Professional rewrite unavailable',{status:error?.status||error?.response?.status||503,credits});
+  console.error('Professional rewrite unavailable',{status:error?.status||error?.response?.status||503,credits,reason:detail.replace(/Bearer\s+[^\s]+/gi,'Bearer [redacted]').slice(0,300)});
   return Response.json({success:false,error:credits?'AI rewriting is unavailable because the app’s AI allowance is exhausted. Your draft is preserved. Administration must restore the AI allowance.':'AI rewrite could not be completed. Your draft is preserved; please retry.',code:credits?'AI_ALLOWANCE_REQUIRED':'AI_REWRITE_UNAVAILABLE'},{status:503});
  }
 }
