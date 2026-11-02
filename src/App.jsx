@@ -435,7 +435,7 @@ function App() {
     window.alert = (message) => {
       const text = String(message ?? '').trim();
       if (!text) return;
-      const isError = /(^|\s)(❌|error|failed|unable|invalid|warning|⚠️)/i.test(text);
+      const isError = /(^|\s)(❌|error|failed|unable|invalid|warning|⚠️)|not sent|not accepted|not confirmed|could not|delivery fail|neither.*accepted/i.test(text);
       const isSuccess = /(^|\s)(✅|success|successfully|published|saved|created|submitted|approved|updated|sent|complete)/i.test(text);
       const cleanText = text.replace(/^[✅❌⚠️\s]+/, '').replace(/\n{3,}/g, '\n\n');
       toast({

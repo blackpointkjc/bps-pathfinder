@@ -128,7 +128,7 @@ export default function ManageStudents({ embedded = false }) {
     try {
       const response = await base44.functions.invoke('createPortalAccount', { ...studentInvite, accountType: 'student_pending' });
       const result = response?.data || response || {};
-      if (!result.success) throw new Error(result.error || 'Invitation was not confirmed');
+      if (!result.success&&!result.invitation_saved) throw new Error(result.error || result.email_error || 'Invitation was not confirmed');
       if(!result.email_sent){toast.error(result.email_error||'Student invitation saved, but email delivery failed. Retry the invitation.');invalidateTrainingUsers();return;}
       toast.success('Student invitation email accepted; registration awaits trainer review');
       setShowInvite(false);

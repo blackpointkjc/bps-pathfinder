@@ -20,6 +20,16 @@
     },
     "email_sent": {
       "type": "boolean"
+    },
+    "email_error": {
+      "type": "string"
+    },
+    "last_delivery_attempt_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "delivery_provider": {
+      "type": "string"
     }
   },
   "rls": {

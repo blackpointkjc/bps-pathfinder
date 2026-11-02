@@ -41,10 +41,12 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const recipient = String(payload?.to || '').trim();
     if (!recipient) return Response.json({ error: 'Recipient is required' }, { status: 400 });
-    // Credit-free: SendEmail is intentionally no longer used. This utility has no
-    // active caller in the app; the response contract is preserved so any future
-    // invocation completes without spending integration credits.
-    return Response.json({ success: true, to: recipient, delivered: 'in_app_only' });
+    const subject=String(payload?.subject||'BlackPoint Pathfinder notification').slice(0,250);
+    const body=String(payload?.body||payload?.message||'');
+    if(!body)return Response.json({error:'Email content is required.'},{status:400});
+    const sent=await base44.asServiceRole.integrations.Core.SendEmail({to:recipient,subject,body,from_name:'BlackPoint Pathfinder'});
+    if(sent?.error||sent?.success===false)throw new Error('No-reply provider rejected delivery.');
+    return Response.json({success:true,to:recipient,delivered:'accepted_by_provider'});
   } catch (error) {
     console.error('sendBrandedEmail failed', error);
     return Response.json({ error: error?.message || 'Unable to send email' }, { status: 500 });

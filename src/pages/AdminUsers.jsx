@@ -181,7 +181,7 @@ export default function AdminUsers({ embedded = false }) {
         accountType: createAsClient ? 'client' : data.requested_type === 'student' ? 'student_pending' : data.requested_type === 'visitor' ? 'visitor' : 'pending',
       });
       const payload = response?.data || response || {};
-      if (payload.error || payload.success !== true) throw new Error(payload.error || 'Account invitation was not confirmed');
+      if (payload.error || payload.success !== true&&!payload.invitation_saved) throw new Error(payload.error || payload.email_error || 'Account invitation was not confirmed');
       return payload;
     },
     onSuccess: async (result) => {
