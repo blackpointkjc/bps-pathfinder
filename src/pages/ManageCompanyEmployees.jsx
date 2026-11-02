@@ -126,33 +126,20 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       const systemAccessChanged = selectedUser?.role !== requestedSystemRole
         || JSON.stringify(existingAdditionalRoles) !== JSON.stringify(requestedAdditionalRoles) || userData.ps_role !== selectedUser?.ps_role;
 
-      if (systemAccessChanged) {
-        if (!isSystemAdmin && !userRoles.has('full_access')) throw new Error('Account administration access required.');
-        const roleResult = await base44.functions.invoke('updateUser', {
-          userId: id,
-          updates: {
-            role: requestedSystemRole,
-            additional_roles: requestedAdditionalRoles,
-            ps_role: userData.ps_role || 'none',
-          },
-        });
-        const rolePayload = roleResult?.data || roleResult || {};
-        if (!rolePayload.success) throw new Error(rolePayload.error || rolePayload.details || "Role update failed");
-      }
-
-      const profileUpdates = { ...userData };
-      delete profileUpdates.role;
-      delete profileUpdates.additional_roles;
-      delete profileUpdates.ps_role;
-      if (portalContext === 'hr' || userRoles.has('hr') || userRoles.has('full_access')) {
-        const result = await base44.functions.invoke('updateUser', { userId: id, updates: profileUpdates });
-        const payload = result?.data || result || {};
-        if (payload.error) throw new Error(payload.error);
-        return payload;
-      }
-      const response = await base44.functions.invoke('updateUser', { userId: id, updates: profileUpdates });
+      // Commit role, employment, and profile changes in one audited server update.
+      // Two sequential writes previously allowed a partial success to look saved.
+      if (systemAccessChanged && !isSystemAdmin) throw new Error('Only a system administrator may change account access.');
+      const payloadToSave = { ...userData,
+        role: requestedSystemRole,
+        additional_roles: requestedAdditionalRoles,
+        ps_role: userData.ps_role || 'none',
+        termination_date: userData.termination_date || '',
+      };
+      // Keep the existing account in Pending review if rehired; its old events
+      // remain in AuditLog rather than being removed with the current date.
+      const response = await base44.functions.invoke('updateUser', { userId: id, updates: payloadToSave });
       const payload = response?.data || response || {};
-      if (!payload.success) throw new Error(payload.error || payload.details || 'Employee update failed');
+      if (!payload.success || payload.error) throw new Error(payload.error || payload.details || 'Employee update was not confirmed.');
       return payload;
     },
     onSuccess: (result) => {
@@ -745,7 +732,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-xs text-slate-500">Termination Date</Label><Input type="date" value={editFormData.termination_date || ""} onChange={(e) => setEditFormData({...editFormData, termination_date: e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">Termination Date</Label><Input type="date" value={editFormData.termination_date ? String(editFormData.termination_date).slice(0,10) : ""} onChange={(e) => setEditFormData({...editFormData, termination_date: e.target.value})} />{isSystemAdmin&&editFormData.termination_date&&<Button type="button" variant="outline" className="mt-2" onClick={async()=>{if(await confirmInApp('Clear the current termination date? The prior termination and every change remain permanently logged in the employee history. Click Save Changes to apply.'))setEditFormData(p=>({...p,termination_date:'',employment_status:p.employment_status==='terminated'?'active':p.employment_status,account_status:p.account_status==='terminated'?'pending':p.account_status}));}}>Clear Termination Date · Keep History</Button>}<p className="mt-1 text-xs text-slate-500">Clearing this field updates current employment status only. Historical termination events remain in the personnel audit log.</p></div>
                   <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div className="mb-3 text-sm font-semibold text-slate-800">Driver's License</div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
