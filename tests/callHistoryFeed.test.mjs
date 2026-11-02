@@ -42,7 +42,8 @@ function matches(row, query) {
 }
 const records={DispatchCall:[],CallHistory:[],PropertyAlert:[],CallAssignment:[],Unit:[],User:[],ReportCallLink:[],PropertyCallLink:[],Location:[]};
 const reads=[];
-let role='admin', failSource='';
+let role='admin', failSource='',officer=false;
+records.PortalAuthSession=[{user_id:'viewer',token_hash:Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('history-test'))).toString('hex'),started_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),revoked:false}];
 const api = {
  auth:{me:async()=>({id:'viewer',email:'viewer@example.test',role})},
  asServiceRole:{entities:new Proxy({}, {get:(_,entity)=>({
@@ -61,9 +62,10 @@ async function loadHandler(path) {
  let handler;
  const source=(await readFile(path,'utf8')).replace(/^import .*;\s*$/gm,'');
  const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
- vm.runInNewContext(js,{createClientFromRequest:()=>api,Deno:{serve:fn=>{handler=fn;}},Response,console,setTimeout,clearTimeout,Date,Map,Set,Promise,callTimestamp,isValidCallRecord,isVisibleActiveCall,ACTIVE_WINDOW_MS,addressHistoryPattern});
+ vm.runInNewContext(js,{createClientFromRequest:()=>api,Deno:{serve:fn=>{handler=fn;}},crypto,Response,console,setTimeout,clearTimeout,Date,Map,Set,Promise,callTimestamp,isValidCallRecord,isVisibleActiveCall,ACTIVE_WINDOW_MS,addressHistoryPattern});
  return async body=>{
-  const response=await handler({json:async()=>body,headers:new Headers()});
+  api.auth.me=async()=>({id:'viewer',email:'viewer@example.test',role,additional_roles:officer?['officer']:[]});
+  const response=await handler({json:async()=>body,headers:new Headers({authorization:'Bearer history-test'})});
   return {status:response.status,data:await response.json()};
  };
 }
@@ -99,7 +101,7 @@ const dateRange=await history({until});
 assert(dateRange.data.rows.every(row=>callTimestamp(row)<=Date.parse(until)));
 failSource='CallHistory';
 assert.equal((await history({})).status,500);
-failSource=''; role='client';
+failSource=''; role='user';officer=true;assert.equal((await history({page_size:25})).status,200);officer=false;role='client';
 assert.equal((await history({})).status,403);
 role='admin';
 const addressHistory=await loadHandler('base44/functions/getAddressCallHistory/entry.ts');
