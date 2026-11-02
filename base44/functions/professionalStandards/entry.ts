@@ -76,6 +76,28 @@ function caseCategory(value='unclassified',detail=''){
  return {category,category_detail};
 }
 const publicStateFor=status=>({new:'Received',triage:'Under review',investigating:'Investigation in progress',pending_review:'Under review',returned:'Investigation in progress',approved:'Review completed',closed:'Closed'})[status]||'Received';
+// These are fixed, non-identifying milestones. Never derive public copy from
+// case notes, people's names, findings, statements, or personnel actions.
+const SAFE_MILESTONES={
+ interview:['Interview activity recorded','Interview activity has been documented as part of the investigation. Names and statements remain confidential.'],
+ note:['Case review recorded','The investigation team has documented additional review activity. Restricted notes remain confidential.'],
+ allegation:['Allegations under review','The investigation record has been updated. No allegation determination is being disclosed.'],
+ policy:['Policy review underway','Applicable company policies are being examined as part of the investigation.'],
+ task:['Follow-up work assigned','Additional investigative follow-up has been scheduled. Details remain confidential.'],
+ task_complete:['Follow-up work completed','A scheduled investigative follow-up step has been completed. Confidential details are not released.'],
+ finding:['Findings documented','The investigation team has recorded an internal assessment for review. Findings remain confidential until an authorized decision.'],
+ disposition:['Case decision documented','A case decision has been documented for administrative review. Confidential details remain restricted.'],
+ closure:['Investigation closed','The investigation has been closed following administrative review. Confidential findings and personnel information remain restricted.']
+};
+async function publishMilestone(db:any,u:any,c:any,kind:string,eventId=''){
+ const info=(SAFE_MILESTONES as Record<string,string[]>)[kind];
+ if(!info)return;
+ const title=info[0],key=`milestone:${kind}:${eventId||c.id}`;
+ const existing=await db.PSRecord.filter({case_id:c.id,kind:'public_release',policy:key},'-created_date',1);
+ if(existing.length)return;
+ await db.PSRecord.create({case_id:c.id,kind:'public_release',title,body:info[1],policy:key,author_id:u?.id||'',author_name:'Professional Standards',status:'published'});
+}
+
 const buckets=new Map();
 function throttle(req,action){
  const key=String(req.headers.get('cf-connecting-ip')||req.headers.get('x-forwarded-for')||'shared').split(',')[0]+':'+action;
@@ -303,11 +325,12 @@ export default async function(req){
     if(['approved','closed','returned'].includes(p.status)&&!review)fail('Reviewer approval is required.',403);
     if(['approved','closed'].includes(p.status)){
      if(!text(c.outcome_summary,12000))fail('Document the investigation outcome before approval.');
-     if((p.investigator_id??c.investigator_id)===u.id)fail('An independent reviewer must approve an investigator’s case.',403);
+     if(c.status!=='approved'&&(p.investigator_id??c.investigator_id)===u.id)fail('An independent reviewer must approve an investigator’s case.',403);
      if(!['pending_review','approved'].includes(c.status))fail('Send the investigation for review first.');
      const allegations=records.filter(r=>r.kind==='allegation');
      if(c.kind==='complaint'&&(!allegations.length||allegations.some(r=>!r.finding||r.finding==='pending')))fail('Document a finding for every allegation before approval.');
      if(p.status==='closed'&&records.some(r=>['task','corrective_action'].includes(r.kind)&&r.status!=='completed'))fail('Complete outstanding tasks and corrective actions before closing.');
+     if(p.status==='closed'&&!records.some(r=>r.kind==='disposition'))fail('Record and approve a documented case disposition in Findings & review before closure.');
      updates.reviewer_id=u.id;updates.reviewed_at=new Date().toISOString();
      if(p.status==='closed')updates.closed_at=new Date().toISOString();
     }
@@ -315,6 +338,7 @@ export default async function(req){
    }
    if(p.public_status!==undefined||p.public_message!==undefined){
     if(!review)fail('Only reviewers select approved public updates.',403);
+    if(p.public_status==='Closed'&&p.status!=='closed'&&c.status!=='closed')fail('Use Workflow status → Closed to complete the required closure review before publishing a Closed status.');
     const state=p.public_status||c.public_status||'Received';
     if(!publicStates.includes(state))fail('Invalid public status.');
     if(p.public_message!==undefined&&!PUBLIC_UPDATE_MESSAGES[state].includes(p.public_message))fail('Choose a preapproved public message. Confidential findings and personnel actions cannot be published.');
@@ -330,7 +354,8 @@ export default async function(req){
    await audit(db,u,'case_update_requested',c.id,JSON.stringify(updates));
    await db.PSCase.update(c.id,updates);
    await audit(db,u,'case_updated',c.id,Object.keys(updates).join(', '));
-   if(updates.public_status&&(updates.public_status!==c.public_status||updates.public_message!==c.public_message))await db.PSRecord.create({case_id:c.id,kind:'public_update',title:updates.public_status,body:publicMessage(updates.public_status,updates.public_message),author_id:u.id,author_name:actorName(u),status:'published'});
+   if(updates.public_status&&(updates.public_status!==c.public_status||updates.public_message!==c.public_message))await db.PSRecord.create({case_id:c.id,kind:'public_update',title:updates.public_status,body:publicMessage(updates.public_status,updates.public_message),author_id:u.id,author_name:'Professional Standards',status:'published'});
+   if(updates.status==='closed'&&c.status!=='closed')await publishMilestone(db,u,c,'closure');
    let email_sent=null;
    const assignedId=updates.investigator_id??c.investigator_id,assigned=eligible.find(v=>v.id===assignedId);
    if(assigned&&((updates.investigator_id&&updates.investigator_id!==c.investigator_id)||(updates.status&&updates.status!==c.status))){
@@ -349,15 +374,11 @@ export default async function(req){
    if(r.assigned_to&&!eligible.some(v=>v.id===r.assigned_to))fail('Choose an authorized staff assignee.');
    const finding=['pending','sustained','not_sustained','unfounded','exonerated','policy_failure'].includes(r.finding)?r.finding:'pending';
    await audit(db,u,'record_add_requested',c.id,r.kind);
-   await db.PSRecord.create({case_id:c.id,kind:r.kind,title:text(r.title,300),body:text(r.body,12000),person:text(r.person,300),policy:text(r.policy,500),finding:r.kind==='allegation'?finding:'',status:'open',assigned_to:text(r.assigned_to,100),due_date:text(r.due_date,40),author_id:u.id,author_name:actorName(u)});
-   if(r.public_release===true){
-    if(!review)fail('Only IA reviewers can authorize a public release.',403);
-    const safeMessage=({interview:'An interview has been documented as part of the case review. Personal identities and testimony remain confidential.',note:'A case review update was recorded. Internal notes and identities remain confidential.',allegation:'An allegation has been added to the case review. No final public determination has been issued.',policy:'Relevant policies are being examined as part of the review.'} as Record<string,string>)[r.kind];
-    if(safeMessage){
-      await db.PSRecord.create({case_id:c.id,kind:'public_release',title:'Case review progress',body:safeMessage,author_id:u.id,author_name:actorName(u),status:'published'});
-      await audit(db,u,'safe_public_record_released',c.id,r.kind);
-    }
-   }
+   const savedRecord=await db.PSRecord.create({case_id:c.id,kind:r.kind,title:text(r.title,300),body:text(r.body,12000),person:text(r.person,300),policy:text(r.policy,500),finding:r.kind==='allegation'?finding:'',status:'open',assigned_to:text(r.assigned_to,100),due_date:text(r.due_date,40),author_id:u.id,author_name:actorName(u)});
+   // Automatic fixed-text public timeline; no investigation data is copied.
+   await publishMilestone(db,u,c,r.kind,savedRecord.id);
+   // An additional release is not necessary: the milestone is generated above.
+
    let email_sent=null;
    if(r.assigned_to)email_sent=await notify(base44,eligible.find(v=>v.id===r.assigned_to)?.email,'Professional Standards task '+c.reference,'A task or follow-up has been assigned. Open Professional Standards to review the deadline.',u);
    await audit(db,u,'record_added',c.id,r.kind);
@@ -374,6 +395,8 @@ export default async function(req){
    }else{if(!['task','corrective_action'].includes(r.kind))fail('Only tasks and corrective actions can be completed.');if(r.action_type==='suspension')fail('Use Lift suspension to document reinstatement and restore access.');if(r.action_type==='training'){const training=await db.TrainingAssignment.get(r.linked_id);if(training?.status!=='approved')fail('Training must be completed and approved in the training portal first.');}patch={status:'completed'};}
    await audit(db,u,action+'_requested',c.id,r.id);
    await db.PSRecord.update(r.id,patch);await audit(db,u,action,c.id,r.id);
+   if(action==='finding')await publishMilestone(db,u,c,'finding',r.id+':'+String(body.finding));
+   else await publishMilestone(db,u,c,'task_complete',r.id);
    return Response.json({success:true});
   }
   if(action==='upload'){if(['closed','approved'].includes(c.status))fail('Reopen the case before adding evidence.');await upload(base44,db,u,c,files);await audit(db,u,'evidence_added',c.id);return Response.json({success:true});}

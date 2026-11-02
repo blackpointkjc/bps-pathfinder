@@ -76,6 +76,8 @@ export async function linkedCaseTools(ctx){
   if(summary.length<20||!['sustained','not_sustained','unfounded','exonerated','policy_failure','mixed_findings','commendation'].includes(outcome))fail('Choose a result and document the decision in at least 20 characters.');
   await db.PSRecord.create({case_id:c.id,kind:'disposition',title:'Investigation result: '+outcome.replaceAll('_',' '),body:summary,finding:outcome,author_id:u.id,author_name:actorName(u),status:'recorded'});
   await db.PSCase.update(c.id,{outcome_summary:summary,outcome_recorded_by:u.id,outcome_recorded_at:new Date().toISOString(),version:Number(c.version||0)+1});
+  // Fixed public milestone only; never disclose the disposition category or summary.
+  if(!records.some(r=>r.kind==='public_release'&&r.policy==='milestone:disposition:'+c.id))await db.PSRecord.create({case_id:c.id,kind:'public_release',title:'Case decision documented',body:'A case decision has been documented for administrative review. Confidential details remain restricted.',policy:'milestone:disposition:'+c.id,author_id:u.id,author_name:'Professional Standards',status:'published'});
   await audit(db,u,'case_outcome_documented',c.id,outcome);
   return Response.json({success:true});
  }
