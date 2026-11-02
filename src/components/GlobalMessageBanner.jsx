@@ -124,7 +124,7 @@ async function claimAnnouncementEvent(data) {
     });
     const payload = response?.data || response || {};
     if (payload.error) throw new Error(payload.error);
-    if (eventKey) rememberLocalAnnouncementClaim(eventKey);
+    if (eventKey && payload.claimed) rememberLocalAnnouncementClaim(eventKey);
     return payload;
   };
   if (navigator?.locks?.request) {
@@ -523,36 +523,28 @@ export default function GlobalMessageBanner({ user }) {
     // changes are respected even while another announcement is speaking.
     const propertyHornPrelude = ({ propertyId, callId }) => async (isCurrent, hornCompleted = false) => {
       if (!active || !isCurrent()) return false;
-      let property;
-      let entries;
+      // The horn is restricted to an officer clocked in at this monitored site.
+      // The *voice announcement itself* must NOT depend on this lookup: failure
+      // to load duty records, GPS, or a property must never mute a CAD event.
+      if (hornCompleted) return true;
       try {
-        const loadProperty = async () => {
-          let id = propertyId;
-          if (!id && callId) {
-            const alerts = await base44.entities.PropertyAlert.filter({ callId }, '-created_date', 10);
-            id = alerts.find(row => row.is_test !== true && !['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(row.lifecycle_status)))?.propertyId;
-          }
-          return id ? base44.entities.Location.get(id) : null;
-        };
-        const [location, response] = await Promise.all([
-          loadProperty(),
+        let id = propertyId;
+        if (!id && callId) {
+          const alerts = await base44.entities.PropertyAlert.filter({ callId }, '-created_date', 10);
+          id = alerts.find(row => row.is_test !== true && !['resolved','false_alarm','test','inactive','closed'].includes(normalized(row.lifecycle_status)))?.propertyId;
+        }
+        if (!id || id === 'public-helpme') return active && isCurrent();
+        const [property, response] = await Promise.all([
+          base44.entities.Location.get(id),
           base44.functions.invoke('getMyTimeEntries', { active_only: true }),
         ]);
-        property = location;
         const payload = response?.data || response || {};
-        if (payload.error || !Array.isArray(payload.entries)) return false;
-        entries = payload.entries;
+        if (property?.active !== false && property?.property_monitoring_enabled === true
+          && Array.isArray(payload.entries) && isClockedInAtProperty(payload.entries, property)) {
+          await playPropertyHorn(() => active && isCurrent());
+        }
       } catch (error) {
-        // A verified open shift is required for the on-duty property broadcast.
-        console.warn('Property call duty check failed:', error?.message);
-        return false;
-      }
-      if (!active || !isCurrent() || !getActiveTimeEntry(entries)) return false;
-      if (!property || property.active === false || property.property_monitoring_enabled !== true) return false;
-      // All on-duty officers hear the existing property-call wording. Only the
-      // officer currently clocked in at this property gets the attention horn.
-      if (!hornCompleted && isClockedInAtProperty(entries, property)) {
-        await playPropertyHorn(() => active && isCurrent());
+        console.warn('Property horn unavailable; CAD voice will proceed:', error?.message);
       }
       return active && isCurrent();
     };
