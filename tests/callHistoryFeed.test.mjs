@@ -62,7 +62,7 @@ async function loadHandler(path) {
  let handler;
  const source=(await readFile(path,'utf8')).replace(/^import .*;\s*$/gm,'');
  const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
- vm.runInNewContext(js,{createClientFromRequest:()=>api,Deno:{serve:fn=>{handler=fn;}},crypto,Response,console,setTimeout,clearTimeout,Date,Map,Set,Promise,callTimestamp,isValidCallRecord,isVisibleActiveCall,ACTIVE_WINDOW_MS,addressHistoryPattern});
+ vm.runInNewContext(js,{createClientFromRequest:()=>api,Deno:{serve:fn=>{handler=fn;}},crypto,TextEncoder,Response,console,setTimeout,clearTimeout,Date,Map,Set,Promise,callTimestamp,isValidCallRecord,isVisibleActiveCall,ACTIVE_WINDOW_MS,addressHistoryPattern});
  return async body=>{
   api.auth.me=async()=>({id:'viewer',email:'viewer@example.test',role,additional_roles:officer?['officer']:[]});
   const response=await handler({json:async()=>body,headers:new Headers({authorization:'Bearer history-test'})});
