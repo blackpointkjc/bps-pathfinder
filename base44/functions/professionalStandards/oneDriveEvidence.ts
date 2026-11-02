@@ -69,6 +69,14 @@ export async function oneDriveEvidenceLink(db:any,uri:string){
  return {signed_url:download,expires_in:300,provider:'onedrive',access:'case-authorized'};
 }
 export async function oneDriveStorageStatus(db:any){
- const rows=await db.MicrosoftOAuthCredential.filter({user_id:OWNER_ID,active:true},'-last_refreshed_at',5);
- return {ready:rows.some((x:any)=>/\bFiles\.ReadWrite(?:\.All)?\b/i.test(String(x.scope||''))),provider:'Microsoft OneDrive',path:ROOT+'/IA Case Evidence/<case reference>'};
+ const path=ROOT+'/IA Case Evidence/<case reference>';
+ try{
+  const token=await credentialToken(db);
+  const response=await graph(token,'/me/drive?$select=id,driveType,webUrl');
+  const drive=await response.json();
+  if(!drive.id)throw new Error('Microsoft did not return an authorized OneDrive.');
+  return {ready:true,provider:'Microsoft OneDrive',path,drive_type:drive.driveType||'business',message:'Microsoft file access verified.'};
+ }catch(error:any){
+  return {ready:false,provider:'Microsoft OneDrive',path,message:String(error?.message||'Microsoft evidence storage permission is unavailable').slice(0,260)};
+ }
 }
