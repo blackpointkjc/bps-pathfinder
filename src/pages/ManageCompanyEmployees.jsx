@@ -498,7 +498,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 size="sm"
                 className="text-orange-600 border-orange-300 hover:bg-orange-50"
                 onClick={async () => {
-                  if (await confirmInApp(`Move ${userData.first_name} ${userData.last_name} back to Pending Users? This will remove their Officer role.`)) {
+                  if (await confirmInApp(`Move ${userData.first_name} ${userData.last_name} back to Pending User? This revokes administrator and operational permissions while preserving the account's history.`)) {
                     moveToPendingMutation.mutate(userData);
                   }
                 }}
@@ -625,7 +625,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
           <TabsContent value="pending" className="space-y-3 mt-4">
             <p className="text-sm text-slate-500">Accounts awaiting administrator review. Pending accounts cannot use operational CAD functions until permissions are approved.</p>
             {filterBySearch(pendingOnboarding).length===0 && <Card className="p-6 text-slate-500">No pending employee onboarding accounts.</Card>}
-            {filterBySearch(pendingOnboarding).map(person=><Card key={person.id} className="p-4"><div className="font-semibold">{[person.first_name,person.last_name].filter(Boolean).join(' ')||person.email}</div><p className="text-sm text-slate-600">{person.email}</p><p className="text-xs text-amber-700">Pending administrator role assignment — open Admin Users to select Support, Officer, Student or Client access.</p></Card>)}
+            {filterBySearch(pendingOnboarding).map(person=><Card key={person.id} className="p-4"><div className="font-semibold">{[person.first_name,person.last_name].filter(Boolean).join(' ')||person.email}</div><p className="text-sm text-slate-600">{person.email}</p><p className="text-xs text-amber-700">Pending administrator review. No operational permissions are active.</p><Button type="button" size="sm" variant="outline" className="mt-2" onClick={()=>handleEditUser(person)}>Review Account & History</Button></Card>)}
           </TabsContent>
           <TabsContent value="active" className="space-y-4 mt-4">
             {filterBySearch(activeEmployees).length === 0 ? (
