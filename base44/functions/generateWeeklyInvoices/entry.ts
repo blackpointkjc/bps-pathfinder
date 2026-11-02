@@ -1,3 +1,4 @@
+import {sendCreditFreeEmail} from '../creditFreeEmail.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -156,7 +157,7 @@ Deno.serve(async(req)=>{
       const rows=(Array.isArray(shifts)?shifts:[]).map((shift:any)=>`<tr><td>${encode(shift.date)}</td><td>${encode(shift.hours)}</td><td>$${encode(shift.rate)}</td><td>$${encode(shift.amount)}</td></tr>`).join('');
       const bodyHtml=`<div style="font:14px Arial,sans-serif"><h2 style="background:#101d32;color:#e7c16e;padding:18px">BLACK POINT SECURITY — INVOICE ${encode(invoice.invoice_number)}</h2><p>Service: ${encode(invoice.site_name)}<br>Dates: ${encode(invoice.period_start)} – ${encode(invoice.period_end)}<br>Due: ${encode(invoice.due_date)}</p><table cellspacing="6"><tr><th>Date</th><th>Hours</th><th>Rate</th><th>Amount</th></tr>${rows}</table><h2>Amount due: $${Number(invoice.total_amount||0).toFixed(2)}</h2><p>Unpaid invoices may be assessed one one-time 10% late fee after the due date, subject to the applicable client agreement.</p><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
       try {
-        await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject,body:bodyHtml});
+        await sendCreditFreeEmail(base44,{to:target,subject,body:bodyHtml});
         await base44.asServiceRole.entities.Invoice.update(invoice.id,{client_email:target,delivery_email:target,delivery_status:'accepted',delivery_error:'',sent_at:new Date().toISOString(),status:'sent'});
         const portalClients=await base44.asServiceRole.entities.User.list('last_name',1000).catch(()=>[]);
         const matched=(portalClients||[]).filter((u:any)=>eligibleClient(u)&&(
@@ -250,7 +251,7 @@ Deno.serve(async(req)=>{
         const lines=items.map((row:any)=>`<tr><td>${encode(row.date)}</td><td>${encode(row.hours)}</td><td>$${encode(row.rate)}</td><td>$${encode(row.amount)}</td></tr>`).join('');
         const total=Number(invoice.total_amount||0);
         try{
-          await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject:`Black Point Invoice ${encode(invoice.invoice_number)} — ${encode(invoice.site_name)}`,
+          await sendCreditFreeEmail(base44,{to:target,subject:`Black Point Invoice ${encode(invoice.invoice_number)} — ${encode(invoice.site_name)}`,
             body:`<div style="font:14px Arial,sans-serif"><h2>BLACK POINT — INVOICE ${encode(invoice.invoice_number)}</h2><p>Property: ${encode(invoice.site_name)}<br>Service: ${encode(invoice.period_start)} through ${encode(invoice.period_end)}<br><b>Due ${fixedDue}</b></p><table><tr><th>Date</th><th>Hours</th><th>Rate</th><th>Amount</th></tr>${lines}</table><h2>$${total.toFixed(2)}</h2><p>One-time 10% late charge may apply after the due date under your service agreement.</p></div>`});
           await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'sent',delivery_email:target,client_email:target,delivery_status:'accepted',delivery_error:'',due_date:fixedDue,sent_at:new Date().toISOString()});
           sent++;results.push({invoice:invoice.invoice_number,site:invoice.site_name,status:'sent',recipient:target});
@@ -366,7 +367,7 @@ Deno.serve(async(req)=>{
         const detail=shifts.map((shift:any)=>`<tr><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.date)}</td><td style="padding:5px;border-bottom:1px solid #ddd">${encode(shift.hours)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.rate)}</td><td style="padding:5px;border-bottom:1px solid #ddd">$${encode(shift.amount)}</td></tr>`).join('');
         const emailBody=`<div style="font:14px Arial,sans-serif;max-width:640px;color:#18263a"><div style="background:#0d1b2c;color:#e3bf70;padding:20px;font-size:20px;font-weight:bold">BLACK POINT SECURITY — INVOICE ${encode(number)}</div><p><b>Service location:</b> ${encode(name)}<br/><b>Service period:</b> ${encode(start)} through ${encode(end)}<br/><b>Due:</b> ${encode(invoiceData.due_date)}</p><table width="100%" cellspacing="0"><thead><tr><th align="left">Date</th><th align="left">Hours</th><th align="left">Rate</th><th align="left">Amount</th></tr></thead><tbody>${detail}</tbody></table><h2>Total due: $${invoiceData.total_amount.toFixed(2)}</h2><p>${reason||'Thank you for your business.'}</p><p>Unpaid invoices may be assessed one one-time 10% late fee after the due date, subject to the applicable client agreement.</p><p>Black Point Protection · management@blackpointkjc.com</p></div>`;
         try {
-          await base44.asServiceRole.integrations.Core.SendEmail({to:target,subject:`Black Point ${existingInvoice?'Revised ':''}Invoice ${number} — ${name} (${start}–${end})`,body:emailBody});
+          await sendCreditFreeEmail(base44,{to:target,subject:`Black Point ${existingInvoice?'Revised ':''}Invoice ${number} — ${name} (${start}–${end})`,body:emailBody});
           await base44.asServiceRole.entities.Invoice.update(invoice.id,{status:'sent',delivery_status:'accepted',delivery_email:target,sent_at:new Date().toISOString()});
           sent++;results.push({invoice_number:number,site:name,status:'sent',recipient:target});
           const clientTargets=(users||[]).filter((row:any)=>eligibleClient(row) && (

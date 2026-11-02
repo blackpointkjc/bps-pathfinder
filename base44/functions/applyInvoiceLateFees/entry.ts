@@ -1,3 +1,4 @@
+import {sendCreditFreeEmail} from '../creditFreeEmail.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClientFromRequest} from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -80,7 +81,7 @@ Deno.serve(async req=>{
       if(!emailOk(recipient)) {results.push({invoice:original.invoice_number,site:original.site_name,error:'Late fee posted, but notice held: verified client billing contact required'});continue;}
       const target=recipient;
       try{
-        await base44.asServiceRole.integrations.Core.SendEmail({to:target,
+        await sendCreditFreeEmail(base44,{to:target,
           subject:`Black Point invoice ${original.invoice_number} — Overdue, 10% late fee assessed`,
           body:`<div style="font:15px Arial,sans-serif"><h2>Black Point Security — Overdue Invoice</h2><p>Invoice #${String(original.invoice_number||'').replace(/[<>]/g,'')} for ${String(original.site_name||'').replace(/[<>]/g,'')} was due ${original.due_date}.</p><p>Service charges: $${base.toFixed(2)}<br/>One-time late fee (10%): $${fee.toFixed(2)}<br/><b>Updated invoice total: $${total.toFixed(2)}</b><br/>Payments received: $${money(original.amount_paid).toFixed(2)}<br/><b>Outstanding: $${money(total-Number(original.amount_paid||0)).toFixed(2)}</b></p><p>Sign in to your Black Point client portal to view the updated invoice.</p></div>`});
         await base44.asServiceRole.entities.Invoice.update(original.id,{late_notice_status:'accepted',late_notice_sent_at:now});notified++;

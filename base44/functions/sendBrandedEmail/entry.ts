@@ -1,3 +1,4 @@
+import {sendCreditFreeEmail} from '../creditFreeEmail.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
     const subject=String(payload?.subject||'BlackPoint Pathfinder notification').slice(0,250);
     const body=String(payload?.body||payload?.message||'');
     if(!body)return Response.json({error:'Email content is required.'},{status:400});
-    const sent=await base44.asServiceRole.integrations.Core.SendEmail({to:recipient,subject,body,from_name:'BlackPoint Pathfinder'});
+    const sent=await sendCreditFreeEmail(base44,{to:recipient,subject,body,from_name:'BlackPoint Pathfinder'});
     if(sent?.error||sent?.success===false)throw new Error('No-reply provider rejected delivery.');
     return Response.json({success:true,to:recipient,delivered:'accepted_by_provider'});
   } catch (error) {
