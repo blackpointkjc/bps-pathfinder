@@ -212,6 +212,7 @@ export default function AdminLocationTracker({ embedded = false }) {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState('live');
   const [selectedOfficerEmail, setSelectedOfficerEmail] = useState('');
+  const [includeLegacyGps,setIncludeLegacyGps]=useState(false);
   const [selectedDate, setSelectedDate] = useState(() => auditDay());
   // Optional Eastern-time window so a night shift (for example 18:00-06:00) can
   // be reviewed without merging into the next day's daytime activity.
@@ -351,10 +352,11 @@ export default function AdminLocationTracker({ embedded = false }) {
   );
 
   const { data: auditData, isLoading: auditLoading, error: auditError, refetch: retryAudit } = useQuery({
-    queryKey: ['locationAuditReport', selectedOfficerEmail, selectedDate, windowStart, windowEnd],
+    queryKey: ['locationAuditReport', selectedOfficerEmail, selectedDate, windowStart, windowEnd, includeLegacyGps],
     queryFn: async () => {
       const response = await base44.functions.invoke('getLocationAuditReport', {
         officer_email: selectedOfficerEmail,
+        include_legacy_gps: includeLegacyGps,
         date: selectedDate,
         start_time: windowStart || undefined,
         end_time: windowEnd || undefined,
@@ -748,7 +750,7 @@ export default function AdminLocationTracker({ embedded = false }) {
               <div className="grid flex-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="officer_select">Select User</Label>
-                  <Select value={selectedOfficerEmail} onValueChange={setSelectedOfficerEmail}>
+                  <Select value={selectedOfficerEmail} onValueChange={email=>{setSelectedOfficerEmail(email);setIncludeLegacyGps(false);}}>
                     <SelectTrigger id="officer_select">
                       <SelectValue placeholder="Choose a user..." />
                     </SelectTrigger>
@@ -763,6 +765,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                     </SelectContent>
                   </Select>
                 </div>
+                {selectedOfficerEmail.toLowerCase()==='kshiers@blackpointkjc.com' && <label className="flex items-start gap-2 rounded-lg border border-amber-600/60 bg-amber-950/25 p-3 text-xs text-amber-100 md:col-span-2 xl:col-span-4"><input type="checkbox" className="mt-0.5" checked={includeLegacyGps} onChange={event=>setIncludeLegacyGps(event.target.checked)}/><span><strong>Include GPS recorded under the separate historical Support Staff account</strong> (kavonhiers@team-hsg.com). Its source will be explicitly identified in the audit trail. This does not merge accounts or personnel records.</span></label>}
                 <div className="space-y-2">
                   <Label htmlFor="date_select">Select Date</Label>
                   <Input

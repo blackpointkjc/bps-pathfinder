@@ -108,6 +108,19 @@ Deno.serve(async req => {
     ].map((value: unknown) => String(value || '').trim().toLowerCase()).filter(Boolean);
     const officer = (directory || []).find((person: any) => aliasesFor(person).includes(email));
     const officerEmails = [...new Set(officer ? aliasesFor(officer) : [email])];
+    // Historical GPS was also recorded under a *different* Support Staff
+    // account with the same name. Never merge that identity silently or change
+    // the underlying employee records. An administrator must explicitly opt in
+    // for this named legacy source; provenance is retained on every GPS row.
+    const legacyHiersOwnerId='6ae7d733d4b1a647cd3e6f38';
+    const legacyHiersAccountId='6a72bbee2842d6338cbae513';
+    const legacyAccount=(directory||[]).find((person:any)=>String(person.id)===legacyHiersAccountId);
+    const canIncludeLegacy=String(officer?.id||'')===legacyHiersOwnerId
+      && String(legacyAccount?.first_name||'').toLowerCase()==='kavon'
+      && String(legacyAccount?.last_name||'').toLowerCase()==='hiers';
+    const legacyEmail=canIncludeLegacy?String(legacyAccount.email||'').trim().toLowerCase():'';
+    const includeLegacy=input.include_legacy_gps===true&&canIncludeLegacy&&Boolean(legacyEmail);
+    if(includeLegacy&&!officerEmails.includes(legacyEmail))officerEmails.push(legacyEmail);
     const emailFilter = officerEmails.length === 1 ? officerEmails[0] : { $in: officerEmails };
     const results = await Promise.allSettled([
       readAll(entities.LocationHistory, { officer_email: emailFilter, timestamp: { $gte: start.toISOString(), $lt: end } }, 'timestamp', 5000),
@@ -119,12 +132,15 @@ Deno.serve(async req => {
     const alertRows = results[1].status === 'fulfilled' ? results[1].value : [];
     const timeEntries = results[2].status === 'fulfilled' ? results[2].value : [];
     const warnings = results.slice(1).flatMap((result, index) => result.status === 'rejected' ? [index === 0 ? 'Geofence alerts could not load. Retry to include them.' : 'Time entries could not load. Retry to include shift times.'] : []);
-    const history = historyRows.filter(row => inWindow(row.timestamp)).sort((a,b) => stamp(a.timestamp)-stamp(b.timestamp));
+    const history = historyRows.filter(row => inWindow(row.timestamp))
+      .map((row:any)=>({...row,gps_recorded_account:row.officer_email,gps_account_type:includeLegacy&&String(row.officer_email||'').toLowerCase()===legacyEmail?'separate_legacy_support_account':'selected_account'}))
+      .sort((a,b) => stamp(a.timestamp)-stamp(b.timestamp));
+    if(includeLegacy)warnings.push('Includes GPS recorded under a separate historical Support Staff login. These points are marked with their original account; this does not establish that the Colonel account generated them.');
     const geofenceAlerts = alertRows.filter(row => inWindow(row.created_date));
     const entries = timeEntries.filter(row => dayKey(row.clock_in) <= date && (!row.clock_out || dayKey(row.clock_out) >= date))
       .map(({ id, clock_in, clock_out, location }: any) => ({ id, clock_in, clock_out, location }))
       .sort((a:any,b:any) => stamp(a.clock_in) - stamp(b.clock_in));
-    return Response.json({ history, geofenceAlerts, entries, warnings, date, officer_email: officer?.email || email, matched_email_aliases: officerEmails, window_label: windowLabel, timeZone: 'America/New_York', generatedAt: new Date().toISOString() });
+    return Response.json({ history, geofenceAlerts, entries, warnings, date, officer_email: officer?.email || email, matched_email_aliases: officerEmails, legacy_gps_available:canIncludeLegacy, legacy_gps_included:includeLegacy, legacy_gps_email:canIncludeLegacy?legacyEmail:null, window_label: windowLabel, timeZone: 'America/New_York', generatedAt: new Date().toISOString() });
   } catch (error) {
     console.error('Location audit report failed', error);
     return Response.json({ error: 'Unable to load the complete GPS audit report. Please retry.' }, { status: 500 });
