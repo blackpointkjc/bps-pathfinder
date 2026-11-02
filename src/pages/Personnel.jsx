@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useState, useEffect } from 'react';
@@ -297,7 +298,7 @@ export default function Personnel({ embedded = false }) {
                         <p className="rounded-lg border border-red-900/70 bg-red-950/40 p-3 text-sm text-red-200">This signs out every currently active unit except your own administrator session and places those units Out of Service.</p>
                         <div>
                             <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Required reason shown to signed-out users</label>
-                            <textarea autoFocus value={signOutAllReason} onChange={event => setSignOutAllReason(event.target.value)} placeholder="Why are all active units being signed out?" className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" />
+                            <AIRewriteField autoFocus value={signOutAllReason} onChange={event => setSignOutAllReason(event.target.value)} placeholder="Why are all active units being signed out?" className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" />
                         </div>
                     </div>
                     <DialogFooter>
@@ -316,7 +317,7 @@ export default function Personnel({ embedded = false }) {
                         <p className="rounded-lg border border-red-900/70 bg-red-950/40 p-3 text-sm text-red-200">This ends the officer's active app session, removes the officer from live CAD status, and places the unit Out of Service. It does not change the officer's true time punches.</p>
                         <div>
                             <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Required reason</label>
-                            <textarea autoFocus value={signOutReason} onChange={event => setSignOutReason(event.target.value)} placeholder="Why is this officer being signed out?" className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" />
+                            <AIRewriteField autoFocus value={signOutReason} onChange={event => setSignOutReason(event.target.value)} placeholder="Why is this officer being signed out?" className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" />
                         </div>
                     </div>
                     <DialogFooter>
@@ -332,8 +333,8 @@ export default function Personnel({ embedded = false }) {
                     <DialogHeader><DialogTitle>Lock User Account</DialogTitle></DialogHeader>
                     <div className="space-y-3">
                         <p className="text-sm text-slate-300">{accountLockDialog?.person?.rank || 'User'} {accountLockDialog?.person?.last_name || accountLockDialog?.person?.full_name || accountLockDialog?.person?.email}</p>
-                        <div><label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Reason</label><textarea autoFocus value={accountLockReason} onChange={e => setAccountLockReason(e.target.value)} placeholder="Reason the account is being locked..." className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" /></div>
-                        <div><label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Message shown at login</label><textarea value={accountLockMessage} onChange={e => setAccountLockMessage(e.target.value)} placeholder="Please contact your supervisor for assistance." className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" /></div>
+                        <div><label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Reason</label><AIRewriteField autoFocus value={accountLockReason} onChange={e => setAccountLockReason(e.target.value)} placeholder="Reason the account is being locked..." className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" /></div>
+                        <div><label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Message shown at login</label><AIRewriteField value={accountLockMessage} onChange={e => setAccountLockMessage(e.target.value)} placeholder="Please contact your supervisor for assistance." className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" /></div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAccountLockDialog(null)}>Cancel</Button>
@@ -346,7 +347,7 @@ export default function Personnel({ embedded = false }) {
                     <DialogHeader><DialogTitle>{statusDialog?.action === 'force_oos' ? 'Force Officer Out of Service' : 'Release Out of Service Override'}</DialogTitle></DialogHeader>
                     <div className="space-y-3">
                         <p className="text-sm text-slate-300">{statusDialog?.person?.rank || 'Officer'} {statusDialog?.person?.last_name || statusDialog?.person?.full_name || statusDialog?.person?.email}</p>
-                        {statusDialog?.action === 'force_oos' ? <textarea autoFocus value={statusReason} onChange={e => setStatusReason(e.target.value)} placeholder="Reason for placing this officer Out of Service..." className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-blue-500" /> : <p className="rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300">Release this forced Out of Service status?</p>}
+                        {statusDialog?.action === 'force_oos' ? <AIRewriteField autoFocus value={statusReason} onChange={e => setStatusReason(e.target.value)} placeholder="Reason for placing this officer Out of Service..." className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-blue-500" /> : <p className="rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300">Release this forced Out of Service status?</p>}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" disabled={!!statusUpdatingId} onClick={() => { setStatusDialog(null); setStatusReason(''); }}>Cancel</Button>

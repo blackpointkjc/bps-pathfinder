@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
@@ -130,7 +131,7 @@ function CaptionPanel({ form, setField }) {
         <LineInput value={form.locality_name} onChange={(v) => setField('locality_name', v)} ariaLabel="Locality name" />
       </div>
       <label className="dc-caption-name">
-        <textarea value={form.plaintiff_petitioner_name} onChange={(e) => setField('plaintiff_petitioner_name', e.target.value)} aria-label="Plaintiff or petitioner name" />
+        <AIRewriteField value={form.plaintiff_petitioner_name} onChange={(e) => setField('plaintiff_petitioner_name', e.target.value)} aria-label="Plaintiff or petitioner name" />
         <small>Plaintiff(s) / petitioner</small>
       </label>
       <div className="dc-center-choices">
@@ -142,7 +143,7 @@ function CaptionPanel({ form, setField }) {
         <small>Defendant / child (one defendant only)</small>
       </label>
       <label className="dc-caption-name">
-        <textarea className="dc-charge" value={form.charge} onChange={(e) => setField('charge', e.target.value)} aria-label="Charge" />
+        <AIRewriteField className="dc-charge" value={form.charge} onChange={(e) => setField('charge', e.target.value)} aria-label="Charge" />
         <small>Charge</small>
       </label>
       <div className="dc-court-date">

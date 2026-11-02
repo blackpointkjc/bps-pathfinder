@@ -38,6 +38,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const actor = await base44.auth.me().catch(() => null);
     if (!actor) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if(actor.role!=='admin'&&!(actor.additional_roles||[]).some(r=>['hr','trainer'].includes(r)))return Response.json({error:'Account administrator access required.'},{status:403});
+    const session=await base44.functions.invoke('portalSession',{action:'check'});if(!session.data?.success)return Response.json({error:'Sign in again before sending email.'},{status:401});
     const payload = await req.json();
     const recipient = String(payload?.to || '').trim();
     if (!recipient) return Response.json({ error: 'Recipient is required' }, { status: 400 });

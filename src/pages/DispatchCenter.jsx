@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { cadReference } from '@/lib/cadReference';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
@@ -1035,7 +1036,7 @@ export default function DispatchCenter({embedded=false}) {
                                         <div>
                                             <PropertyCallLinkControl call={selectedCall}/>
                                             <div className="text-[9px] text-slate-500 mb-1">Add dispatch note</div>
-                                            <textarea value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addCallNote(); } }}
+                                            <AIRewriteField value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addCallNote(); } }}
                                                 placeholder="Type update, then Enter..." className="w-full h-16 resize-none bg-[#111827] border border-[#263653] rounded p-2 text-[10px] text-white outline-none focus:border-blue-500" />
                                             <button onClick={addCallNote} disabled={savingNote || !noteText.trim()} className="w-full mt-1 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 rounded text-[9px] font-bold">
                                                 {savingNote ? 'SAVING...' : 'POST TO CAD LOG'}

@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -262,7 +263,7 @@ export default function IDScanner({ onDataExtracted, onClose }) {
             <Scan className="mr-2 h-4 w-4" />{hardwareActive ? "Close Hardware Scanner" : "Use Zebra / USB Scanner"}
           </Button>
           {hardwareActive && (
-            <textarea
+            <AIRewriteField
               ref={inputRef}
               value={scannerText}
               onChange={(event) => {

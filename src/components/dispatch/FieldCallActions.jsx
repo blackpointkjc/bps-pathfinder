@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { MapPin, AlertTriangle, CheckCircle, MessageSquare } from 'lucide-react';
@@ -240,7 +241,7 @@ export default function FieldCallActions({ call, onStatusChange }) {
       <div>
         <div className="text-[9px] font-mono text-slate-400 tracking-widest mb-1.5">ADD FIELD NOTE</div>
         <div className="flex gap-2">
-          <textarea value={noteText} onChange={e => setNote(e.target.value)} placeholder="Enter note or update..." rows={2}
+          <AIRewriteField value={noteText} onChange={e => setNote(e.target.value)} placeholder="Enter note or update..." rows={2}
             className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-gold resize-none" />
           <button onClick={addNote} disabled={saving || !noteText.trim()}
             className={`px-3 rounded border text-xs font-mono font-bold flex-shrink-0 transition-colors ${noteAdded ? 'bg-green-800 border-green-600 text-green-200' : 'bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600 disabled:opacity-40'}`}>

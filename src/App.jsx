@@ -1,3 +1,4 @@
+import {AIReviewGuard} from '@/components/AIRewriteField';
 import {authEntry} from '@/lib/portalAuthFlow';
 import SubmissionReceipt from '@/components/ia/SubmissionReceipt';
 import { registerDiagnosticPages } from '@/utils/appDiagnostics';
@@ -457,7 +458,7 @@ function App() {
           <NavigationTracker />
           <AuthenticatedApp />
         </Router>
-        <Toaster /><SubmissionReceipt />
+        <Toaster /><AIReviewGuard /><SubmissionReceipt />
         <VisualEditAgent />
       </QueryClientProvider>
     </AuthProvider>

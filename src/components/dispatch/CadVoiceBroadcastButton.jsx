@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
@@ -36,7 +37,7 @@ export default function CadVoiceBroadcastButton({ user }) {
         <h2 id="cad-voice-title" className="text-lg font-bold">CAD voice announcement</h2>
         <p className="my-3 text-sm text-slate-300">Your message will be read aloud to active, on-duty officers on every page. Officers who reconnect during the same shift can hear missed announcements.</p>
         <label className="text-sm" htmlFor="cad-voice-message">Message</label>
-        <textarea id="cad-voice-message" autoFocus maxLength={1200} value={message} disabled={sending} onChange={e => setMessage(e.target.value)} className="mt-1 min-h-32 w-full rounded border border-slate-500 bg-slate-950 p-3" />
+        <AIRewriteField id="cad-voice-message" autoFocus maxLength={1200} value={message} disabled={sending} onChange={e => setMessage(e.target.value)} className="mt-1 min-h-32 w-full rounded border border-slate-500 bg-slate-950 p-3" />
         {sendError && <p role="alert" className="mt-3 rounded border border-red-500 bg-red-950/60 p-3 text-xs text-red-100">{sendError}</p>}
         <div className="mt-4 flex justify-end gap-3">
           <button type="button" disabled={sending} onClick={() => setOpen(false)} className="min-h-10 rounded border border-slate-600 px-3">Cancel</button>

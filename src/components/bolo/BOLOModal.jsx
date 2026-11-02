@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import { callDisplayNumber } from '@/lib/reportCallLinking';
 import { uploadInternalFile } from '@/lib/internalUpload';
@@ -23,7 +24,7 @@ function Input({ value, onChange, placeholder, normalize, className = '' }) {
     className={`w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-mono text-white placeholder-slate-600 focus:border-gold focus:outline-none ${className}`} />;
 }
 function Textarea({ value, onChange, rows = 3, normalize }) {
-  return <textarea value={value || ''} onChange={e => onChange(e.target.value)} onBlur={e => normalize && onChange(normalize(e.target.value))} rows={rows}
+  return <AIRewriteField value={value || ''} onChange={e => onChange(e.target.value)} onBlur={e => normalize && onChange(normalize(e.target.value))} rows={rows}
     className="w-full resize-none rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-mono text-white focus:border-gold focus:outline-none" />;
 }
 function Select({ value, onChange, options }) {

@@ -1,3 +1,4 @@
+import AIRewriteField from '@/components/AIRewriteField';
 import { useNavigate } from 'react-router-dom';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import { useEffect, useMemo, useState } from 'react';
@@ -234,7 +235,7 @@ export default function BOLOAlerts() {
               <div className="mt-1 font-black text-amber-300">{resolutionDialog?.bolo_number || resolutionDialog?.title}</div>
             </div>
             <label className="block text-sm font-semibold text-slate-200" htmlFor="bolo-resolution">Disposition / resolution</label>
-            <textarea id="bolo-resolution" autoFocus value={resolutionText} onChange={e => setResolutionText(e.target.value)} placeholder="Enter the disposition or resolution..." className="min-h-28 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-white outline-none focus:border-blue-500" />
+            <AIRewriteField id="bolo-resolution" autoFocus value={resolutionText} onChange={e => setResolutionText(e.target.value)} placeholder="Enter the disposition or resolution..." className="min-h-28 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-white outline-none focus:border-blue-500" />
           </div>
           <DialogFooter>
             <Button variant="outline" disabled={!!resolving} onClick={() => { setResolutionDialog(null); setResolutionText(''); }}>Cancel</Button>
