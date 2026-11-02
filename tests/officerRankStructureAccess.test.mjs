@@ -12,4 +12,5 @@ async function call(kind){sdk.auth.me=async()=>actor;const r=await handler(new R
 let r=await call('personnel');assert.equal(r.status,200);assert.ok(r.officers.some(p=>p.id===actor.id));assert.ok(!r.officers.some(p=>p.id===other.id));assert.equal((await call('writeups')).status,403);
 actor={...actor,additional_roles:['client'],rank:'Client'};assert.equal((await call('personnel')).status,403);
 actor={...actor,additional_roles:[],rank:'Pending Assignment'};assert.equal((await call('personnel')).status,403);
+actor={id:'6a72bbee2842d6338cbae513',rank:'Support Staff',role:'admin',additional_roles:['support']};assert.equal((await call('personnel')).status,403,'Platform ownership must not grant the retired account supervisor tools');
 console.log('PASS: officers can read their Rank Structure without supervisor permission; other platoons and supervisor records remain restricted.');
