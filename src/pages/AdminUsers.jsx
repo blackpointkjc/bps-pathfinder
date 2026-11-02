@@ -1,3 +1,4 @@
+import { compactProfilePhoto } from '@/lib/compactProfilePhoto';
 import AdditionalRolesEditor from '@/components/admin/AdditionalRolesEditor';
 import { isClientAccount } from '@/lib/directoryUtils';
 import { accessLabel } from '@/utils/accountLabels';
@@ -462,29 +463,9 @@ export default function AdminUsers({ embedded = false }) {
     setUploadingPhoto(true);
     setPhotoPreview(dataUrl);
     try {
-      let photoUrl = dataUrl;
-      let originalUrl = "";
-      if (file) {
-        try {
-          const uploaded = await uploadInternalFile(file);
-          if (uploaded?.file_url) photoUrl = uploaded.file_url;
-        } catch (uploadError) {
-          throw new Error('Cropped photo upload failed: ' + (uploadError?.message || uploadError));
-        }
-      }
-      if (!photoUrl) throw new Error('The cropped photo is empty.');
-      if (photoToCrop) {
-        try {
-          const original = await uploadInternalFile(photoToCrop);
-          originalUrl = original?.file_url || '';
-        } catch (error) {
-          console.warn('Full-resolution original unavailable; the high-resolution crop will be used:', error?.message);
-        }
-      }
-      const result = await base44.functions.invoke('updateUser', {
-        userId: editingUser,
-        updates: { profile_photo_url: photoUrl, profile_photo_original_url: originalUrl || photoUrl },
-      });
+      const photoUrl = await compactProfilePhoto(dataUrl);
+      const originalUrl = photoUrl;
+      const result = await base44.functions.invoke('updatePersonnelPhoto', {user_id: editingUser, profile_photo_url:photoUrl,profile_photo_original_url:originalUrl});
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.details || payload.error);
       setEditFormData(prev => ({ ...prev, profile_photo_url: photoUrl, profile_photo_original_url: originalUrl || photoUrl }));
