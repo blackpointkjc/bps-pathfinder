@@ -315,6 +315,32 @@ export default async function(req){
    return Response.json({success:true,release_id:published.id});
   }
   const records=await db.PSRecord.filter({case_id:c.id},'created_date',1000);
+  if(action==='close_case'){
+   if(!review)fail('Only an IA reviewer can finalize and close a case.',403);
+   if(c.status==='closed')return Response.json({success:true,already_closed:true});
+   if(Number(body.version)!==Number(c.version))fail('This case changed. Reopen the case to review its latest records before closing.',409);
+   // Respect the original investigator/reviewer separation; cases already
+   // approved by another reviewer retain that approval.
+   if(c.investigator_id===u.id&&!(c.status==='approved'&&c.reviewer_id&&c.reviewer_id!==u.id))fail('A reviewer other than the assigned investigator must close this case.',403);
+   const unfinished=records.filter(r=>['task','corrective_action'].includes(r.kind)&&r.status!=='completed');
+   if(unfinished.length)fail(`${unfinished.length} outstanding follow-up item(s) must be marked completed before the case can be closed.`);
+   const pending=records.filter(r=>r.kind==='allegation'&&(!r.finding||r.finding==='pending'));
+   if(pending.length)fail(`${pending.length} allegation(s) still have pending findings. Set a finding for each allegation before closing.`);
+   const allowed=['sustained','not_sustained','unfounded','exonerated','policy_failure','mixed_findings','commendation'];
+   const disposition=[...records].reverse().find(r=>r.kind==='disposition'&&allowed.includes(r.finding));
+   const outcome=disposition?.finding||text(body.outcome,100);
+   const summary=text(c.outcome_summary||disposition?.body||body.summary,12000);
+   if(!allowed.includes(outcome))fail('Select the final investigation result to close this case.');
+   if(summary.length<20)fail('Enter a brief final decision summary (at least 20 characters).');
+   // Persist the final disposition automatically as part of the same action.
+   if(!disposition)await db.PSRecord.create({case_id:c.id,kind:'disposition',title:'Final result: '+outcome.replaceAll('_',' '),body:summary,finding:outcome,author_id:u.id,author_name:actorName(u),status:'recorded'});
+   const now=new Date().toISOString();
+   await db.PSCase.update(c.id,{status:'closed',closed_at:now,reviewed_at:c.reviewed_at||now,reviewer_id:c.reviewer_id||u.id,outcome_summary:summary,outcome_recorded_by:c.outcome_recorded_by||u.id,outcome_recorded_at:c.outcome_recorded_at||now,public_status:'Closed',public_message:publicMessage('Closed',''),version:Number(c.version||0)+1});
+   await audit(db,u,'case_closed',c.id,'Final closure completed; '+outcome+'; '+unfinished.length+' outstanding work items');
+   await db.PSRecord.create({case_id:c.id,kind:'public_update',title:'Closed',body:publicMessage('Closed',''),author_id:u.id,author_name:'Professional Standards',status:'published'});
+   await publishMilestone(db,u,c,'closure');
+   return Response.json({success:true,closed:true,closed_at:now});
+  }
   const caseTools=await linkedCaseTools({action,body,db,u,c,records,review,editable:review||c.investigator_id===u.id,base44,audit,notify,fail,text,actorName});
   if(caseTools)return caseTools;
   if(action==='get'){
