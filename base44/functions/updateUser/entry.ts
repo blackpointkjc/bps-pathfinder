@@ -221,14 +221,26 @@ Deno.serve(async (req) => {
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
         if(updates.ps_role!==undefined||updates.additional_roles!==undefined||updates.role!==undefined)await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:user.email,action:'account_permission_change_requested',details:JSON.stringify({user_id:userId,ps_role:updatePayload.ps_role,additional_roles:updatePayload.additional_roles,role:updatePayload.role})});
-        const auditFields = Object.keys(updatePayload).filter(field => ['role','additional_roles','ps_role','employment_status','termination_date','hire_date','account_status','rank','badge_number','unit_number','division','subdivision','substation','platoon','supervisor_id','profile_photo_url','assigned_location','assigned_sites','portal_approved','employment_status'].includes(field) && JSON.stringify(target[field]??null)!==JSON.stringify(updatePayload[field]??null));
+        // Every actual profile change gets an attributable event. Retain safe
+        // old/new values for operational fields, but redact sensitive fields.
+        const auditFields = Object.keys(updatePayload).filter(field => JSON.stringify(target[field]??null)!==JSON.stringify(updatePayload[field]??null));
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
-        // Immutable personnel history. Never write photographs, addresses,
-        // DOB, bank data, passwords, or other private identifiers into logs.
+        const privateField = (field:string) => /ssn|social|bank|tax|routing|account_number|password|token|credential|secret|date_of_birth|drivers_license_number|address|mobile_phone|emergency_contact|photo|cert_file|signature|file_url|document_url/i.test(field);
+        const safeAuditValue = (field:string,value:any) => privateField(field) ? (value?'[confidential value recorded in employee file]':'[no value]') : JSON.stringify(value??null).slice(0,700);
+        const now=new Date().toISOString();
+        let auditFailures=0;
         for(const field of auditFields){
-          const redact = (value:any) => field==='profile_photo_url' ? (value?'[portrait on file]':'[none]') : JSON.stringify(value??null).slice(0,1200);
-          await base44.asServiceRole.entities.AuditLog.create({entity_type:'User',entity_id:userId,action:field==='employment_status'||field==='termination_date'?'status_change':'update',field_changed:field,actor_id:user.id,actor_name:String(user.email||''),before_value:redact(target[field]),after_value:redact(updatePayload[field]),timestamp:new Date().toISOString(),description:`Personnel ${field} updated by authorized administrator`}).catch(err=>console.error('Personnel audit write failed',field,String(err)));
+          try{
+            await base44.asServiceRole.entities.AuditLog.create({
+              entity_type:'User',entity_id:userId,
+              action:['employment_status','termination_date','account_status','role','ps_role','additional_roles'].includes(field)?'status_change':'update',
+              field_changed:field,actor_id:user.id,actor_name:String(user.email||''),
+              before_value:safeAuditValue(field,target[field]),after_value:safeAuditValue(field,updatePayload[field]),
+              timestamp:now,description:`Employee profile change: ${field}`,
+            });
+          }catch(error){auditFailures++;console.error('Personnel audit event could not be saved:',field,String(error));}
         }
+        if(auditFailures)console.error(`${auditFailures} personnel audit events require reconciliation for account ${userId}`);
         // Confirm edits to identity/contact/onboarding fields reached persistent User.
         // A successful SDK call alone is not proof that every field was retained.
         const verifiedUser = await base44.asServiceRole.entities.User.get(userId);
