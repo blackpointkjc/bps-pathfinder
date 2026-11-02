@@ -68,6 +68,33 @@ async function allocateReference(db:any){
 export default async function(req:Request){
  try{
  const sdk=createClientFromRequest(req),db=sdk.asServiceRole.entities,b=await req.json();
+ if(b?.action==='form_config')return Response.json({
+   version:'helpme-2026-11-02-v2',service:'helpme',categories:kinds,
+   fields:[
+     {name:'incident',type:'select',label:'Type of assistance',required:true,options:kinds},
+     {name:'incident_time',type:'datetime-local',label:'When did this happen?',required:true},
+     {name:'ongoing',type:'select',label:'Is this happening now?',options:['Yes','No','Unknown']},
+     {name:'description',type:'textarea',label:'Describe what happened',required:true,minLength:15,maxLength:5000},
+     {name:'location',type:'text',label:'Full street address, city and state',required:true,minLength:8,maxLength:400},
+     {name:'cross_street',type:'text',label:'Nearest cross street'},
+     {name:'landmark',type:'text',label:'Building, apartment or landmark'},
+     {name:'access',type:'textarea',label:'Entry instructions / where to meet you'},
+     {name:'people',type:'textarea',label:'People and descriptions'},
+     {name:'vehicles',type:'textarea',label:'Vehicles, plates and direction of travel'},
+     {name:'injuries',type:'textarea',label:'Injuries or medical needs'},
+     {name:'hazards',type:'textarea',label:'Weapons, threats or hazards'},
+     {name:'caller_name',type:'text',label:'Your name',required:true,maxLength:150},
+     {name:'caller_phone',type:'tel',label:'Callback phone number',required:true,minLength:10,maxLength:40},
+     {name:'safe_callback',type:'select',label:'Is it safe to call you?',options:['Yes','No']},
+     {name:'acknowledged',type:'checkbox',label:'I understand this is a security assistance request and will call 911 in an emergency.',required:true}
+   ],sections:[
+     {title:'01 · What is happening?',fields:['incident','incident_time','ongoing','description']},
+     {title:'02 · Where should help go?',fields:['location','cross_street','landmark','access']},
+     {title:'03 · Safety and people involved',fields:['people','vehicles','injuries','hazards']},
+     {title:'04 · Contact details',fields:['caller_name','caller_phone','safe_callback','acknowledged']}
+   ],notice:'For emergencies and immediate danger call 911. Submission does not guarantee an officer is en route.'
+ });
+
  if(b.website)return Response.json({error:'Unable to accept this request.'},{status:400});
  const incident=clean(b.incident,80),location=clean(b.location,400),description=clean(b.description,5000),name=clean(b.caller_name,150),phone=clean(b.caller_phone,40),key=clean(b.request_id,80);
  if(!kinds.includes(incident))return invalid('incident','Select the type of assistance needed.');

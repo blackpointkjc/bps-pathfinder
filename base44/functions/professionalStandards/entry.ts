@@ -128,6 +128,23 @@ export default async function(req){
    const form=await req.formData(); body=JSON.parse(String(form.get('payload')||'{}'));files=[...form.entries()].filter(([key,f])=>key.startsWith('file_')&&f instanceof File).map(([,f])=>f);
   }else body=await req.json();
   const action=text(body.action,50);
+  if(action==='form_config')return Response.json({
+    version:'ia-2026-11-02-v2',service:'ia',categories:IA_CATEGORIES.map(([id,name])=>({value:id,label:name})),
+    max_files:5,max_file_size:20*1024*1024,
+    fields:[
+      {name:'anonymous',label:'Submit anonymously',type:'checkbox'},
+      {name:'complainant_name',label:'Your name',type:'text',required:true,unless:'anonymous'},
+      {name:'incident_date',label:'Incident date and time',type:'datetime-local',required:true},
+      {name:'location',label:'Where did it happen?',type:'text',required:true,maxLength:500},
+      {name:'officers',label:'Officer names or badge numbers (if known)',type:'text',maxLength:1000},
+      {name:'category',label:'Category',type:'select',required:true},
+      {name:'category_detail',label:'Describe Other category',type:'text',required:true,when:{category:'other'},minLength:3,maxLength:300},
+      {name:'description',label:'Description',type:'textarea',required:true,minLength:20,maxLength:12000},
+      {name:'witnesses',label:'Witnesses (optional)',type:'textarea',maxLength:2000},
+      {name:'language',label:'Preferred language',type:'text',maxLength:100},
+      {name:'accessibility',label:'Accessibility or language assistance',type:'textarea',maxLength:1000}
+    ]
+  });
   if(action==='contact')return Response.json({phone:'855-8BPS911 ext. 799',email:'IA@blackpointkjc.com',office_hours:'Monday–Friday, 8:00 AM–6:00 PM Eastern. Contact the office for language or accessibility assistance.',address:'701 E Franklin St, Suite 105 1052, Richmond, VA 23219',instructions:'For immediate danger or an emergency, call 911. This form is for complaints and commendations, not emergency dispatch. You may report anonymously. Keep your reference and private tracking code; anonymous codes cannot be recovered.'});
   if(action==='submit'){
    throttle(req,'submit');
