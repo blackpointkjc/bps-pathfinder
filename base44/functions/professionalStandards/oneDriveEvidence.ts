@@ -43,7 +43,13 @@ async function graph(token:string,path:string,options:RequestInit={}){
 }
 async function authorizedDrive(token:string){
   const {site,drive}=config();
-  const path=drive?`/drives/${enc(drive)}?$select=id,driveType,webUrl`:`/sites/${enc(site)}/drive?$select=id,driveType,webUrl`;
+  // The SharePoint site may be configured as its Graph site id or its
+  // hostname:path: locator; retain the ':' and '/' separators for Graph.
+  const siteLocator = /^https:\/\//i.test(site)
+    ? (() => { const url=new URL(site); return `${url.hostname}:${url.pathname.replace(/\/$/,'')}:`; })()
+    : site;
+  const safeSite = siteLocator.includes(':/') ? siteLocator.split('/').map(part=>part.replace(/ /g,'%20')).join('/') : enc(siteLocator);
+  const path=drive?`/drives/${enc(drive)}?$select=id,driveType,webUrl`:`/sites/${safeSite}/drive?$select=id,driveType,webUrl`;
   const result=await (await graph(token,path)).json();
   if(!result.id)throw new Error('Microsoft did not return the authorized private document library.');
   return {id:String(result.id),driveType:String(result.driveType||'documentLibrary')};
