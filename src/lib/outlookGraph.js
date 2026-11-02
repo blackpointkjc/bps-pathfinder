@@ -134,6 +134,7 @@ function storeOutlookToken(userId, tokenResponse, prior = null) {
     connected_at: prior?.connected_at || new Date().toISOString(),
   };
   localStorage.setItem(tokenKey(userId), JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed',{detail:{userId}}));
   return next;
 }
 

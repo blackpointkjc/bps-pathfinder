@@ -305,11 +305,14 @@ export default function OutlookMail() {
     initializeMail();
     const refreshShared = () => { reloadSharedMailboxes(); initializeMail(); };
     const refreshOnReturn = () => { if(document.visibilityState==='visible')refreshShared(); };
+    const refreshFromStorage=event=>{if(event.key===`bps:outlook-token:${user.id}`)refreshShared();};
+    window.addEventListener('storage',refreshFromStorage);
     window.addEventListener('focus',refreshOnReturn);
     document.addEventListener('visibilitychange',refreshOnReturn);
     window.addEventListener('bps:outlook-connection-changed', refreshShared);
     window.addEventListener('bps:outlook-shared-mailboxes-changed', refreshShared);
     return () => {
+      window.removeEventListener('storage',refreshFromStorage);
       window.removeEventListener('focus',refreshOnReturn);
       document.removeEventListener('visibilitychange',refreshOnReturn);
       window.removeEventListener('bps:outlook-connection-changed', refreshShared);
