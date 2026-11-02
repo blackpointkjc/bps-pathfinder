@@ -27,6 +27,7 @@ Deno.serve(async req => {
   const permissions = (actor?.additional_roles || []).map((r:unknown) => String(r).toLowerCase());
   if (!actor || (actor.role !== 'admin' && !permissions.includes('trainer') && !permissions.includes('full_access')))
    return Response.json({error:'Trainer access required'},{status:403});
+  if(actor.id!=='6ae7d733d4b1a647cd3e6f38')return Response.json({error:'Only Colonel Hiers may grant Pathfinder account roles.'},{status:403});
   const {userId} = await req.json();
   if (!userId) return Response.json({error:'User ID required'},{status:400});
   const target = await api.asServiceRole.entities.User.get(String(userId));
