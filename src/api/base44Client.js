@@ -26,6 +26,7 @@ const MAX_CONCURRENT_READS = 2;
 const READ_START_GAP_MS = 125;
 const ENTITY_LIST_START_GAP_MS = 650;
 const ENTITY_LIST_PACE_KEY = 'bps:entity-list-next-start';
+const entityListWaitMs = () => { try { return Math.max(0, Number(localStorage.getItem(ENTITY_LIST_PACE_KEY) || 0) - Date.now()); } catch { return 0; } };
 let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
@@ -233,7 +234,7 @@ function pumpReads() {
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
   const criticalRecovery = Math.max(0, readRecoveryUntil - Date.now(), cooldown > 0 ? CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt) : 0);
   const waitFor = job => Math.max(0, (job.readyAt || 0) - Date.now(),
-    job.meta?.kind === 'entity' && job.meta?.method === 'list' ? Math.max(0, Number(localStorage.getItem(ENTITY_LIST_PACE_KEY) || 0) - Date.now()) : 0,
+    job.meta?.kind === 'entity' && job.meta?.method === 'list' ? entityListWaitMs() : 0,
     job.meta?.kind === 'auth' ? 0 : criticalRecovery,
     job.priority < 70 ? cooldown : 0);
   // A background cooldown never holds the head of the queue ahead of live CAD.
