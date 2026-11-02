@@ -131,10 +131,10 @@ export default async function(req){
     const message=text(body.message,6000);
     if(message.length<10)fail('Enter at least 10 characters of additional information.');
     await db.PSRecord.create({case_id:c.id,kind:'public_followup',title:'Message from reporter',body:message,author_name:'Reporter (verified tracking code)',status:'received'});
-    await audit(db,null,'public_followup_received',c.id);
+    await audit(db,null,'public_followup_received',c.id).catch(e=>console.error('Reporter follow-up audit unavailable',e));
     return Response.json({success:true});
    }
-   if(action==='public_evidence'){const uploaded=await upload(base44,db,null,c,files);await audit(db,null,'public_evidence_added',c.id);return Response.json({success:true,received:uploaded.length});}
+   if(action==='public_evidence'){const uploaded=await upload(base44,db,null,c,files);await audit(db,null,'public_evidence_added',c.id).catch(e=>console.error('Reporter evidence audit unavailable',e));return Response.json({success:true,received:uploaded.length});}
    const state=publicStates.includes(c.public_status)?c.public_status:publicStateFor(c.status);
    let investigator=null;
    if(c.investigator_id){
@@ -148,7 +148,12 @@ export default async function(req){
    // The reporter sees only their own submissions and content that an IA
    // reviewer explicitly published. Never expose notes, findings, discipline,
    // internal attachments, or the general case audit to the public endpoint.
-   const history=await db.PSRecord.filter({case_id:c.id},'-created_date',200);
+   const history=[];
+   for(let skip=0;skip<5000;skip+=500){
+    const page=await db.PSRecord.filter({case_id:c.id},'-created_date',500,skip);
+    history.push(...page);
+    if(page.length<500)break;
+   }
    const updates=history.filter(r=>r.kind==='public_update'&&publicStates.includes(r.title)).map(r=>({status:r.title,message:publicMessage(r.title,r.body),posted_at:r.created_date}));
    const timeline=history.filter(r=>['public_update','public_release','public_followup','evidence'].includes(r.kind))
     .filter(r=>r.kind!=='public_release'||r.status==='published')
