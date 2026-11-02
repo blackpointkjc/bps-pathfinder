@@ -473,7 +473,7 @@ export default function AdminUsers({ embedded = false }) {
       setPhotoToCrop(null);
       invalidateAppDirectory();
       queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
-      await queryClient.invalidateQueries({ predicate: query => {
+      void queryClient.invalidateQueries({ predicate: query => {
         const key = JSON.stringify(query.queryKey || []).toLowerCase();
         return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('payroll') || key.includes('rate') || key.includes('cad') || key.includes('schedule') || key.includes('training');
       }});

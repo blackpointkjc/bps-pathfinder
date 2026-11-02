@@ -15,7 +15,8 @@ export default async function(req){
   await db.User.update(id,{profile_photo_url:photo,profile_photo_original_url:original});
   const saved=await db.User.get(id);
   if(saved.profile_photo_url!==photo||saved.profile_photo_original_url!==original)return Response.json({error:'Photo replacement was not confirmed. Please retry.'},{status:503});
-  const warnings=await synchronizeOfficerIdentity(db,saved,previous);
+  let warnings:any[]=[];
+  try{warnings=await synchronizeOfficerIdentity(db,saved,previous);}catch(error:any){warnings=['Photo saved; roster propagation will retry: '+String(error?.message||error).slice(0,150)];}
   await db.AuditLog.create({entity_type:'User',entity_id:id,action:'update',actor_id:me.id,actor_name:me.email,timestamp:new Date().toISOString(),description:'Profile portrait replaced and synchronized.'}).catch(()=>null);
   return Response.json({success:true,user_id:id,profile_photo_url:photo,profile_photo_original_url:original,warnings});
  }catch{return Response.json({error:'Photo could not be updated. Please retry.'},{status:500});}
