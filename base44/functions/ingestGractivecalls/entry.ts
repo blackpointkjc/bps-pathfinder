@@ -1270,7 +1270,7 @@ Deno.serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const scheduledRun = body?.scheduled === true;
-    const user = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(() => null);
+    const user = __portalService ? {id:'scheduled-cad-ingestion',role:'dispatch',additional_roles:['cad_access'],is_service:true} : await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).trim().toLowerCase()));
     const primaryRole = String(user.role || '').trim().toLowerCase();

@@ -44,7 +44,7 @@ export default function PortalLogin(){
    }
   }catch(err){
    const status=err?.status||err?.response?.status;
-   setError(status===429?'Too many attempts. Wait a moment and try again.':mode==='login'?'Unable to sign in. Check your email and password, and verify your email if this is a new account.':mode==='verify'?'Verification failed. Check the code or request another.':err?.message||'Unable to complete this request.');
+   setError(status===429?'Too many attempts. Wait a moment and try again.':mode==='login'?(err?.response?.data?.error||err?.data?.error||err?.message||'Unable to sign in. Please retry.'):mode==='verify'?'Verification failed. Check the code or request another.':err?.message||'Unable to complete this request.');
   }finally{setBusy(false);}
  };
  return <main className="portal-shell bp-login fixed inset-0 overflow-y-auto">
