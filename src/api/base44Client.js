@@ -639,7 +639,10 @@ const functions = new Proxy(rawBase44.functions, {
     return (name, payload) => {
       const functionName = String(name);
       const key = `function:${functionName}:${stableKey(payload || {})}`;
-      const task = async () => {try{const result=await value.call(target,name,payload);if((result.data?.receipt?.tracking_code||result.data?.receipt?.pending))window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:result.data.receipt}));return result;}catch(error){if(error?.response?.data?.code==='SESSION_REAUTH_REQUIRED')window.dispatchEvent(new Event('bps:session-reauthentication-required'));throw error;}};
+      const task = async () => {try{const result=await value.call(target,name,payload);if((result.data?.receipt?.tracking_code||result.data?.receipt?.pending))window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:result.data.receipt}));return result;}catch(error){// A background endpoint can have stale authorization state even when
+        // the active portalSession remains valid. Only the central auth guard
+        // may request a global logout after verifying the canonical session.
+        throw error;}};
       const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '',
         locationTransition: payload?.end_session === true || payload?.reset_gps === true || payload?.status_changed === true };
 

@@ -114,10 +114,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       let currentUser = await withRequestTimeout(base44.auth.me(), 12000, 'Authentication request');
       const session=await base44.functions.invoke('portalSession',{action:'check'});
-      if(!session.data?.success){
-        base44.auth.logout(window.location.origin+'/Login');
-        throw new Error('Please sign in again to continue.');
-      }
+      if(!session.data?.success)throw new Error(session.data?.error||'Unable to verify your session. Please retry.');
       currentUser.__portal_session_started_at=session.data.session_started_at;
       const registration = await base44.functions.invoke('portalRegistration', {action:'profile'});
       if (registration.data?.error) throw new Error(registration.data.error);
@@ -544,12 +541,24 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(()=>{
     if(!isAuthenticated)return;
-    const expired=()=>{
+    let verifying=false,active=true;
+    const expired=async()=>{
+      if(verifying||!active)return;
+      verifying=true;
+      try{
+        // Confirm with the authoritative login session before global sign-out.
+        // A rejected background CAD/IA request is not proof the token expired.
+        const response=await withRequestTimeout(base44.functions.invoke('portalSession',{action:'check'}),10000,'Session verification');
+        if(response?.data?.success)return;
+      }catch(error){
+        if(error?.response?.data?.code!=='SESSION_REAUTH_REQUIRED')return;
+      }finally{verifying=false;}
+      if(!active)return;
       setUser(null);setIsAuthenticated(false);setAccountLock(null);
       base44.auth.logout(window.location.origin+'/Login');appParams.token=null;
     };
     window.addEventListener('bps:session-reauthentication-required',expired);
-    return()=>window.removeEventListener('bps:session-reauthentication-required',expired);
+    return()=>{active=false;window.removeEventListener('bps:session-reauthentication-required',expired);};
   },[isAuthenticated]);
 
   const navigateToLogin = useCallback(() => {
