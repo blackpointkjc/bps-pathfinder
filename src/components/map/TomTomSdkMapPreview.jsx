@@ -372,6 +372,10 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           }
           if(!map.getSource('pathfinder-units')){
             map.addSource('pathfinder-units',{type:'geojson',data:featureCollection([])});
+            // Independent GPS ping dots stay visible even if the SVG patrol
+            // shield icons cannot register after a style reload.
+            map.addLayer({id:'pathfinder-units-gps-pings',type:'circle',source:'pathfinder-units',
+              paint:{'circle-radius':8,'circle-color':'#0ea5e9','circle-stroke-color':'#ffffff','circle-stroke-width':3,'circle-opacity':0.95}});
             map.addLayer({id:'pathfinder-units-dot',type:'symbol',source:'pathfinder-units',
               layout:{'icon-image':['get','icon'],'icon-size':0.75,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.addLayer({id:'pathfinder-units-label',type:'symbol',source:'pathfinder-units',
@@ -429,7 +433,9 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           // close zoom; the SDK's style initialization can reset mapLibre pitch.
           if(!perspectiveInitRef.current){
             perspectiveInitRef.current=true;
-            map.easeTo({zoom:Math.max(15.5,map.getZoom()),pitch:50,duration:300,essential:true});
+            // The live tracker fits ALL officer pings; forcing 15.5 zoom after
+            // fitBounds hid every other officer outside the first pin's block.
+            if(!fitMarkers)map.easeTo({zoom:Math.max(15.5,map.getZoom()),pitch:50,duration:300,essential:true});
           }
           if(!mapReadyRef.current)onMapReadyRef.current?.();
           mapReadyRef.current=true;

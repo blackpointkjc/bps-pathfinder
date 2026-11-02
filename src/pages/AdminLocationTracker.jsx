@@ -412,7 +412,7 @@ export default function AdminLocationTracker({ embedded = false }) {
   const performLocationCheck = async () => {
     try {
       setCheckingLocations(true);
-      const freshPayload = await getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true });
+      const freshPayload = await getOfficerLocationSnapshot({ locationOnly: true, includeLastKnown: true, force: true });
       const freshLocations = freshPayload.units || [];
       const freshClockedInWithoutSession = freshPayload.clocked_in_without_session || [];
       const freshUsers = allUsers || [];
@@ -516,7 +516,8 @@ export default function AdminLocationTracker({ embedded = false }) {
         gps_stale: fallbackPosition || o.session_active === false || !best.ts || Date.now() - best.ts > LIVE_GPS_FRESH_MS,
       };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a,b)=>Number(b.session_active===true)-Number(a.session_active===true)||Number(a.gps_stale)-Number(b.gps_stale));
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort(comparePersonnel) || [];
 
   if (!hasAccess) { // Updated to use hasAccess
@@ -859,13 +860,13 @@ export default function AdminLocationTracker({ embedded = false }) {
                     </Alert>
                   )}
                   {activeOfficerError && <Alert className="m-4" variant="destructive"><AlertDescription>Officer locations could not load. {activeOfficerError.message}</AlertDescription></Alert>}
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"><p className="text-sm text-slate-500">{activeOfficerLoading ? 'Loading officer locations…' : `${officersForMap.length} officers on map. TomTom shows current and last-known officers; the detailed map retains GPS accuracy circles.`}</p><button type="button" className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200" onClick={()=>{setUseTomTomLive(value=>!value);setTomTomLiveFailed(false);}}>{useTomTomLive&&!tomTomLiveFailed?'Detailed GPS map':'TomTom live map'}</button></div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"><p className="text-sm text-slate-500">{activeOfficerLoading ? 'Loading officer locations…' : `${officersForMap.length} location pings mapped (${officersForMap.filter(o=>!o.gps_stale).length} live, ${officersForMap.filter(o=>o.gps_stale).length} last known). Select Detailed GPS map if markers are obscured.`}</p><button type="button" className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200" onClick={()=>{setUseTomTomLive(value=>!value);setTomTomLiveFailed(false);}}>{useTomTomLive&&!tomTomLiveFailed?'Detailed GPS map':'TomTom live map'}</button></div>
                   <div className="relative h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                     {useTomTomLive && !tomTomLiveFailed && navigator.onLine ? <TomTomSdkMapPreview
                       embedded allowBlankMapFallback mapTheme={mapTheme} initialCenter={officersForMap[0]?[Number(officersForMap[0].latitude),Number(officersForMap[0].longitude)]:null}
                       fitMarkers showPoliceStations={false} showFireStations={false} showJails={false}
                       otherUnits={officersForMap.map(officer=>({...officer,map_visible:true,session_active:true,
-                        unit_number:getOfficerName(officer.officer_email),status:officer.gps_stale?'Out of Service':'Available'}))}
+                        unit_number:getOfficerName(officer.officer_email),status:officer.user_status||officer.status||(officer.gps_stale?'Last known':'Available')}))}
                       onMapUnavailable={()=>setTomTomLiveFailed(true)}/> : <MapContainer
                       center={[37.5407, -77.4360]}
                       zoom={12}
