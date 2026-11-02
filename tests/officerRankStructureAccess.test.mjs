@@ -8,7 +8,7 @@ const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db}};
 let handler;const source=fs.readFileSync('base44/functions/getSupervisorWorkspaceRecords/entry.ts','utf8').replace(/^import .*;\n/gm,'');
 const code=(await transform(source,{loader:'ts',format:'esm'})).code;
 new Function('createClientFromRequest','Deno','verifiedPS','linkSubmittedReport',code)(()=>sdk,{serve:fn=>handler=fn},async()=>true,async()=>null);
-async function call(kind){const r=await handler(new Request('https://example.test',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({kind})}));return{status:r.status,...await r.json()};}
+async function call(kind){sdk.auth.me=async()=>actor;const r=await handler(new Request('https://example.test',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({kind})}));return{status:r.status,...await r.json()};}
 let r=await call('personnel');assert.equal(r.status,200);assert.ok(r.officers.some(p=>p.id===actor.id));assert.ok(!r.officers.some(p=>p.id===other.id));assert.equal((await call('writeups')).status,403);
 actor={...actor,additional_roles:['client'],rank:'Client'};assert.equal((await call('personnel')).status,403);
 actor={...actor,additional_roles:[],rank:'Pending Assignment'};assert.equal((await call('personnel')).status,403);
