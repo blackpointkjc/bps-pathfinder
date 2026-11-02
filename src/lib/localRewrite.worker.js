@@ -1,5 +1,8 @@
+import wasmURL from 'onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url';
+import wasmModuleURL from 'onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
 import {pipeline,env} from '@huggingface/transformers';
 import {LOCAL_REWRITE_MODEL,rewriteMessages,rewriteChunks,validateRewrite} from './rewritePolicy';
+env.backends.onnx.wasm.wasmPaths={wasm:wasmURL,mjs:wasmModuleURL};
 env.allowLocalModels=false;env.useBrowserCache=true;env.backends.onnx.wasm.numThreads=1;
 let generator,queue=Promise.resolve();
 async function model(id){
@@ -21,5 +24,5 @@ self.onmessage=event=>{const {id,text}=event.data;queue=queue.catch(()=>{}).then
    output.push(validateRewrite(chunks[index],candidate));
   }
   self.postMessage({id,type:'result',text:output.join('\n\n')});
- }catch(error){self.postMessage({id,type:'error',message:String(error?.message||'The local AI model could not start. Your draft is preserved.').slice(0,400)});}
+ }catch(error){self.postMessage({id,type:'error',message:String(error?.message||error||'The local AI model could not start. Your draft is preserved.').slice(0,400)});}
 });};
