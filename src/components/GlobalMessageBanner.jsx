@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageCircle, Siren, Volume2, VolumeX, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
-import { announceVoice, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
+import { announceVoice, announceVoiceAsync, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { playPropertyHorn } from '@/utils/alertUtils';
 import { isClockedInAtProperty, getActiveTimeEntry } from '@/lib/clockedPropertyAlarm';
@@ -611,7 +611,7 @@ export default function GlobalMessageBanner({ user }) {
               }).catch(error => ({ claimed: false, error }));
               if (!claim?.claimed) return;
               announcedPropertySpeech.current.add(propertyEventKey);
-              const accepted = speakNotification(announcementText, {
+              const accepted = await announceVoiceAsync(announcementText, {
                 beforeSpeech: propertyHornPrelude({ propertyId: record.propertyId, callId: record.callId }),
                 dedupeMs: 6000,
                 eventId: propertyEventKey,
@@ -721,7 +721,7 @@ export default function GlobalMessageBanner({ user }) {
         }).catch(error => ({ claimed: false, error }));
         if (claim?.claimed) {
           announcedPropertySpeech.current.add(propertyEventKey);
-          const accepted = speakNotification(announcementText, {
+          const accepted = await announceVoiceAsync(announcementText, {
             beforeSpeech: propertyHornPrelude({ propertyId: record.propertyId, callId: record.callId }),
             dedupeMs: 6000,
             eventId: propertyEventKey,
@@ -829,7 +829,9 @@ export default function GlobalMessageBanner({ user }) {
           if (!initialClaim.claimed && !initialClaim.error)
             announcementText = claim.assignment_announcement_text;
         }
-        const accepted = speakNotification(announcementText, {
+        // Await the speech engine's actual completion. Previously the synchronous
+        // enqueue return value was falsely marked 'played' even for silent audio.
+        const accepted = await announceVoiceAsync(announcementText, {
           beforeSpeech: (initial || initialClaim?.claimed)
             ? propertyHornPrelude({ callId: record.call_id }) : undefined,
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,

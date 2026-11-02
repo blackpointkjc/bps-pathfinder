@@ -131,7 +131,6 @@ export default async function(req:Request){
    priority:clean(b.injuries)||clean(b.hazards)?'high':'medium',status:'New',
    assigned_units:[],time_received:now,...(geo?{latitude:geo.latitude,longitude:geo.longitude,geo_method:'tomtom',geo_confidence:geo.geo_confidence,geo_approximate:geo.geo_approximate}:{})
   });
-  await db.CallStatusLog.create({call_id:call.id,incident_type:incident,location,old_status:'',new_status:'New',unit_name:'Public assistance',notes:'Public Help Me request received by CAD',latitude:call.latitude,longitude:call.longitude,event_key:`call:${call.id}:created`,event_type:'new_call',announcement_text:`New public assistance request. ${incident}. Priority ${call.priority}. CAD number ${reference}.`,announcement_priority:call.priority==='high'?'high':'normal',cad_number:reference,triggering_action:'publicDispatch',audio_enabled:true,sensitive:false}).catch(()=>null);
  }
  const reference=call.bps_reference||call.call_id;
  await db.PublicDispatchRequest.update(reservation.id,{status:'received',reference,call_id:call.id});
