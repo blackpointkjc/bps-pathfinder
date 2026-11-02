@@ -62,7 +62,9 @@ Deno.serve(async(req)=>{
   if(!me)return Response.json({error:'Sign in required'},{status:401});
 if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
 await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'legacy_workflow_access',details:'getSupervisorWorkspaceRecords'});
-  if(!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
+  const requestedKind=n((await req.clone().json().catch(()=>({}))).kind);
+  const directoryOnly=requestedKind==='personnel'&&(role(me).has('officer')||role(me).has('trainer'));
+  if(!directoryOnly&&!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
   const body=await req.json().catch(()=>({})),kind=n(body.kind),entity=entities[kind];
   if(kind==='portrait'){
     const photoId=String(body.id||'');
@@ -84,7 +86,7 @@ await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.em
       sdk.asServiceRole.entities.CompanyPlatoon.list('region',100).catch(()=>[]),
     ]);
     const staff=(roster||[]).filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated');
-    const allowed=staff.filter((p:any)=>area(me,p));
+    const allowed=staff.filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
     const entries=new Map<string,{region:string,platoon:string}>();
     for(const p of configured||[]){if(p.active!==false&&p.region&&p.name)entries.set(`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name});}
     for(const p of staff){if(p.division&&p.platoon&&n(p.platoon)!=='command')entries.set(`${n(p.division)}|${n(p.platoon)}`,{region:p.division,platoon:p.platoon});}
@@ -92,7 +94,7 @@ await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.em
     const commands=visible.map(p=>activePlatoonCommand(staff,p.platoon,p.region));
     const company=admin(me)?staff.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
     const selected=[...new Map([...allowed,...company].map((p:any)=>[String(p.id),p])).values()];
-    const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:p.mobile_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
+    const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:directoryOnly?'':p.mobile_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
     return Response.json({success:true,officers,platoon_commands:commands,platoons:visible,regions:[...new Set(visible.map(p=>p.region))]});
   }
   const [users,sites,rows]=await Promise.all([
@@ -176,7 +178,7 @@ await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.em
    const receipt=action!=='delete'&&result?.id&&(kind!=='inspections'||!!(result.inspection_result||data.inspection_result))&&String(result.status||data.status||'').toLowerCase()!=='draft'?await linkSubmittedReport(sdk.asServiceRole.entities,me,entity,{...existing,...data,...result}):null;
    return Response.json({success:true,record:result,receipt});
   }
-  return Response.json({success:true,platoon_commands:kind==='personnel'?platoon_commands:undefined,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_url||p.profile_photo_original_url||'',mobile_phone:p.mobile_phone||'',work_email:p.work_email||p.email,assigned_site_name:p.assigned_site_name||'',assigned_location:p.assigned_location||'',assigned_locations:p.assigned_locations||[],assigned_sites:p.assigned_sites||[],platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
+  return Response.json({success:true,platoon_commands:kind==='personnel'?platoon_commands:undefined,rows:(rows||[]).filter(visible),officers:people.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name,last_name:p.last_name,rank:p.rank,full_name:p.full_name,profile_photo_url:p.profile_photo_url||p.profile_photo_original_url||'',mobile_phone:directoryOnly?'':p.mobile_phone||'',work_email:p.work_email||p.email,assigned_site_name:p.assigned_site_name||'',assigned_location:p.assigned_location||'',assigned_locations:p.assigned_locations||[],assigned_sites:p.assigned_sites||[],platoon:p.platoon,oversight_platoon:p.oversight_platoon,role:p.role,is_supervisor:p.is_supervisor,additional_roles:p.additional_roles||[],
         termination_date:p.termination_date||'',user_type:p.user_type||'',account_type:p.account_type||'',
         platoon:p.platoon,division:p.division,subdivision:p.subdivision,substation:p.substation,unit_number:p.unit_number})),locations:locations.map((p:any)=>({id:p.id,site_name:p.site_name,division:p.division,subdivision:p.subdivision,substation:p.substation}))});
  }catch(error:any){console.error('Scoped supervisor records failed',error);return Response.json({error:'Unable to load supervisor records safely; retry.'},{status:503});}

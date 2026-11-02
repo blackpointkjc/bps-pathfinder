@@ -303,10 +303,15 @@ export default function OutlookMail() {
       }
     };
     initializeMail();
-    const refreshShared = () => reloadSharedMailboxes();
+    const refreshShared = () => { reloadSharedMailboxes(); initializeMail(); };
+    const refreshOnReturn = () => { if(document.visibilityState==='visible')refreshShared(); };
+    window.addEventListener('focus',refreshOnReturn);
+    document.addEventListener('visibilitychange',refreshOnReturn);
     window.addEventListener('bps:outlook-connection-changed', refreshShared);
     window.addEventListener('bps:outlook-shared-mailboxes-changed', refreshShared);
     return () => {
+      window.removeEventListener('focus',refreshOnReturn);
+      document.removeEventListener('visibilitychange',refreshOnReturn);
       window.removeEventListener('bps:outlook-connection-changed', refreshShared);
       window.removeEventListener('bps:outlook-shared-mailboxes-changed', refreshShared);
     };
