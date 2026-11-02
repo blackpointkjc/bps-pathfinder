@@ -42,12 +42,12 @@ export default async function(req:Request){
  if(!/^[-\w]{20,80}$/.test(key))return invalid('request_id','Your form session has expired. Refresh the page and try again.');
  const previous=await db.PublicDispatchRequest.filter({request_id:key},'-created_date',1);
  if(previous[0]?.reference)return Response.json({success:true,reference:previous[0].reference});
- if(previous.length){const call=(await db.DispatchCall.filter({public_request_id:key},'-created_date',1))[0];if(call){const reference=call.bps_reference||call.call_id;await db.PublicDispatchRequest.update(previous[0].id,{status:'received',reference,call_id:call.id});return Response.json({success:true,reference});}return Response.json({error:'This request is being processed. Please wait before retrying.'},{status:409});}
+ if(previous.length){const call=(await db.DispatchCall.filter({public_request_id:key},'-created_date',1))[0];if(call){const reference=call.bps_reference||call.call_id;await db.PublicDispatchRequest.update(previous[0].id,{status:'received',reference,call_id:call.id});return Response.json({success:true,reference});}if(previous[0].status!=='needs_attention')return Response.json({error:'This request is being processed. Please wait before retrying.'},{status:409});}
  const address=req.headers.get('x-forwarded-for')?.split(',')[0]||req.headers.get('cf-connecting-ip')||phone;
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(address)))).map(v=>v.toString(16).padStart(2,'0')).join('');
  const recent=await db.PublicDispatchRequest.filter({source_hash:hash,created_date:{$gte:new Date(Date.now()-15*60*1000).toISOString()}},'-created_date',6);
  if(recent.length>=5)return Response.json({error:'Too many requests. Please call BlackPoint dispatch for assistance.'},{status:429});
- const reservation=await db.PublicDispatchRequest.create({request_id:key,source_hash:hash,status:'processing'});
+ const reservation=previous[0]?.status==='needs_attention'?await db.PublicDispatchRequest.update(previous[0].id,{status:'processing'}):await db.PublicDispatchRequest.create({request_id:key,source_hash:hash,status:'processing'});
  const details=[description,'Incident time: '+clean(b.incident_time,60),'Still happening: '+clean(b.ongoing,10),'People involved / descriptions: '+clean(b.people,1200),'Vehicles: '+clean(b.vehicles,1000),'Injuries / medical needs: '+clean(b.injuries,1000),'Weapons / safety hazards: '+clean(b.hazards,1000),'Safe callback: '+clean(b.safe_callback,20),'Access instructions: '+clean(b.access,1000)].join('\n\n');
  try{
  // A public submission must not pass through staff-authenticated createDispatchCall.
