@@ -141,6 +141,21 @@ export default async function(req:Request){
  if(!alert){
   alert=await db.PropertyAlert.create({callId:call.id,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callPriority:call.priority,callStatus:call.status,cadNumber:reference,callTime:call.time_received,time_received:call.time_received,source_key:'public-helpme:'+call.id,distanceMeters:0,acknowledged:false,lifecycle_status:'active'});
  }
+ // A durable property-style announcement for Help Me calls. It shares the
+ // same CAD audio transport as monitored GRAC property calls. Its unique event
+ // key avoids suppressing officer speech with the generic new_call receipt.
+ const eventKey=`public-helpme:${call.id}:property-alert`;
+ const existingAnnouncement=await db.CallStatusLog.filter({event_key:eventKey},'-created_date',1);
+ if(!existingAnnouncement.length)await db.CallStatusLog.create({
+   call_id:call.id,incident_type:call.incident,location:call.location,
+   old_status:'',new_status:call.status,unit_name:'Help Me website',
+   notes:'Help Me website: new property call for service.',
+   latitude:call.latitude,longitude:call.longitude,
+   event_key:eventKey,event_type:'property_alert',
+   announcement_text:`New property call for service from the Help Me website. ${call.incident}. Location ${call.location}. Priority ${call.priority}. CAD number ${reference}.`,
+   announcement_priority:'high',cad_number:reference,triggering_action:'publicDispatch.property_alert',
+   audio_enabled:true,sensitive:false,
+ });
  // Assignment must still respect live dispatcher presence, unit eligibility,
  // verified GPS and operational safety constraints; never fabricate an officer.
  try{

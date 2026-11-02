@@ -837,7 +837,7 @@ export default function GlobalMessageBanner({ user }) {
           // Same priority as the initial property alert: queue after it, never
           // interrupt it or let an ordinary call-update jump between the pair.
           priority: record.event_type === 'property_alert' || autoAssignment ? 'critical' : (record.announcement_priority || 'normal'),
-          force: record.event_type === 'property_alert',
+          force: ['property_alert','new_call','priority_call','unit_dispatched','additional_unit'].includes(record.event_type),
           volume: settings.volume,
           voiceProfile: settings.voice_profile,
         });
@@ -896,7 +896,7 @@ export default function GlobalMessageBanner({ user }) {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.event_key) return;
           const age=Date.now()-new Date(record.created_date||0).getTime();
-          if(record.event_type==='property_alert'&&age>=0&&age<=90_000&&record.audio_enabled!==false){
+          if(['property_alert','new_call','priority_call','unit_dispatched','additional_unit'].includes(record.event_type)&&age>=0&&age<=90_000&&record.audio_enabled!==false){
             void showCadAnnouncementEvent(record);
           }else{
             knownIds.current.add(`CallStatusLog:${record.event_key}`);
