@@ -15,6 +15,7 @@ export function validateRewrite(original,result){
  if(before.size>=3&&[...before].filter(w=>after.has(w)).length/before.size<0.3)throw new Error('The rewrite departed from your draft.');
  if(/(.{15,}?)\1\1/i.test(text))throw new Error('The local model repeated its output.');
  if(!text)throw new Error('The local model returned no wording. Keep your draft and retry.');
+ if(text.replace(/\s+/g,' ').trim().toLowerCase()===String(original).replace(/\s+/g,' ').trim().toLowerCase())throw new Error('The AI did not improve this draft. Your original text was kept; edit it manually or retry.');
  const numbers=v=>[...String(v).replace(/\b(\d+)(?:st|nd|rd|th)\b/gi,'$1').matchAll(/\b\d+(?:[.:/-]\d+)*\b/g)].map(v=>v[0]).sort().join('|');
  if(numbers(original)!==numbers(text))throw new Error('The rewrite changed a number or date. Your original draft is preserved; please retry.');
  const quotes=[...String(original).matchAll(/"([^"\n]+)"|“([^”\n]+)”/g)].map(v=>v[1]||v[2]);
