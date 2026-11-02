@@ -51,11 +51,27 @@ const activePlatoonCommand=(people:any[],platoon:string,region:string)=>{
  return {id:chosen.id,platoon,region,status:acting?'acting':'active',name:commandName(chosen),first_name:chosen.first_name||'',last_name:chosen.last_name||'',role:acting?'Acting Platoon Commander':'Platoon Commander',rank:chosen.rank,badge_number:chosen.badge_number||'',unit_number:chosen.unit_number||'',profile_photo_url:String(chosen.profile_photo_url||'').length<=150000?chosen.profile_photo_url||'':'',work_email:chosen.work_email||chosen.email||'',mobile_phone:chosen.mobile_phone||'',subdivision:chosen.subdivision||'',substation:chosen.substation||'',assigned_site_name:chosen.assigned_site_name||''};
 };
 
+// Cache the raw roster briefly in this worker; always apply user-specific
+// authorization after loading so no cached response crosses role boundaries.
+let personnelCache:{at:number,staff:any[],configured:any[]}|null=null;
+let personnelLoading:Promise<{at:number,staff:any[],configured:any[]}>|null=null;
+async function personnelDirectory(sdk:any){
+ if(personnelCache && Date.now()-personnelCache.at<45000)return personnelCache;
+ if(!personnelLoading)personnelLoading=(async()=>{
+   const [roster,configured]=await Promise.all([
+      sdk.asServiceRole.entities.User.list('last_name',500),
+      sdk.asServiceRole.entities.CompanyPlatoon.list('region',100).catch(()=>[]),
+   ]);
+   const snapshot={at:Date.now(),staff:(roster||[]).filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated'),configured:configured||[]};
+   personnelCache=snapshot;return snapshot;
+ })().finally(()=>{personnelLoading=null});
+ return personnelLoading;
+}
 const entities:any={inspections:'InspectionReport',writeups:'WriteUpReport',force:'UseOfForceReport',callouts:'CallOut',handovers:'SupervisorShiftHandover',duty:'DutySupervisorAssignment',chat:'SupervisorChatMessage'};
 Deno.serve(async(req)=>{
  try{
   const sdk=createClientFromRequest(req),me=await sdk.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
- const __portalCaller=await sdk.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
+ const __portalCaller=me;
     if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,sdk,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
  if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
@@ -63,7 +79,7 @@ Deno.serve(async(req)=>{
 
   if(!me)return Response.json({error:'Sign in required'},{status:401});
 if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
-await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'legacy_workflow_access',details:'getSupervisorWorkspaceRecords'});
+// A read-only roster load must not write an IA audit event on every refresh.
   const requestedKind=n((await req.clone().json().catch(()=>({}))).kind);
   const directoryOnly=requestedKind==='personnel'&&(role(me).has('officer')||role(me).has('trainer'));
   if(!directoryOnly&&!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
@@ -83,11 +99,7 @@ await sdk.asServiceRole.entities.PSAudit.create({actor_id:me.id,actor_name:me.em
     // Fast path: do not fetch every client Location or report collection. Do
     // not return large original photos for every officer. A single dedicated
     // snapshot replaces 3-4 competing requests during Rank Structure startup.
-    const [roster,configured]=await Promise.all([
-      sdk.asServiceRole.entities.User.list('last_name',500),
-      sdk.asServiceRole.entities.CompanyPlatoon.list('region',100).catch(()=>[]),
-    ]);
-    const staff=(roster||[]).filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated');
+    const {staff,configured}=await personnelDirectory(sdk);
     const allowed=staff.filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
     const entries=new Map<string,{region:string,platoon:string}>();
     for(const p of configured||[]){if(p.active!==false&&p.region&&p.name)entries.set(`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name});}
