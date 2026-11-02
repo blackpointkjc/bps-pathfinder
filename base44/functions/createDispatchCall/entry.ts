@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
-    const user = await base44.auth.me().then(__limitFullAccess);
+    const user = __portalService ? {id:'automatic-dispatch-service',role:'admin',additional_roles:[],is_service:true} : await base44.auth.me().then(__limitFullAccess);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
     const allowed = roles.has('dispatch') || roles.has('dispatcher') || user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim())) || roles.has('cad_access') || Boolean(user.dispatch_role);
@@ -80,6 +80,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const data = body.data || {};
+    if(data.public_request_id){const existing=await base44.asServiceRole.entities.DispatchCall.filter({public_request_id:data.public_request_id},'-created_date',1);if(existing[0])return Response.json({success:true,call:existing[0],warnings:[]});}
     const requestedUnits = Array.isArray(body.selected_units) ? [...new Set(body.selected_units.filter(Boolean).map(String))] : [];
     if (!String(data.incident || '').trim() || !String(data.location || '').trim()) {
       return Response.json({ error: 'Incident type and location are required' }, { status: 400 });
@@ -264,6 +265,8 @@ Deno.serve(async (req) => {
         return null;
       })
     ]));
+
+    if(createdCall.source==='public_helpme')await base44.asServiceRole.functions.invoke('geofenceDispatchAssignment',{call_id:createdCall.id,public_fallback:true}).catch(()=>warnings.push('Automatic assignment awaits dispatch review.'));
 
     const cadNumber = createdCall.agency_cad_number || createdCall.bps_reference || createdCall.call_id || createdCall.id;
     const priorityEvent = priority === 'critical' || priority === 'high';

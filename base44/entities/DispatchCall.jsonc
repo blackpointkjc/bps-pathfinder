@@ -184,14 +184,7 @@
       "description": "File URLs for attachments"
     },
     "source": {
-      "type": "string",
-      "enum": [
-        "richmond",
-        "henrico",
-        "chesterfield",
-        "pulsepoint"
-      ],
-      "description": "Data source (richmond, henrico, or chesterfield)"
+      "type": "string"
     },
     "source_channel": {
       "type": "string",
@@ -209,6 +202,9 @@
         "update": false,
         "delete": false
       }
+    },
+    "public_request_id": {
+      "type": "string"
     }
   },
   "required": [

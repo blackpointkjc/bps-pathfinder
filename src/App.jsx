@@ -1,3 +1,4 @@
+import HelpMe from '@/pages/HelpMe';
 import {AIReviewGuard} from '@/components/AIRewriteField';
 import {authEntry} from '@/lib/portalAuthFlow';
 import SubmissionReceipt from '@/components/ia/SubmissionReceipt';
@@ -262,7 +263,7 @@ const AuthenticatedApp = () => {
     playForcedSignOutLoginBeep();
   }, [needsLogin, forcedSignOutNotice]);
 
-  const publicEntry=['/iaform','/publicprofessionalstandards'].includes(location.pathname.toLowerCase())||authEntry(location).isEntry;
+  const publicEntry=['/iaform','/publicprofessionalstandards','/helpme'].includes(location.pathname.toLowerCase())||authEntry(location).isEntry;
   const [preparedUserId,setPreparedUserId]=useState('');
   const [startupProgress,setStartupProgress]=useState({completed:0,total:1,label:'Preparing your tools'});
   const [startupError,setStartupError]=useState('');
@@ -279,6 +280,7 @@ const AuthenticatedApp = () => {
     <p className="mb-3 text-xs tracking-[.25em] text-amber-300">BLACKPOINT · PATHFINDER</p><h1>Welcome, {[user.rank,user.last_name || user.full_name].filter(Boolean).join(' ')}</h1><p className="mt-3 text-slate-300">{startupError||startupProgress.label+'…'}</p><progress aria-label="Preparing workspace" max={startupProgress.total} value={startupProgress.completed}/>
     {startupError&&<div className="mt-6 flex justify-center gap-3"><button type="button" className="rounded-full bg-amber-300 px-5 py-3 font-bold text-black" onClick={()=>window.location.reload()}>Retry preparation</button><button type="button" className="rounded-full border border-slate-500 px-5 py-3" onClick={()=>logout(true)}>Sign out</button></div>}
     </div></div> : null;
+  if (location.pathname.toLowerCase() === '/helpme') return <HelpMe />;
   if (location.pathname.toLowerCase() === '/iaform') return <PublicProfessionalStandards />;
   if (location.pathname.toLowerCase() === '/publicprofessionalstandards') return <Navigate replace to="/IAFORM" />;
   if (authEntry(location).isEntry) return <PortalLogin />;

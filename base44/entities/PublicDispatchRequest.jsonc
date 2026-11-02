@@ -1,0 +1,1 @@
+{"name":"PublicDispatchRequest","type":"object","properties":{"request_id":{"type":"string"},"source_hash":{"type":"string"},"status":{"type":"string"},"reference":{"type":"string"},"call_id":{"type":"string"}},"rls":{"create":false,"read":false,"update":false,"delete":false}}
