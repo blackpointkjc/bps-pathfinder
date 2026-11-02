@@ -105,7 +105,7 @@ export default async function(req:Request){
  if(b.acknowledged!==true)return invalid('acknowledged','Check the emergency-services acknowledgement.');
  if(!/^[-\w]{20,80}$/.test(key))return invalid('request_id','Your form session has expired. Refresh the page and try again.');
  const previous=await db.PublicDispatchRequest.filter({request_id:key},'-created_date',1);
- if(previous[0]?.reference)return Response.json({success:true,reference:previous[0].reference});
+ if(previous[0]?.reference&&previous[0]?.status==='received')return Response.json({success:true,reference:previous[0].reference});
  if(previous.length){const call=(await db.DispatchCall.filter({public_request_id:key},'-created_date',1))[0];if(call){const reference=call.bps_reference||call.call_id;await db.PublicDispatchRequest.update(previous[0].id,{status:'received',reference,call_id:call.id});return Response.json({success:true,reference});}if(previous[0].status!=='needs_attention')return Response.json({error:'This request is being processed. Please wait before retrying.'},{status:409});}
  const address=req.headers.get('x-forwarded-for')?.split(',')[0]||req.headers.get('cf-connecting-ip')||phone;
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(address)))).map(v=>v.toString(16).padStart(2,'0')).join('');
@@ -139,16 +139,16 @@ export default async function(req:Request){
  // This lets the existing monitor retry if an inner function fails or is rate-limited.
  let alert=(await db.PropertyAlert.filter({callId:call.id,propertyId:'public-helpme'},'-created_date',1))[0];
  if(!alert){
-  alert=await db.PropertyAlert.create({callId:call.id,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callPriority:call.priority,callStatus:call.status,cadNumber:reference,callTime:call.time_received,time_received:call.time_received,source_key:'public-helpme:'+call.id,acknowledged:false,lifecycle_status:'active'});
+  alert=await db.PropertyAlert.create({callId:call.id,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callPriority:call.priority,callStatus:call.status,cadNumber:reference,callTime:call.time_received,time_received:call.time_received,source_key:'public-helpme:'+call.id,distanceMeters:0,acknowledged:false,lifecycle_status:'active'});
  }
  // Assignment must still respect live dispatcher presence, unit eligibility,
  // verified GPS and operational safety constraints; never fabricate an officer.
  try{
   const evaluated=await sdk.asServiceRole.functions.invoke('geofenceDispatchAssignment',{call_id:call.id,property_alert_id:alert.id,public_fallback:true});
   const result=evaluated?.data||evaluated;
-  if(result?.error)console.error('Public CAD auto-dispatch evaluation deferred',result.error);
+  if(result?.error||result?.skipped)console.error('Public CAD auto-dispatch evaluation deferred',result?.error||result?.reason);
  }catch(error:any){console.error('Public CAD auto-dispatch evaluation deferred',String(error?.message||error).slice(0,150));}
  return Response.json({success:true,reference});
- }catch(error){await db.PublicDispatchRequest.update(reservation.id,{status:'needs_attention'}).catch(()=>null);return Response.json({error:'We could not confirm your request. Call BlackPoint dispatch; do not rely on this page for urgent assistance.'},{status:503});}
+ }catch(error){const saved=(await db.DispatchCall.filter({public_request_id:key},'-created_date',1).catch(()=>[]))[0];if(saved){const reference=saved.bps_reference||saved.call_id;await db.PublicDispatchRequest.update(reservation.id,{status:'received',reference,call_id:saved.id}).catch(()=>null);return Response.json({success:true,reference,dispatch_pending:true});}await db.PublicDispatchRequest.update(reservation.id,{status:'needs_attention'}).catch(()=>null);return Response.json({error:'We could not confirm your request. Call BlackPoint dispatch; do not rely on this page for urgent assistance.'},{status:503});}
  }catch{return Response.json({error:'Unable to submit. Please retry or call dispatch.'},{status:500});}
 }

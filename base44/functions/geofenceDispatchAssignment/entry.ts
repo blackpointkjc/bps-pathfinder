@@ -100,16 +100,14 @@ Deno.serve(async (req) => {
     if (!call) return Response.json({ error: 'Call not found' }, { status: 404 });
     if (!simulation && ['cleared', 'cancelled', 'canceled', 'closed', 'resolved'].includes(lower(call.status))) return Response.json({ success: true, skipped: true, reason: 'Call is no longer active' });
     const publicCall=call.source==='public_helpme';
-    if(publicCall){
-      const [people,sessions,portalSessions]=await Promise.all([base44.asServiceRole.entities.User.list('-updated_date',750),base44.asServiceRole.entities.ActiveOfficer.list('-last_update',300),base44.asServiceRole.entities.PortalAuthSession.filter({revoked:false,last_activity_at:{$gte:new Date(Date.now()-5*60*1000).toISOString()}},'-last_activity_at',300)]);
-      const dispatchEmails=new Set(people.filter((p:any)=>!p.disabled&&!p.termination_date&&(Boolean(p.dispatch_role)||['dispatch','dispatcher'].some(r=>(p.additional_roles||[]).includes(r)))).map((p:any)=>lower(p.email)));
-      const dispatchIds=new Set(people.filter((p:any)=>dispatchEmails.has(lower(p.email))).map((p:any)=>p.id));
-      if(portalSessions.some((s:any)=>dispatchIds.has(s.user_id))||sessions.some((p:any)=>dispatchEmails.has(lower(p.officer_email))&&p.session_active!==false&&Date.parse(p.last_update||p.updated_date||'')>Date.now()-5*60*1000))return Response.json({success:true,skipped:true,reason:'An active dispatcher will review this public request.'});
-    }
+    // Evaluate new public calls immediately; a recently authenticated
+    // dispatcher is not necessarily watching CAD. Existing assigned units and
+    // officer eligibility still protect against duplicate/unsafe assignment.
+
     let alert = input.property_alert_id
       ? await withRetry(() => base44.asServiceRole.entities.PropertyAlert.get(String(input.property_alert_id))).catch(() => null)
       : (await withRetry(() => base44.asServiceRole.entities.PropertyAlert.filter({ callId }, '-created_date', 1)))?.[0] || null;
-    if(!alert&&publicCall){alert=await base44.asServiceRole.entities.PropertyAlert.create({callId,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callTime:call.time_received,time_received:call.time_received,callStatus:call.status,callPriority:call.priority,source_key:'public-helpme:'+callId,acknowledged:false});}
+    if(!alert&&publicCall){alert=await base44.asServiceRole.entities.PropertyAlert.create({callId,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callTime:call.time_received,time_received:call.time_received,callStatus:call.status,callPriority:call.priority,source_key:'public-helpme:'+callId,distanceMeters:0,acknowledged:false});}
     if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
     if (!simulation && (alert.is_test === true || ['resolved','false_alarm','test'].includes(lower(alert.lifecycle_status)))) return Response.json({ success:true, skipped:true, reason:'Alert is not active' });
     // Do not dispatch historical feed items when a unit comes online later.
@@ -199,10 +197,12 @@ Deno.serve(async (req) => {
     let assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 800));
     let currentCalls = await withRetry(() => base44.asServiceRole.entities.DispatchCall.list('-created_date', 500));
 
-    const propertyLat = Number(property.latitude ?? call.latitude);
-    const propertyLon = Number(property.longitude ?? call.longitude);
+    const propertyLat = property.latitude == null || property.latitude === '' ? NaN : Number(property.latitude);
+    const propertyLon = property.longitude == null || property.longitude === '' ? NaN : Number(property.longitude);
     if (!Number.isFinite(propertyLat) || !Number.isFinite(propertyLon)) {
-      return Response.json({ error: 'Property has no reliable coordinates' }, { status: 400 });
+      // Never derive false (0,0) coordinates from null. No safe geographic
+      // auto-assignment is possible; retain the CAD call for dispatch review.
+      return Response.json({success:true,mode:'manual_review',decision:'location_unverified',assignment_created:false,reason:'Address could not be verified for automatic officer assignment. Call remains active for dispatcher review.'});
     }
 
     // Admin-only test units make Phase 2A simulation deterministic without
