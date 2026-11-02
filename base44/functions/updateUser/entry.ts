@@ -54,6 +54,10 @@ Deno.serve(async (req) => {
         const needsRoster = ['rank','unit_number','badge_number','additional_roles','platoon','division','subdivision','substation','supervisor_id','is_supervisor'].some(field => updates[field] !== undefined);
         const targetUsers = needsRoster ? await base44.asServiceRole.entities.User.list(undefined,1000) : (target?[target]:[]);
         if (!target) return Response.json({ error: 'User not found' }, { status: 404 });
+        const permissionFields = ['role','additional_roles','ps_role','portal_approved'];
+        const changedPermissions = permissionFields.filter(field => updates[field] !== undefined && (field === 'additional_roles' ? JSON.stringify([...(updates[field] || [])].map(String).sort()) !== JSON.stringify([...(target[field] || [])].map(String).sort()) : JSON.stringify(updates[field] ?? null) !== JSON.stringify(target[field] ?? null)));
+        if (changedPermissions.length && user.id !== '6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Account role changes are restricted to Colonel Hiers.'},{status:403});
+        if(user.id !== '6ae7d733d4b1a647cd3e6f38') for(const field of permissionFields)delete updates[field];
         if (Array.isArray(updates.additional_roles) && userId !== '6ae7d733d4b1a647cd3e6f38') {
             updates.additional_roles = updates.additional_roles.filter((role:any) => String(role).toLowerCase() !== 'accounting');
         }
