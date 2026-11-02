@@ -48,8 +48,14 @@ async function authorizedDrive(token:string){
   const siteLocator = /^https:\/\//i.test(site)
     ? (() => { const url=new URL(site); return `${url.hostname}:${url.pathname.replace(/\/$/,'')}:`; })()
     : site;
-  const safeSite = siteLocator.includes(':/') ? siteLocator.split('/').map(part=>part.replace(/ /g,'%20')).join('/') : enc(siteLocator);
-  const path=drive?`/drives/${enc(drive)}?$select=id,driveType,webUrl`:`/sites/${safeSite}/drive?$select=id,driveType,webUrl`;
+  let siteId=siteLocator;
+  if(!drive && siteLocator.includes(':/')){
+    const locator=siteLocator.replace(/:$/,'').split('/').map(part=>part.replace(/ /g,'%20')).join('/');
+    const resolved=await (await graph(token,`/sites/${locator}?$select=id,webUrl`)).json();
+    if(!resolved.id)throw new Error('Microsoft did not resolve the IAFILES SharePoint site. Check Sites.Selected access for the registered application.');
+    siteId=String(resolved.id);
+  }
+  const path=drive?`/drives/${enc(drive)}?$select=id,driveType,webUrl`:`/sites/${enc(siteId)}/drive?$select=id,driveType,webUrl`;
   const result=await (await graph(token,path)).json();
   if(!result.id)throw new Error('Microsoft did not return the authorized private document library.');
   return {id:String(result.id),driveType:String(result.driveType||'documentLibrary')};
