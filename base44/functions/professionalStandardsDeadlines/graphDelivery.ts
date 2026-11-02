@@ -1,5 +1,5 @@
 const MANAGEMENT='ia@blackpointkjc.com';
-const IA_OWNER='6a72bbee2842d6338cbae513';
+const IA_OWNER='6ae7d733d4b1a647cd3e6f38';
 const GRAPH='https://graph.microsoft.com/v1.0';
 const CLIENT='5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
 const TENANT='07f32330-fc73-4d73-a835-e9c47ba798c7';

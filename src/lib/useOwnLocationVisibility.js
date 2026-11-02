@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 
-export const HIERS_PRIVACY_USER_ID = '6a72bbee2842d6338cbae513';
+export const HIERS_PRIVACY_USER_ID = '6ae7d733d4b1a647cd3e6f38';
 const key = 'bps:hiers-live-location-hidden';
 export function readLastOwnLocationVisibility(userId) {
   if (userId !== HIERS_PRIVACY_USER_ID) return null;

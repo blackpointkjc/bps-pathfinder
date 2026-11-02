@@ -10,7 +10,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 // Runs daily — finds training_renewal_reminder notifications whose scheduled_send_date is today or past
 // and marks them as unread/visible (they're already created; this just ensures they surface on the right day)
 // This job is credit-free: it only identifies in-app reminders that are due.

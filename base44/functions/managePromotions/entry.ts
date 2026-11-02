@@ -10,7 +10,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 
 
@@ -127,7 +127,7 @@ function changePlan(users:any[],input:any){
    (officer.additional_roles||[]).map((role:any)=>trim(role).toLowerCase());
  const existingRoles=(officer.additional_roles||[]).map((role:any)=>trim(role).toLowerCase());
  if(nextRoles.some((role:string)=>!PERMITTED_ROLES.includes(role)&&!existingRoles.includes(role)))throw new Error('The selected account role is not supported for personnel promotions.');
- if(nextRoles.includes('full_access')&&officer.id!=='6a72bbee2842d6338cbae513')throw new Error('Full Access is reserved for Colonel Hiers.');
+ if(nextRoles.includes('full_access')&&officer.id!=='6ae7d733d4b1a647cd3e6f38')throw new Error('Full Access is reserved for Colonel Hiers.');
  if(supervisorRank(proposed)&&!nextRoles.includes('supervisor'))nextRoles.push('supervisor');
  const nextPhoto=String(input.profile_photo_url||'').trim();
  // Internal uploads are stored as data:image URLs by storeInternalFile.
@@ -203,7 +203,7 @@ async function applyApprovedPromotion(entities:any,event:any){
   if(String(user.rank||'')!==String(event.previous_rank||''))throw Error('Rank has changed since the promotion was approved; administrator reconciliation required');
   const patch=event.planned_patch||{};
   if(!patch.rank||!Array.isArray(patch.additional_roles)||!['admin','user'].includes(patch.role))throw Error('Scheduled personnel change is missing its approved role/rank snapshot');
-  if(patch.additional_roles.includes('full_access')&&user.id!=='6a72bbee2842d6338cbae513')throw Error('Full Access is reserved for Colonel Hiers; reschedule this change with corrected roles');
+  if(patch.additional_roles.includes('full_access')&&user.id!=='6ae7d733d4b1a647cd3e6f38')throw Error('Full Access is reserved for Colonel Hiers; reschedule this change with corrected roles');
   // Recheck direct supervisor still active, but no authorization elevation before this point.
   if(patch.supervisor_id){const supervisor=await entities.User.get(patch.supervisor_id);if(!isEmployee(supervisor))throw Error('Reporting supervisor is no longer an active employee');}
   await entities.User.update(user.id,patch);

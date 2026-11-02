@@ -86,7 +86,7 @@ Deno.serve(async(req)=>{
     base44.auth.me = async () => __portalCaller;
 
     const requestingUser = await base44.auth.me().catch(() => null);
-    if(requestingUser && String(requestingUser.id)!=='6a72bbee2842d6338cbae513') return Response.json({error:'Accounting access required'},{status:403});
+    if(requestingUser && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
     if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft','create_invoice','send_ready_drafts'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
@@ -94,7 +94,7 @@ Deno.serve(async(req)=>{
     if(manual) {
       const caller=await base44.auth.me().catch(()=>null);
       const roles=new Set((caller?.additional_roles||[]).map((role:string)=>String(role).toLowerCase()));
-      if(!caller || String(caller.id)!=='6a72bbee2842d6338cbae513') return Response.json({error:'Accounting access required'},{status:403});
+      if(!caller || String(caller.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
     }
     const now=new Date();
     const eastern=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);

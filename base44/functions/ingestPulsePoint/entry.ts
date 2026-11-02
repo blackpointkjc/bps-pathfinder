@@ -13,7 +13,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 const GABC_URL = 'https://web.pulsepoint.org/DB/gabc.php';
 const AGENCY_DATA_URL = 'https://web.pulsepoint.org/DB/GeolocationAgency.php?id=';

@@ -1,5 +1,5 @@
 // This exception belongs only to Colonel Hiers; all other accounts share live GPS.
-export const LIVE_LOCATION_PRIVACY_USER_ID = '6a72bbee2842d6338cbae513';
+export const LIVE_LOCATION_PRIVACY_USER_ID = '6ae7d733d4b1a647cd3e6f38';
 export function canHideLiveLocation(user: any) {
   const rank = String(user?.rank || '').trim().toLowerCase().replace(/\s*\([^)]*\)\s*$/, '');
   return user?.id === LIVE_LOCATION_PRIVACY_USER_ID && user?.role === 'admin' && rank === 'colonel';

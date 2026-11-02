@@ -26,7 +26,7 @@ Deno.serve(async req=>{
     const actor=await base44.auth.me().catch(()=>null);
     if(!actor)return Response.json({error:'Sign in required'},{status:401});
     const roles=new Set((actor.additional_roles||[]).map(lower));
-    if (String(actor.id) !== '6a72bbee2842d6338cbae513') return Response.json({error:'Accounting permission required'},{status:403});
+    if (String(actor.id) !== '6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting permission required'},{status:403});
     const body=await req.json().catch(()=>({}));
     const action=lower(body.action);
     if(!['approve','paid'].includes(action))return Response.json({error:'Select Approve Check or Mark Paid'},{status:400});

@@ -10,9 +10,9 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const RESERVED = [
- {id:'6a72bbee2842d6338cbae513',badge:'4001',last:'hiers'},
+ {id:'6ae7d733d4b1a647cd3e6f38',badge:'4001',last:'hiers'},
  {id:'6a406e7f5968db44ad597d61',badge:'4002',last:'sherrill'},
  {id:'6ac889ba810b2036456a6d24',badge:'4003',last:'jones'},
  {id:'6ad1a4589148f235c2c15623',badge:'4004',last:'robinson'},

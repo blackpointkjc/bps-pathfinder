@@ -159,7 +159,7 @@ function validCoords(lat, lng) {
 
 function scrubUnitLocation(unit = {}) {
   const clean = { ...unit };
-  if (clean.live_location_hidden === true && clean.live_location_privacy_user_id === '6a72bbee2842d6338cbae513') {
+  if (clean.live_location_hidden === true && clean.live_location_privacy_user_id === '6ae7d733d4b1a647cd3e6f38') {
     for (const key of Object.keys(clean)) {
       if (/latitude|longitude|heading|speed|accuracy|gps_|last_gps|last_known/.test(key)) clean[key] = null;
     }

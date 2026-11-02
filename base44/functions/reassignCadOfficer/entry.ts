@@ -10,7 +10,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const lower=(v:any)=>String(v||'').trim().toLowerCase();
 const label=(u:any)=>[u?.rank||'Officer',u?.last_name||String(u?.full_name||'').trim().split(/\s+/).pop()].filter(Boolean).join(' ');
 const terminal=(call:any)=>call?.manual_dismissed===true||['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call?.status));

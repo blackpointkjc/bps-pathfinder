@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';import fs from 'node:fs';
 import{rewriteChunks,validateRewrite,rewriteMessages,LOCAL_REWRITE_MODEL}from'../src/lib/rewritePolicy.js';
-assert.ok(LOCAL_REWRITE_MODEL.includes('1.5B'));assert.ok(rewriteMessages('draft')[1].content.includes('<SOURCE>'));
+assert.ok(LOCAL_REWRITE_MODEL==='Xenova/flan-t5-base');assert.ok(rewriteMessages('draft')[1].content.includes('<SOURCE>'));
 assert.equal(validateRewrite('Officer Jones waited 45 minutes on October 30.','Officer Jones waited for 45 minutes on October 30th.'),'Officer Jones waited for 45 minutes on October 30th.');
 assert.throws(()=>validateRewrite('Officer Jones waited 45 minutes.','Officer Jones waited 4 hours.'),/number/);
 assert.throws(()=>validateRewrite('Officer Jones was rude.','I was rude.'),/name/);

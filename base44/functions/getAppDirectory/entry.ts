@@ -10,7 +10,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 function lowerRoles(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     const fullAccess = me.role === 'admin' || roles.has('full_access');
     const hrAccess = fullAccess || roles.has('hr') || rank === 'human resources';
     const trainerAccess = fullAccess || roles.has('trainer');
-    const accountingAccess = String(me.id) === '6a72bbee2842d6338cbae513';
+    const accountingAccess = String(me.id) === '6ae7d733d4b1a647cd3e6f38';
     const supervisorAccess = fullAccess || roles.has('supervisor');
     // Trainers do not receive full employee records from the general app directory.
     // Training-specific pages must use getTrainingUsers, which returns only the

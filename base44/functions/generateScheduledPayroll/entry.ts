@@ -130,14 +130,14 @@ Deno.serve(async (req) => {
     base44.auth.me = async () => __portalCaller;
 
     const requestingUser = await base44.auth.me().catch(() => null);
-    if(requestingUser && String(requestingUser.id)!=='6a72bbee2842d6338cbae513') return Response.json({error:'Accounting access required'},{status:403});
+    if(requestingUser && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const manualRun = body.force === true || Boolean(body.period_id) || ['run_now', 'preview'].includes(String(body.action || '').toLowerCase());
     if (manualRun) {
       const caller = await base44.auth.me().catch(() => null);
       if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
       const callerRoles = new Set((caller.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-      if (String(caller.id) !== '6a72bbee2842d6338cbae513') {
+      if (String(caller.id) !== '6ae7d733d4b1a647cd3e6f38') {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
@@ -375,7 +375,7 @@ Deno.serve(async (req) => {
 
     const accountingUsers = (users || []).filter((user: any) => {
       const roles = (user.additional_roles || []).map((role: unknown) => String(role).toLowerCase());
-      return String(user.id) === '6a72bbee2842d6338cbae513';
+      return String(user.id) === '6ae7d733d4b1a647cd3e6f38';
     });
     if (created > 0 || updated > 0 || skippedNoRate.length > 0) for (const user of accountingUsers) {
       if (!user.email) continue;

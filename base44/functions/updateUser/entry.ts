@@ -16,7 +16,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 Deno.serve(async (req) => {
     try {
@@ -49,17 +49,17 @@ Deno.serve(async (req) => {
         const targetUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
         const target = (targetUsers || []).find((entry: any) => entry.id === userId);
         if (!target) return Response.json({ error: 'User not found' }, { status: 404 });
-        if (Array.isArray(updates.additional_roles) && userId !== '6a72bbee2842d6338cbae513') {
+        if (Array.isArray(updates.additional_roles) && userId !== '6ae7d733d4b1a647cd3e6f38') {
             updates.additional_roles = updates.additional_roles.filter((role:any) => String(role).toLowerCase() !== 'accounting');
         }
         if(updates.additional_roles!==undefined){
             if(!Array.isArray(updates.additional_roles))return Response.json({error:'Additional roles must be an array'},{status:400});
             updates.additional_roles=[...new Set(updates.additional_roles.map((r:any)=>String(r).trim().toLowerCase()))];
-            if(updates.additional_roles.includes('full_access')&&userId!=='6a72bbee2842d6338cbae513')return Response.json({error:'Full Access is reserved for Colonel Hiers.'},{status:403});
+            if(updates.additional_roles.includes('full_access')&&userId!=='6ae7d733d4b1a647cd3e6f38')return Response.json({error:'Full Access is reserved for Colonel Hiers.'},{status:403});
         }
         if(updates.ps_role!==undefined&&!['none','investigator','reviewer'].includes(updates.ps_role))return Response.json({error:'Choose a valid IA permission level'},{status:400});
         if(updates.additional_roles===undefined&&updates.ps_role!==undefined){
-            updates.additional_roles=(target.additional_roles||[]).filter((r:any)=>r!=='ia'&&(r!=='full_access'||userId==='6a72bbee2842d6338cbae513'));
+            updates.additional_roles=(target.additional_roles||[]).filter((r:any)=>r!=='ia'&&(r!=='full_access'||userId==='6ae7d733d4b1a647cd3e6f38'));
             if(updates.ps_role!=='none')updates.additional_roles.push('ia');
         }
         if(updates.additional_roles!==undefined)updates.ps_role=updates.additional_roles.includes('ia')?(updates.ps_role==='reviewer'||updates.ps_role===undefined&&target.ps_role==='reviewer'?'reviewer':'investigator'):'none';
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
             updatePayload.hourly_rate = Math.max(payRange.min, requested);
           }
           const reserved:Record<string,string> = {
-            '6a72bbee2842d6338cbae513':'4001', // Colonel Hiers
+            '6ae7d733d4b1a647cd3e6f38':'4001', // Colonel Hiers
             '6a406e7f5968db44ad597d61':'4002', // Lt Colonel Sherrill
             '6ac889ba810b2036456a6d24':'4003', // Lt Colonel Jones
             '6ad1a4589148f235c2c15623':'4004', // Sergeant Robinson

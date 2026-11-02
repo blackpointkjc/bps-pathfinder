@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
 
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (String(user.id) !== '6a72bbee2842d6338cbae513') {
+    if (String(user.id) !== '6ae7d733d4b1a647cd3e6f38') {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 

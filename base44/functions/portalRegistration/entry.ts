@@ -10,7 +10,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
  }catch{return false;}
 }
-const __limitFullAccess = (user:any) => user && String(user.id)!=='6a72bbee2842d6338cbae513' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
+const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const clean=(v,n=250)=>String(v??'').trim().slice(0,n);
 const requestedTypes=['employee','student','visitor','client'];
 export default async function(req){
@@ -20,12 +20,12 @@ export default async function(req){
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
  if(!await __portalLoginIsCurrent(req,base44,me))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  const savedIdentity=await db.User.get(me.id);
- const canonicalRoles=(savedIdentity.additional_roles||[]).filter(r=>r!=='full_access'||me.id==='6a72bbee2842d6338cbae513');
+ const canonicalRoles=(savedIdentity.additional_roles||[]).filter(r=>r!=='full_access'||me.id==='6ae7d733d4b1a647cd3e6f38');
  if(['investigator','reviewer'].includes(savedIdentity.ps_role)&&!canonicalRoles.includes('ia'))canonicalRoles.push('ia');
  if(JSON.stringify(canonicalRoles)!==JSON.stringify(savedIdentity.additional_roles||[])){await db.User.update(me.id,{additional_roles:canonicalRoles});me.additional_roles=canonicalRoles;}
- if(me.role==='admin'||me.id==='6a72bbee2842d6338cbae513'){
+ if(me.role==='admin'||me.id==='6ae7d733d4b1a647cd3e6f38'){
   const stale=await db.User.filter({additional_roles:{$in:['full_access']}},'-created_date',1000);
-  for(const person of stale){if(person.id!=='6a72bbee2842d6338cbae513'&&(person.additional_roles||[]).includes('full_access')){await db.User.update(person.id,{additional_roles:person.additional_roles.filter(r=>r!=='full_access')});await db.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'reserved_full_access_removed',details:person.id});}}
+  for(const person of stale){if(person.id!=='6ae7d733d4b1a647cd3e6f38'&&(person.additional_roles||[]).includes('full_access')){await db.User.update(person.id,{additional_roles:person.additional_roles.filter(r=>r!=='full_access')});await db.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'reserved_full_access_removed',details:person.id});}}
  }
  const body=await req.json();
  const manager=me.role==='admin'||(me.additional_roles||[]).includes('full_access');

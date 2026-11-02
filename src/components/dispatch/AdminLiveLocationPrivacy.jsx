@@ -5,7 +5,7 @@ import { clearOfficerLocationSnapshotCache, subscribeOfficerLocationChanges } fr
 import { announceOwnLocationVisibility, readLastOwnLocationVisibility } from '@/lib/useOwnLocationVisibility';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const HIERS_USER_ID = '6a72bbee2842d6338cbae513';
+const HIERS_USER_ID = '6ae7d733d4b1a647cd3e6f38';
 const serverErrorText = error => {
   const data = error?.response?.data;
   if (error?.response?.status === 429 || /rate limit|too many requests/i.test(data?.error || error?.message || '')) return 'Rate limit reached. Try again in one minute.';

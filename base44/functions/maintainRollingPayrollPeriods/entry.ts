@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    const allowed = String(user.id) === '6a72bbee2842d6338cbae513';
+    const allowed = String(user.id) === '6ae7d733d4b1a647cd3e6f38';
     if (!allowed) return Response.json({ error: 'Accounting access required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
