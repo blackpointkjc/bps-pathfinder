@@ -212,7 +212,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const transitionFormerEmployee = async (person, action) => {
     if (!isSystemAdmin) return alert('Administrator authorization required.');
-    const question=action==='restore'?'Restore to pending review without operational permissions?':'Convert to client and remove all CAD roles?';
+    const question=action==='rehire'?'Rehire this employee on the existing profile? Prior termination remains in the permanent employee history. Access permissions will require administrator review.':action==='restore'?'Restore to pending review without operational permissions?':'Convert to client and remove all CAD roles?';
     if(!await confirmInApp(question+' '+person.email))return;
     try {
       const response=await base44.functions.invoke('manageFormerEmployee',{user_id:person.id,action});
@@ -220,7 +220,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       if(!payload.success)throw new Error(payload.error||'Transition failed');
       invalidateAppDirectory();
       await refetchUsers();
-      alert(action==='restore'?'Restored pending administrator role review.':'Converted to client. Verify property permissions separately.');
+      alert(action==='rehire'?'Rehired on the existing profile. Original termination is retained in the personnel audit log. Review and approve appropriate roles.':action==='restore'?'Restored pending administrator role review.':'Converted to client. Verify property permissions separately.');
     }catch(error){alert(error?.response?.data?.error||error.message||'Transition failed');}
   };
   const filterBySearch=list=>list.filter(person=>{
@@ -422,7 +422,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         // Always include role arrays and home-address fields, even when empty,
         // so admins can both set and clear the officer's navigation address.
         if (key === 'additional_roles') return true;
-        if (['address', 'city', 'state', 'zip'].includes(key)) return true;
+        if (['address', 'city', 'state', 'zip','termination_date'].includes(key)) return true;
         if (value === null || value === undefined || value === '') return false;
         if (Array.isArray(value) && value.length === 0) return false;
         return true;
@@ -489,7 +489,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {isTerminated && isSystemAdmin && <><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button></>}
+            {isTerminated && isSystemAdmin && <><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'rehire')}>Rehire · retain history</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button size="sm" variant="outline" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button></>}
             <Button variant="outline" size="sm" onClick={() => handleEditUser(userData)}>
               <Edit className="w-4 h-4 mr-2" />{canManageEmployees ? 'Edit' : 'View'}
             </Button>

@@ -47,8 +47,12 @@ Deno.serve(async (req) => {
         // Never log submitted profile fields or sensitive identification details.
 
         // Update the user's profile using asServiceRole
-        const targetUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
-        const target = (targetUsers || []).find((entry: any) => entry.id === userId);
+        const target = await base44.asServiceRole.entities.User.get(userId).catch(()=>null);
+        // Directory-wide comparisons are needed only when rank, unit, officer,
+        // or reporting assignments change. Routine edits must not consume a
+        // 1,000-user entity_list request.
+        const needsRoster = ['rank','unit_number','badge_number','additional_roles','platoon','division','subdivision','substation','supervisor_id','is_supervisor'].some(field => updates[field] !== undefined);
+        const targetUsers = needsRoster ? await base44.asServiceRole.entities.User.list(undefined,1000) : (target?[target]:[]);
         if (!target) return Response.json({ error: 'User not found' }, { status: 404 });
         if (Array.isArray(updates.additional_roles) && userId !== '6ae7d733d4b1a647cd3e6f38') {
             updates.additional_roles = updates.additional_roles.filter((role:any) => String(role).toLowerCase() !== 'accounting');
@@ -217,7 +221,14 @@ Deno.serve(async (req) => {
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
         if(updates.ps_role!==undefined||updates.additional_roles!==undefined||updates.role!==undefined)await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:user.email,action:'account_permission_change_requested',details:JSON.stringify({user_id:userId,ps_role:updatePayload.ps_role,additional_roles:updatePayload.additional_roles,role:updatePayload.role})});
+        const auditFields = Object.keys(updatePayload).filter(field => ['role','additional_roles','ps_role','employment_status','termination_date','hire_date','account_status','rank','badge_number','unit_number','division','subdivision','substation','platoon','supervisor_id','profile_photo_url','assigned_location','assigned_sites','portal_approved'].includes(field) && JSON.stringify(target[field]??null)!==JSON.stringify(updatePayload[field]??null));
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
+        // Immutable personnel history. Never write photographs, addresses,
+        // DOB, bank data, passwords, or other private identifiers into logs.
+        for(const field of auditFields){
+          const redact = (value:any) => field==='profile_photo_url' ? (value?'[portrait on file]':'[none]') : JSON.stringify(value??null).slice(0,1200);
+          await base44.asServiceRole.entities.AuditLog.create({entity_type:'User',entity_id:userId,action:field==='employment_status'||field==='termination_date'?'status_change':'update',field_changed:field,actor_id:user.id,actor_name:String(user.email||''),before_value:redact(target[field]),after_value:redact(updatePayload[field]),timestamp:new Date().toISOString(),description:`Personnel ${field} updated by authorized administrator`}).catch(err=>console.error('Personnel audit write failed',field,String(err)));
+        }
         // Confirm edits to identity/contact/onboarding fields reached persistent User.
         // A successful SDK call alone is not proof that every field was retained.
         const verifiedUser = await base44.asServiceRole.entities.User.get(userId);
