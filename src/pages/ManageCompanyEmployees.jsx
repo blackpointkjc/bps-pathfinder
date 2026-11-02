@@ -1,3 +1,4 @@
+import { compactProfilePhoto } from '@/lib/compactProfilePhoto';
 import AdditionalRolesEditor from '@/components/admin/AdditionalRolesEditor';
 import EmployeeDirectory from '@/components/admin/EmployeeDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
@@ -381,30 +382,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     setUploadingPhoto(true);
     setPhotoPreview(dataUrl);
     try {
-      let photoUrl = dataUrl;
-      if (file) {
-        try {
-          const uploaded = await uploadInternalFile(file);
-          if (uploaded?.file_url) photoUrl = uploaded.file_url;
-        } catch (uploadError) {
-          throw new Error('Cropped photo upload failed: ' + (uploadError?.message || uploadError));
-        }
-      }
-      let originalUrl = '';
-      if (photoToCrop) {
-        try {
-          const original = await uploadInternalFile(photoToCrop);
-          originalUrl = original?.file_url || '';
-        } catch (error) {
-          console.warn('Full-resolution original unavailable; using high-resolution crop:', error?.message);
-        }
-      }
+      let photoUrl = await compactProfilePhoto(dataUrl);
+      const originalUrl = photoUrl;
       if (!photoUrl) throw new Error('The cropped photo is empty.');
-      if (!originalUrl) originalUrl = photoUrl;
-      const result = await base44.functions.invoke('updateUser', {
-        userId: editingUser,
-        updates: { profile_photo_url: photoUrl, profile_photo_original_url: originalUrl },
-      });
+
+      const result = await base44.functions.invoke('updatePersonnelPhoto', { user_id: editingUser, profile_photo_url: photoUrl, profile_photo_original_url: originalUrl });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.details || payload.error);
       setEditFormData(prev => ({ ...prev, profile_photo_url: photoUrl, profile_photo_original_url: originalUrl }));
