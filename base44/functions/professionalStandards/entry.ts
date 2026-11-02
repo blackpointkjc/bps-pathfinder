@@ -48,6 +48,15 @@ const allowedFiles=/^(image\/(jpeg|png|webp|heic)|video\/(mp4|quicktime|webm)|au
 const publicStates=Object.keys(PUBLIC_UPDATE_MESSAGES);
 // The worker is reused across requests; cache the directory briefly so every
 // case message, evidence upload, and status refresh does not spend a User.list.
+let iaStaffCache:{expires:number;people:any[];pending:Promise<any[]>|null}={expires:0,people:[],pending:null};
+async function iaPersonnel(db:any){
+ if(Date.now()<iaStaffCache.expires)return iaStaffCache.people;
+ if(iaStaffCache.pending)return iaStaffCache.pending;
+ iaStaffCache.pending=db.User.filter({additional_roles:{$in:['ia']}},'-created_date',60).then((people:any[])=>{
+  iaStaffCache.people=people;iaStaffCache.expires=Date.now()+300_000;return people;
+ }).finally(()=>{iaStaffCache.pending=null;});
+ return iaStaffCache.pending;
+}
 let personnelCache:{expires:number;people:any[];pending:Promise<any[]>|null}={expires:0,people:[],pending:null};
 async function casePersonnel(db:any){
  if(Date.now()<personnelCache.expires)return personnelCache.people;
@@ -186,7 +195,7 @@ export default async function(req){
   // Most actions only operate on the selected case and its records. Avoid
   // a global User.list for each click, message, upload, or audit refresh.
   const requiresPersonnel=['list','reports','create_case','get','update','resend_assignment','link_officers','officer_directory'].includes(action);
-  const staff=requiresPersonnel?await casePersonnel(db):[];
+  const staff=requiresPersonnel?(action==='create_case'||action==='officer_directory'||action==='link_officers'?await casePersonnel(db):await iaPersonnel(db)):[];
   const eligible=staff.filter(v=>psRole(v));
   const staffSummary=eligible.map(v=>({id:v.id,name:actorName(v),email:v.email,role:psRole(v)}));
   const globalTools=await globalCaseTools({action,body,db,u,review,base44,audit,notify,fail});
@@ -225,7 +234,8 @@ export default async function(req){
    const query=!review?{investigator_id:u.id}:body.view==='inbox'?{$and:[{$or:[{investigator_id:''},{investigator_id:null},{investigator_id:{$exists:false}}]},{status:{$in:['new','triage']}}]}:{};
    const rows=await db.PSCase.filter(query,'-created_date',limit,page*limit);
    const findings={};if(action==='reports'&&rows.length){const ids=new Set(rows.filter(canRead).map(c=>c.id));const allegations=await db.PSRecord.filter({kind:'allegation'},'-created_date',1000);for(const r of allegations){if(ids.has(r.case_id))findings[r.finding||'pending']=(findings[r.finding||'pending']||0)+1;}}
-   await audit(db,u,action==='reports'?'report_view':'inbox_view');
+   // Opening the inbox is read-only and already authenticated; avoid writing
+   // a new audit record on every tab mount/reload under rate limits.
    return Response.json({findings,cases:rows.filter(canRead).map(({tracking_hash,tracking_failures,tracking_locked_until,...c})=>c),staff:staffSummary,reviewer:review,page,has_more:rows.length===limit});
   }
   if(action==='export'){
