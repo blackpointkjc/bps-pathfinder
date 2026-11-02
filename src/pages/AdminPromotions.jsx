@@ -13,7 +13,7 @@ const field='h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 te
 const block='rounded-xl border border-slate-700 bg-[#0c1b2c] p-4';
 const stamp=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=t=>parts.find(p=>p.type===t)?.value||'01';const date=new Date(`${v('year')}-${v('month')}-${v('day')}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+1);return date.toISOString().slice(0,10)};
 const starting=()=>({officer_id:'',new_rank:'',platoon:'A',oversight_platoon:'A',supervisor_id:'',transfer_platoon:false,delay_promotion:false,effective_date:stamp(),reason:'',system_role:'user',additional_roles:['officer'],profile_photo_url:''});
-const ROLE_OPTIONS=[['officer','Officer'],['supervisor','Supervisor'],['dispatch','Dispatch'],['cad_access','CAD Access'],['support','Support Staff'],['hr','Human Resources'],['trainer','Training'],['ia','Internal Affairs'],['full_access','Full Access']];
+const ROLE_OPTIONS=[['officer','Officer'],['supervisor','Supervisor'],['dispatch','Dispatch'],['cad_access','CAD Access'],['support','Support Staff'],['hr','Human Resources'],['trainer','Training'],['ia','Internal Affairs'],['full_access','Full Access — Colonel Hiers only']];
 const nameOf=u=>[u.rank,u.name].filter(Boolean).join(' ');
 async function compressPromotionPortrait(file){
   const source=await createImageBitmap(file);

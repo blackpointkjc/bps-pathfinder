@@ -414,7 +414,7 @@ const _COMMUNICATION_PAGES = new Set(['OfficerInbox', 'OutlookMail', 'OfficerCha
 
 function hasFullAccess(user) {
   if (user?.user_type === 'client' || user?.rank === 'Client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client')) return false;
-  return user?.role === 'admin' || normalizedRoles(user).has('full_access');
+  return hasWholeAppAccess(user);
 }
 
 // Browser restriction management is reserved for actual system Admin accounts.
@@ -536,7 +536,7 @@ function canAccessPage(user, pageName) {
   // Corporate browsing is suspended for every account, including admin.
   if (pageName === 'CorporateBrowser' || pageName === 'AdminBrowserControl') return false;
   if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
-  if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || normalizedRoles(user).has('full_access');
+  if (['ManageClients','AdminPTOApproval','AdminPTOReview'].includes(pageName)) return user?.role === 'admin' || hasWholeAppAccess(user);
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
   const centers = PAGE_TO_CENTERS[pageName];
   if (!centers?.length) return true;

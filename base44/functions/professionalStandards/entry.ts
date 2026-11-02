@@ -45,6 +45,19 @@ async function legacyRequest(base44,db,u,body,privileged=false){
 const kinds=['note','interview','task','allegation','corrective_action','policy','evidence'];
 const allowedFiles=/^(image\/(jpeg|png|webp|heic)|video\/(mp4|quicktime|webm)|audio\/(mpeg|mp4|wav|x-wav|ogg|webm)|application\/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)|text\/plain)$/;
 const publicStates=Object.keys(PUBLIC_UPDATE_MESSAGES);
+// The worker is reused across requests; cache the directory briefly so every
+// case message, evidence upload, and status refresh does not spend a User.list.
+let personnelCache:{expires:number;people:any[];pending:Promise<any[]>|null}={expires:0,people:[],pending:null};
+async function casePersonnel(db:any){
+ if(Date.now()<personnelCache.expires)return personnelCache.people;
+ if(personnelCache.pending)return personnelCache.pending;
+ personnelCache.pending=db.User.list('-created_date',1000).then((people:any[])=>{
+  personnelCache.people=people;personnelCache.expires=Date.now()+120_000;
+  return people;
+ }).finally(()=>{personnelCache.pending=null;});
+ return personnelCache.pending;
+}
+
 const categoryValues=new Set(IA_CATEGORIES.map(([id])=>id));
 function caseCategory(value='unclassified',detail=''){
  const category=text(value,100),category_detail=category==='other'?text(detail,300):'';
@@ -117,11 +130,11 @@ export default async function(req){
    if(action==='public_followup'){
     const message=text(body.message,6000);
     if(message.length<10)fail('Enter at least 10 characters of additional information.');
-    await db.PSRecord.create({case_id:c.id,kind:'public_followup',title:'Additional information from complainant',body:message,author_name:'Complainant (private tracking code)',status:'received'});
+    await db.PSRecord.create({case_id:c.id,kind:'public_followup',title:'Message from reporter',body:message,author_name:'Reporter (verified tracking code)',status:'received'});
     await audit(db,null,'public_followup_received',c.id);
     return Response.json({success:true});
    }
-   if(action==='public_evidence'){await upload(base44,db,null,c,files);await audit(db,null,'public_evidence_added',c.id);return Response.json({success:true});}
+   if(action==='public_evidence'){const uploaded=await upload(base44,db,null,c,files);await audit(db,null,'public_evidence_added',c.id);return Response.json({success:true,received:uploaded.length});}
    const state=publicStates.includes(c.public_status)?c.public_status:publicStateFor(c.status);
    let investigator=null;
    if(c.investigator_id){
@@ -132,9 +145,16 @@ export default async function(req){
      investigator={name:actorName(person),email,photo:/^(https:\/\/|data:image\/(jpeg|png|webp);base64,)/i.test(photo)?photo:''};
     }
    }
-   const history=await db.PSRecord.filter({case_id:c.id,kind:'public_update'},'-created_date',50);
-   const updates=history.filter(r=>publicStates.includes(r.title)).map(r=>({status:r.title,message:publicMessage(r.title,r.body),posted_at:r.created_date}));
-   return Response.json({reference:c.reference,kind:c.kind,status:state,message:publicMessage(state,c.public_message),investigator,updates,submitted_at:c.created_date,updated_at:c.updated_date});
+   // The reporter sees only their own submissions and content that an IA
+   // reviewer explicitly published. Never expose notes, findings, discipline,
+   // internal attachments, or the general case audit to the public endpoint.
+   const history=await db.PSRecord.filter({case_id:c.id},'-created_date',200);
+   const updates=history.filter(r=>r.kind==='public_update'&&publicStates.includes(r.title)).map(r=>({status:r.title,message:publicMessage(r.title,r.body),posted_at:r.created_date}));
+   const timeline=history.filter(r=>['public_update','public_release','public_followup','evidence'].includes(r.kind))
+    .filter(r=>r.kind!=='public_release'||r.status==='published')
+    .map(r=>({id:r.id,kind:r.kind,title:r.kind==='public_followup'?'Your message received':r.kind==='evidence'?'Evidence received':r.title||'Public update',message:r.kind==='public_update'?publicMessage(r.title,r.body):r.kind==='public_release'?text(r.body,6000):r.kind==='public_followup'?text(r.body,6000):text(r.file_name||r.title,200),posted_at:r.created_date}))
+    .reverse();
+   return Response.json({reference:c.reference,kind:c.kind,status:state,message:publicMessage(state,c.public_message),investigator,updates,timeline,submitted_at:c.created_date,updated_at:c.updated_date});
   }
   const u=await identity(base44),role=psRole(u);
  if(!await __portalLoginIsCurrent(req,base44,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
@@ -150,7 +170,10 @@ export default async function(req){
   if(!role)fail('Professional Standards access is required. Contact your administrator.',403);
   const review=role==='reviewer';
   const canRead=c=>review||c.investigator_id===u.id;
-  const staff=await db.User.list('-created_date',1000);
+  // Most actions only operate on the selected case and its records. Avoid
+  // a global User.list for each click, message, upload, or audit refresh.
+  const requiresPersonnel=['list','reports','create_case','update','resend_assignment','link_officers','officer_directory'].includes(action);
+  const staff=requiresPersonnel?await casePersonnel(db):[];
   const eligible=staff.filter(v=>psRole(v));
   const staffSummary=eligible.map(v=>({id:v.id,name:actorName(v),email:v.email,role:psRole(v)}));
   const globalTools=await globalCaseTools({action,body,db,u,review,base44,audit,notify,fail});
@@ -212,6 +235,16 @@ export default async function(req){
    const email_sent=await notify(base44,person.email,'Professional Standards assignment '+c.reference,'A case is assigned to you. Sign in to Pathfinder and open Professional Standards.',u);
    await audit(db,u,'assignment_notification_resent',c.id);
    return Response.json({success:true,email_sent});
+  }
+  if(action==='publish_public_release'){
+   if(!review)fail('Only an authorized IA reviewer may publish case information.',403);
+   if(Number(body.version)!==Number(c.version))fail('The case changed. Reload before publishing.',409);
+   const title=text(body.title,140),message=text(body.message,6000);
+   if(title.length<5||message.length<20)fail('Enter a public release title and at least 20 characters of approved information.');
+   if(body.confirm_public_safe!==true)fail('Confirm this release contains no restricted or identifying investigation information.');
+   const published=await db.PSRecord.create({case_id:c.id,kind:'public_release',title,body:message,author_id:u.id,author_name:actorName(u),status:'published'});
+   await audit(db,u,'public_information_released',c.id,published.id+' '+title);
+   return Response.json({success:true,release_id:published.id});
   }
   const records=await db.PSRecord.filter({case_id:c.id},'created_date',1000);
   const caseTools=await linkedCaseTools({action,body,db,u,c,records,review,editable:review||c.investigator_id===u.id,base44,audit,notify,fail,text,actorName});
