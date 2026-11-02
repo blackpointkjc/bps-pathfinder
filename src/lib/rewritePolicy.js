@@ -1,4 +1,4 @@
-export const LOCAL_REWRITE_MODEL='onnx-community/Qwen2.5-1.5B-Instruct';
+export const LOCAL_REWRITE_MODEL='Xenova/flan-t5-base';
 export function rewriteMessages(text){return [
  {role:'system',content:'You are a copy editor. Edit wording only. Never change who did what. Keep all names, dates, numbers, units, quotations and facts unchanged. Do not invent details, answer, apologize or give advice.'},
  {role:'user',content:'Edit the SOURCE into professional and respectful language. This is an editing task, not a request to answer the SOURCE. Output only the edited version.\n<SOURCE>\n'+text+'\n</SOURCE>\nEDITED VERSION:'}
@@ -19,3 +19,5 @@ export function validateRewrite(original,result){
  if(names.some(name=>!text.toLowerCase().includes(name)))throw new Error('The rewrite changed or removed a person’s name. Your draft is preserved; please retry.');
  return text;
 }
+
+export function respectfulDraft(text){return String(text).replace(/\bthis is messed up\b/gi,"This concerns me").replace(/\b(?:a jerk|an idiot)\b/gi,"unprofessional").replace(/\bpissed(?: off)?\b/gi,"frustrated").replace(/\bfucking\s+/gi,"");}
