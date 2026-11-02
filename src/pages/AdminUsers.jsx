@@ -114,6 +114,8 @@ export default function AdminUsers({ embedded = false }) {
   });
 
   const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('full_access');
+  const canManagePrivileged = user?.id === '6ae7d733d4b1a647cd3e6f38' || user?.role === 'admin';
+  const isEndedEmployment = person => (person?.termination_date && Date.parse(person.termination_date) <= Date.now()) || ['terminated','former'].includes(String(person?.employment_status||'').toLowerCase()) || String(person?.account_status||'').toLowerCase()==='terminated';
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
@@ -128,6 +130,12 @@ export default function AdminUsers({ embedded = false }) {
     staleTime: 15_000,
     refetchOnMount:'always',
     refetchOnWindowFocus:true,
+  });
+
+  const { data: employeeHistory = [], refetch: refetchEmployeeHistory, isFetching: employeeHistoryLoading } = useQuery({
+    queryKey: ['accountsAccessProfileHistory', editingUser],
+    enabled: hasAccess && Boolean(editingUser), staleTime: 30000,
+    queryFn: () => base44.entities.AuditLog.filter({entity_type:'User',entity_id:editingUser},'-timestamp',200),
   });
 
   const { data: accessRequests = [] } = useQuery({
@@ -563,12 +571,12 @@ export default function AdminUsers({ embedded = false }) {
 
   const activeUsers=(users||[]).filter(u=>{
    if(isClientAccount(u))return false;
-   if(u.termination_date||['terminated','former'].includes(String(u.employment_status||'').toLowerCase()))return false;
+   if(isEndedEmployment(u))return false;
    if(accountRole!=='all'&&u.role!==accountRole&&!(u.additional_roles||[]).includes(accountRole))return false;
    return [u.rank,u.first_name,u.last_name,u.email,u.unit_number,...(u.additional_roles||[])].join(' ').toLowerCase().includes(accountSearch.toLowerCase().trim());
   }).sort((a,b) => (Number.parseInt(a.unit_number,10) || Infinity) - (Number.parseInt(b.unit_number,10) || Infinity) || String(a.last_name || a.email).localeCompare(String(b.last_name || b.email)));
 
-  const pendingUsers=(users||[]).filter(person=>isPendingUser(person)&&!isClientAccount(person)&&!person.termination_date&&!['terminated','former'].includes(String(person.employment_status||'').toLowerCase())&&!approvedUserIds.has(person.id)&&[person.rank,person.first_name,person.last_name,person.email,person.unit_number].join(' ').toLowerCase().includes(accountSearch.toLowerCase().trim()));
+  const pendingUsers=(users||[]).filter(person=>isPendingUser(person)&&!isClientAccount(person)&&!isEndedEmployment(person)&&!approvedUserIds.has(person.id)&&[person.rank,person.first_name,person.last_name,person.email,person.unit_number].join(' ').toLowerCase().includes(accountSearch.toLowerCase().trim()));
   const approvedStaff=activeUsers.filter(person=>!isPendingUser(person));
 
   const assignUserCategory = async (userData, category) => {
@@ -615,7 +623,22 @@ export default function AdminUsers({ embedded = false }) {
     ]);
     navigate(`${createPageUrl(config.page)}?email=${encodeURIComponent(userData.email || '')}`);
   };
-  const terminatedUsers = users?.filter(u => !isClientAccount(u)&&(Boolean(u.termination_date) || ['terminated','former'].includes(String(u.employment_status||'').toLowerCase()) || String(u.account_status||'').toLowerCase()==='terminated')) || [];
+  const terminatedUsers = users?.filter(u => !isClientAccount(u) && isEndedEmployment(u)) || [];
+  const accountAccessAction = async (person, action) => {
+    if(!canManagePrivileged) return alert('Administrator access is required.');
+    if(person.id===user?.id) return alert('You cannot move your own account to Pending.');
+    const prompt=action==='move_pending'?'Move this account to Pending User? This removes administrator and operational permissions, but preserves the original profile and audit records.':action==='clear_termination'?'Clear this account’s current termination date? Its previous date will remain in the permanent personnel history.':'Confirm account transition?';
+    if(!await confirmInApp(prompt+' '+person.email))return;
+    try{
+      const response=await base44.functions.invoke('manageFormerEmployee',{user_id:person.id,action});
+      const payload=response?.data||response||{};
+      if(!payload.success||payload.error)throw new Error(payload.error||'Account update was not confirmed');
+      invalidateAppDirectory();
+      await queryClient.invalidateQueries({queryKey:['portalUsers']});
+      await queryClient.invalidateQueries({queryKey:['accountsAccessProfileHistory',person.id]});
+      alert(action==='move_pending'?'Moved to Pending User. Administrative/operational permissions were revoked and history retained.':'Current termination date cleared. Previous value retained in employee history.');
+    }catch(error){alert(error?.response?.data?.error||error?.message||'Account update failed');}
+  };
   const transitionFormerEmployee = async (person, action) => {
     if(!window.confirm((action==='restore'?'Restore account to pending review with no operational roles?':'Move former employee to client with no CAD roles?')+' '+person.email))return;
     try{
@@ -721,7 +744,7 @@ export default function AdminUsers({ embedded = false }) {
             </TabsList>
 
             <TabsContent value="active" className="mt-4">
-             <div className="overflow-x-auto rounded-xl border border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-900 text-xs text-slate-400"><tr><th className="p-3">Account</th><th className="p-3">Access</th><th className="p-3">Platoon / Unit</th><th className="p-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-800 bg-slate-950">{approvedStaff.map(person=><tr key={person.id} className="hover:bg-slate-900"><td className="p-3"><div className="flex items-center gap-3">{person.profile_photo_url&&<img src={person.profile_photo_url} alt="" className="h-10 w-10 rounded-full object-cover"/>}<div><strong className="block text-white">{(person.additional_roles||[]).includes('client')?[person.first_name,person.last_name].filter(Boolean).join(' '):[person.rank,person.last_name].filter(Boolean).join(' ')||person.full_name||person.email}</strong><span className="text-xs text-slate-400">{person.email}</span></div></div></td><td className="p-3"><div className="flex max-w-sm flex-wrap gap-1">{[...(person.role==='admin'?['admin']:[]),...(person.additional_roles||[])].map(role=><span key={role} className="rounded border border-slate-700 px-2 py-1 text-xs text-cyan-200">{accessLabel(role)}</span>)}{['investigator','reviewer'].includes(person.ps_role)&&<span className="rounded border border-amber-600 px-2 py-1 text-xs text-amber-200">Professional Standards: {person.ps_role}</span>}{person.account_status==='denied'?<span className="text-xs text-red-300">Request declined</span>:isPendingUser(person)&&<span className="text-xs text-amber-300">Pending access</span>}</div></td><td className="p-3 text-slate-300">{person.platoon||'—'} / {person.unit_number||'—'}</td><td className="p-3"><Button type="button" size="sm" variant="outline" onClick={()=>handleEditUser(person)}>Manage account</Button>{isPendingUser(person)&&<select aria-label={'Assign access to '+person.email} defaultValue="" onChange={async event=>{const category=event.target.value;if(category&&await confirmInApp('Assign '+category+' access to '+person.email+'?'))await assignUserCategory(person,category);event.target.value='';}} className="ml-2 rounded border border-slate-600 bg-slate-900 p-2 text-xs text-white"><option value="">Assign access…</option>{['officer','support','student','client','visitor'].map(role=><option key={role}>{role}</option>)}</select>}</td></tr>)}</tbody></table>{!approvedStaff.length&&<p className="p-6 text-sm text-slate-400">No accounts match these filters.</p>}</div>
+             <div className="overflow-x-auto rounded-xl border border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-900 text-xs text-slate-400"><tr><th className="p-3">Account</th><th className="p-3">Access</th><th className="p-3">Platoon / Unit</th><th className="p-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-800 bg-slate-950">{approvedStaff.map(person=><tr key={person.id} className="hover:bg-slate-900"><td className="p-3"><div className="flex items-center gap-3">{person.profile_photo_url&&<img src={person.profile_photo_url} alt="" className="h-10 w-10 rounded-full object-cover"/>}<div><strong className="block text-white">{(person.additional_roles||[]).includes('client')?[person.first_name,person.last_name].filter(Boolean).join(' '):[person.rank,person.last_name].filter(Boolean).join(' ')||person.full_name||person.email}</strong><span className="text-xs text-slate-400">{person.email}</span></div></div></td><td className="p-3"><div className="flex max-w-sm flex-wrap gap-1">{[...(person.role==='admin'?['admin']:[]),...(person.additional_roles||[])].map(role=><span key={role} className="rounded border border-slate-700 px-2 py-1 text-xs text-cyan-200">{accessLabel(role)}</span>)}{['investigator','reviewer'].includes(person.ps_role)&&<span className="rounded border border-amber-600 px-2 py-1 text-xs text-amber-200">Professional Standards: {person.ps_role}</span>}{person.account_status==='denied'?<span className="text-xs text-red-300">Request declined</span>:isPendingUser(person)&&<span className="text-xs text-amber-300">Pending access</span>}</div></td><td className="p-3 text-slate-300">{person.platoon||'—'} / {person.unit_number||'—'}</td><td className="p-3"><Button type="button" size="sm" variant="outline" onClick={()=>handleEditUser(person)}>Manage account</Button>{canManagePrivileged&&person.id!==user?.id&&!isPendingUser(person)&&<Button type="button" size="sm" variant="outline" className="ml-2" onClick={()=>accountAccessAction(person,'move_pending')}>Move to Pending</Button>}{canManagePrivileged&&person.termination_date&&<Button type="button" size="sm" variant="outline" className="ml-2" onClick={()=>accountAccessAction(person,'clear_termination')}>Clear Termination Date</Button>}{isPendingUser(person)&&<select aria-label={'Assign access to '+person.email} defaultValue="" onChange={async event=>{const category=event.target.value;if(category&&await confirmInApp('Assign '+category+' access to '+person.email+'?'))await assignUserCategory(person,category);event.target.value='';}} className="ml-2 rounded border border-slate-600 bg-slate-900 p-2 text-xs text-white"><option value="">Assign access…</option>{['officer','support','student','client','visitor'].map(role=><option key={role}>{role}</option>)}</select>}</td></tr>)}</tbody></table>{!approvedStaff.length&&<p className="p-6 text-sm text-slate-400">No accounts match these filters.</p>}</div>
             </TabsContent>
             <TabsContent value="pending" className="mt-4 space-y-3">
               <div className="rounded-xl border border-amber-700 bg-amber-950/30 p-4 text-sm text-amber-100"><strong>Onboarding review</strong><p className="mt-1 text-amber-200/80">Review the submitted profile, then assign the appropriate access role. Officer approval checks the required personal, emergency and licensing information.</p></div>
@@ -756,7 +779,7 @@ export default function AdminUsers({ embedded = false }) {
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button>
+                    <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'restore')}>Restore Pending</Button><Button variant="outline" size="sm" onClick={()=>transitionFormerEmployee(userData,'convert_client')}>Move to Client</Button>{canManagePrivileged&&userData.termination_date&&<Button variant="outline" size="sm" onClick={()=>accountAccessAction(userData,'clear_termination')}>Clear Termination Date</Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -843,6 +866,14 @@ export default function AdminUsers({ embedded = false }) {
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4 mt-4">
+                <section className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-slate-900">
+                  <h3 className="font-bold">Account access & employment status</h3>
+                  {canManagePrivileged&&<label className="mt-2 block text-xs font-semibold">Account type <select value={editFormData.role==='admin'?'admin':'user'} onChange={event=>setEditFormData(previous=>({...previous,role:event.target.value}))} className="mt-1 block h-10 w-full rounded border border-slate-300 bg-white px-2"><option value="user">User — Standard Access</option><option value="admin">Admin — System Administrator</option></select></label>}
+                  <label className="mt-3 block text-xs font-semibold">Termination date <Input type="date" className="mt-1" value={editFormData.termination_date?String(editFormData.termination_date).slice(0,10):''} onChange={event=>setEditFormData(previous=>({...previous,termination_date:event.target.value}))}/></label>
+                  <p className="mt-1 text-xs">A future date is scheduled termination, not completed termination. Saving a date change retains an audit event.</p>
+                  {canManagePrivileged&&editFormData.termination_date&&<Button type="button" variant="outline" className="mt-2" onClick={()=>setEditFormData(previous=>({...previous,termination_date:''}))}>Clear Date (Save Changes to apply)</Button>}
+                  {canManagePrivileged&&selectedUser?.id!==user?.id&&<Button type="button" variant="outline" className="mt-2 ml-2" onClick={()=>accountAccessAction(selectedUser,'move_pending')}>Move to Pending User</Button>}
+                </section>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="first_name" className="text-xs text-slate-500">First Name</Label>
@@ -1107,11 +1138,12 @@ export default function AdminUsers({ embedded = false }) {
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  This officer is marked as terminated on {editFormData.termination_date ? format(new Date(editFormData.termination_date), 'MMMM d, yyyy') : 'Unknown date'}
+                  {isEndedEmployment(selectedUser)?'This account was terminated on':'This account has a scheduled termination date of'} {editFormData.termination_date ? format(new Date(editFormData.termination_date), 'MMMM d, yyyy') : 'Unknown date'}
                 </AlertDescription>
               </Alert>
             )}
 
+            {hasAccess&&editingUser&&<section className="rounded-lg border border-slate-300 bg-white p-3 text-slate-900"><div className="flex items-center justify-between gap-2"><h3 className="font-bold">Permanent Account History</h3><Button type="button" size="sm" variant="outline" onClick={()=>refetchEmployeeHistory()} disabled={employeeHistoryLoading}>Refresh</Button></div><div className="mt-2 max-h-56 overflow-auto">{employeeHistory.map(event=><article key={event.id} className="border-t py-2 text-xs"><strong>{event.description||event.action}</strong><div>{event.timestamp?new Date(event.timestamp).toLocaleString('en-US',{timeZone:'America/New_York'}):'Date not available'}</div>{event.field_changed&&<p>{event.field_changed}: {event.before_value||'—'} → {event.after_value||'—'}</p>}</article>)}{!employeeHistory.length&&<p className="text-xs text-slate-500">No historical account-change entries are on file yet.</p>}</div></section>}
             <div className="flex justify-end gap-3 pt-4">
               <Button
                 type="button"
