@@ -502,6 +502,17 @@ export default function DispatchCenter({embedded=false}) {
         }
     };
 
+    // Deep-link selected CAD calls from Live Command, including Help Me calls.
+    const initialDeepLinkConsumed=React.useRef('');
+    useEffect(()=>{
+        const id=new URLSearchParams(window.location.search).get('call_id');
+        if(!id || initialDeepLinkConsumed.current===id)return;
+        const match=activeCalls.find(row=>String(row.id)===String(id));
+        if(!match)return;
+        initialDeepLinkConsumed.current=id;
+        handleSelectCall(match);
+    },[activeCalls]);
+
     // Keep the selected call's shared note stream live. Field officers and dispatch
     // write to the same CallNote entity, so either side sees the other's update
     // without reselecting or refreshing the call.
