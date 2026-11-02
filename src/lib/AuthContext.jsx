@@ -502,11 +502,15 @@ export const AuthProvider = ({ children }) => {
         if(key && (/^bps:microsoft-verified:/.test(key)||/^bps:outlook-token:/.test(key)||/^bps:app-directory:/.test(key)||/^bps:analytics:/.test(key)))localStorage.removeItem(key);
       }
     } catch {}
-    // SDK sign-out must run without blocking a deterministic redirect.
-    try { base44.auth.logout(); } catch(error) { console.warn('[AUTH] SDK logout error',error?.message); }
-    if(shouldRedirect){ window.location.replace(window.location.origin+'/Login?logged_out=1'); }
-    // Closing GPS and presence is a follow-up and must never delay redirect.
+    // The Base44 SDK calls the provider logout endpoint to clear its HTTP-only
+    // cookie. Do NOT override that redirect: doing so previously left users
+    // signed in on reload even after the local bearer token was deleted.
     void endOfficerLocationSession().catch(()=>null);
+    try { base44.auth.logout(shouldRedirect ? window.location.origin+'/Login?logged_out=1' : window.location.origin+'/Login'); }
+    catch(error) {
+      console.warn('[AUTH] Provider logout failed:',error?.message);
+      window.location.replace(window.location.origin+'/Login?logged_out=1');
+    }
   }, []);
 
   useEffect(() => {
