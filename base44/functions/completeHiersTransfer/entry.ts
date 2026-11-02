@@ -5,7 +5,7 @@ export default async function(req:Request){try{
  const body=await req.json().catch(()=>({}));if(!/^[a-f0-9]{64}$/.test(body.capability||''))return Response.json({error:'Unauthorized'},{status:401});
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body.capability)))).map(v=>v.toString(16).padStart(2,'0')).join('');
  const records=await db.PersonnelTransferJob.filter({source_id:sourceId,destination_id:destinationId,capability_hash:hash},'-created_date',1);
- const job=records[0];if(!job||!['authorized','running'].includes(job.status)||Date.parse(job.expires_at)<Date.now())return Response.json({error:'Transfer authorization expired or consumed'},{status:403});
+ const job=records[0];if(!job||!['authorized','running','failed'].includes(job.status)||Date.parse(job.expires_at)<Date.now())return Response.json({error:'Transfer authorization expired or consumed'},{status:403});
  const [source,destination]=await Promise.all([db.User.get(sourceId),db.User.get(destinationId)]);
  if(source.email!=='kavonhiers@team-hsg.com'||destination.email!=='kshiers@blackpointkjc.com')return Response.json({error:'Identity mismatch'},{status:409});
  await db.PersonnelTransferJob.update(job.id,{status:'running'});
@@ -28,8 +28,9 @@ export default async function(req:Request){try{
  if(nextCursor<job.manifest.entities.length)return Response.json({success:true,pending:true,cursor:nextCursor,total:job.manifest.entities.length});
  // Reassign current reporting lines without rewriting historical audit actors.
  const people=await db.User.list('-updated_date',500);for(const p of people){const patch:any={};for(const prefix of ['supervisor','next_level_supervisor'])if(p[prefix+'_id']===sourceId||p[prefix+'_email']===source.email){patch[prefix+'_id']=destinationId;patch[prefix+'_email']=destination.email;patch[prefix+'_name']=[source.rank,source.last_name].filter(Boolean).join(' ');}if(Object.keys(patch).length)await db.User.update(p.id,patch);}
- await db.User.update(sourceId,{role:'user',rank:'Support Staff',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none',hidden_portals:[],portal_approved:true,account_status:'active',transferred_to_user_id:destinationId,unit_number:'',badge_number:'',profile_photo_url:'',profile_photo_original_url:''});
+ await db.User.update(sourceId,{rank:'Support Staff',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none',hidden_portals:[],portal_approved:true,account_status:'active',transferred_to_user_id:destinationId,unit_number:'',badge_number:'',profile_photo_url:'',profile_photo_original_url:''});
 
+ await db.User.update(destinationId,{additional_roles:[...new Set([...(destination.additional_roles||[]),'full_access'])],ps_role:'reviewer'});
  await db.PersonnelTransferJob.update(job.id,{status:'complete',manifest:{...job.manifest,counts},capability_hash:''});
  return Response.json({success:true,counts});
  }catch(error){await db.PersonnelTransferJob.update(job.id,{status:'failed',last_error:String(error?.message||error).slice(0,300)});return Response.json({error:'Transfer stopped safely; the protected backup is retained.'},{status:500});}
