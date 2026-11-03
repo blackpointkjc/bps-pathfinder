@@ -27,18 +27,25 @@ export default function RentRollImportPanel({site,onImported,onImportingChange})
  const importRows=async()=>{
   if(!site||!confirmed||busy||!parsed.rows.length)return;
   setBusy(true);onImportingChange?.(true);setError('');setSummary(null);setProgress(0);
-  const result={residents_created:0,residents_updated:0,vehicles_created:0,duplicates:0,errors:[],processed:0};
+  const result={residents_created:0,residents_updated:0,vehicles_created:0,duplicates:0,errors:[],processed:0,successful_rows:0,failed_rows:0,verified_resident_count:null};
   try{
    for(let i=0;i<parsed.rows.length;i+=25){
     const chunk=parsed.rows.slice(i,i+25),payload=chunk.map(({_source_row,...row})=>row);
     const response=await base44.functions.invoke('manageParkingRecords',{action:'import_residents',site_name:site,rows:payload});
     const answer=response?.data||response||{};
     if(answer.error)throw Error(answer.error);
-    for(const key of ['residents_created','residents_updated','vehicles_created','duplicates','processed'])result[key]+=Number(answer[key]||0);
+    for(const key of ['residents_created','residents_updated','vehicles_created','duplicates','processed','successful_rows','failed_rows'])result[key]+=Number(answer[key]||0);
     result.errors.push(...(answer.errors||[]).map(row=>`CSV row ${chunk[Math.max(0,Number(row.row||1)-1)]?._source_row||i+Number(row.row||1)}: ${row.error}`));
     setProgress(Math.min(parsed.rows.length,i+chunk.length));
    }
-   setSummary(result);
+   // A batch accepting 254 CSV rows is not proof of 254 persisted residents.
+   // Independently re-read the selected property's backend registry after import.
+   const verification=await base44.functions.invoke('manageParkingRecords',{action:'import_verify',site_name:site});
+   const checked=verification?.data||verification||{};
+   if(checked.error||!Number.isFinite(Number(checked.verified_resident_count)))throw Error(checked.error||'Unable to verify saved residents');
+   result.verified_resident_count=Number(checked.verified_resident_count);
+   setSummary({...result});
+   if(result.failed_rows||result.verified_resident_count===0)setError(`${result.failed_rows} import rows failed. ${result.verified_resident_count} resident record(s) verified in the property database. Check row errors before retrying; no successful batch will be repeated automatically.`);
    window.dispatchEvent(new CustomEvent('pathfinder:rent-roll-updated',{detail:{site}}));
    await onImported?.();
   }catch(e){setError('Import stopped: '+(e?.response?.data?.error||e?.data?.error||e.message||'Server unavailable')+'. Previously completed batches remain saved; reimporting is safe and matches existing residents and vehicle plates.');setSummary(result);if(result.processed>0){try{await onImported?.()}catch{}}}
@@ -55,6 +62,6 @@ export default function RentRollImportPanel({site,onImported,onImportingChange})
   <label className="flex items-start gap-2 text-xs text-amber-100"><input type="checkbox" checked={confirmed} disabled={!site||busy||!parsed.rows.length} onChange={e=>setConfirmed(e.target.checked)}/><span>I verified that these records belong to <b>{site||'the selected property'}</b>, and I am authorized to add or update this property’s residents and vehicles.</span></label>
   <button type="button" disabled={!confirmed||!site||busy||!parsed.rows.length} onClick={importRows} className="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy?`Importing ${progress} / ${parsed.rows.length} rows…`:`Import ${parsed.rows.length} resident row(s) into ${site||'selected property'}`}</button>
   {error&&<p role="alert" className="rounded-lg border border-red-600 bg-red-950/40 p-3 text-xs text-red-200">{error}</p>}
-  {summary&&<div role="status" className="rounded-lg border border-emerald-700 bg-emerald-950/20 p-3 text-xs text-emerald-200"><p className="flex items-center gap-2 font-black"><CheckCircle2 size={15}/>Batch import results: {summary.processed} rows processed</p><p className="mt-1">{summary.residents_created} residents added · {summary.residents_updated} residents updated · {summary.vehicles_created} vehicles added · {summary.duplicates} existing vehicles skipped</p>{summary.errors.length>0&&<div className="mt-2 max-h-32 overflow-auto text-amber-200">{summary.errors.slice(0,20).map((e,i)=><p key={i}>{e}</p>)}{summary.errors.length>20&&<p>Plus {summary.errors.length-20} more row errors</p>}</div>}</div>}
+  {summary&&<div role="status" className={`rounded-lg border p-3 text-xs ${summary.failed_rows||summary.verified_resident_count===0||summary.verified_resident_count==null?'border-amber-600 bg-amber-950/20 text-amber-100':'border-emerald-700 bg-emerald-950/20 text-emerald-200'}`}><p className="flex items-center gap-2 font-black"><CheckCircle2 size={15}/>{summary.successful_rows} successful of {summary.processed} processed rows; {summary.failed_rows} failed</p><p className="mt-1 font-bold">{summary.verified_resident_count==null?'Saved resident count not verified':`${summary.verified_resident_count} residents verified in the selected property's database`}</p><p className="mt-1">{summary.residents_created} residents added · {summary.residents_updated} residents updated · {summary.vehicles_created} vehicles added · {summary.duplicates} existing vehicles skipped</p>{summary.errors.length>0&&<div className="mt-2 max-h-32 overflow-auto text-amber-200">{summary.errors.slice(0,20).map((e,i)=><p key={i}>{e}</p>)}{summary.errors.length>20&&<p>Plus {summary.errors.length-20} more row errors</p>}</div>}</div>}
  </section>;
 }

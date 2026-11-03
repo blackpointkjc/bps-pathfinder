@@ -188,7 +188,7 @@ Deno.serve(async req => {
       }catch(error){console.warn('Parking duty property lookup unavailable',String((error as Error)?.message||error));}}
       return Response.json({sites:options,duty_site:dutySite,role:client?'client':admin?'admin':supervisor?'supervisor':'officer'});
     }
-    if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export','rent_roll','vehicle_save','resident_lookup','import_residents'].includes(action)) {
+    if (['overview','residents','rules','violations','resident_save','rule_save','issue','resubmit','review','records_check','export','rent_roll','vehicle_save','resident_lookup','import_residents','import_verify'].includes(action)) {
       const rejected=await sitePermitted();if(rejected)return rejected;
     }
     // Single property-scoped resident/vehicle registry shared by the client,
@@ -215,6 +215,12 @@ Deno.serve(async req => {
     // Property-specific, idempotent CSV/list import. Client/admin can stage up
     // to 30 rows per request, with per-row results and no cross-property writes.
     // Each repeated resident with a new plate links an additional vehicle.
+    if(action==='import_verify'){
+      if(!client&&!admin)return fail('Rent roll verification requires client or administrator access',403);
+      const rows=await siteRecords(entities.PropertyResident,1500);
+      if(rows.length>=1500)return fail('Rent roll exceeds the verification limit; narrow the property scope.',409);
+      return Response.json({success:true,site_name:site,verified_resident_count:rows.length,verified_at:dates()});
+    }
     if(action==='import_residents'){
       if(!client&&!admin)return fail('Rent roll import is for assigned clients and administrators only',403);
       const inputRows=Array.isArray(data.rows)?data.rows:[];
@@ -280,7 +286,8 @@ Deno.serve(async req => {
           const vehicle=await entities.PropertyVehicle.create(car);cars.push(vehicle);vehicles_created++;
         }catch(error:any){errors.push({row:i+1,error:clean(error?.message||'Import row failed',240)});}
       }
-      return Response.json({success:true,site_name:site,processed:inputRows.length,residents_created:created,
+      return Response.json({success:true,site_name:site,processed:inputRows.length,successful_rows:created+updated,
+        failed_rows:errors.length,residents_created:created,
         residents_updated:updated,vehicles_created,duplicates,errors});
     }
     if(action==='vehicle_save'){
