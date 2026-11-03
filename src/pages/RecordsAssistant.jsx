@@ -96,6 +96,8 @@ export default function RecordsAssistant() {
     }
   };
 
+  const propertyResidents = residentMatches.filter(row=>row.source==='Property resident registry');
+  const propertyOtherRecords = residentMatches.filter(row=>row.source!=='Property resident registry');
   const sources = useMemo(() => [...new Set(results.map(item => item.source))].sort(), [results]);
   const visible = sourceFilter === 'all' ? results : results.filter(item => item.source === sourceFilter);
 
@@ -186,7 +188,12 @@ export default function RecordsAssistant() {
           </div>
         )}
 
-        {residentMatches.length>0&&<section className="rounded-lg border border-emerald-700/60 bg-emerald-950/20 p-3 text-sm"><h2 className="font-bold text-emerald-200">Property resident and vehicle records · {residentMatches.length}</h2><p className="mt-1 text-xs text-slate-400">Internal property registry; no government registration or DMV verification</p>{residentMatches.map((row,i)=><div key={`${row.source}-${row.id}-${i}`} className="mt-2 border-t border-emerald-900/40 pt-2"><b>{row.full_name||row.citation_number||row.vehicle_plate||row.license_plate}</b> · {row.source} · {row.unit_number?`Unit ${row.unit_number} · `:''}{row.vehicle_plate||row.license_plate||''} {row.vehicle_state||''} {row.lease_status||row.status||''}</div>)}</section>}
+        {residentMatches.length>0&&<section className="space-y-3 rounded-xl border border-emerald-700/60 bg-[#0c2030] p-4 text-sm">
+          <div><h2 className="flex items-center gap-2 font-black text-emerald-200"><User size={16}/>Property registry · {propertyResidents.length} matching resident{propertyResidents.length===1?'':'s'}</h2><p className="mt-1 text-xs text-slate-400">All matching names, apartment/street addresses, and recorded lease statuses for {site}.</p></div>
+          {propertyResidents.length>0&&<div className="max-h-[32rem] space-y-2 overflow-y-auto pr-1" aria-label="All matching resident records">{propertyResidents.map((row,i)=><article key={`${row.id||i}-${i}`} className="rounded-lg border border-[#33536a] bg-[#10293b] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm text-white">{row.full_name||'Name not recorded'}</b><span className={`rounded-md border px-2 py-1 text-[11px] font-bold ${row.lease_status==='active'?'border-emerald-600/50 bg-emerald-950/30 text-emerald-300':row.lease_status==='former'?'border-slate-600 bg-slate-800 text-slate-300':'border-amber-600/50 bg-amber-950/30 text-amber-300'}`}>Lease: {row.lease_status||'Not recorded'}</span></div><p className="mt-2 flex items-center gap-2 text-xs text-slate-200"><MapPin size={14} className="text-cyan-400"/>Apartment / address: <strong>{row.address||row.unit_number||'Not recorded'}</strong>{row.building?` · Building ${row.building}`:''}</p></article>)}</div>}
+          {propertyOtherRecords.length>0&&<div className="space-y-2 border-t border-emerald-900/40 pt-3"><h3 className="text-xs font-bold text-slate-300">Other property records ({propertyOtherRecords.length})</h3>{propertyOtherRecords.map((row,i)=><div key={`${row.source}-${row.id}-${i}`} className="rounded-lg bg-[#142b3d] p-2 text-xs"><b>{row.citation_number||row.vehicle_plate||row.license_plate||'Prior record'}</b> · {row.source} · {row.status||''}</div>)}</div>}
+          <p className="text-[11px] text-slate-500">Internal property registry only. Recorded lease status is not an independent verification of tenancy or a DMV/NCIC check.</p>
+        </section>}
         <div className="grid gap-3">
           {visible.map(item => {
             const isBolo = item.entity === 'BOLOAlert' || item.source === 'BOLO / Alerts';
