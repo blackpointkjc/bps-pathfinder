@@ -1,4 +1,4 @@
-import {blackPointEmail} from '../sendDailyCompanySummary/blackPointEmail.ts';
+import {blackPointEmail} from './blackPointEmail.ts';
 
 const portalUrl='https://bpspf.blackpointkjc.com/ProfessionalStandards';
 const escape=(v:any)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');

@@ -1,7 +1,7 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClientFromRequest} from 'npm:@base44/sdk';
 import {notify,audit,psRole,manager} from './security.ts';
-import {iaCaseEmail} from '../professionalStandards/assignmentEmail.ts';
+import {iaCaseEmail} from './assignmentEmail.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
