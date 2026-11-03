@@ -237,6 +237,32 @@ Deno.serve(async req => {
     // Property-specific, idempotent CSV/list import. Client/admin can stage up
     // to 30 rows per request, with per-row results and no cross-property writes.
     // Each repeated resident with a new plate links an additional vehicle.
+    // Records AI searches every ACTIVE company property automatically.
+    // This endpoint is restricted to authorized operational employees. No
+    // client portal user can use it to search another property's residents.
+    if(action==='search_all'){
+      if(!officer)return fail('Authorized officer records search required',403);
+      const term=clean(data.query,120).toLowerCase();
+      if(term.length<2)return fail('Enter at least two characters',400);
+      const tokens=term.split(/\s+/).filter(Boolean);
+      const allowed=new Set((await getLocations()).filter(activeLocation).map((l:any)=>siteKey(l.site_name)));
+      if(!allowed.size)return Response.json({matches:[],total_matches:0,source:'Authorized company property registry'});
+      // One bounded backend read replaces a per-property browser request burst.
+      const [people,cars]=await Promise.all([
+        entities.PropertyResident.list('-created_date',1500),
+        entities.PropertyVehicle.list('-created_date',1500).catch(()=>[]),
+      ]);
+      const vehicles=(cars||[]).filter((v:any)=>allowed.has(siteKey(v.site_name)));
+      const matches=(people||[]).filter((p:any)=>allowed.has(siteKey(p.site_name))).filter((p:any)=>{
+        const related=vehicles.filter((v:any)=>v.resident_id===p.id);
+        const fields=[p.full_name,p.unit_number,p.building,p.phone,p.email,p.lease_status,p.lease_id,p.site_name,p.vehicle_plate,p.vehicle_vin,
+          ...related.flatMap((v:any)=>[v.plate,v.vin,v.make,v.model,v.year,v.color,v.permit_number])].map((v:any)=>clean(v,240).toLowerCase());
+        return tokens.every(token=>fields.some(value=>value.includes(token)));
+      }).map((p:any)=>({id:p.id,entity:'PropertyResident',source:'Property resident registry',
+        ...publicResident(p),address:clean(p.unit_number),vehicles:vehicles.filter((v:any)=>v.resident_id===p.id).map(publicVehicle)}));
+      return Response.json({success:true,matches,total_matches:matches.length,source:'Authorized property registry',
+        partial:(people||[]).length>=1500||vehicles.length>=1500});
+    }
     if(action==='import_verify'){
       if(!client&&!admin)return fail('Rent roll verification requires client or administrator access',403);
       const rows=await siteRecords(entities.PropertyResident,1500,'resident');

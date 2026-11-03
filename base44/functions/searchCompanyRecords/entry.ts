@@ -126,7 +126,7 @@ async function listWithRetry(entity: any, entityName: string) {
   let lastError: any;
   // A company search spans more than twenty entities. Pulling 1,000 rows from
   // every source caused the function to time out before it could return matches.
-  const limit = entityName === 'CallHistory' ? 750 : entityName === 'DispatchCall' ? 250 : 300;
+  const limit = entityName === 'CallHistory' ? 1200 : entityName === 'DispatchCall' ? 900 : 550;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await entity.list('-created_date', limit);
@@ -164,6 +164,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
 
     if (body?.action === 'get' && body?.entity && body?.id) {
+      if(!privileged && new Set(['ConfidentialReport','Complaint','WriteUpReport','InspectionReport','UseOfForceReport']).has(String(body.entity)))
+        return Response.json({error:'Record outside authorized access scope'},{status:403});
       const source = SOURCES.find(([entityName]) => entityName === body.entity);
       if (!source) return Response.json({ error: 'Unsupported record type' }, { status: 400 });
       const entity = (entityClient as any)[body.entity];
@@ -258,7 +260,8 @@ Deno.serve(async (req) => {
     results.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     const warrantMatches = results.filter(item => item.warrant_issued).length;
     return Response.json({
-      results: results.slice(0, 250),
+      results: results.slice(0, 500),
+      truncated:results.length>500,
       searched_sources: successfulSources,
       failed_sources: failedSources,
       partial: failedSources > 0,

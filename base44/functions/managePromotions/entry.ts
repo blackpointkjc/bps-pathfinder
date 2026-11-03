@@ -113,6 +113,7 @@ async function version(users:any[]){
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(snapshot)));
  return Array.from(new Uint8Array(bytes)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+const key=(value:any)=>trim(value).toLowerCase();
 function changePlan(users:any[],input:any,configured:any[]){
  const officer=users.find(u=>u.id===trim(input.officer_id));
  if(!isEmployee(officer))throw new Error('Select an active employee, not a client, student, or terminated account.');

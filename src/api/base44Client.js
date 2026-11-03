@@ -630,7 +630,7 @@ const isReadOnlyFunction = (name, payload = {}) => {
   // classified as writes (sites, rent_roll, overview, verify), causing cache
   // invalidations and heavy request contention just to open a client page.
   if (functionName==='manageParkingRecords' && new Set([
-    'sites','overview','residents','rent_roll','resident_lookup','import_verify',
+    'sites','overview','residents','rent_roll','resident_lookup','search_all','import_verify',
     'rules','violations','records_check','review_queue','officer_tasks','export'
   ]).has(action)) return true;
   if (action) return readActions.has(action);
