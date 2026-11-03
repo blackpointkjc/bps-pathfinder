@@ -212,10 +212,23 @@ Deno.serve(async (req) => {
         }).slice(0, 100).map((record: any) => {
           const vehicle = vehicleDisplay(record);
           const isWarrant = entityName === 'CriminalComplaint' && (record.warrant_issued === true || record.status === 'warrant_issued' || Boolean(record.warrant_number));
+          const names=normalizeSearchText([personName(record),
+            ...(Array.isArray(record.parties)?record.parties.map((p:any)=>p?.name):[]),
+            ...(Array.isArray(record.suspects)?record.suspects.map((p:any)=>p?.name):[]),
+            ...(Array.isArray(record.victims)?record.victims.map((p:any)=>p?.name):[]),
+            ...(Array.isArray(record.witnesses)?record.witnesses.map((p:any)=>p?.name):[])].filter(Boolean).join(' '));
+          const reference=normalizeSearchText([record.report_number,record.call_number,record.call_id,
+            record.linked_call_number,record.citation_number,record.complaint_number,record.notice_number,
+            record.summons_number,record.bolo_number,record.warrant_number,record.id].filter(Boolean).join(' '));
+          const locations=normalizeSearchText([record.location,record.site_name,record.property_name,
+            record.address,record.last_known_location,record.offense_place,record.location_of_offense].filter(Boolean).join(' '));
+          const matchContext=matchesTerms(reference,terms)?'reference':matchesTerms(names,terms)?'person':
+            matchesTerms(normalizeSearchText(vehicleText(record)),terms)?'vehicle':matchesTerms(locations,terms)?'location':'report text';
           return {
             id: record.id,
             entity: entityName,
             source: sourceLabel,
+            match_context:matchContext,
             page,
             label: labelFor(record),
             date: record.incident_date || record.notice_date || record.report_date || record.shift_date || record.violation_date || record.offense_date || record.created_date,
@@ -257,7 +270,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    results.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const relevance:any={'reference':0,'person':1,'vehicle':2,'location':3,'report text':4};
+    results.sort((a,b)=>(relevance[a.match_context]??5)-(relevance[b.match_context]??5)||String(b.date||'').localeCompare(String(a.date||'')));
     const warrantMatches = results.filter(item => item.warrant_issued).length;
     return Response.json({
       results: results.slice(0, 500),
