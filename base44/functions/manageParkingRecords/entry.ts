@@ -341,7 +341,7 @@ Deno.serve(async req => {
       return Response.json({success:true,vehicle:publicVehicle(result)});
     }
     if (['overview','residents','records_check','rent_roll','resident_lookup'].includes(action)) {
-      const rows=await siteRecords(entities.PropertyResident,action==='resident_lookup'?850:800,'resident');
+      const rows=await siteRecords(entities.PropertyResident,['resident_lookup','records_check'].includes(action)?2400:800,'resident');
       const registered=await siteRecords(entities.PropertyVehicle,action==='resident_lookup'?1200:500);
       const vehicles=residentCars(rows,registered);
       if(action==='rent_roll'||action==='resident_lookup'){
