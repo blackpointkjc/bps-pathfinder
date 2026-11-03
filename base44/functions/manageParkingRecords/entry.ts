@@ -134,9 +134,31 @@ Deno.serve(async req => {
     };
     const residentFields = ['site_name','full_name','unit_number','lease_status','phone','email','notes','lease_start','lease_end','lease_id','building','resident_type','emergency_contact','vehicle_plate','vehicle_state','vehicle_year','vehicle_make','vehicle_model','vehicle_color','vehicle_vin'];
     const parkingFields = ['violation_date','violation_time','location','citation_number','call_number','vehicle_year','vehicle_make','vehicle_model','vehicle_color','license_plate','license_state','vehicle_vin','vehicle_owner','subject_name','subject_dob','unit_number','violation_type','description','photo_url','warning_issued','linked_call_id','linked_call_number','resident_id','resident_verified','vehicle_record_id'];
-    const siteRecords = async (entity:any,limit=200) => {
-      const rows = await entity.filter({site_name:site},'-created_date',limit);
-      return rows.filter((row:any)=>siteKey(row.site_name)===siteKey(site));
+    const siteRecords = async (entity:any,limit=200,kind='') => {
+      const unpack=(v:any)=>Array.isArray(v)?v:Array.isArray(v?.items)?v.items:Array.isArray(v?.data)?v.data:Array.isArray(v?.entities)?v.entities:[];
+      // Read the complete site-specific registry, not just a stale first page.
+      // Clients are verified against sitePermitted BEFORE this read executes.
+      const rows:any[]=[];
+      const batchSize=Math.min(300,Math.max(1,limit));
+      for(let offset=0;offset<limit;offset+=batchSize){
+        const page=unpack(await entity.filter({site_name:site},'-created_date',Math.min(batchSize,limit-offset),offset));
+        rows.push(...page.filter((row:any)=>siteKey(row.site_name)===siteKey(site)));
+        if(page.length<batchSize)break;
+      }
+      // Some existing rent-roll rows were created through the platform entity
+      // import API. On an unexpectedly empty filtered response, recover them
+      // from a bounded service-role listing, *then* enforce exact site scope.
+      // This never returns a resident from another client's property.
+      if(kind==='resident'&&rows.length===0){
+        const all:any[]=[];
+        for(let offset=0;offset<2400;offset+=300){
+          const page=unpack(await entities.PropertyResident.list('-created_date',300,offset));
+          all.push(...page.filter((row:any)=>siteKey(row.site_name)===siteKey(site)));
+          if(page.length<300)break;
+        }
+        if(all.length){console.info('Recovered property rent roll through unfiltered listing; site=',siteKey(site),'count=',all.length);return all.slice(0,limit);}
+      }
+      return rows;
     };
     // Returned parking notices are officer correction tasks. Restrict this
     // overview to the issuing officer, unless the caller is a full admin.
@@ -217,7 +239,7 @@ Deno.serve(async req => {
     // Each repeated resident with a new plate links an additional vehicle.
     if(action==='import_verify'){
       if(!client&&!admin)return fail('Rent roll verification requires client or administrator access',403);
-      const rows=await siteRecords(entities.PropertyResident,1500);
+      const rows=await siteRecords(entities.PropertyResident,1500,'resident');
       if(rows.length>=1500)return fail('Rent roll exceeds the verification limit; narrow the property scope.',409);
       return Response.json({success:true,site_name:site,verified_resident_count:rows.length,verified_at:dates()});
     }
@@ -225,7 +247,7 @@ Deno.serve(async req => {
       if(!client&&!admin)return fail('Rent roll import is for assigned clients and administrators only',403);
       const inputRows=Array.isArray(data.rows)?data.rows:[];
       if(!inputRows.length||inputRows.length>30)return fail('Import 1 to 30 rows per batch. The importer will submit larger CSV files in batches.');
-      const existing=await siteRecords(entities.PropertyResident,700);
+      const existing=await siteRecords(entities.PropertyResident,700,'resident');
       const cars=await siteRecords(entities.PropertyVehicle,950);
       if(existing.length>=700||cars.length>=950)return fail('Property registry exceeds the safe import batch limit. Contact an administrator before importing.',409);
       const keys=(name:any,unit:any)=>clean(name).toLowerCase().replace(/\s+/g,' ')+'|'+clean(unit).toLowerCase().replace(/\s+/g,' ');
@@ -303,7 +325,7 @@ Deno.serve(async req => {
       if(conflict)return fail(conflict.resident_id===resident.id?
         'This plate is already registered to this resident. Edit its existing vehicle record instead.':
         'This plate is registered to a different resident at this property. Resolve the duplicate before saving.',409);
-      const legacyConflict=(await siteRecords(entities.PropertyResident,300)).find((other:any)=>
+      const legacyConflict=(await siteRecords(entities.PropertyResident,300,'resident')).find((other:any)=>
         other.id!==resident.id&&plateKey(other.vehicle_plate)===plate&&clean(other.vehicle_state).toUpperCase()===state);
       if(legacyConflict)return fail('This plate is already associated with another resident in the legacy property rent roll. Resolve that resident record before adding a second registration.',409);
       const record:any={site_name:site,resident_id:resident.id,resident_name:resident.full_name,unit_number:resident.unit_number,
@@ -319,7 +341,7 @@ Deno.serve(async req => {
       return Response.json({success:true,vehicle:publicVehicle(result)});
     }
     if (['overview','residents','records_check','rent_roll','resident_lookup'].includes(action)) {
-      const rows=await siteRecords(entities.PropertyResident,action==='resident_lookup'?850:300);
+      const rows=await siteRecords(entities.PropertyResident,action==='resident_lookup'?850:800,'resident');
       const registered=await siteRecords(entities.PropertyVehicle,action==='resident_lookup'?1200:500);
       const vehicles=residentCars(rows,registered);
       if(action==='rent_roll'||action==='resident_lookup'){
@@ -336,7 +358,7 @@ Deno.serve(async req => {
         });
         const visible=action==='resident_lookup'?residents.slice(0,60):residents;
         const ids=new Set(visible.map(row=>row.id));
-        return Response.json({residents:visible,vehicles:vehicles.filter(v=>ids.has(v.resident_id)),total_matches:residents.length,query:q,source:'Property rent roll (not DMV/NCIC)'});
+        return Response.json({residents:visible,vehicles:vehicles.filter(v=>ids.has(v.resident_id)),total_matches:residents.length,verified_resident_count:rows.length,site_name:site,query:q,source:'Property rent roll (not DMV/NCIC)'});
       }
       if(action==='residents'||action==='overview') {
         const residents=client?rows:rows.map(publicResident);
@@ -404,7 +426,7 @@ Deno.serve(async req => {
       // Never trust a flag or linked resident id supplied by the officer.
       // Plate verification happens against server-side property records only.
       entry.resident_id='';entry.resident_verified=false;
-      const residents=await siteRecords(entities.PropertyResident,300);
+      const residents=await siteRecords(entities.PropertyResident,300,'resident');
       const registeredVehicles=await siteRecords(entities.PropertyVehicle,500);
       const match=registeredVehicles.find((v:any)=>plateKey(v.plate)===entry.license_plate && clean(v.state).toUpperCase()===clean(entry.license_state).toUpperCase());
       const matchingResident=match?residents.find((r:any)=>r.id===match.resident_id):residents.find((r:any)=>plateKey(r.vehicle_plate)===entry.license_plate && clean(r.vehicle_state).toUpperCase()===clean(entry.license_state).toUpperCase());
@@ -440,7 +462,7 @@ Deno.serve(async req => {
       // cannot mark an arbitrary plate as an active registered resident.
       const currentPlate=plateKey(patch.license_plate||original.license_plate);
       const currentState=clean(patch.license_state||original.license_state).toUpperCase();
-      const residents=await siteRecords(entities.PropertyResident,300);
+      const residents=await siteRecords(entities.PropertyResident,300,'resident');
       const car=(await siteRecords(entities.PropertyVehicle,500)).find((v:any)=>plateKey(v.plate)===currentPlate&&clean(v.state).toUpperCase()===currentState);
       const registered=car?residents.find((r:any)=>r.id===car.resident_id):residents.find((r:any)=>plateKey(r.vehicle_plate)===currentPlate&&clean(r.vehicle_state).toUpperCase()===currentState);
       patch.resident_id=registered?.id||'';patch.resident_verified=!!registered&&clean(registered.lease_status)==='active';patch.vehicle_record_id=car?.id||'';
