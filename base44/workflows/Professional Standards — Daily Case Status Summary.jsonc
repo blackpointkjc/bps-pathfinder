@@ -1,0 +1,38 @@
+{
+  "name": "Professional Standards — Daily Case Status Summary",
+  "description": "Every morning at 9:15 AM Eastern, send a branded confidential status digest containing every IA case to Colonel Hiers and IA-authorized administrators. Already-sent recipients are skipped for the day.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "15 9 * * *",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "professional_standards_daily_case_summary",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_daily_case_summary": {
+          "call": "invoke_backend_function",
+          "with": {"function_name": "professionalStandardsDailyDigest", "args": {}},
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
