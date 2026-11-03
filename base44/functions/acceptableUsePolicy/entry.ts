@@ -43,6 +43,12 @@ export default async function(req: Request): Promise<Response> {
     }
     const profile = await api.asServiceRole.entities.User.get(caller.id);
     if (!profile || String(profile.email || '').toLowerCase() !== String(caller.email).toLowerCase()) return Response.json({error:'Unable to confirm current account'},{status:403});
+    const profileRoles=new Set([profile.role,...(Array.isArray(profile.additional_roles)?profile.additional_roles:[])].map((v:any)=>String(v||'').trim().toLowerCase()));
+    const clientAccount=profileRoles.has('client')||['client'].includes(String(profile.rank||'').toLowerCase())||String(profile.user_type||profile.account_type||profile.portal_type||'').toLowerCase()==='client';
+    if(clientAccount){
+      if(action==='status'||action==='accept')return Response.json({policy_version:VERSION,policy_title:TITLE,accepted:true,exempt:true,exemption:'client_portal',user_name:nameOf(profile)},{headers:{'Cache-Control':'no-store'}});
+      return Response.json({error:'Client Portal is exempt from this employee agreement.'},{status:400});
+    }
     // Read the CURRENT agreement version only. Prior internet-browser
     // acknowledgments remain in history but do not authorize current access.
     const receipts=unpack(await api.asServiceRole.entities.AcceptableUseAcknowledgment.filter(

@@ -9,7 +9,7 @@ import AdminDashboard from './AdminDashboard';
 import { base44 } from '@/api/base44Client';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
-import { setClientPreviewId } from '@/utils/clientPreview';
+import { getClientPreviewId, setClientPreviewId } from '@/utils/clientPreview';
 import { setOfficerPreviewId } from '@/utils/officerPreview';
 
 
@@ -221,8 +221,8 @@ export default function AdminCenter() {
   const queryClient = useQueryClient();
   const { data: signedInUser } = useQuery({ queryKey: ['adminCenterSignedInUser'], queryFn: () => base44.auth.me(), staleTime: 60000 });
   const navigate = useNavigate();
-  const [shadowMode, setShadowMode] = useState('');
-  const [selectedClient, setSelectedClient] = useState('');
+  const [shadowMode, setShadowMode] = useState(()=>getClientPreviewId()?'client':'');
+  const [selectedClient, setSelectedClient] = useState(()=>getClientPreviewId());
   const [selectedOfficer, setSelectedOfficer] = useState('');
   const [previewPeople, setPreviewPeople] = useState([]);
   const [selectedRoleUser, setSelectedRoleUser] = useState('');
@@ -233,14 +233,10 @@ export default function AdminCenter() {
   const masterSections = MASTER_SECTIONS.filter(item => (item.id !== 'training' || signedInRoles.has('admin') || signedInRoles.has('trainer') || signedInRoles.has('full_access')));
 
   const canPreview = signedInRoles.has('admin') || signedInRoles.has('full_access');
-  useEffect(() => {
-    // Account preview is scoped to Admin Center; do not leak it into normal navigation.
-    return () => {
-      setClientPreviewId('');
-      setOfficerPreviewId('');
-      queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
-    };
-  }, [queryClient]);
+  // Preview is explicitly exited with Exit preview. Do not delete its
+  // identity and ALL React Query data on transient AdminCenter unmounts; that
+  // invalidated auth and made the preview vanish during navigation/refresh.
+
   useEffect(() => {
     if (!canPreview) return;
     let active = true;
@@ -288,7 +284,7 @@ export default function AdminCenter() {
     setSelectedOfficer(mode === 'officer' ? profile.id : '');
     setSelectedRoleUser(!['client','officer'].includes(mode) ? profile.id : '');
     // Reset identity-dependent cached results before mounting the selected account.
-    queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
+    queryClient.invalidateQueries({predicate:query=>/^client/i.test(String(query.queryKey[0]||''))});
     setShadowMode(mode);
   };
 
@@ -298,7 +294,7 @@ export default function AdminCenter() {
     setOfficerPreviewId('');
     setSelectedOfficer('');
     setSelectedRoleUser('');
-    queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
+    queryClient.invalidateQueries({predicate:query=>/^client/i.test(String(query.queryKey[0]||''))});
     setShadowMode('');
     navigate({ pathname: window.location.pathname, search: '?admin_center=admin' }, { replace: true });
   };
@@ -341,7 +337,7 @@ export default function AdminCenter() {
     setOfficerPreviewId('');
     if (mode === 'client') setClientPreviewId(currentPreview.id, { ...currentPreview, __client_preview: true, __auth_admin_id: signedInUser?.id });
     else setOfficerPreviewId(currentPreview.id, { ...currentPreview, __officer_preview: true, __role_preview: mode, __auth_admin_id: signedInUser?.id });
-    queryClient.removeQueries({ predicate: query => !['adminCenterSignedInUser', 'adminPreviewPeople'].includes(String(query.queryKey[0] || '')) });
+    queryClient.invalidateQueries({predicate:query=>/^client/i.test(String(query.queryKey[0]||''))});
   };
   const previewPicker = <AdminUserPreviewPicker users={previewPeople} selectedId={selectedPreviewId} loading={previewLoading} error={previewError} onSelect={choosePreviewUser} onRetry={()=>setPreviewRetry(value=>value+1)} />;
   if (shadowMode) return <div className="min-h-full bg-[#070d17]">

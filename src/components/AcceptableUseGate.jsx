@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { isClientAccount } from '@/lib/directoryUtils';
 import { ShieldCheck, FileCheck2, AlertTriangle, Loader2, LockKeyhole } from 'lucide-react';
 
 export const AUP_VERSION = '2026-10-31-pathfinder-v2';
@@ -18,20 +19,23 @@ export function AcceptableUsePolicyText(){return <div className="space-y-4">{sec
 
 export default function AcceptableUseGate({user,children}) {
   const client = useQueryClient();
+  const exemptClient = isClientAccount(user);
   const [confirmed,setConfirmed] = useState(false);
   const [signature,setSignature] = useState('');
   // Include the current app-wide agreement version in the query identity so
   // cached approvals for an earlier agreement cannot bypass a new version.
   const key=['acceptableUsePolicy',AUP_VERSION,user?.id,String(user?.email||'').toLowerCase()];
   const {data, isLoading,isError,refetch} = useQuery({
-    queryKey:key,enabled:Boolean(user?.id),queryFn:async()=> (await base44.functions.invoke('acceptableUsePolicy',{action:'status'})).data,
+    queryKey:key,enabled:Boolean(user?.id)&&!exemptClient,queryFn:async()=> (await base44.functions.invoke('acceptableUsePolicy',{action:'status'})).data,
     staleTime:0,retry:1,refetchOnMount:'always',refetchOnWindowFocus:true
   });
   const accept=useMutation({
     mutationFn:async()=> (await base44.functions.invoke('acceptableUsePolicy',{action:'accept',policy_version:data?.policy_version,confirmed,signature})).data,
     onSuccess:result=>{if(result?.accepted && result?.policy_version===AUP_VERSION)client.setQueryData(key,prev=>({...prev,accepted:true,policy_version:AUP_VERSION,accepted_at:result.accepted_at}));}
   });
-  if(!user?.id) return children;
+  // Client Portal accounts are not company employees and must never be held
+  // behind the internal employee agreement or its verification request.
+  if(!user?.id || exemptClient) return children;
   // A yes/no flag alone is insufficient: acceptances belong only to the
   // matching version of the full Pathfinder-wide agreement.
   if(data?.accepted===true && data?.policy_version===AUP_VERSION) return children;
@@ -40,7 +44,7 @@ export default function AcceptableUseGate({user,children}) {
       <header className="flex gap-4 border-b border-[#29435d] bg-[#10263d] p-5"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-600/20 text-cyan-200"><ShieldCheck className="h-7 w-7"/></div><div><div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-300">Pathfinder · Required account acknowledgment</div><h1 className="mt-1 text-xl font-bold">Pathfinder Application User Agreement</h1><p className="mt-1 text-xs text-slate-300">Read and approve before continuing into your company account.</p></div></header>
       {isLoading?<div className="flex justify-center gap-2 p-12 text-slate-300"><Loader2 className="animate-spin"/>Checking policy acknowledgment…</div>
       :isError?<div className="space-y-3 p-6 text-center"><AlertTriangle className="mx-auto h-7 w-7 text-amber-300"/><p>Policy verification is unavailable. For account security, access remains held until verification succeeds.</p><button type="button" onClick={()=>refetch()} className="rounded bg-blue-600 px-5 py-2">Retry verification</button></div>
-      :<><div className="max-h-[48dvh] overflow-y-auto px-5 py-5 sm:px-7"><div className="mb-4 flex justify-between gap-2 text-xs text-slate-400"><span>Applies to all Pathfinder accounts and modules</span><span>Policy {data?.policy_version||AUP_VERSION}</span></div><AcceptableUsePolicyText/></div>
+      :<><div className="max-h-[48dvh] overflow-y-auto px-5 py-5 sm:px-7"><div className="mb-4 flex justify-between gap-2 text-xs text-slate-400"><span>Employee agreement · Client Portal accounts exempt</span><span>Policy {data?.policy_version||AUP_VERSION}</span></div><AcceptableUsePolicyText/></div>
       <div className="space-y-3 border-t border-[#29435d] bg-[#0b1d30] p-5">
         <label className="flex items-start gap-3 text-sm text-slate-200"><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)} className="mt-1 h-4 w-4 accent-cyan-500"/><span>I have read the Pathfinder Application User Agreement, agree to follow its account, operational, confidentiality, security, and authorized-use requirements, and understand that violations may result in corrective or disciplinary action.</span></label>
         <label className="block text-xs font-bold text-slate-300">Electronic signature — type your full name<input value={signature} onChange={event=>setSignature(event.target.value)} maxLength={100} autoComplete="name" placeholder={data?.user_name||'First and last name'} className="mt-1.5 h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-base text-white"/></label>

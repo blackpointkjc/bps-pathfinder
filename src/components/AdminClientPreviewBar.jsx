@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Eye, ShieldCheck, X } from 'lucide-react';
 import { getClientPreviewId, setClientPreviewId } from '@/utils/clientPreview';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 
 export default function AdminClientPreviewBar({ user, activeCenter }) {
+  const queryClient=useQueryClient();
   const [clients, setClients] = useState([]);
   const [selected, setSelected] = useState(() => getClientPreviewId());
 
@@ -44,7 +46,9 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
     const profile = clients.find(client => client.id === id) || null;
     setSelected(id);
     setClientPreviewId(id, profile);
-    window.location.reload();
+    // Switch previews in-place; a full browser reload can drop the admin
+    // session, trigger the AUP gate, and close the preview unexpectedly.
+    queryClient.invalidateQueries({predicate:q=>/^client/i.test(String(q.queryKey[0]||''))});
   };
 
   const current = clients.find(client => client.id === selected);
