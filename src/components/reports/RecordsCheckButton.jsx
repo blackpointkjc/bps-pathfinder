@@ -36,9 +36,9 @@ export default function RecordsCheckButton({name='',plate='',site='',compact=fal
    }
   }catch(e){setError(e.message||'Records search unavailable');}finally{setChecking(false);}
  };
- return <div className={compact?'space-y-1':'space-y-2 rounded-lg border border-cyan-900/50 p-3'}>
-  <button type="button" disabled={checking||!(plate||name)} onClick={check} className="rounded-md bg-cyan-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{checking?'Checking records…':`Run Pathfinder ${plate?'vehicle':'person'} records check`}</button>
+ return <div className={compact?'space-y-2':'space-y-3 rounded-xl border border-[#2d5068] bg-[#0c2030] p-4'}>
+  <button type="button" disabled={checking||!(plate||name)} onClick={check} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-cyan-600 bg-[#0b6585] px-4 py-2 text-xs font-black text-white transition hover:bg-[#0d7898] disabled:opacity-40">{checking?'Checking records…':`Run Pathfinder ${plate?'vehicle':'person'} records check`}</button>
   {error&&<p role="alert" className="text-xs text-amber-400">{error}</p>}
-  {report&&<div role="status" className="text-xs text-slate-200"><b>{report.total} company-record matches</b>{site&&<span> · Property: {site}</span>}{report.matches.slice(0,5).map((item,i)=><div key={`${item.entity}-${i}`} className="mt-1 border-l-2 border-cyan-700 pl-2">{item.source}: {item.label||item.summary||'Existing record'} {item.status&&`(${item.status})`}</div>)}<p className="mt-1 text-[10px] text-slate-400">Internal Pathfinder records only. Not a DMV, warrant, NCIC or court verification.</p></div>}
+  {report&&<div role="status" className="rounded-lg border border-[#35546b] bg-[#0a1928] p-3 text-xs text-slate-200"><b>{report.total} company-record matches</b>{site&&<span> · Property: {site}</span>}{report.matches.slice(0,5).map((item,i)=><div key={`${item.entity}-${i}`} className="mt-2 rounded-md border-l-2 border-cyan-500 bg-[#123049] px-3 py-2">{item.source}: {item.label||item.summary||'Existing record'} {item.status&&`(${item.status})`}</div>)}<p className="mt-1 text-[10px] text-slate-400">Internal Pathfinder records only. Not a DMV, warrant, NCIC or court verification.</p></div>}
  </div>;
 }

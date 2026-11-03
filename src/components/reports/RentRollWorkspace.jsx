@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {Building2,Users,CarFront,ShieldCheck,Search,Download,RefreshCw,Plus,Upload,ChevronRight,X,MapPin,SlidersHorizontal,ArrowLeft,CheckCircle2,AlertCircle,UserRound,FileText} from 'lucide-react';
 import RentRollImportPanel from './RentRollImportPanel';
+import './pathfinderRecordsTheme.css';
 import VehicleFields from './VehicleFields';
 
 const emptyResident=()=>({full_name:'',unit_number:'',building:'',lease_status:'active',lease_start:'',lease_end:'',lease_id:'',resident_type:'tenant',phone:'',email:'',notes:''});
@@ -47,7 +48,7 @@ export default function RentRollWorkspace({site,sites,onSelectSite,loading,direc
  const submitVehicle=e=>{e.preventDefault();onSave('vehicle_save',{vehicle:vehicleDraft,id:editingVehicleId||undefined},()=>{close();});};
  const chosenSites=sites.filter(s=>normal(s).includes(normal(siteSearch)));
  const showResults=Boolean(site&&!loading&&data?.residents&&Array.isArray(data.residents));
- return <div className="min-h-full bg-[#07111e] text-slate-100">
+ return <div className="bps-records-workspace min-h-full bg-[#07111e] text-slate-100">
   <div className="mx-auto max-w-[1440px] space-y-5 px-3 py-4 sm:px-5 lg:px-7 lg:py-6">
    <header className="overflow-hidden rounded-2xl border border-[#25445a] bg-[linear-gradient(115deg,#0e2940_0%,#0a1c2d_55%,#091522_100%)] shadow-[0_16px_45px_rgba(0,0,0,.16)]">
     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between lg:p-7">
