@@ -5,6 +5,7 @@ import { getClientPortalUser } from '@/utils/clientPreview';
 import VehicleFields from '@/components/reports/VehicleFields';
 import PropertyResidentPicker from '@/components/reports/PropertyResidentPicker';
 import RentRollImportPanel from '@/components/reports/RentRollImportPanel';
+import RentRollWorkspace from '@/components/reports/RentRollWorkspace';
 import RecordsCheckButton from '@/components/reports/RecordsCheckButton';
 import { vehicleSummary } from '@/lib/vehicleForm';
 import { Car,Printer,Download,RefreshCw } from 'lucide-react';
@@ -186,6 +187,15 @@ export default function ParkingRecords({mode='officer'}){
    if(printWindow)printNotice(response.violation,printWindow);
    setTicket(blankTicket());setEditingTicketId('');setTab('violations');await refresh();toast.success('Parking notice saved for supervisor review'+(printWindow?' and opened for printing':' — print from the notice list'));
   }catch(e){printWindow?.close();setError(e.message||'Ticket not saved');toast.error(e.message||'Ticket not saved');}finally{setBusy(false)}};
+ if(rentRollOnly)return <RentRollWorkspace
+   site={site} sites={sites} onSelectSite={next=>{setSite(next);setSiteAuto(false);setRentSearch('');}}
+   loading={loading} directoryBusy={directoryBusy} error={error}
+   onRetry={()=>{setDirectoryRetry(n=>n+1);if(site)void refresh();}}
+   onRefresh={()=>void refresh()} data={loadedSite===site?data:null}
+   search={rentSearch} setSearch={setRentSearch} residents={loadedSite===site?residents:[]} vehicles={loadedSite===site?vehicles:[]}
+   client={client} admin={admin} busy={busy} importing={importing} onImportingChange={setImporting}
+   onImported={refresh} onExport={exportRentRoll} onSave={save}
+ />;
  return <div className="min-h-full bg-[#081321] p-3 text-slate-100 md:p-5">
   <div className="mx-auto max-w-6xl space-y-4">
    <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="flex items-center gap-2 text-xl font-black"><Car className="text-cyan-300"/>{rentRollOnly?'Rent Roll & Vehicles':'Parking Notices'}</h1></div>
