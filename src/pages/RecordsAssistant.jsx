@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Bot, Loader2, FileText, MapPin, Calendar, ExternalLink, User, Radio, Car, ShieldAlert, Volume2 } from 'lucide-react';
+import { Search, Bot, Loader2, FileText, MapPin, Calendar, ExternalLink, User, Radio, Car, ShieldAlert, Volume2, ShieldCheck, X } from 'lucide-react';
+import '@/components/reports/pathfinderRecordsTheme.css';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
@@ -40,6 +41,8 @@ export default function RecordsAssistant() {
   const [personName, setPersonName] = useState('');
   const [siteNames,setSiteNames]=useState([]);
   const [site,setSite]=useState('');
+  const [siteSearch,setSiteSearch]=useState('');
+  const [hasSearched,setHasSearched]=useState(false);
   const [residentMatches,setResidentMatches]=useState([]);
   useEffect(()=>{let mounted=true;listDirectoryLocations('site_name').then(list=>{
     if(!mounted)return;
@@ -56,6 +59,7 @@ export default function RecordsAssistant() {
     if (effectiveQuery.length < 2) return;
     if (searchType === 'person' && effectiveQuery !== query.trim()) setQuery(effectiveQuery);
     setSearching(true);
+    setHasSearched(true);
     try {
       const response = await base44.functions.invoke('searchCompanyRecords', { query: effectiveQuery, search_type: searchType });
       const data = response?.data || response || {};
@@ -96,23 +100,19 @@ export default function RecordsAssistant() {
   const visible = sourceFilter === 'all' ? results : results.filter(item => item.source === sourceFilter);
 
   return (
-    <div className="min-h-screen bg-[#080f19] text-slate-100 p-4 md:p-7">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3"><Bot className="h-7 w-7 text-blue-300" /></div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-black tracking-wide">Records AI search</h1>
-            <p className="text-sm text-slate-400">Search every company report for a person, vehicle, address, phone number, report number, or call number.</p>
-          </div>
-          <Button type="button" variant="outline" onClick={() => { setVoiceEnabled(true); announceVoice('Records A I audio enabled.', { force: true, dedupeMs: 0 }); }} className="shrink-0 border-cyan-600/50 text-cyan-200"><Volume2 className="mr-2 h-4 w-4" />Audio on / test</Button>
-        </div>
+    <div className="bps-records-workspace min-h-full">
+      <div className="bps-records-inner space-y-5">
+        <header className="bps-records-hero"><div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="flex min-w-0 items-start gap-4"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300"><Bot className="h-6 w-6" /></div><div className="min-w-0"><p className="bps-records-eyebrow">Pathfinder · Intelligence & records</p><h1 className="bps-records-heading">Records AI</h1><p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">Search authorized company reports, CAD history, incidents, vehicles, names and internal property records.</p></div></div>
+          <button type="button" onClick={() => { setVoiceEnabled(true); announceVoice('Records A I audio enabled.', { force: true, dedupeMs: 0 }); }} className="bps-records-button self-start sm:self-auto"><Volume2 size={16}/>Test records audio</button>
+        </div><div className="flex items-center gap-2 border-t border-[#2b4358] bg-[#071826]/60 px-5 py-3 text-[11px] text-slate-400 sm:px-6"><ShieldCheck size={15} className="shrink-0 text-cyan-400"/>Restricted company sources · Source verification required before enforcement decisions</div></header>
 
-        <Card className="border-slate-700 bg-[#111d2b]">
-          <CardContent className="p-4">
-            <div className="mb-3 grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => setSearchType('all')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'all' ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Search className="h-3.5 w-3.5" />All records</button>
-              <button type="button" onClick={() => setSearchType('person')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'person' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><User className="h-3.5 w-3.5" />People</button>
-              <button type="button" onClick={() => setSearchType('vehicle')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'vehicle' ? 'border-amber-500 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Car className="h-3.5 w-3.5" />Motor vehicles</button>
+        <Card className="bps-records-card !border-[#29445a] !bg-[#0d1d2d]">
+          <CardContent className="p-4 sm:p-5">
+            <div className="mb-4 flex flex-wrap gap-2 rounded-xl border border-[#2e455b] bg-[#081624] p-2" role="group" aria-label="Records search type">
+              <button type="button" onClick={() => setSearchType('all')} className={`bps-records-tab flex flex-1 items-center justify-center gap-2 ${searchType === 'all' ? '!border-cyan-400 !bg-cyan-700/20 !text-cyan-100' : ''}`} aria-pressed={searchType==='all'}><Search className="h-3.5 w-3.5" />All records</button>
+              <button type="button" onClick={() => setSearchType('person')} className={`bps-records-tab flex flex-1 items-center justify-center gap-2 ${searchType === 'person' ? '!border-cyan-400 !bg-cyan-700/20 !text-cyan-100' : ''}`} aria-pressed={searchType==='person'}><User className="h-3.5 w-3.5" />People</button>
+              <button type="button" onClick={() => setSearchType('vehicle')} className={`bps-records-tab flex flex-1 items-center justify-center gap-2 ${searchType === 'vehicle' ? '!border-cyan-400 !bg-cyan-700/20 !text-cyan-100' : ''}`} aria-pressed={searchType==='vehicle'}><Car className="h-3.5 w-3.5" />Motor vehicles</button>
             </div>
             {searchType === 'person' && (
               <div className="mb-4 grid gap-3 lg:grid-cols-[1.3fr_.7fr]">
@@ -132,17 +132,17 @@ export default function RecordsAssistant() {
                 </div>
               </div>
             )}
-            <label className="mb-3 block text-xs font-semibold text-slate-300">Property registry to include in person / vehicle check
-              <select aria-label="Search resident property registry" value={site} onChange={e=>setSite(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-white sm:max-w-md"><option value="">Company records only</option>{siteNames.map(name=><option key={name} value={name}>{name}</option>)}</select>
-            </label>
+            <section className="mb-4 rounded-xl border border-[#30495e] bg-[#081826] p-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div><h3 className="flex items-center gap-2 text-xs font-black text-slate-200"><MapPin size={15} className="text-cyan-400"/>Include property registry</h3><p className="mt-1 text-[11px] text-slate-500">Add one authorized site's residents, parking records and associated vehicles to this search.</p></div>{site&&<button type="button" className="text-xs font-bold text-cyan-300 underline" onClick={()=>setSite('')}>Clear property</button>}</div>
+            {siteNames.length>8&&<label className="mb-2 flex max-w-sm items-center gap-2 rounded-lg border border-[#31495e] bg-[#071321] px-3"><Search size={14} className="text-slate-500"/><input value={siteSearch} onChange={e=>setSiteSearch(e.target.value)} className="h-9 min-w-0 w-full bg-transparent text-xs text-slate-100 outline-none" placeholder="Find property" aria-label="Filter property locations"/></label>}
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]" role="group" aria-label="Select property records"><button type="button" aria-pressed={!site} className="bps-records-tab shrink-0" onClick={()=>setSite('')}>Company records only</button>{siteNames.filter(name=>name.toLowerCase().includes(siteSearch.trim().toLowerCase())).map(name=><button type="button" key={name} className="bps-records-tab shrink-0" aria-pressed={site===name} onClick={()=>setSite(name)}>{name}</button>)}</div></section>
             <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row">
               {searchType !== 'person' && (
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={searchType === 'vehicle' ? 'Plate, VIN, year, make, model or color…' : 'Name, plate, phone, address, report or call number…'} className="h-12 border-slate-600 bg-[#0b1522] pl-10 text-white" />
+                  <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={searchType === 'vehicle' ? 'Plate, VIN, year, make, model or color…' : 'Name, plate, phone, address, report or call number…'} className="!h-12 !border-[#36536b] !bg-[#081421] pl-10 text-white focus-visible:ring-cyan-500" />
                 </div>
               )}
-              <Button type="submit" disabled={searching || (searchType === 'person' ? personName.trim().length < 2 : query.trim().length < 2)} className={`${searchType === 'person' ? 'w-full' : ''} h-12 bg-blue-700 hover:bg-blue-600`}>
+              <Button type="submit" disabled={searching || (searchType === 'person' ? personName.trim().length < 2 : query.trim().length < 2)} className={`bps-records-button bps-records-button-primary !h-12 ${searchType === 'person' ? 'w-full' : ''}`}>
                 {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}{searchType === 'person' ? 'SEARCH PATHFINDER PERSON RECORDS' : searchType === 'vehicle' ? 'SEARCH VEHICLE RECORDS' : 'SEARCH COMPANY RECORDS'}
               </Button>
             </form>
@@ -153,7 +153,7 @@ export default function RecordsAssistant() {
         </Card>
 
         {searchType === 'person' && (
-          <Card className="overflow-hidden border-cyan-900/70 bg-[#0c1724]">
+          <Card className="bps-records-card overflow-hidden !border-[#29445a] !bg-[#0d1d2d]">
             <CardContent className="p-0">
               <div className="flex flex-col gap-3 border-b border-slate-800 bg-cyan-950/10 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -175,8 +175,9 @@ export default function RecordsAssistant() {
           </Card>
         )}
 
+        {hasSearched && <div aria-label="Search results summary" className="grid grid-cols-2 gap-3 sm:grid-cols-3">{[[totalMatches,'Company matches'],[searchedSources,'Sources searched'],[residentMatches.length,'Property matches']].map(([value,label])=><div key={label} className="bps-records-card p-4"><p className="text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</p><p className="mt-2 text-3xl font-black tabular-nums text-white">{searching?'—':value}</p></div>)}</div>}
         {(results.length > 0 || totalMatches > 0 || warrantStatusText) && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#29445a] bg-[#0b1a2a] p-3">
             <Badge className="bg-blue-500/15 text-blue-300">{totalMatches} MATCHES</Badge>
             <Badge variant="outline" className="border-slate-600 text-slate-300">{searchedSources} SOURCES SEARCHED</Badge>
             {searchType === 'person' && warrantStatusText && <Badge variant="outline" className={warrantMatches > 0 ? 'border-red-600/60 text-red-300' : 'border-emerald-600/60 text-emerald-300'}><ShieldAlert className="mr-1 h-3 w-3" />{warrantStatusText.toUpperCase()}</Badge>}
@@ -193,7 +194,7 @@ export default function RecordsAssistant() {
               ? `${createPageUrl('CADCenter')}?section=alerts&tool=bolo&open=${encodeURIComponent(item.id)}`
               : `${createPageUrl('RecordViewer')}?id=${encodeURIComponent(item.id)}&entity=${encodeURIComponent(item.entity)}`;
             return (
-              <Card key={`${item.entity}-${item.id}`} className="border-slate-700 bg-[#101b29] hover:border-blue-500/50">
+              <Card key={`${item.entity}-${item.id}`} className="bps-records-card !border-[#29445a] !bg-[#0c2030] transition hover:!border-cyan-600/50">
                 <CardContent className="p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0 flex-1">
@@ -215,7 +216,7 @@ export default function RecordsAssistant() {
                       {item.linked_call_location && <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">Related CAD Location: {item.linked_call_location}</p>}
                       {item.summary && <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-300">{item.summary}</p>}
                     </div>
-                    <Button asChild variant="outline" className="shrink-0 border-blue-600/50 text-blue-300 hover:bg-blue-500/10">
+                    <Button asChild variant="outline" className="bps-records-button shrink-0 !text-cyan-200">
                       <Link to={target}><FileText className="mr-2 h-4 w-4" />{isBolo ? 'OPEN BOLO' : 'OPEN SOURCE REPORT'}<ExternalLink className="ml-2 h-3 w-3" /></Link>
                     </Button>
                   </div>
@@ -225,7 +226,7 @@ export default function RecordsAssistant() {
           })}
         </div>
 
-        {!searching && query && results.length === 0 && totalMatches === 0 && (
+        {!searching && hasSearched && results.length === 0 && totalMatches === 0 && residentMatches.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-700 p-12 text-center text-slate-500">
             <div className="font-bold text-slate-300">NO MATCHING {searchType === 'person' ? 'PERSON' : searchType === 'vehicle' ? 'MOTOR VEHICLE' : 'COMPANY'} RECORDS</div>
             {searchType === 'person' && <div className="mt-2 text-sm text-emerald-400">No warrant records located in Pathfinder.</div>}
