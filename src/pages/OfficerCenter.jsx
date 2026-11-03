@@ -65,7 +65,6 @@ const TOOLS = {
     { id: 'dar', label: 'Daily Activity', component: DailyActivityReports },
     { id: 'incident', label: 'Incident Report', component: IncidentReports },
     { id: 'parking', label: 'Parking Notices', component: ParkingRecords },
-    { id: 'rentroll', label: 'Property Rent Roll & Vehicles', component: () => <ParkingRecords mode="rentroll"/> },
     { id: 'records', label: 'Records AI (People & Vehicles)', component: RecordsAssistant },
     { id: 'maintenance', label: 'Maintenance', component: MaintenanceReports },
     { id: 'opendoor', label: 'Open Door', component: OpenDoorReports },

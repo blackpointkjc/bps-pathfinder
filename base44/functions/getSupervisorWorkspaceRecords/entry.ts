@@ -81,7 +81,7 @@ Deno.serve(async(req)=>{
 if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email verification required for Professional Standards',code:'PS_VERIFICATION_REQUIRED'},{status:403});
 // A read-only roster load must not write an IA audit event on every refresh.
   const requestedKind=n((await req.clone().json().catch(()=>({}))).kind);
-  const directoryOnly=requestedKind==='personnel'&&(role(me).has('officer')||role(me).has('trainer'));
+  const directoryOnly=requestedKind==='personnel'&&!admin(me)&&!commandWide(me)&&(role(me).has('officer')||role(me).has('trainer'));
   if(!directoryOnly&&!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
   const body=await req.json().catch(()=>({})),kind=n(body.kind),entity=entities[kind];
   if(kind==='portrait'){
@@ -109,7 +109,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
     const company=(admin(me)||commandWide(me))?staff.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
     const selected=[...new Map([...allowed,...company].map((p:any)=>[String(p.id),p])).values()];
     const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:directoryOnly?'':p.mobile_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
-    return Response.json({success:true,officers,platoon_commands:commands,platoons:visible,regions:[...new Set(visible.map(p=>p.region))]});
+    return Response.json({success:true,officers,platoon_commands:commands,platoons:visible.map(p=>({name:p.platoon,platoon:p.platoon,region:p.region,active:true})),regions:[...new Set(visible.map(p=>p.region))]});
   }
   const [users,sites,rows]=await Promise.all([
    sdk.asServiceRole.entities.User.list('last_name',1000),

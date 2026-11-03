@@ -102,7 +102,7 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
   // not a company-wide A/B pair. Retain legacy assignments until migrated.
   const regionNames=distinct([...regionsDirectory.filter(r=>r.active!==false).map(r=>r.name),...users.map(p=>p.division),...platoonDefinitions.map(p=>p.region),...(!companyAccess&&viewer?.division?[viewer.division]:[])]);
   const region=companyAccess?(regionNames.includes(chosenRegion)?chosenRegion:regionNames[0]||''):viewer?.division||'';
-  const platoons=distinct([...platoonDefinitions.filter(p=>p.region===region && p.active!==false).map(p=>p.name),...users.filter(person=>person.division===region && person.platoon && person.platoon!=='Command').map(person=>person.platoon)]);
+  const platoons=distinct([...platoonDefinitions.filter(p=>String(p.region||'').toLowerCase()===String(region||'').toLowerCase() && p.active!==false).map(p=>p.name||p.platoon),...users.filter(person=>person.division===region && person.platoon && person.platoon!=='Command').map(person=>person.platoon)]);
   const fixedPlatoon=viewer?.oversight_platoon||viewer?.platoon||'';
   const platoon=companyAccess?(platoons.includes(chosenPlatoon)?chosenPlatoon:platoons[0]||''):fixedPlatoon;
   const platoonPeople=users.filter(person=>person.division===region&&person.platoon===platoon);
@@ -155,7 +155,7 @@ export default function RankStructure(){
   const isAdmin=user?.role==='admin'||(user?.additional_roles||[]).includes('full_access');
   const isCompanyCommand=isAdmin||['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(String(user?.rank||'').toLowerCase().replace(/[.]/g,''));
   const {data:rosterData={officers:[],commands:[],platoons:[],regions:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({
-    queryKey:['rankStructureSnapshotV3',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
+    queryKey:['rankStructureSnapshotV5',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
     queryFn:async()=>{
       const response=await new Promise((resolve,reject)=>{
         const timer=setTimeout(()=>reject(new Error('The roster service is taking longer than expected. The last confirmed roster remains available; retry when connectivity recovers.')),35000);
@@ -164,13 +164,13 @@ export default function RankStructure(){
       });
       const data=response?.data||response||{};
       if(data.error||data.success!==true)throw new Error(data.error||'Rank Structure roster unavailable');
-      return {officers:data.officers||[],commands:data.platoon_commands||[],platoons:data.platoons||[],regions:(data.regions||[]).map(name=>({name,active:true}))};
+      return {officers:data.officers||[],commands:data.platoon_commands||[],platoons:(data.platoons||[]).map(p=>({...p,name:p.name||p.platoon})),regions:(data.regions||[]).map(item=>typeof item==='string'?({name:item,active:true}):item)};
     },enabled:!!user?.id,staleTime:5*60*1000,gcTime:30*60*1000,
     retry:1,retryDelay:2500,
     refetchOnWindowFocus:false,refetchOnMount:false,
   });
   useEffect(()=>{
-    if(!user?.id||!rosterData?.officers?.length)return;
+    if(!user?.id||!(rosterData?.officers?.length||rosterData?.platoons?.length))return;
     setLastGoodRoster(rosterData);
     try{sessionStorage.setItem('bps:rank-roster:'+user.id,JSON.stringify({at:Date.now(),data:rosterData}));}catch{}
   },[rosterData,user?.id]);
@@ -178,7 +178,7 @@ export default function RankStructure(){
     if(!user?.id||lastGoodRoster)return;
     try{const saved=JSON.parse(sessionStorage.getItem('bps:rank-roster:'+user.id)||'null');if(saved?.at>Date.now()-30*60*1000&&saved?.data?.officers?.length)setLastGoodRoster(saved.data);}catch{}
   },[user?.id]);
-  const displayRoster=rosterData?.officers?.length?rosterData:(lastGoodRoster||rosterData);
+  const displayRoster=(rosterData?.platoons?.length||rosterData?.officers?.length)?rosterData:(lastGoodRoster||rosterData);
   const hasRoster=Boolean(displayRoster?.officers?.length||displayRoster?.platoons?.length);
   const structureData={platoons:displayRoster.platoons||[],regions:displayRoster.regions||[]};
   useEffect(()=>{

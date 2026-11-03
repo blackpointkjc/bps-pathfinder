@@ -197,13 +197,14 @@ Deno.serve(async (req) => {
         const rows = await listWithRetry(entity, entityName);
         return (rows || []).filter((record: any) => {
           const allText = normalizeSearchText(JSON.stringify(record));
-          // Structured fields are preferred for display, but searches must not miss a
-          // real person/vehicle merely because an older report stored the value in a
-          // narrative, legacy field, or differently named nested object.
+          // People searches must match people, not a street name or incidental
+          // narrative mention. For example 'brown' must not return a traffic
+          // stop at Brown's Island as though Brown were a named person.
+          // All-record search still indexes full narratives for broader research.
           const scoped = searchType === 'person'
-            ? normalizeSearchText(`${personText(record)} ${allText}`)
+            ? normalizeSearchText(personText(record))
             : searchType === 'vehicle'
-              ? normalizeSearchText(`${vehicleText(record)} ${allText}`)
+              ? normalizeSearchText(vehicleText(record))
               : allText;
           return scoped && matchesTerms(scoped, terms);
         }).slice(0, 100).map((record: any) => {
