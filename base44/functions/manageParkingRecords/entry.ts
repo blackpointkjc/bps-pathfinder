@@ -356,9 +356,10 @@ Deno.serve(async req => {
             ...cars.flatMap(v=>[v.plate,v.state,v.year,v.make,v.model,v.color,v.vin,v.permit_number,v.permit_status,v.vehicle_status,v.unit_number])].map(value=>clean(value,240).toLowerCase()).filter(Boolean);
           return tokens.every(token=>indexed.some(value=>value.includes(token)));
         });
-        const visible=action==='resident_lookup'?residents.slice(0,60):residents;
-        const ids=new Set(visible.map(row=>row.id));
-        return Response.json({residents:visible,vehicles:vehicles.filter(v=>ids.has(v.resident_id)),total_matches:residents.length,verified_resident_count:rows.length,site_name:site,query:q,source:'Property rent roll (not DMV/NCIC)'});
+        // Return every matching resident on the authorized property. A former
+        // 60-person UI cap hid household members with the same name/address.
+        const ids=new Set(residents.map(row=>row.id));
+        return Response.json({residents,vehicles:vehicles.filter(v=>ids.has(v.resident_id)),total_matches:residents.length,verified_resident_count:rows.length,site_name:site,query:q,source:'Property rent roll (not DMV/NCIC)'});
       }
       if(action==='residents'||action==='overview') {
         const residents=client?rows:rows.map(publicResident);
@@ -377,6 +378,10 @@ Deno.serve(async req => {
           .map(value=>clean(value,240).toLowerCase()).filter(Boolean);
         return terms.every(term=>searchable.some(value=>value.includes(term)));
       }).map((row:any)=>({id:row.id,source:'Property resident registry',...publicResident(row),
+        // Address is intentionally taken from the saved rent-roll unit field.
+        // Letter-coded Creighton streets were expanded at import; don't invent
+        // a postal address when a resident has a numeric apartment only.
+        address:clean(row.unit_number),
         vehicles:vehicles.filter(v=>v.resident_id===row.id)}));
       const parking=await entities.ParkingViolation.filter({location:site},'-created_date',150);
       const past=parking.filter((p:any)=>siteKey(p.location)===siteKey(site) && (plateKey(p.license_plate).includes(plateKey(query))||clean(p.subject_name||p.vehicle_owner).toLowerCase().includes(query))).slice(0,20)
