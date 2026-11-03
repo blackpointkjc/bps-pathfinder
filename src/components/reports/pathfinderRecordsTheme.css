@@ -1,0 +1,26 @@
+/* Unified Admin / Client / Officer records workspace. No external assets or integrations. */
+.bps-records-workspace{--record-border:#29445a;--record-panel:#0d1d2d;--record-ink:#e3edf7;background:#07111e;color:var(--record-ink);min-width:0}
+.bps-records-workspace .bps-records-inner{max-width:1440px;margin-inline:auto;padding:18px 14px 34px}
+@media(min-width:768px){.bps-records-workspace .bps-records-inner{padding:24px 26px 40px}}
+.bps-records-workspace .bps-records-hero{overflow:hidden;border:1px solid #25445a;border-radius:18px;background:linear-gradient(115deg,#102b42,#0b1c2e 60%,#091522);box-shadow:0 14px 35px #0003}
+.bps-records-workspace .bps-records-eyebrow{color:#67d8f6;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.18em}
+.bps-records-workspace .bps-records-heading{font-size:clamp(20px,2.6vw,28px);font-weight:850;letter-spacing:-.025em;color:#fff;line-height:1.25}
+.bps-records-workspace .bps-records-card{border:1px solid #29445a;border-radius:14px;background:#0d1d2d;box-shadow:0 5px 20px #0002}
+.bps-records-workspace .bps-records-input{background:#081421;border:1px solid #375069;min-width:0;width:100%;min-height:42px;border-radius:10px;color:#f1f7fc;padding:9px 12px;font-size:13px;outline:none}
+.bps-records-workspace .bps-records-input:focus{border-color:#3ac6e5;box-shadow:0 0 0 2px #1b9db733}
+.bps-records-workspace .bps-records-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid #3a5972;border-radius:9px;background:#132b40;padding:9px 13px;font-weight:750;font-size:12px;color:#e1eff8;transition:background .15s,border-color .15s}
+.bps-records-workspace .bps-records-button:hover{background:#17415b;border-color:#42c3e1}
+.bps-records-workspace .bps-records-button[disabled]{opacity:.5;cursor:not-allowed}
+.bps-records-workspace .bps-records-button-primary{background:#087ca0;border-color:#17a2c7;color:white}
+.bps-records-workspace .bps-records-button-primary:hover{background:#0995ba}
+.bps-records-workspace .bps-records-tab{border:1px solid #314b62;border-radius:9px;background:#0e2335;color:#c4d3df;padding:10px 13px;font-size:12px;font-weight:750;min-height:42px;white-space:nowrap}
+.bps-records-workspace .bps-records-tab[aria-current='page'],.bps-records-workspace .bps-records-tab[aria-pressed='true']{border-color:#35bed9;background:#0d3d52;color:#e4fcff}
+.bps-records-workspace .bps-records-item{border:1px solid #29445a;background:#0c2030;border-radius:12px;padding:14px}
+.bps-records-workspace .bps-records-item:hover{border-color:#39718a}
+.bps-records-workspace .bps-records-field{font-size:12px;font-weight:650;color:#cbdce9}
+.bps-records-workspace .bps-records-field :is(input,select,textarea){display:block;margin-top:6px;width:100%;min-width:0;min-height:42px;border-radius:9px;border:1px solid #355169;background:#081421;color:#f1f7fc;padding:9px 12px;font-size:13px}
+.bps-records-workspace .bps-records-field :is(input,select,textarea):focus{outline:1px solid #35bed9}
+.bps-records-workspace .bps-records-item :is(button,a),.bps-records-workspace .bps-records-card :is(button,a){max-width:100%}
+.bps-records-workspace :is(.bps-records-card,.bps-records-item) details{min-width:0}
+.bps-records-workspace details>summary{cursor:pointer}
+@media(max-width:640px){.bps-records-workspace .bps-records-inner{padding:12px 10px 22px}.bps-records-workspace .bps-records-hero{border-radius:13px}.bps-records-workspace .bps-records-tab{flex:1}.bps-records-workspace .bps-records-card{border-radius:12px}}
