@@ -626,6 +626,13 @@ const isReadOnlyFunction = (name, payload = {}) => {
   // versus action=update/delete). The old classifier treated every manage* list
   // as a write, which bypassed read throttling, cleared caches, and made opening a
   // page look like a mutation. That caused request bursts and stale/loading loops.
+  // The rent-roll endpoint is mixed read/write. Its read actions were being
+  // classified as writes (sites, rent_roll, overview, verify), causing cache
+  // invalidations and heavy request contention just to open a client page.
+  if (functionName==='manageParkingRecords' && new Set([
+    'sites','overview','residents','rent_roll','resident_lookup','import_verify',
+    'rules','violations','records_check','review_queue','officer_tasks','export'
+  ]).has(action)) return true;
   if (action) return readActions.has(action);
 
   if (/^(get|list|search|fetch|load|check)/i.test(functionName)) return true;
