@@ -3,7 +3,7 @@ import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity'
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, GraduationCap, MessageCircle, Radio, Settings, Shield, Users } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import { base44 } from '@/api/base44Client';
@@ -81,7 +81,8 @@ const ADMIN_SECTIONS = [
 
 function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
   const navigate = useNavigate();
-  const params = new URLSearchParams(window.location.search);
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
   const raw = params.get(queryParam);
   const rawRequested=queryParam==='admin_people_tool'&&['chain','cadpersonnel'].includes(raw)?'availability':raw;
   const requested = queryParam === 'admin_site_ops_tool' && ['qr','postorders','control'].includes(rawRequested) ? 'operations' : queryParam === 'admin_location_dispatch_tool' && rawRequested === 'geofence' ? 'locations' : rawRequested;
@@ -89,17 +90,20 @@ function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
   const [activeId, setActiveId] = useState(initial);
 
   useEffect(() => {
-    const rawValue = new URLSearchParams(window.location.search).get(queryParam);
+    // URL is the source of truth. The tools array is created inline each render;
+    // including it + activeId as dependencies previously reverted a clicked
+    // tab to the old query parameter before navigation finished.
+    const rawValue = new URLSearchParams(location.search).get(queryParam);
     const rawCurrent=queryParam==='admin_people_tool'&&['chain','cadpersonnel'].includes(rawValue)?'availability':rawValue;
     const current = queryParam === 'admin_site_ops_tool' && ['qr','postorders','control'].includes(rawCurrent) ? 'operations' : queryParam === 'admin_location_dispatch_tool' && rawCurrent === 'geofence' ? 'locations' : rawCurrent;
-    if (current && tools.some(item => item.id === current) && current !== activeId) setActiveId(current);
-  }, [queryParam, tools, activeId]);
+    if(current && tools.some(item=>item.id===current))setActiveId(previous=>previous===current?previous:current);
+  }, [queryParam, location.search]);
 
   const select = id => {
     setActiveId(id);
-    const next = new URLSearchParams(window.location.search);
+    const next = new URLSearchParams(location.search);
     next.set(queryParam, id);
-    navigate({ pathname: window.location.pathname, search: `?${next.toString()}` }, { replace: true });
+    navigate({ pathname: location.pathname, search: `?${next.toString()}` }, { replace: true });
   };
 
   const active = tools.find(item => item.id === activeId) || tools[0];

@@ -77,7 +77,7 @@ export default function AdminPlatoonAssignments() {
       toast.success(`${platoon}: ${result.changed||0} reporting assignments updated, ${result.unchanged||0} already correct${result.complete?'':'. Some remain; run again to finish'}`);
       invalidateAppDirectory();
       await queryClient.invalidateQueries({queryKey:['platoonUsers']});
-      await queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV3']});
+      await queryClient.invalidateQueries({queryKey:['rankStructureSnapshotV6']});
     }catch(error){toast.error(error?.message||'Unable to reconcile reporting');}
     finally{setSyncingRegion('');}
   };
@@ -87,7 +87,7 @@ export default function AdminPlatoonAssignments() {
       setDrafts(prev => { const n={...prev}; delete n[user.id]; return n; });
       await queryClient.invalidateQueries({ queryKey:['platoonUsers'] });
       await queryClient.invalidateQueries({ queryKey:['allUsersRank'] });
-      await queryClient.invalidateQueries({ queryKey:['rankStructureSnapshotV3'] });
+      await queryClient.invalidateQueries({ queryKey:['rankStructureSnapshotV6'] });
       toast.success('Platoon assignment and automatic reporting chain saved');
     },
     onError: error => toast.error(error.message || 'Unable to save assignment'),

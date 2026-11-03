@@ -56,7 +56,7 @@ const activePlatoonCommand=(people:any[],platoon:string,region:string)=>{
 let personnelCache:{at:number,staff:any[],configured:any[]}|null=null;
 let personnelLoading:Promise<{at:number,staff:any[],configured:any[]}>|null=null;
 async function personnelDirectory(sdk:any){
- if(personnelCache && Date.now()-personnelCache.at<45000)return personnelCache;
+ if(personnelCache && Date.now()-personnelCache.at<15000)return personnelCache;
  if(!personnelLoading)personnelLoading=(async()=>{
    const [roster,configured]=await Promise.all([
       sdk.asServiceRole.entities.User.list('last_name',500),
@@ -108,7 +108,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
     const commands=visible.map(p=>activePlatoonCommand(staff,p.platoon,p.region));
     const company=(admin(me)||commandWide(me))?staff.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
     const selected=[...new Map([...allowed,...company].map((p:any)=>[String(p.id),p])).values()];
-    const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:directoryOnly?'':p.mobile_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
+    const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:p.mobile_phone||p.phone_number||p.cell_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',updated_date:p.updated_date||'',oversight_platoon:p.oversight_platoon||'',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
     return Response.json({success:true,officers,platoon_commands:commands,platoons:visible.map(p=>({name:p.platoon,platoon:p.platoon,region:p.region,active:true})),regions:[...new Set(visible.map(p=>p.region))]});
   }
   const [users,sites,rows]=await Promise.all([

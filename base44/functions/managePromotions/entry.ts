@@ -107,13 +107,13 @@ const easternNow=(date=new Date())=>{
 };
 const PERMITTED_ROLES=['officer','supervisor','dispatch','cad_access','support','hr','trainer','ia','full_access'];
 
-const safeOfficer=(u:any)=>({id:u.id,name:name(u),rank:u.rank||'Officer',unit_number:u.unit_number||'',platoon:u.platoon||'',oversight_platoon:u.oversight_platoon||'',supervisor_id:u.supervisor_id||'',supervisor_name:u.supervisor_name||'',email:u.email||'',is_supervisor:!!u.is_supervisor,system_role:u.role||'user',additional_roles:Array.isArray(u.additional_roles)?u.additional_roles:[],profile_photo_url:String(u.profile_photo_url||'').length<=150000?u.profile_photo_url||'':''});
+const safeOfficer=(u:any)=>({id:u.id,name:name(u),division:u.division||'',rank:u.rank||'Officer',unit_number:u.unit_number||'',platoon:u.platoon||'',oversight_platoon:u.oversight_platoon||'',supervisor_id:u.supervisor_id||'',supervisor_name:u.supervisor_name||'',email:u.email||'',is_supervisor:!!u.is_supervisor,system_role:u.role||'user',additional_roles:Array.isArray(u.additional_roles)?u.additional_roles:[],profile_photo_url:String(u.profile_photo_url||'').length<=150000?u.profile_photo_url||'':''});
 async function version(users:any[]){
  const snapshot=users.map(u=>[u.id,u.updated_date,u.rank,u.unit_number,u.platoon,u.oversight_platoon,u.supervisor_id,u.next_level_supervisor_id,u.employment_status,u.termination_date]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(snapshot)));
  return Array.from(new Uint8Array(bytes)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function changePlan(users:any[],input:any){
+function changePlan(users:any[],input:any,configured:any[]){
  const officer=users.find(u=>u.id===trim(input.officer_id));
  if(!isEmployee(officer))throw new Error('Select an active employee, not a client, student, or terminated account.');
  const proposed=normalizeRank(input.new_rank);
@@ -144,19 +144,22 @@ function changePlan(users:any[],input:any){
    throw new Error('Choose a valid future effective date for the delayed promotion.');
  if(delayed && effective<=clock.date)
    throw new Error('Delayed promotions must select a future date. Leave delay off to promote immediately.');
- const requestedPlatoon=trim(input.platoon)||trim(officer.platoon)||'Unassigned';
+ const inRegion=(configured||[]).filter((p:any)=>p.active!==false&&key(p.region)===key(officer.division)).map((p:any)=>trim(p.name).replace(/^Platoon\s+/i,''));
+ const requestedPlatoon=trim(input.platoon)||trim(officer.platoon);
  const platoon=rankLevel(proposed)<=2?'Command':requestedPlatoon;
- if(!['A','B','Command','Unassigned'].includes(platoon))throw new Error('Platoon must be A, B, Command, or Unassigned.');
- if(rankLevel(proposed)>2&&platoon==='Command')throw new Error('Only Colonel, Lt Colonel and Major belong to Command platoon.');
+ if(rankLevel(proposed)>2&&(!platoon||!inRegion.some((name:any)=>key(name)===key(platoon))))
+   throw new Error('Select a configured platoon for the officer’s region. No automatic unassigned assignment is allowed.');
+ const allConfigured=(configured||[]).filter((p:any)=>p.active!==false).map((p:any)=>trim(p.name).replace(/^Platoon\s+/i,''));
  const oversight=rankLevel(proposed)<=2?trim(input.oversight_platoon||officer.oversight_platoon):'';
- if(rankLevel(proposed)<=2&&!['A','B'].includes(oversight))throw new Error('Command staff must select Platoon A or B to oversee.');
+ if(rankLevel(proposed)<=2&&oversight&&!allConfigured.some((name:any)=>key(name)===key(oversight)))
+   throw new Error('The selected command oversight platoon does not exist.');
  const superId=trim(input.supervisor_id);
  const supervisor=superId?users.find(u=>u.id===superId):null;
  if(superId&&(!isEmployee(supervisor)||supervisor.id===officer.id||rankLevel(supervisor.rank)>=rankLevel(proposed)))throw new Error('Reporting supervisor must be a different active higher-ranking officer.');
  if(rankLevel(proposed)>2&&!supervisor)throw new Error('Select the higher-ranking command officer who will supervise this officer.');
  const transfer=Boolean(input.transfer_platoon);
  if(transfer&&!supervisorRank(proposed))throw new Error('Platoon command transfer requires Sergeant rank or higher.');
- if(transfer&&!['A','B'].includes(rankLevel(proposed)<=2?oversight:platoon))throw new Error('Choose Platoon A or B before transferring its chain of command.');
+ if(transfer&&!allConfigured.some((name:any)=>key(name)===key(rankLevel(proposed)<=2?oversight:platoon)))throw new Error('Choose an existing regional platoon before transferring its chain of command.');
  const affectedPlatoon=rankLevel(proposed)<=2?oversight:platoon;
  const transfers=transfer?users.filter(u=>isEmployee(u)&&u.id!==officer.id&&u.platoon===affectedPlatoon&&rankLevel(u.rank)>rankLevel(proposed)&&u.supervisor_id!==officer.id):[];
  if(transfers.length>150)throw new Error('Command transfer exceeds 150 officers. Use platoon balance to resolve the roster first.');
@@ -298,7 +301,7 @@ Deno.serve(async req=>{
   if(action==='roster')return Response.json({officers:users.filter(isEmployee).filter(u=>RANKS.includes(normalizeRank(u.rank))).map(safeOfficer).sort((a:any,b:any)=>rankLevel(a.rank)-rankLevel(b.rank)||a.name.localeCompare(b.name)),ranks:RANKS});
   if(action!=='preview'&&action!=='apply')return fail('Unsupported promotion action');
   let plan;
-  try{plan=changePlan(users,input);}catch(error:any){return fail(error.message||'Invalid command promotion');}
+  try{const configured=await entities.CompanyPlatoon.list('region',250);plan=changePlan(users,input,configured||[]);}catch(error:any){return fail(error.message||'Invalid command promotion');}
   const current=await version(users);
   if(action==='preview')return Response.json({preview:plan.preview,version:current});
   if(plan.noChanges)return fail('Select a different rank, platoon supervisor, or a change-of-command transfer before approving. This officer already has the requested assignment.',400);

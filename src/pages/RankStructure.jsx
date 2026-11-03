@@ -155,7 +155,7 @@ export default function RankStructure(){
   const isAdmin=user?.role==='admin'||(user?.additional_roles||[]).includes('full_access');
   const isCompanyCommand=isAdmin||['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(String(user?.rank||'').toLowerCase().replace(/[.]/g,''));
   const {data:rosterData={officers:[],commands:[],platoons:[],regions:[]},isLoading:rosterLoading,isFetching:rosterFetching,error:rosterError,refetch:refetchRoster}=useQuery({
-    queryKey:['rankStructureSnapshotV5',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
+    queryKey:['rankStructureSnapshotV6',user?.id,user?.rank,user?.platoon,user?.division,user?.subdivision,user?.substation],
     queryFn:async()=>{
       const response=await new Promise((resolve,reject)=>{
         const timer=setTimeout(()=>reject(new Error('The roster service is taking longer than expected. The last confirmed roster remains available; retry when connectivity recovers.')),35000);
@@ -165,9 +165,9 @@ export default function RankStructure(){
       const data=response?.data||response||{};
       if(data.error||data.success!==true)throw new Error(data.error||'Rank Structure roster unavailable');
       return {officers:data.officers||[],commands:data.platoon_commands||[],platoons:(data.platoons||[]).map(p=>({...p,name:p.name||p.platoon})),regions:(data.regions||[]).map(item=>typeof item==='string'?({name:item,active:true}):item)};
-    },enabled:!!user?.id,staleTime:5*60*1000,gcTime:30*60*1000,
+    },enabled:!!user?.id,staleTime:15000,gcTime:30*60*1000,refetchInterval:90000,refetchIntervalInBackground:false,
     retry:1,retryDelay:2500,
-    refetchOnWindowFocus:false,refetchOnMount:false,
+    refetchOnWindowFocus:true,refetchOnMount:'always',
   });
   useEffect(()=>{
     if(!user?.id||!(rosterData?.officers?.length||rosterData?.platoons?.length))return;
@@ -199,6 +199,7 @@ export default function RankStructure(){
   });
   const users=displayRoster.officers||[];
   const commands=displayRoster.commands||[];
+  useEffect(()=>{const onPerson=()=>refetchRoster();window.addEventListener('bps:personnel-updated',onPerson);return()=>window.removeEventListener('bps:personnel-updated',onPerson);},[refetchRoster]);
   const roles=rolesOf(user);
   const allowed=hasSupervisorAccess(user)||roles.has('officer')||roles.has('cad_access');
   const availabilityTick=useAvailabilityClock();

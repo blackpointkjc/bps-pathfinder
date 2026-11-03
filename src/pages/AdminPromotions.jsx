@@ -34,6 +34,8 @@ export default function AdminPromotions(){
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(''),[confirm,setConfirm]=useState(false),[complete,setComplete]=useState(null);
  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
  const [uploadingPortrait,setUploadingPortrait]=useState(false);
+ const [platoons,setPlatoons]=useState([]);
+ useEffect(()=>{let live=true;base44.functions.invoke('manageCompanyPlatoons',{action:'list'}).then(r=>{const d=r?.data||r||{};if(live&&!d.error)setPlatoons(d.platoons||[]);}).catch(()=>{});return()=>{live=false};},[]);
  const request=async payload=>{
    try{
      const response=await base44.functions.invoke('managePromotions',payload),result=response?.data||response||{};
@@ -54,6 +56,8 @@ export default function AdminPromotions(){
  };
  useEffect(()=>{void reload();},[]);
  const selected=roster.find(officer=>officer.id===form.officer_id);
+ const availablePlatoons=[...new Set(platoons.filter(p=>p.active!==false&&String(p.region||'').trim().toLowerCase()===String(selected?.division||'').trim().toLowerCase()).map(p=>String(p.name||'').replace(/^Platoon\s+/i,'').trim()).filter(Boolean))];
+ const commandPlatoons=[...new Set(platoons.filter(p=>p.active!==false).map(p=>String(p.name||'').replace(/^Platoon\s+/i,'').trim()).filter(Boolean))];
  const prospectiveRank=form.new_rank||selected?.rank||'Officer';
  const isCommand=['Colonel','Lt Colonel','Major'].includes(prospectiveRank);
  const eligibleSupervisors=useMemo(()=>roster.filter(officer=>officer.id!==selected?.id&&rankLevel(officer.rank)<rankLevel(prospectiveRank)),[roster,selected?.id,prospectiveRank]);
@@ -67,7 +71,7 @@ export default function AdminPromotions(){
     const valid=roster.filter(officer=>officer.id!==current.officer_id&&rankLevel(officer.rank)<rankLevel(value));
     if(!valid.some(officer=>officer.id===current.supervisor_id))next.supervisor_id='';
     next.platoon=['Colonel','Lt Colonel','Major'].includes(value)?'Command':
-      (['A','B'].includes(current.platoon)?current.platoon:'A');
+      (availablePlatoons.includes(current.platoon)?current.platoon:(availablePlatoons[0]||current.platoon));
     if(rankLevel(value)>rankLevel('Sergeant'))next.transfer_platoon=false;
    }
    if(key==='platoon'&&value==='Unassigned')next.transfer_platoon=false;
@@ -76,8 +80,8 @@ export default function AdminPromotions(){
   setPreview(null);setComplete(null);setConfirm(false);setError('');
  };
  const chooseOfficer=id=>{const found=roster.find(item=>item.id===id);setForm({
-  ...starting(),officer_id:id,new_rank:found?.rank||'Officer',platoon:['A','B'].includes(found?.platoon)?found.platoon:'A',
-  oversight_platoon:found?.oversight_platoon||'A',supervisor_id:found?.supervisor_id||'',
+  ...starting(),officer_id:id,new_rank:found?.rank||'Officer',platoon:found?.platoon||'',
+  oversight_platoon:found?.oversight_platoon||'',supervisor_id:found?.supervisor_id||'',
   system_role:found?.system_role||'user',additional_roles:Array.isArray(found?.additional_roles)?found.additional_roles:['officer'],profile_photo_url:'',
  });setPreview(null);setConfirm(false);setComplete(null);setRequestId(crypto.randomUUID());};
  const showPreview=async event=>{event.preventDefault();setBusy(true);setError('');setConfirm(false);
@@ -100,8 +104,9 @@ export default function AdminPromotions(){
    else toast.success(result.scheduled?'Promotion scheduled for the chosen future date.':'Promotion effective now. Officer rank, photo, access and command have been updated.');
    setComplete(result);setPreview(null);setConfirm(false);
    invalidateAppDirectory?.();
-   for(const key of ['portalUsers','currentUser','adminPreviewPeople','directoryUsers','announcements','personnel','platoon','rankStructureSnapshotV3','rankCommanderPortrait','rankOfficerPhotoFull'])cache.invalidateQueries({queryKey:[key]});
+   for(const key of ['portalUsers','currentUser','adminPreviewPeople','directoryUsers','announcements','personnel','platoon','rankStructureSnapshotV6','rankCommanderPortrait','rankOfficerPhotoFull'])cache.invalidateQueries({queryKey:[key]});
    window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+   window.dispatchEvent(new Event('bps:personnel-updated'));
    await reload();
   }catch(err){setError(err.message||'Command update failed');setComplete(err.result||null);setPreview(null);}
   finally{setBusy(false)}
@@ -124,8 +129,8 @@ export default function AdminPromotions(){
        <input type="date" min={stamp()} value={form.effective_date} onChange={e=>adjust('effective_date',e.target.value)} className={`${field} mt-1`} required/>
      </label>}
    </div>
-   <label className="block text-xs font-semibold">{isCommand?'Command assignment':'Platoon assignment'}<select value={isCommand?'Command':form.platoon} disabled={isCommand} onChange={e=>adjust('platoon',e.target.value)} className={`${field} mt-1`}>{(isCommand?['Command']:['A','B','Unassigned']).map(x=><option key={x} value={x}>{x==='A'||x==='B'?`Platoon ${x}`:x}</option>)}</select></label>
-   {isCommand&&<label className="block text-xs font-semibold">Command oversees<select value={form.oversight_platoon} onChange={e=>adjust('oversight_platoon',e.target.value)} className={`${field} mt-1`}><option value="A">Platoon A</option><option value="B">Platoon B</option></select></label>}
+   <label className="block text-xs font-semibold">{isCommand?'Command assignment':'Platoon assignment'}<select value={isCommand?'Command':form.platoon} disabled={isCommand} onChange={e=>adjust('platoon',e.target.value)} className={`${field} mt-1`}>{(isCommand?['Command']:availablePlatoons).map(x=><option key={x} value={x}>{x==='A'||x==='B'?`Platoon ${x}`:x}</option>)}</select></label>
+   {isCommand&&<label className="block text-xs font-semibold">Command oversees<select value={form.oversight_platoon} onChange={e=>adjust('oversight_platoon',e.target.value)} className={`${field} mt-1`}><option value="">No assigned platoon oversight</option>{commandPlatoons.map(name=><option key={name} value={name}>Platoon {name}</option>)}</select></label>}
    <label className="block text-xs font-semibold">Reports to (higher-ranking command)<select value={form.supervisor_id} onChange={e=>adjust('supervisor_id',e.target.value)} className={`${field} mt-1`}><option value="">{isCommand?'Company command (no superior selected)':'Select supervisor…'}</option>{eligibleSupervisors.map(u=><option key={u.id} value={u.id}>{nameOf(u)} · {u.platoon||'Command'}</option>)}</select></label></div>
    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-600/30 bg-amber-950/20 p-3 text-xs"><input type="checkbox" checked={form.transfer_platoon} onChange={e=>adjust('transfer_platoon',e.target.checked)} className="mt-0.5 h-4 w-4"/><span><b>Change platoon command</b><span className="mt-1 block text-slate-300">Reassign eligible junior officers in the chosen platoon to report directly to the promoted command officer. A preview will list each affected officer before approval.</span></span></label>
    <section className="rounded-xl border border-amber-700/60 bg-slate-950/60 p-3"><h3 className="text-sm font-black text-amber-200">Account roles · apply with promotion</h3><p className="mt-1 text-xs text-slate-400">Access updates immediately upon approval unless you explicitly choose a future effective date. Full Access is reserved for Colonel Hiers. IA access is assigned separately.</p><label className="mt-3 block text-xs font-semibold">System access<select className={`${field} mt-1`} value={form.system_role||'user'} onChange={e=>adjust('system_role',e.target.value)}><option value="user">Employee</option><option value="admin">Administrator</option></select></label><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{ROLE_OPTIONS.filter(([role])=>role!=='full_access'||isFullAccessOwner({id:form.officer_id})).map(([role,label])=><label key={role} className="flex items-center gap-2 rounded-lg border border-slate-700 p-2 text-xs"><input type="checkbox" checked={(form.additional_roles||[]).includes(role)} onChange={e=>adjust('additional_roles',e.target.checked?[...(form.additional_roles||[]).filter(r=>r!==role),role]:(form.additional_roles||[]).filter(r=>r!==role))}/>{label}</label>)}</div></section>
