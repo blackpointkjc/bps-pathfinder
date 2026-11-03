@@ -76,6 +76,17 @@ function caseCategory(value='unclassified',detail=''){
  if(category==='other'&&category_detail.length<3)fail('Describe the Other category in at least three characters.');
  return {category,category_detail};
 }
+async function notifyIaAdminStatus(base44:any,db:any,u:any,c:any){
+ try{
+  const users=await casePersonnel(db);
+  const admins=[...new Map(users.filter((p:any)=>p.role==='admin'&&psRole(p))
+     .map((p:any)=>[String(p.work_email||p.email||'').toLowerCase(),p])
+     .filter(([email]:any)=>Boolean(email))).values()];
+  const investigator=users.find((p:any)=>String(p.id)===String(c.investigator_id||''));
+  const message=iaCaseEmail(c,investigator,'status');
+  await Promise.allSettled(admins.map((admin:any)=>notify(base44,admin.work_email||admin.email,message.subject,message.html,u,'',true)));
+ }catch(error){console.warn('IA administrator status notification delayed:',String(error?.message||error));}
+}
 const publicStateFor=status=>({new:'Received',triage:'Under review',investigating:'Investigation in progress',pending_review:'Under review',returned:'Investigation in progress',approved:'Review completed',closed:'Closed'})[status]||'Received';
 // These are fixed, non-identifying milestones. Never derive public copy from
 // case notes, people's names, findings, statements, or personnel actions.
@@ -291,6 +302,17 @@ export default async function(req){
   }
   const c=await db.PSCase.get(text(body.case_id,100));
   if(!c||!canRead(c))fail('Case not available.',403);
+  if(action==='send_admin_test'){
+   if(!review)fail('Only an IA reviewer can send the administrator test email.',403);
+   const owner=await db.User.get('6ae7d733d4b1a647cd3e6f38');
+   if(!owner||!psRole(owner))fail('Colonel Hiers is not currently authorized for Professional Standards.',403);
+   const assignee=c.investigator_id?await db.User.get(c.investigator_id).catch(()=>null):null;
+   const message=iaCaseEmail(c,assignee,'admin_test');
+   const recipient=owner.work_email||owner.email;
+   const email_sent=await notify(base44,recipient,message.subject,message.html,u,'',true);
+   await audit(db,u,'admin_case_test_email',c.id,email_sent?'Accepted for email delivery':'Email delivery failed');
+   return Response.json({success:true,email_sent,recipient});
+  }
   if(action==='resend_assignment'){
    if(!review)fail('Reviewer access required.',403);
    const person=eligible.find(p=>p.id===c.investigator_id);
@@ -341,6 +363,7 @@ export default async function(req){
    await audit(db,u,'case_closed',c.id,'Final closure completed; '+outcome+'; '+unfinished.length+' outstanding work items');
    await db.PSRecord.create({case_id:c.id,kind:'public_update',title:'Closed',body:publicMessage('Closed',''),author_id:u.id,author_name:'Professional Standards',status:'published'});
    await publishMilestone(db,u,c,'closure');
+   await notifyIaAdminStatus(base44,db,u,{...c,status:'closed',closed_at:now,updated_date:now});
    return Response.json({success:true,closed:true,closed_at:now});
   }
   const caseTools=await linkedCaseTools({action,body,db,u,c,records,review,editable:review||c.investigator_id===u.id,base44,audit,notify,fail,text,actorName});
@@ -409,6 +432,8 @@ export default async function(req){
     const message=iaCaseEmail({...c,...updates},assigned,assignmentChanged?'assignment':'status');
     email_sent=await notify(base44,assigned.work_email||assigned.email,message.subject,message.html,u,'',true);
    }
+   if(updates.status!==undefined&&updates.status!==c.status)
+     await notifyIaAdminStatus(base44,db,u,{...c,...updates,updated_date:new Date().toISOString()});
    // Complainants are never emailed, including when an older client sends send_notice.
    return Response.json({success:true,email_sent});
   }
