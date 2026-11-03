@@ -64,7 +64,7 @@ export default function RecordsAssistant(){
    }).catch(err=>{if(live)setPropertyError(err?.response?.data?.error||err?.message||'Property list unavailable');});
    return()=>{live=false};
  },[]);
- const changeScope=(next,kind='site')=>{if(kind==='site')setSite(next);else setMode(next);setSearched(false);setError('');setPartial('');setResults([]);setPropertyResults([]);setSourceFilter('all');latest.current++;};
+ const changeScope=(next,kind='site')=>{if(kind==='site')setSite(next);else setMode(next);setSearched(false);setSearching(false);setError('');setPartial('');setResults([]);setPropertyResults([]);setSourceFilter('all');latest.current++;};
  const search=async event=>{
    event?.preventDefault();const term=clean(query);if(term.length<2)return;
    const seq=++latest.current;
@@ -75,18 +75,19 @@ export default function RecordsAssistant(){
    const settled=await Promise.allSettled(jobs);
    if(seq!==latest.current)return;
    const problems=[];
+   let successfulQueries=0;
    if(settled[0].status==='fulfilled'){
      const data=settled[0].value?.data||settled[0].value||{};
      if(data.error)problems.push(data.error);
-     else {setResults(data.results||[]);if(data.partial&&data.failed_sources)problems.push(`${data.failed_sources} company source${data.failed_sources===1?' was':'s were'} unavailable`);}
+     else {successfulQueries++;setResults(data.results||[]);if(data.partial&&data.failed_sources)problems.push(`${data.failed_sources} company source${data.failed_sources===1?' was':'s were'} unavailable`);}
    }else problems.push(settled[0].reason?.response?.data?.error||settled[0].reason?.message||'Company records unavailable');
    if(site){
      if(settled[1].status==='fulfilled'){
        const data=settled[1].value?.data||settled[1].value||{};
-       if(data.error)problems.push(data.error);else setPropertyResults(data.matches||[]);
+       if(data.error)problems.push(data.error);else {successfulQueries++;setPropertyResults(data.matches||[]);}
      }else problems.push(settled[1].reason?.response?.data?.error||settled[1].reason?.message||'Property registry unavailable');
    }
-   if(problems.length===jobs.length)setError(problems.join(' · '));else if(problems.length)setPartial(problems.join(' · '));
+   if(successfulQueries===0)setError(problems.join(' · ')||'Search unavailable');else if(problems.length)setPartial(problems.join(' · '));
    setSearchedText(term);setSearched(true);setSearching(false);
  };
  const residents=propertyResults.filter(item=>item.source==='Property resident registry');
