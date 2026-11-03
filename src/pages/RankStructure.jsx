@@ -134,7 +134,7 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
         </div> : <div className="px-5 py-8 text-center"><p className="text-lg font-black text-white">No active Platoon Commander</p><p className="mt-2 text-xs text-slate-400">Assign personnel to this regional Platoon or review out-of-office status.</p></div>}
       </div>
       <div className="mx-auto h-8 w-px bg-amber-500/60"/>
-      {!fieldPeople.length?<div className="mx-auto max-w-lg rounded-xl border border-dashed border-slate-700 p-7 text-center text-sm text-slate-400">No officers are currently assigned to this platoon.</div>:
+      {!fieldPeople.length?<div className="mx-auto max-w-lg rounded-xl border border-dashed border-slate-700 p-7 text-center text-sm text-slate-400">This regional platoon is configured, but no officer assignments are currently recorded for it.</div>:
       <div className="mx-auto max-w-3xl" aria-label="Platoon chain of command">
         {fieldPeople.map((person,index)=><div key={person.id} className="flex flex-col items-center">
           <div className="w-full max-w-2xl"><AreaMember person={person} onOpen={onOpen} onPhotoOpen={onPhotoOpen}/></div>

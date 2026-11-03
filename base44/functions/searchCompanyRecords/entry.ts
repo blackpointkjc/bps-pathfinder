@@ -126,7 +126,7 @@ async function listWithRetry(entity: any, entityName: string) {
   let lastError: any;
   // A company search spans more than twenty entities. Pulling 1,000 rows from
   // every source caused the function to time out before it could return matches.
-  const limit = entityName === 'CallHistory' ? 1200 : entityName === 'DispatchCall' ? 900 : 550;
+  const limit = entityName === 'CallHistory' ? 1000 : entityName === 'DispatchCall' ? 750 : 450;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await entity.list('-created_date', limit);
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
     if (!allowed) return Response.json({ error: 'Records access required' }, { status: 403 });
 
     const privileged = user.role === 'admin' || roles.has('full_access');
-    const operationalRecordsAccess = privileged || user.role === 'dispatch' || Boolean(user.dispatch_role) || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor');
+    const operationalRecordsAccess = privileged || user.role === 'officer' || roles.has('officer') || user.role === 'dispatch' || Boolean(user.dispatch_role) || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor');
     // Records AI is an authorized operational search tool. CAD/dispatch users need a
     // server-side read path or RLS can make legitimate searches look empty. Sensitive
     // personnel/disciplinary sources remain admin/full-access only below.

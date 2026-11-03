@@ -165,7 +165,7 @@ Deno.serve(async req => {
     if(action==='officer_tasks'){
       if(!officer)return fail('Officer access required',403);
       const returned=await entities.ParkingViolation.filter(admin?{status:'rejected'}:{officer_id:String(user.id)},'-created_date',120);
-      const allowed=new Set((await getLocations()).filter(activeLocation).map((loc:any)=>siteKey(loc.site_name)));
+      const allowed=new Set((await getLocations()).filter((l:any)=>activeLocation(l)).map((loc:any)=>siteKey(loc.site_name)));
       return Response.json({tasks:(returned||[]).filter((v:any)=>allowed.has(siteKey(v.location))&&v.status==='rejected'&&v.supervisor_review_status==='returned').map((v:any)=>({
         id:v.id,citation_number:v.citation_number,location:v.location,violation_date:v.violation_date,
         license_plate:v.license_plate,officer_id:v.officer_id,supervisor_notes:v.supervisor_notes,status:v.status,
