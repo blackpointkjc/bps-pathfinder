@@ -220,8 +220,21 @@ Deno.serve(async (req) => {
           }
         }
         const mergedAccount={...target,...updatePayload};
-        if (updates.additional_roles !== undefined || updates.role !== undefined || updates.ps_role !== undefined) updatePayload.portal_approved = mergedAccount.role === 'admin' || (mergedAccount.additional_roles || []).length > 0 || ['investigator','reviewer'].includes(mergedAccount.ps_role);
-        if(updatePayload.portal_approved!==undefined)updatePayload.account_status=updatePayload.portal_approved?'approved':'pending';
+        // Changing Admin ↔ User must not silently move an existing approved
+        // employee to Pending. Onboarding status is a separate operation.
+        const accountTypeOnly = updates.role !== undefined && updates.additional_roles === undefined && updates.ps_role === undefined;
+        if (accountTypeOnly) {
+          if (updates.role === 'admin') {
+            updatePayload.portal_approved = true;
+            updatePayload.account_status = 'approved';
+          } else if (target.account_status === 'approved' || target.portal_approved === true || target.role === 'admin') {
+            updatePayload.portal_approved = true;
+            updatePayload.account_status = 'approved';
+          }
+        } else if (updates.additional_roles !== undefined || updates.ps_role !== undefined) {
+          updatePayload.portal_approved = mergedAccount.role === 'admin' || (mergedAccount.additional_roles || []).length > 0 || ['investigator','reviewer'].includes(mergedAccount.ps_role);
+          updatePayload.account_status = updatePayload.portal_approved ? 'approved' : 'pending';
+        }
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
         // A nonessential IA audit write must not block account role changes.
