@@ -130,6 +130,9 @@ export async function linkedCaseTools(ctx){
    const applied=await apply();
    if(!applied)fail('The personnel action could not be issued.');
    await db.PSRecord.update(proposed.id,{status:'executed',action_type:type,policy:rationale,linked_entity:'PSCase',linked_id:c.id,title:'Approved: '+(type==='other'?customTitle:type.replaceAll('_',' ')),body:JSON.stringify({reason,instructions,custom_title:customTitle,due_date:due,suspension_until:until,reviewer:u.id})});
+   // Mirror the executed decision to the employee's permanent HR history;
+   // this preserves the cross-workspace personnel file without copying IA evidence.
+   await db.AuditLog.create({entity_type:'User',entity_id:subject.id,action:'disciplinary_action',actor_id:u.id,actor_name:actorName(u),timestamp:new Date().toISOString(),description:'IA '+c.reference+' · '+(type==='other'?customTitle:type.replaceAll('_',' '))+' approved and recorded',after_value:JSON.stringify({case_id:c.id,reference:c.reference,review_id:proposed.id,action:type,status:'executed'})});
    await audit(db,u,'personnel_recommendation_executed',c.id,proposed.id+' '+type+' '+subject.id+' reviewer:'+u.id);
    return Response.json({success:true,executed:true});
   }catch(error){
