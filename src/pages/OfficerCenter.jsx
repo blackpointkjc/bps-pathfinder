@@ -35,9 +35,9 @@ import RankDuties from './RankDuties';
 
 const SECTIONS = [
   { id: 'today', label: 'Today', description: 'Dashboard, announcements, clock and schedule', icon: CalendarClock },
-  { id: 'field', label: 'Patrol & Post', description: 'Site post orders, patrol and shift handover', icon: Wrench },
+  { id: 'field', label: 'Patrol & Post', description: 'Site post orders and patrol tools', icon: Wrench },
   { id: 'messages', label: 'Enforcement & Legal', description: 'Law reference, trespass, complaints, summons and witness subpoenas', icon: Shield },
-  { id: 'reports', label: 'Reports', description: 'Daily, incident, maintenance and patrol reports', icon: ClipboardList },
+  { id: 'reports', label: 'Reports', description: 'Daily, incident, shift handover and patrol reports', icon: ClipboardList },
   { id: 'schedule', label: 'Schedule & Pay', description: 'Availability, requests, open shifts and payroll dates', icon: CalendarClock },
   { id: 'profile', label: 'Career & Training', description: 'Profile, performance, training and rank', icon: UserRound },
 ];
@@ -51,7 +51,6 @@ const TOOLS = {
   ],
   field: [
     { id: 'postorders', label: 'Post Orders', component: PostOrders },
-    { id: 'handover', label: 'Shift Handover', component: ShiftHandover },
   ],
   messages: [
     { id: 'law', label: 'Virginia Law', component: VirginiaFieldLawAssistant },
@@ -61,6 +60,7 @@ const TOOLS = {
     { id: 'subpoena', label: 'Witness Subpoena', component: WitnessSubpoenaRequest },
   ],
   reports: [
+    { id: 'handover', label: 'Shift Handover', component: ShiftHandover },
     {id:'confidential',label:'Confidential report',component:ConfidentialReport},
     { id: 'dar', label: 'Daily Activity', component: DailyActivityReports },
     { id: 'incident', label: 'Incident Report', component: IncidentReports },
