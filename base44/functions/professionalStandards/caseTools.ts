@@ -55,7 +55,7 @@ export async function linkedCaseTools(ctx){
  if(action==='officer_file'){
   const person=await getSubject(),legacyHiers=person.id==='6ae7d733d4b1a647cd3e6f38',emails=[...new Set([person.email,person.work_email,person.pathfinder_email,...(person.email_aliases||[]),...(legacyHiers?['kavonhiers@team-hsg.com']:[])].filter(Boolean))];
   const q={$or:[{officer_email:{$in:emails}},{officer_id:{$in:legacyHiers?[person.id,'6a72bbee2842d6338cbae513']:[person.id]}}]};
-  const [training,writeups,inspections,reviews,profileEvents]=await Promise.all([
+  const [training,writeups,inspections,reviews,profileEvents,caseActions]=await Promise.all([
    db.TrainingAssignment.filter({officer_email:{$in:emails}},'-created_date',50),
    db.WriteUpReport.filter(q,'-created_date',50),db.InspectionReport.filter(q,'-created_date',50),db.PerformanceReview.filter(q,'-created_date',50),
    (async()=>{
@@ -63,11 +63,78 @@ export async function linkedCaseTools(ctx){
     if(person.id!=='6ae7d733d4b1a647cd3e6f38')return primary;
     const legacy=await db.AuditLog.filter({entity_type:'User',entity_id:'6a72bbee2842d6338cbae513'},'-timestamp',500).catch(()=>[]);
     return [...primary,...legacy.map((event:any)=>({...event,id:'legacy-'+event.id,description:'Prior Hiers account · '+String(event.description||'Profile event')}))].sort((a:any,b:any)=>String(b.timestamp||b.created_date).localeCompare(String(a.timestamp||a.created_date)));
-   })()
+   })(),
+   db.PSRecord.filter({officer_id:person.id},'-created_date',150).catch(()=>[])
   ]);
   const cleanReview=row=>Object.fromEntries(Object.entries(row).filter(([key])=>!/pay|salary|hourly|bank|ssn|tax|signature/i.test(key)));
   await audit(db,u,'officer_file_view',c.id,person.id);
-  return Response.json({officer:{...officerSummary(person),dcjs_number:person.dcjs_number||'',dcjs_expiration:person.dcjs_expiration||'',firearm_expiration:person.firearm_expiration||'',hire_date:person.hire_date||'',certifications:person.officer_certifications||[]},training,writeups,inspections,reviews:reviews.map(cleanReview),profileEvents:profileEvents.map((row:any)=>({id:row.id,action:row.action,field_changed:row.field_changed,actor_name:row.actor_name,timestamp:row.timestamp||row.created_date,description:row.description,before_value:row.before_value,after_value:row.after_value}))});
+  return Response.json({officer:{...officerSummary(person),dcjs_number:person.dcjs_number||'',dcjs_expiration:person.dcjs_expiration||'',firearm_expiration:person.firearm_expiration||'',hire_date:person.hire_date||'',certifications:person.officer_certifications||[]},training,writeups,inspections,caseActions:caseActions.filter((row:any)=>['corrective_action','recommendation'].includes(row.kind)&&['executed','open','completed','applying'].includes(row.status)).map((row:any)=>({id:row.id,case_id:row.case_id,kind:row.kind,title:row.title,action_type:row.action_type,status:row.status,body:row.kind==='recommendation'?'Approved IA personnel decision':row.body,created_date:row.created_date})),reviews:reviews.map(cleanReview),profileEvents:profileEvents.map((row:any)=>({id:row.id,action:row.action,field_changed:row.field_changed,actor_name:row.actor_name,timestamp:row.timestamp||row.created_date,description:row.description,before_value:row.before_value,after_value:row.after_value}))});
+ }
+ // Investigator proposals are never disciplinary orders. They remain private
+ // until an independent IA reviewer approves a final, editable decision.
+ if(action==='recommend_action'){
+  if(!editable || ['approved','closed'].includes(c.status))fail('This investigation cannot accept new recommendations.',403);
+  const officer=await getSubject();
+  const types=['counseling','written_warning','final_warning','duty_restriction','external_referral','training','suspension','other','no_action'];
+  const type=text(body.directive_type,60),instructions=text(body.instructions,5000),reason=text(body.reason,5000);
+  if(!types.includes(type)||reason.length<20||instructions.length<20)fail('Choose an action and provide at least 20 characters of rationale and proposed instructions.');
+  const proposal=await db.PSRecord.create({case_id:c.id,kind:'recommendation',action_type:type,officer_id:officer.id,title:'Recommended: '+(type==='other'?text(body.custom_title,120)||'Other personnel action':type.replaceAll('_',' ')),body:JSON.stringify({reason,instructions,custom_title:text(body.custom_title,120),due_date:text(body.due_date,10),suspension_until:text(body.suspension_until,40)}),status:'proposed',author_id:u.id,author_name:actorName(u)});
+  await audit(db,u,'personnel_action_recommended',c.id,proposal.id+' '+type+' '+officer.id);
+  return Response.json({success:true,recommendation_id:proposal.id});
+ }
+ if(action==='decide_recommendation'){
+  if(!review)fail('Only an IA reviewer can approve, change or reject proposed discipline.',403);
+  if(c.status!=='approved')fail('Approve the investigation findings before enforcing a recommendation.',409);
+  if(c.investigator_id===u.id)fail('An independent reviewer must authorize disciplinary action.',403);
+  const proposed=records.find(r=>r.id===text(body.record_id,100)&&r.kind==='recommendation');
+  if(!proposed)fail('Recommendation not found.',404);
+  if(['executed','rejected'].includes(proposed.status))return Response.json({success:true,existing:true});
+  const decision=text(body.decision,20);
+  if(!['approve','reject'].includes(decision))fail('Select approve or reject.');
+  const rationale=text(body.review_reason,5000);
+  if(rationale.length<20)fail('Document the independent review decision in at least 20 characters.');
+  if(decision==='reject'){
+   await db.PSRecord.update(proposed.id,{status:'rejected',policy:rationale});
+   await audit(db,u,'personnel_recommendation_rejected',c.id,proposed.id+' '+rationale);
+   return Response.json({success:true});
+  }
+  const type=text(body.directive_type||proposed.action_type,60);
+  const types=['counseling','written_warning','final_warning','duty_restriction','external_referral','training','suspension','other','no_action'];
+  if(!types.includes(type))fail('Unsupported personnel action.');
+  const initial=JSON.parse(proposed.body||'{}');
+  const reason=text(body.reason??initial.reason,5000),instructions=text(body.instructions??initial.instructions,5000);
+  const customTitle=text(body.custom_title??initial.custom_title,120),due=text(body.due_date??initial.due_date,10);
+  const until=text(body.suspension_until??initial.suspension_until,40);
+  if(reason.length<20||instructions.length<20)fail('An approved action requires documented reasons and instructions.');
+  if(type==='other'&&customTitle.length<5)fail('Describe the custom personnel action.');
+  const subject=await db.User.get(proposed.officer_id);
+  if(!subject||!employee(subject)||subject.id===u.id)fail('Reviewer cannot impose this action on their own record.',403);
+  if(type==='suspension'&&subject.role==='admin')fail('Administrator suspensions require main account administration.',403);
+  // A durable lock prevents a repeated approval click from issuing a second
+  // directive while its personnel record is being created.
+  await db.PSRecord.update(proposed.id,{status:'executing',policy:rationale});
+  const apply=async()=>{
+   if(type==='no_action')return {success:true};
+   if(type==='other'){
+    const created=await db.PSRecord.create({case_id:c.id,kind:'corrective_action',action_type:'other',officer_id:subject.id,title:customTitle,body:reason+'\nEmployee instructions: '+instructions,due_date:due,status:'open',author_id:u.id,author_name:actorName(u)});
+    await db.Notification.create({recipient_email:subject.email,title:'Personnel action: '+customTitle,message:instructions,type:'general',read:false});
+    await audit(db,u,'custom_personnel_action_issued',c.id,subject.id+' '+created.id);
+    return {success:true};
+   }
+   const extra=type==='suspension'?{action:'suspend_officer',suspension_until:until}:type==='training'?{action:'assign_training',training_name:customTitle||'Required corrective training',training_instructions:instructions, due_date:due}:{action:'issue_directive',directive_type:type,due_date:due,instructions};
+   return await linkedCaseTools({...ctx,body:{...extra,officer_id:subject.id,reason},records:records.filter(row=>row.id!==proposed.id)});
+  };
+  try{
+   const applied=await apply();
+   if(!applied)fail('The personnel action could not be issued.');
+   await db.PSRecord.update(proposed.id,{status:'executed',action_type:type,policy:rationale,linked_entity:'PSCase',linked_id:c.id,title:'Approved: '+(type==='other'?customTitle:type.replaceAll('_',' ')),body:JSON.stringify({reason,instructions,custom_title:customTitle,due_date:due,suspension_until:until,reviewer:u.id})});
+   await audit(db,u,'personnel_recommendation_executed',c.id,proposed.id+' '+type+' '+subject.id+' reviewer:'+u.id);
+   return Response.json({success:true,executed:true});
+  }catch(error){
+   // Do not automatically retry a partly applied suspension or directive.
+   await db.PSRecord.update(proposed.id,{status:'execution_needs_review'}).catch(()=>null);
+   throw error;
+  }
  }
  if(action==='document_outcome'){
   if(!review)fail('Reviewer access required to document the case decision.',403);
