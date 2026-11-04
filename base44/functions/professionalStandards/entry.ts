@@ -69,20 +69,20 @@ const allowedFiles=/^(image\/(jpeg|png|webp|heic)|video\/(mp4|quicktime|webm)|au
 const publicStates=Object.keys(PUBLIC_UPDATE_MESSAGES);
 // The worker is reused across requests; cache the directory briefly so every
 // case message, evidence upload, and status refresh does not spend a User.list.
-let iaStaffCache:{expires:number;people:any[];pending:Promise<any[]>|null}={expires:0,people:[],pending:null};
-async function iaPersonnel(db:any){
+let iaStaffCache={expires:0,people:[],pending:null};
+async function iaPersonnel(db){
  if(Date.now()<iaStaffCache.expires)return iaStaffCache.people;
  if(iaStaffCache.pending)return iaStaffCache.pending;
- iaStaffCache.pending=db.User.filter({additional_roles:{$in:['ia']}},'-created_date',60).then((people:any[])=>{
+ iaStaffCache.pending=db.User.filter({additional_roles:{$in:['ia']}},'-created_date',60).then((people)=>{
   iaStaffCache.people=people;iaStaffCache.expires=Date.now()+300_000;return people;
  }).finally(()=>{iaStaffCache.pending=null;});
  return iaStaffCache.pending;
 }
-let personnelCache:{expires:number;people:any[];pending:Promise<any[]>|null}={expires:0,people:[],pending:null};
-async function casePersonnel(db:any){
+let personnelCache={expires:0,people:[],pending:null};
+async function casePersonnel(db){
  if(Date.now()<personnelCache.expires)return personnelCache.people;
  if(personnelCache.pending)return personnelCache.pending;
- personnelCache.pending=db.User.list('-created_date',1000).then((people:any[])=>{
+ personnelCache.pending=db.User.list('-created_date',1000).then((people)=>{
   personnelCache.people=people;personnelCache.expires=Date.now()+120_000;
   return people;
  }).finally(()=>{personnelCache.pending=null;});
@@ -96,15 +96,15 @@ function caseCategory(value='unclassified',detail=''){
  if(category==='other'&&category_detail.length<3)fail('Describe the Other category in at least three characters.');
  return {category,category_detail};
 }
-async function notifyIaAdminStatus(base44:any,db:any,u:any,c:any){
+async function notifyIaAdminStatus(base44,db,u,c){
  try{
   const users=await casePersonnel(db);
-  const admins=[...new Map(users.filter((p:any)=>p.role==='admin'&&psRole(p))
-     .map((p:any)=>[String(p.work_email||p.email||'').toLowerCase(),p])
-     .filter(([email]:any)=>Boolean(email))).values()];
-  const investigator=users.find((p:any)=>String(p.id)===String(c.investigator_id||''));
+  const admins=[...new Map(users.filter((p)=>p.role==='admin'&&psRole(p))
+     .map((p)=>[String(p.work_email||p.email||'').toLowerCase(),p])
+     .filter(([email])=>Boolean(email))).values()];
+  const investigator=users.find((p)=>String(p.id)===String(c.investigator_id||''));
   const message=iaCaseEmail(c,investigator,'status');
-  await Promise.allSettled(admins.map((admin:any)=>notify(base44,admin.work_email||admin.email,message.subject,message.html,u,'',true)));
+  await Promise.allSettled(admins.map((admin)=>notify(base44,admin.work_email||admin.email,message.subject,message.html,u,'',true)));
  }catch(error){console.warn('IA administrator status notification delayed:',String(error?.message||error));}
 }
 const publicStateFor=status=>({new:'Received',triage:'Under review',investigating:'Investigation in progress',pending_review:'Under review',returned:'Investigation in progress',approved:'Review completed',closed:'Closed'})[status]||'Received';
@@ -121,8 +121,8 @@ const SAFE_MILESTONES={
  disposition:['Case decision documented','A case decision has been documented for administrative review. Confidential details remain restricted.'],
  closure:['Investigation closed','The investigation has been closed following administrative review. Confidential findings and personnel information remain restricted.']
 };
-async function publishMilestone(db:any,u:any,c:any,kind:string,eventId=''){
- const info=(SAFE_MILESTONES as Record<string,string[]>)[kind];
+async function publishMilestone(db,u,c,kind,eventId=''){
+ const info=SAFE_MILESTONES[kind];
  if(!info)return;
  const title=info[0],key=`milestone:${kind}:${eventId||c.id}`;
  const existing=await db.PSRecord.filter({case_id:c.id,kind:'public_release',policy:key},'-created_date',1);
