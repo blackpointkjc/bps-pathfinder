@@ -90,6 +90,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Field Tools', items: [
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
+        ['Post Orders', 'PostOrders', BookOpen],
         ['VA Trespass', 'VATrespassNotices', UserX],
         ['VA Complaint', 'VACriminalComplaints', Shield],
         ['VA Summons', 'Summons', FileText],
@@ -139,6 +140,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Field Tools', items: [
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
+        ['Post Orders', 'PostOrders', BookOpen],
         ['Virginia Law', 'VirginiaFieldLawAssistant', BookOpen],
         ['VA Trespass', 'VATrespassNotices', UserX],
         ['VA Complaint', 'VACriminalComplaints', Shield],
@@ -519,7 +521,15 @@ function defaultPageForUser(user) {
 }
 
 function canAccessPage(user, pageName) {
-  if (['PostOrders', 'AdminPostOrders', 'ClientDocuments'].includes(pageName)) return false;
+  // Post Orders are an authenticated field reference, never a public/client page.
+  if (pageName === 'PostOrders') {
+    const client = user?.user_type === 'client' || String(user?.rank || '').toLowerCase() === 'client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');
+    if (client) return false;
+    const roles = normalizedRoles(user);
+    const rank = String(user?.rank || '').toLowerCase();
+    return hasWholeAppAccess(user) || roles.has('officer') || roles.has('supervisor') || roles.has('cad_access') || ['officer','corporal','sergeant','first sergeant','lieutenant','captain','major','colonel','lt colonel','lieutenant colonel','unarmed officer','senior officer'].includes(rank);
+  }
+  if (['AdminPostOrders', 'ClientDocuments'].includes(pageName)) return false;
   if (pageName === 'ProfessionalStandards') return hasIAAccess(user);
   if (hasWholeAppAccess(user)) return true;
   if ((user?.additional_roles||[]).includes('visitor')) return pageName === 'VisitorPortal';
