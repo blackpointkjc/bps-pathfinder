@@ -13,7 +13,6 @@ import ClientTrespass from './ClientTrespass';
 import ClientReports from './ClientReports';
 import ParkingRecords from './ParkingRecords';
 import ClientQRReports from './ClientQRReports';
-import ClientDocuments from './ClientDocuments';
 import ClientSpecialRequests from './ClientSpecialRequests';
 import ClientPayrollReport from './ClientPayrollReport';
 import ClientFeedback from './ClientFeedback';
@@ -43,7 +42,6 @@ const TOOLS = {
   records: [
     { id: 'reports', label: 'All Reports', component: ClientReports },
     { id: 'qr', label: 'QR Patrol Reports', component: ClientQRReports },
-    { id: 'documents', label: 'Post Orders & Company Standards', component: ClientDocuments },
   ],
   requests: [
     { id: 'special', label: 'Special Requests', component: ClientSpecialRequests },

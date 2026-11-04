@@ -270,7 +270,6 @@ export default function Dashboard({ embedded = false }) {
     { id: "team_chat", title: "Team Chat", description: "Message team", icon: MessageCircle, color: "from-cyan-500 to-blue-600", url: createPageUrl("TeamChat"), category: "communication" },
     { id: "announcements", title: "Announcements", description: "View updates", icon: Megaphone, color: "from-indigo-500 to-blue-600", url: createPageUrl("Announcements"), category: "communication" },
     { id: "training", title: "Training", description: "View courses", icon: GraduationCap, color: "from-pink-500 to-rose-600", url: createPageUrl("OfficerTraining"), category: "resources" },
-    { id: "post_orders", title: "Post Orders", description: "Site protocols", icon: BookOpen, color: "from-blue-600 to-indigo-700", url: createPageUrl("PostOrders"), category: "resources" },
     { id: "rank_duties", title: "Rank Duties", description: "View responsibilities", icon: Shield, color: "from-slate-500 to-slate-600", url: createPageUrl("RankDuties"), category: "resources" },
     { id: "qr_patrol", title: "QR Patrol", description: "Scan checkpoints", icon: MapPin, color: "from-teal-500 to-emerald-600", url: createPageUrl("QRPatrolScan"), category: "main" },
   ];

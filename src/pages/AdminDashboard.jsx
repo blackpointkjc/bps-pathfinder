@@ -174,7 +174,6 @@ export default function AdminDashboard() {
     { id: "tracker", title: "Location Tracker", icon: MapPin, url: createPageUrl("AdminLocationTracker"), category: "scheduling" },
     // Communication
     { id: "announcements", title: "Announcements", icon: Megaphone, url: createPageUrl("AdminAnnouncements"), category: "communication" },
-    { id: "post_orders", title: "Post Orders", icon: BookOpen, url: createPageUrl("AdminPostOrders"), category: "communication" },
   ];
 
   if (isLoadingAuth) return <div className="p-8 text-center text-slate-500">Loading administrator access…</div>;

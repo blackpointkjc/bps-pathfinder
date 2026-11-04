@@ -99,7 +99,6 @@ import AdminPayrollConfig from './pages/AdminPayrollConfig';
 import AdminPerformanceReviews from './pages/AdminPerformanceReviews';
 import AdminPlannedShifts from './pages/AdminPlannedShifts';
 import AdminPortalSettings from './pages/AdminPortalSettings';
-import AdminPostOrders from './pages/AdminPostOrders';
 import AdminReports from './pages/AdminReports';
 import AdminScheduling from './pages/AdminScheduling';
 import AdminShiftBids from './pages/AdminShiftBids';
@@ -165,7 +164,6 @@ import OpenDoorReports from './pages/OpenDoorReports';
 import OpenShifts from './pages/OpenShifts';
 import PayrollDates from './pages/PayrollDates';
 import OfficerPayrollDates from './pages/OfficerPayrollDates';
-import PostOrders from './pages/PostOrders';
 import RankDuties from './pages/RankDuties';
 import RankStructure from './pages/RankStructure';
 import Schedule from './pages/Schedule';
@@ -254,7 +252,6 @@ export const PAGES = {
     "AdminPerformanceReviews": AdminPerformanceReviews,
     "AdminPlannedShifts": AdminPlannedShifts,
     "AdminPortalSettings": AdminPortalSettings,
-    "AdminPostOrders": AdminPostOrders,
     "AdminReports": AdminReports,
     "AdminScheduling": AdminScheduling,
     "AdminShiftBids": AdminShiftBids,
@@ -320,7 +317,6 @@ export const PAGES = {
     "OpenShifts": OpenShifts,
     "PayrollDates": PayrollDates,
     "OfficerPayrollDates": OfficerPayrollDates,
-    "PostOrders": PostOrders,
     "RankDuties": RankDuties,
     "RankStructure": RankStructure,
     "Schedule": Schedule,

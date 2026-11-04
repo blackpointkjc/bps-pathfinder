@@ -8,7 +8,6 @@ import Dashboard from './Dashboard';
 import TimeClock from './TimeClock';
 import Schedule from './Schedule';
 import VirginiaFieldLawAssistant from './VirginiaFieldLawAssistant';
-import PostOrders from './PostOrders';
 import QRPatrolScan from './QRPatrolScan';
 import ShiftHandover from './ShiftHandover';
 import VATrespassNotices from './VATrespassNotices';
@@ -35,7 +34,7 @@ import RankDuties from './RankDuties';
 
 const SECTIONS = [
   { id: 'today', label: 'Today', description: 'Dashboard, announcements, clock and schedule', icon: CalendarClock },
-  { id: 'field', label: 'Patrol & Post', description: 'Post orders, QR patrol and shift handover', icon: Wrench },
+  { id: 'field', label: 'Patrol & Post', description: 'QR patrol and shift handover', icon: Wrench },
   { id: 'messages', label: 'Enforcement & Legal', description: 'Law reference, trespass, complaints, summons and witness subpoenas', icon: Shield },
   { id: 'reports', label: 'Reports', description: 'Daily, incident, maintenance and patrol reports', icon: ClipboardList },
   { id: 'schedule', label: 'Schedule & Pay', description: 'Availability, requests, open shifts and payroll dates', icon: CalendarClock },
@@ -50,7 +49,6 @@ const TOOLS = {
     { id: 'announcements', label: 'Announcements', component: Announcements },
   ],
   field: [
-    { id: 'postorders', label: 'Post Orders', component: PostOrders },
     { id: 'handover', label: 'Shift Handover', component: ShiftHandover },
   ],
   messages: [

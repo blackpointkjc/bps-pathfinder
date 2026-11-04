@@ -89,7 +89,6 @@ const CENTER_CONFIG = {
         ['Virginia Law', 'VirginiaFieldLawAssistant', BookOpen],
       ]},
       { label: 'Field Tools', items: [
-        ['Post Orders', 'PostOrders', BookOpen],
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
         ['VA Trespass', 'VATrespassNotices', UserX],
         ['VA Complaint', 'VACriminalComplaints', Shield],
@@ -139,7 +138,6 @@ const CENTER_CONFIG = {
         ['My Dispatch Queue', 'OfficerDispatchQueue', Radio],
       ]},
       { label: 'Field Tools', items: [
-        ['Post Orders', 'PostOrders', BookOpen],
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
         ['Virginia Law', 'VirginiaFieldLawAssistant', BookOpen],
         ['VA Trespass', 'VATrespassNotices', UserX],
@@ -205,7 +203,6 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Sites & Assets', items: [
         ['Sites & Patrol','AdminLocations',Building2],
-        ['Site Operations','AdminPostOrders',BookOpen],
         ['Company Assets','AdminAssets',Package],
       ]},
       { label: 'Reports & Quality', items: [
@@ -522,6 +519,7 @@ function defaultPageForUser(user) {
 }
 
 function canAccessPage(user, pageName) {
+  if (['PostOrders', 'AdminPostOrders', 'ClientDocuments'].includes(pageName)) return false;
   if (pageName === 'ProfessionalStandards') return hasIAAccess(user);
   if (hasWholeAppAccess(user)) return true;
   if ((user?.additional_roles||[]).includes('visitor')) return pageName === 'VisitorPortal';
