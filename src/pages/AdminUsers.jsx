@@ -219,10 +219,15 @@ export default function AdminUsers({ embedded = false }) {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, userData }) => {
-      const response = await base44.functions.invoke('updateUser', { userId: id, updates: userData });
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload;
+      try {
+        const response = await base44.functions.invoke('updateUser', { userId: id, updates: userData });
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        return payload;
+      } catch (error) {
+        const problem = error?.response?.data || {};
+        throw new Error(problem.error || problem.details || error?.message || 'Account change could not be saved');
+      }
     },
     onSuccess: (result) => {
       invalidateAppDirectory();

@@ -224,11 +224,25 @@ Deno.serve(async (req) => {
         if(updatePayload.portal_approved!==undefined)updatePayload.account_status=updatePayload.portal_approved?'approved':'pending';
         if(isClientIdentity(mergedAccount)&&updatePayload.role==='admin')return Response.json({error:'Client accounts cannot be granted administrator access from the client profile.'},{status:400});
         Object.assign(updatePayload,clientOperationalPatch(mergedAccount));
-        if(updates.ps_role!==undefined||updates.additional_roles!==undefined||updates.role!==undefined)await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:user.email,action:'account_permission_change_requested',details:JSON.stringify({user_id:userId,ps_role:updatePayload.ps_role,additional_roles:updatePayload.additional_roles,role:updatePayload.role})});
+        // A nonessential IA audit write must not block account role changes.
+        // Permanent user audit is recorded after the verified write below.
+        if(updates.ps_role!==undefined||updates.additional_roles!==undefined||updates.role!==undefined){
+          try { await base44.asServiceRole.entities.PSAudit.create({actor_id:user.id,actor_name:user.email,action:'account_permission_change_requested',details:JSON.stringify({user_id:userId,ps_role:updatePayload.ps_role,additional_roles:updatePayload.additional_roles,role:updatePayload.role})}); }
+          catch (error) { console.warn('Role change intake audit delayed:',String(error?.message||error)); }
+        }
         // Every actual profile change gets an attributable event. Retain safe
         // old/new values for operational fields, but redact sensitive fields.
         const auditFields = Object.keys(updatePayload).filter(field => JSON.stringify(target[field]??null)!==JSON.stringify(updatePayload[field]??null));
-        await base44.asServiceRole.entities.User.update(userId, updatePayload);
+        // Changing the system role should not require unrelated personnel,
+        // platoon or identity synchronization to succeed. Return a specific
+        // error when the platform itself rejects the role write.
+        try { await base44.asServiceRole.entities.User.update(userId, updatePayload); }
+        catch (error) {
+          const detail=String(error?.response?.data?.error||error?.response?.data?.message||error?.message||'User service unavailable');
+          const status=Number(error?.response?.status||error?.status||0);
+          console.error('User profile write rejected', {userId,fields:Object.keys(updatePayload),status,detail});
+          return Response.json({error: updatePayload.role!==undefined?'Unable to change account type. '+detail:'Unable to save account changes. '+detail,code:'USER_WRITE_FAILED'}, {status:status===429?429:status===403?403:503});
+        }
         const privateField = (field:string) => /ssn|social|bank|tax|routing|account_number|password|token|credential|secret|date_of_birth|drivers_license_number|address|mobile_phone|emergency_contact|photo|cert_file|signature|file_url|document_url/i.test(field);
         const safeAuditValue = (field:string,value:any) => privateField(field) ? (value?'[confidential value recorded in employee file]':'[no value]') : JSON.stringify(value??null).slice(0,700);
         const now=new Date().toISOString();
@@ -253,7 +267,10 @@ Deno.serve(async (req) => {
         if (missingWrites.length) return Response.json({ error: 'Account data was not confirmed saved: ' + missingWrites.join(', '), unsaved_fields: missingWrites }, { status: 503 });
         try { await notifyPlatoonChange(base44.asServiceRole.entities, target, verifiedUser); }
         catch (error) { return Response.json({error:'Assignment saved, but reassignment notification failed. Contact command to confirm delivery.',assignment_saved:true},{status:503}); }
-        const warnings = await synchronizeOfficerIdentity(base44.asServiceRole.entities, { ...target, ...updatePayload, id:userId }, target);
+        // Role-only changes do not alter an officer's identity or command
+        // hierarchy, so skip expensive officer/dispatch sync reads entirely.
+        const identityChanged = ['rank','unit_number','badge_number','email','first_name','last_name','profile_photo_url','additional_roles'].some(field=>updatePayload[field]!==undefined);
+        const warnings = identityChanged ? await synchronizeOfficerIdentity(base44.asServiceRole.entities, { ...target, ...updatePayload, id:userId }, target) : [];
 
         // On the first admin approval of an officer, create an actionable
         // certification review for trainers without changing employee roles.
@@ -294,9 +311,9 @@ Deno.serve(async (req) => {
         
     } catch (error) {
         console.error('Error updating user:', error);
-        return Response.json({ 
-            error: 'Failed to update user',
-            details: error.message 
-        }, { status: 500 });
+        return Response.json({
+            error: 'Account update failed: '+String(error?.message||'Unexpected server error').slice(0,300),
+            code:'ACCOUNT_UPDATE_FAILED'
+        }, { status: 503 });
     }
 });
