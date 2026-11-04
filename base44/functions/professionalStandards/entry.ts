@@ -302,7 +302,7 @@ export default async function(req){
   if(action==='list'||action==='reports'){
    const page=Math.max(0,Math.min(10000,Number(body.page)||0)),limit=50;
    if((action==='reports'||body.view==='inbox')&&!review)fail('IA reviewer access is required for intake and reporting.',403);
-   const query=!review?{investigator_id:u.id}:body.view==='inbox'?{$and:[{$or:[{investigator_id:''},{investigator_id:null},{investigator_id:{$exists:false}}]},{status:{$in:['new','triage']}}]}:{};
+   const query=!review?{investigator_id:u.id}:body.view==='pending'?{status:'pending_review'}:body.view==='inbox'?{$and:[{$or:[{investigator_id:''},{investigator_id:null},{investigator_id:{$exists:false}}]},{status:{$in:['new','triage']}}]}:{};
    const rows=await db.PSCase.filter(query,'-created_date',limit,page*limit);
    const findings={};if(action==='reports'&&rows.length){const ids=new Set(rows.filter(canRead).map(c=>c.id));const allegations=await db.PSRecord.filter({kind:'allegation'},'-created_date',1000);for(const r of allegations){if(ids.has(r.case_id))findings[r.finding||'pending']=(findings[r.finding||'pending']||0)+1;}}
    // Opening the inbox is read-only and already authenticated; avoid writing

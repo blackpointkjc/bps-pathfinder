@@ -89,6 +89,7 @@ export async function linkedCaseTools(ctx){
   const proposed=records.find(r=>r.id===text(body.record_id,100)&&r.kind==='recommendation');
   if(!proposed)fail('Recommendation not found.',404);
   if(['executed','rejected'].includes(proposed.status))return Response.json({success:true,existing:true});
+  if(['executing','execution_needs_review'].includes(proposed.status))fail('Execution was already started. Review personnel records and reconcile the action before retrying.',409);
   const decision=text(body.decision,20);
   if(!['approve','reject'].includes(decision))fail('Select approve or reject.');
   const rationale=text(body.review_reason,5000);
@@ -107,6 +108,7 @@ export async function linkedCaseTools(ctx){
   const until=text(body.suspension_until??initial.suspension_until,40);
   if(reason.length<20||instructions.length<20)fail('An approved action requires documented reasons and instructions.');
   if(type==='other'&&customTitle.length<5)fail('Describe the custom personnel action.');
+  if(type==='training'&&(!/^\d{4}-\d{2}-\d{2}$/.test(due)||instructions.length<20))fail('Corrective training requires completion instructions and a due date.');
   const subject=await db.User.get(proposed.officer_id);
   if(!subject||!employee(subject)||subject.id===u.id)fail('Reviewer cannot impose this action on their own record.',403);
   if(type==='suspension'&&subject.role==='admin')fail('Administrator suspensions require main account administration.',403);
