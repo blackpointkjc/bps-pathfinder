@@ -1,4 +1,5 @@
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
+import { normalizeRank, rankLevel } from '@/utils/rankPolicy';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
@@ -183,6 +184,7 @@ export default function AdminLocations({ embedded = false }) {
   });
   const [balancingSupervisors, setBalancingSupervisors] = useState(false);
   const [siteBalanceMessage, setSiteBalanceMessage] = useState('');
+  const [siteSupervisorSearch, setSiteSupervisorSearch] = useState('');
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeMessage, setGeocodeMessage] = useState('');
   const [drawingBoundary, setDrawingBoundary] = useState(false);
@@ -223,7 +225,23 @@ export default function AdminLocations({ embedded = false }) {
     placeholderData: [],
   });
   const clientUsers = directoryUsers.filter(isClientAccount);
-  const supervisorUsers = directoryUsers.filter(u => hasSupervisorAccess(u));
+  // Site supervision is rank-qualified starting at Corporal, even when an
+  // officer's separate role flags have not been synchronized yet.
+  const supervisorUsers = directoryUsers.filter(person => {
+    const rank = rankLevel(normalizeRank(person.rank));
+    const qualified = rank >= rankLevel('Colonel') && rank <= rankLevel('Corporal');
+    const inactive = person.disabled === true || !!person.termination_date ||
+      ['terminated', 'inactive', 'archived'].includes(String(person.employment_status || '').toLowerCase());
+    return !inactive && !isClientAccount(person) && !!person.email && (qualified || hasSupervisorAccess(person));
+  }).sort((a, b) => rankLevel(a.rank) - rankLevel(b.rank) || String(a.last_name || '').localeCompare(String(b.last_name || '')));
+  // Display everyone qualified. Missing/legacy region data must not remove
+  // corporals and sergeants from the manual assignment list.
+  const visibleSupervisorUsers = supervisorUsers.filter(person => {
+    const query = siteSupervisorSearch.trim().toLowerCase();
+    return !query || [person.first_name, person.last_name, person.full_name, person.rank,
+      person.unit_number, person.email, person.division, person.subdivision, person.substation]
+      .some(value => String(value || '').toLowerCase().includes(query));
+  });
 
   const syncClientLocationAssignments = async () => {
     const result = await base44.functions.invoke('manageClientAssignments', { action: 'sync_all' });
@@ -1005,41 +1023,32 @@ export default function AdminLocations({ embedded = false }) {
 
             <div className="space-y-2">
               <Label htmlFor="assigned_supervisors">Site Supervisor</Label>
-              <p className="mb-2 text-xs text-slate-500">Leave unselected to assign automatically by substation, division and balanced qualified supervisor workload (starting at Corporal). Admin can rebalance automatic assignments; manually selected supervisors remain protected.</p>
-              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <Label className="text-sm font-medium mb-3 block">Available Supervisors</Label>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {supervisorUsers && supervisorUsers.length > 0 ? (
-                    supervisorUsers.filter(supervisor => {
-                      if (!formData.division || !formData.subdivision) return true;
-                      return String(supervisor.division||'').toLowerCase()===String(formData.division).toLowerCase()
-                        && String(supervisor.subdivision||'').toLowerCase()===String(formData.subdivision).toLowerCase();
-                    }).map((supervisor) => (
-                      <div key={supervisor.id} className="flex items-center space-x-2 p-2 hover:bg-slate-100 rounded">
-                        <Checkbox
-                          id={`supervisor-${supervisor.id}`}
-                          checked={formData.assigned_supervisors?.includes(supervisor.email) || false}
-                          onCheckedChange={(checked) => {
-                            const currentSupervisors = formData.assigned_supervisors || [];
-                            const newSupervisors = checked ? [supervisor.email] : currentSupervisors.filter(s => s !== supervisor.email);
-                            setFormData({...formData, assigned_supervisors: newSupervisors});
-                          }}
-                        />
-                        <Label htmlFor={`supervisor-${supervisor.id}`} className="cursor-pointer flex items-center gap-2 flex-1">
-                          <UserCheck className="w-4 h-4 text-green-600" />
-                          <div>
-                            <p className="font-medium">
-                              {supervisor.rank || 'Supervisor'} {supervisor.last_name}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {supervisor.rank || 'Supervisor'} {supervisor.unit_number && `• Unit #${supervisor.unit_number}`} • {supervisor.email}
-                            </p>
-                          </div>
-                        </Label>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-slate-500 italic">No users with supervisor role found. Assign the supervisor role to users in Manage Officers.</p>
+              <p className="mb-2 text-xs text-slate-500">Choose one qualified active officer (Corporal or above) regardless of whether their division or substation fields have been populated. Leave unselected for automatic assignment.</p>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                <Label className="mb-2 block text-sm font-medium">Available Supervisors ({supervisorUsers.length})</Label>
+                <Input aria-label="Search site supervisors" value={siteSupervisorSearch} onChange={event => setSiteSupervisorSearch(event.target.value)} placeholder="Search rank, name, unit, email or location" className="mb-3 bg-white" />
+                <div className="max-h-64 space-y-2 overflow-y-auto">
+                  {visibleSupervisorUsers.length ? visibleSupervisorUsers.map(supervisor => (
+                    <div key={supervisor.id} className="flex items-center gap-2 rounded p-2 hover:bg-slate-100">
+                      <Checkbox
+                        id={`supervisor-${supervisor.id}`}
+                        checked={(formData.assigned_supervisors || []).some(value => String(value).toLowerCase() === String(supervisor.email).toLowerCase())}
+                        onCheckedChange={checked => setFormData(previous => ({
+                          ...previous,
+                          assigned_supervisors: checked ? [supervisor.email] : (previous.assigned_supervisors || []).filter(value => String(value).toLowerCase() !== String(supervisor.email).toLowerCase()),
+                        }))}
+                      />
+                      <Label htmlFor={`supervisor-${supervisor.id}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                        <UserCheck className="h-4 w-4 shrink-0 text-green-600" />
+                        <span className="min-w-0">
+                          <span className="block break-words font-medium">{normalizeRank(supervisor.rank) || 'Supervisor'} {[supervisor.first_name,supervisor.last_name].filter(Boolean).join(' ') || supervisor.full_name}</span>
+                          <span className="block break-all text-xs text-slate-500">{supervisor.unit_number ? `Unit ${supervisor.unit_number} · ` : ''}{supervisor.email}</span>
+                          <span className="block text-xs text-slate-500">{[supervisor.division,supervisor.subdivision,supervisor.substation].filter(Boolean).join(' · ') || 'Organization not yet assigned'}</span>
+                        </span>
+                      </Label>
+                    </div>
+                  )) : (
+                    <p className="py-3 text-sm text-slate-500">{supervisorUsers.length ? 'No supervisors match this search.' : 'No eligible active supervisors were found. Verify personnel ranks and accounts in Manage Officers.'}</p>
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-3">
