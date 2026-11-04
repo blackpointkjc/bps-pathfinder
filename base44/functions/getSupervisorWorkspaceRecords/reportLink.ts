@@ -4,12 +4,12 @@ const random=(n=6)=>Array.from(crypto.getRandomValues(new Uint8Array(n))).map(x=
 const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 // Case numbers are human-readable references, not database IDs. Preserve the
 // immutable PSCase.id for evidence, audits, notifications and investigations.
-async function nextIAReference(db:any){
+async function nextIAReference(db){
  const year=new Date().getFullYear();
  const prefix=`IA-${year}-`;
  const rows=await db.PSCase.list('-created_date',1000);
- const used=new Set((rows||[]).map((item:any)=>String(item.reference||'')));
- const highest=(rows||[]).reduce((max:number,item:any)=>{
+ const used=new Set((rows||[]).map((item)=>String(item.reference||'')));
+ const highest=(rows||[]).reduce((max,item)=>{
    const value=String(item.reference||'');
    if(!value.startsWith(prefix))return max;
    const suffix=value.slice(prefix.length);

@@ -46,12 +46,12 @@ async function legacyRequest(base44,db,u,body,privileged=false){
 
 // Case numbers are human-readable references, not database IDs. Preserve the
 // immutable PSCase.id for evidence, audits, notifications and investigations.
-async function nextIAReference(db:any){
+async function nextIAReference(db){
  const year=new Date().getFullYear();
  const prefix=`IA-${year}-`;
  const rows=await db.PSCase.list('-created_date',1000);
- const used=new Set((rows||[]).map((item:any)=>String(item.reference||'')));
- const highest=(rows||[]).reduce((max:number,item:any)=>{
+ const used=new Set((rows||[]).map((item)=>String(item.reference||'')));
+ const highest=(rows||[]).reduce((max,item)=>{
    const value=String(item.reference||'');
    if(!value.startsWith(prefix))return max;
    const suffix=value.slice(prefix.length);
