@@ -71,7 +71,7 @@ const ADMIN_SECTIONS = [
   { id: 'schedule', label: 'Scheduling & Coverage', description: 'Officer shifts, fleet assignments, duty supervisors, staffing plans and bids', icon: Calendar },
   { id: 'supporttime', label: 'Support Clock In', description: 'Support and administrative staff time', icon: Calendar },
   { id: 'assets', label: 'Company Assets', description: 'Vehicles, equipment and maintenance', icon: Briefcase },
-  { id: 'sites', label: 'Sites & Patrol', description: 'Locations, boundaries, dispatch rules, post orders and patrol requirements', icon: Building2 },
+  { id: 'sites', label: 'Sites & Patrol', description: 'Locations, boundaries, dispatch rules and patrol requirements', icon: Building2 },
   { id: 'reports', label: 'Reports & Quality', description: 'Operational reports, parking records and service feedback', icon: ClipboardList },
   { id: 'communications', label: 'Announcements', description: 'Company announcements and staff communications', icon: MessageCircle },
   { id: 'system', label: 'System Settings', description: 'Portal access and application settings', icon: Settings },
