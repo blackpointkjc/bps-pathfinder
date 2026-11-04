@@ -44,6 +44,26 @@ async function legacyRequest(base44,db,u,body,privileged=false){
 }
 
 
+// Case numbers are human-readable references, not database IDs. Preserve the
+// immutable PSCase.id for evidence, audits, notifications and investigations.
+async function nextIAReference(db:any){
+ const year=new Date().getFullYear();
+ const prefix=`IA-${year}-`;
+ const rows=await db.PSCase.list('-created_date',1000);
+ const used=new Set((rows||[]).map((item:any)=>String(item.reference||'')));
+ const highest=(rows||[]).reduce((max:number,item:any)=>{
+   const value=String(item.reference||'');
+   if(!value.startsWith(prefix))return max;
+   const suffix=value.slice(prefix.length);
+   return /^\d{4}$/.test(suffix)?Math.max(max,Number(suffix)):max;
+ },0);
+ for(let number=highest+1;number<=9999;number++){
+   const reference=prefix+String(number).padStart(4,'0');
+   if(!used.has(reference)&&!(await db.PSCase.filter({reference},'-created_date',1)).length)return reference;
+ }
+ throw new Error('The annual Investigation case number range is full. Contact an administrator.');
+}
+
 const kinds=['note','interview','task','allegation','corrective_action','policy','evidence'];
 const allowedFiles=/^(image\/(jpeg|png|webp|heic)|video\/(mp4|quicktime|webm)|audio\/(mpeg|mp4|wav|x-wav|ogg|webm)|application\/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)|text\/plain)$/;
 const publicStates=Object.keys(PUBLIC_UPDATE_MESSAGES);
@@ -169,7 +189,7 @@ export default async function(req){
    const anonymous=body.anonymous===true;
    if(!anonymous&&!text(body.complainant_name))fail('Enter your name or choose anonymous.');
    const category=caseCategory(body.category||'unclassified',body.category_detail);
-   const tracking_code=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,'0'),reference='PS-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
+   const tracking_code=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,'0'),reference=await nextIAReference(db);
    const c=await db.PSCase.create({reference,tracking_hash:await hash(tracking_code),kind:body.kind,anonymous,complainant_name:anonymous?'Anonymous':text(body.complainant_name,200),contact_email:'',contact_phone:'',contact_preference:'none',language:text(body.language,100),accessibility:text(body.accessibility,1000),incident_date:text(body.incident_date,40),location:text(body.location,500),officers:text(body.officers,1000),witnesses:text(body.witnesses,2000),description:text(body.description,12000),status:'new',public_status:'Received',public_message:'Your submission has been received for intake review.',...category,priority:'normal',version:1,legal_hold:false});
    await audit(db,null,'public_submission',c.id,body.kind);
    let evidence_error='';
@@ -268,7 +288,7 @@ export default async function(req){
    if(!incident_date||!Number.isFinite(Date.parse(incident_date)))fail('A valid incident date is required.');
    const investigator_id=review?text(input.investigator_id,100):u.id;
    if(investigator_id&&!eligible.some(p=>p.id===investigator_id))fail('Choose an active authorized investigator.');
-   const reference='IA-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
+   const reference=await nextIAReference(db);
    const category=caseCategory(input.category||'unclassified',input.category_detail);
    const officer_ids=[...new Set(Array.isArray(input.officer_ids)?input.officer_ids.map(v=>text(v,100)):staff.filter(v=>source?.officer_email&&[v.email,v.work_email,v.pathfinder_email].includes(source.officer_email)).map(v=>v.id))];
    if(officer_ids.length>25||officer_ids.some(id=>!staff.some(v=>v.id===id&&!['client','student','visitor'].some(r=>(v.additional_roles||[]).includes(r)||v.user_type===r))))fail('Choose valid involved officers.');

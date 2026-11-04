@@ -2,11 +2,31 @@ const text=(v,max=500)=>String(v??'').trim().slice(0,max);
 const actorName=u=>[u.rank,u.last_name].filter(Boolean).join(' ')||u.full_name||u.email;
 const random=(n=6)=>Array.from(crypto.getRandomValues(new Uint8Array(n))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
+// Case numbers are human-readable references, not database IDs. Preserve the
+// immutable PSCase.id for evidence, audits, notifications and investigations.
+async function nextIAReference(db:any){
+ const year=new Date().getFullYear();
+ const prefix=`IA-${year}-`;
+ const rows=await db.PSCase.list('-created_date',1000);
+ const used=new Set((rows||[]).map((item:any)=>String(item.reference||'')));
+ const highest=(rows||[]).reduce((max:number,item:any)=>{
+   const value=String(item.reference||'');
+   if(!value.startsWith(prefix))return max;
+   const suffix=value.slice(prefix.length);
+   return /^\d{4}$/.test(suffix)?Math.max(max,Number(suffix)):max;
+ },0);
+ for(let number=highest+1;number<=9999;number++){
+   const reference=prefix+String(number).padStart(4,'0');
+   if(!used.has(reference)&&!(await db.PSCase.filter({reference},'-created_date',1)).length)return reference;
+ }
+ throw new Error('The annual Investigation case number range is full. Contact an administrator.');
+}
+
 async function createReportLink(db,u,name,report){
  const prior=await db.PSCase.filter({source_entity:name,source_record_id:report.id},'-created_date',1);
  if(prior[0])return {reference:prior[0].reference,existing:true};
  const tracking_code=String(crypto.getRandomValues(new Uint32Array(1))[0]%10000).padStart(4,'0');
- const reference='IA-'+new Date().getFullYear()+'-'+random(6).toUpperCase();
+ const reference=await nextIAReference(db);
  const description=text(report.description||report.observations||report.summary||report.supervisor_notes||report.incident_description||report.comments||('Submitted '+name+' for Professional Standards review.'),12000);
  const personnel=report.officer_email?await db.User.filter({email:report.officer_email},'-updated_date',1):[];
  const officer=personnel[0];
