@@ -5,7 +5,7 @@ import { COMMAND_TIERS, commandRank, reportingLabel, assignmentLabel } from '@/u
 export const rosterPrintCss = `
 #bps-print-roster { display:none }
 @media print {
- @page {size:letter portrait;margin:.38in}
+ @page {size:letter portrait;margin:.45in}
  html,body {margin:0!important;padding:0!important;height:auto!important;overflow:visible!important;background:white!important}
  body > :not(#bps-print-roster) {display:none!important}
  #bps-print-roster {display:block!important;position:static!important;width:100%!important;color:#192539!important;background:white!important;font-family:Arial,Helvetica,sans-serif}
@@ -20,13 +20,13 @@ export const rosterPrintCss = `
  #bps-print-roster .org-section-heading {display:flex;align-items:center;gap:9px;break-after:avoid;page-break-after:avoid;margin:4px 0 8px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.9px;color:#25364d}
  #bps-print-roster .org-section-heading:before,#bps-print-roster .org-section-heading:after {content:'';height:1px;background:#c9d0da;flex:1}
  #bps-print-roster .org-section-heading span {background:#eaf0f5;padding:5px 12px;border-radius:3px;border-top:2px solid #b29550}
- #bps-print-roster .org-level {break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;align-items:center}
- #bps-print-roster .org-stem {height:12px;width:2px;background:#b29550;margin:0 auto}
- #bps-print-roster .org-rank-title {font-size:8px;text-transform:uppercase;letter-spacing:1.15px;font-weight:900;color:#876b2f;margin:0 0 5px;text-align:center}
- #bps-print-roster .org-cards {width:100%;display:flex;align-items:stretch;justify-content:center;gap:10px}
- #bps-print-roster .org-card {width:3.45in;max-width:calc(50% - 5px);min-width:0;display:flex;gap:10px;align-items:flex-start;padding:9px 10px;background:#f7f8fb;border:1px solid #abb8c8;border-top:3px solid #b29550;border-radius:5px;break-inside:avoid;page-break-inside:avoid}
- #bps-print-roster .org-card:only-child {max-width:3.55in}
- #bps-print-roster .org-photo {height:68px;width:57px;flex-shrink:0;object-fit:cover;object-position:center 20%;border-radius:4px;border:1px solid #cbd3dd;background:#e5e9ee}
+ #bps-print-roster .org-level {break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;align-items:center;padding:3px 0}
+ #bps-print-roster .org-stem {height:9px;width:2px;background:#b29550;margin:0 auto}
+ #bps-print-roster .org-rank-title {break-after:avoid;page-break-after:avoid;font-size:9px;text-transform:uppercase;letter-spacing:1.15px;font-weight:900;color:#876b2f;margin:0 0 5px;text-align:center}
+ #bps-print-roster .org-cards {width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;justify-content:center;gap:7px}
+ #bps-print-roster .org-card {width:auto;max-width:100%;min-width:0;display:flex;gap:8px;align-items:flex-start;padding:7px 8px;background:#f7f8fb;border:1px solid #abb8c8;border-top:3px solid #b29550;border-radius:5px;break-inside:avoid;page-break-inside:avoid}
+ #bps-print-roster .org-card:only-child {grid-column:1 / -1;justify-self:center;width:3.55in;max-width:100%}
+ #bps-print-roster .org-photo {height:54px;width:46px;flex-shrink:0;object-fit:cover;object-position:center 20%;border-radius:4px;border:1px solid #cbd3dd;background:#e5e9ee}
  #bps-print-roster .org-placeholder {display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#7e8796}
  #bps-print-roster .org-details {min-width:0;flex:1}
  #bps-print-roster .org-rank {font-size:8px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:#876b2f}
@@ -34,7 +34,7 @@ export const rosterPrintCss = `
  #bps-print-roster .org-info {font-size:8.4px;line-height:1.5;color:#29374b;overflow-wrap:anywhere}
  #bps-print-roster .org-info strong {color:#15263b;font-weight:800}
  #bps-print-roster .org-contact {font-size:7.7px;color:#46566b;overflow-wrap:anywhere;line-height:1.4;margin-top:3px}
- #bps-print-roster .org-section + .org-section {margin-top:12px}
+ #bps-print-roster .org-section + .org-section {margin-top:10px}
  #bps-print-roster .print-footer {margin-top:14px;padding-top:6px;border-top:1px solid #c5cbd3;display:flex;justify-content:space-between;font-size:8px;color:#5b6574}
 }
 `;
@@ -43,6 +43,7 @@ const personName = p => [p.first_name,p.last_name].filter(Boolean).join(' ') || 
 const reportingName = p => `${p.rank || 'Officer'} ${p.last_name || p.first_name || ''}`;
 const groupInto = (people,max=2) => Array.from({length:Math.ceil(people.length/max)},(_,i)=>people.slice(i*max,i*max+max));
 const photoOf = person => person.profile_photo_original_url || person.profile_photo_url || '';
+const printRank = rank => rank === 'Lt Colonel' ? 'Lieutenant Colonel' : rank;
 
 function OfficerCard({person,all,contactEmail}) {
  const photo=photoOf(person);
@@ -69,7 +70,7 @@ function RankedChain({people,all,contactEmail}) {
    const preceding=levelIndex++;
    return <div className="org-level" key={key}>
     {preceding>0 && <div className="org-stem"/>}
-    <div className="org-rank-title">{rank}</div>
+    <div className="org-rank-title">{printRank(rank)}</div>
     <div className="org-cards">{group.map(person=><OfficerCard key={person.id} person={person} all={all} contactEmail={contactEmail}/>)}</div>
    </div>;
   });
@@ -93,7 +94,7 @@ export function RosterPrintContent({users=[],contactEmail=()=>''}) {
    <div><div className="print-brand">BLACK POINT SECURITY</div><div className="print-deck">OFFICIAL ORGANIZATIONAL CHART · CHAIN OF COMMAND</div></div>
    <div className="print-meta">{new Date().toLocaleDateString('en-US')}<div>{all.length} active personnel</div></div>
   </header>
-  <div className="print-intro">COMMAND AUTHORITY FLOWS FROM TOP TO BOTTOM</div>
+  <div className="print-intro">RANKS DISPLAYED IN ORDER OF AUTHORITY · PERSONNEL OF DIFFERENT RANKS NEVER SHARE A ROW</div>
   {!!command.length && <section className="org-section">
    <h2 className="org-section-heading"><span>Company Command</span></h2>
    <RankedChain people={command} all={all} contactEmail={contactEmail}/>
