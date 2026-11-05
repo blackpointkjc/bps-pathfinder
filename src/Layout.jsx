@@ -603,15 +603,16 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   // configuration and canAccessPage checks as desktop, grouped by workspace.
   const sourceGroups = mobile
     ? mobileCenters.flatMap(key => (CENTER_CONFIG[key]?.groups || [])
-        .filter(group => mobileSection !== 'reports' || group.label.toLowerCase().includes('report') || group.items.some(([name,page]) => /report|review|handover/i.test(name+' '+page)))
+        .filter(group => mobileSection !== 'reports' || /report|review|handover/i.test(group.label) || group.items.some(([name,page]) => /report|review|handover/i.test(name+' '+page)))
         .map(group => ({...group, centerKey:key, label:`${CENTER_CONFIG[key].label} / ${group.label}`})))
     : desktopCenterPage ? [] : center.groups;
   const groups = sourceGroups
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
-    .filter(group => !mobileSection || (mobileSection === 'reports' && group.label.toLowerCase().includes('report')))
     .map(group => ({
       ...group,
-      items: group.items.filter(([label, page]) => canAccessPage(user, page) && (!query || `${label} ${group.label}`.toLowerCase().includes(query))),
+      items: group.items.filter(([label, page]) => canAccessPage(user, page) &&
+        (mobileSection !== 'reports' || /report|review|handover/i.test(label+' '+page+' '+group.label)) &&
+        (!query || `${label} ${group.label}`.toLowerCase().includes(query))),
     }))
     .filter(group => group.items.length > 0);
 
@@ -658,7 +659,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           )}
         </div>
 
-        {(!collapsed || mobile) && !mobile && availableCenters.length > 1 && (
+        {!mobile && !collapsed && availableCenters.length > 1 && (
           <div className="mt-3">
             {mobile && <div className="mb-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">Workspace</div>}
             {mobile ? (
