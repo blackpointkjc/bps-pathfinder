@@ -598,12 +598,13 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
     ? [...new Set([...availableCenters, 'cad', 'officer', 'supervisor', 'hr', 'client'])]
     : availableCenters.includes('supervisor')
       ? [...new Set([...availableCenters, 'officer'])] : availableCenters;
+  // The phone Tools drawer must expose every authorized page, not an empty
+  // list when the default 'tools' section is selected. Use the same center
+  // configuration and canAccessPage checks as desktop, grouped by workspace.
   const sourceGroups = mobile
-    ? (mobileSection === 'reports'
-        ? mobileCenters.flatMap(key => (CENTER_CONFIG[key]?.groups || [])
-            .filter(group => group.label.toLowerCase().includes('report'))
-            .map(group => ({ ...group, label: `${CENTER_CONFIG[key].label} / ${group.label}` })))
-        : [])
+    ? mobileCenters.flatMap(key => (CENTER_CONFIG[key]?.groups || [])
+        .filter(group => mobileSection !== 'reports' || group.label.toLowerCase().includes('report') || group.items.some(([name,page]) => /report|review|handover/i.test(name+' '+page)))
+        .map(group => ({...group, centerKey:key, label:`${CENTER_CONFIG[key].label} / ${group.label}`})))
     : desktopCenterPage ? [] : center.groups;
   const groups = sourceGroups
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
@@ -694,23 +695,23 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         )}
       </div>
 
-      {(!collapsed || mobile) && (!desktopCenterPage || mobile) && (!mobile || mobileSection === 'reports') && <div className="px-3 pt-3">
+      {(!collapsed || mobile) && (!desktopCenterPage || mobile) && <div className="px-3 pt-3">
         <div className="flex items-center gap-2 rounded-lg border border-[#24435f] bg-[#07131f] px-3 py-2.5 shadow-inner transition focus-within:border-cyan-600/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
           <Search className="h-3.5 w-3.5 text-[#65819d]" />
-          <input value={search} onChange={event => setSearch(event.target.value)} aria-label={mobile ? 'Search all authorized pages' : `Search ${center.label}`} placeholder={mobile ? 'Search all pages…' : `Search ${center.label}`} className="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-[#55708a]" />
+          <input value={search} onChange={event => setSearch(event.target.value)} aria-label={mobile ? 'Search authorized Pathfinder tools' : `Search ${center.label}`} placeholder={mobile ? 'Search all authorized tools…' : `Search ${center.label}`} className="w-full bg-transparent text-base text-white outline-none placeholder:text-[#849ab1] md:text-sm" />
         </div>
       </div>}
 
       <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y px-2 py-2">
-        {mobile && !mobileSection && (
+        {mobile && !mobileSection && !query && (
           <>
-            <div className="mb-2 px-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#6d8aa7]">Main Centers</div>
-            <div className="mb-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3" aria-label="Pathfinder centers">
+            <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#92b8d4]">Workspaces</div>
+            <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Pathfinder centers">
               {mobileCenters.map(key => {
                 const item = CENTER_CONFIG[key];
                 const Icon = item.icon;
                 return (
-                  <Link key={key} to={createPageUrl(DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key))} onClick={onCloseMobile} className="flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 transition hover:border-cyan-500 hover:bg-[#153552]">
+                  <Link key={key} to={createPageUrl(DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key))} onClick={onCloseMobile} className="flex min-h-12 items-center gap-2.5 rounded-xl border border-[#315879] bg-[#0e2236] px-3 py-3 text-[12px] font-bold text-slate-100 transition hover:border-cyan-500 hover:bg-[#153552]">
                     <Icon className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
                     <span className="truncate">{item.label}</span>
                   </Link>
@@ -739,9 +740,9 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             })}
           </div>
         )}
-        {mobile && !mobileSection && (
+        {mobile && !mobileSection && !query && (
           <>
-            <div className="mb-2 px-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#6d8aa7]">Communication</div>
+            <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#92b8d4]">Communication</div>
             <div className="mb-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
               <Link to={createPageUrl('OfficerInbox')} onClick={() => onCloseMobile?.()} className="relative flex min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#0e2236] px-2.5 py-2 text-[10px] font-black text-slate-100 hover:border-cyan-500 hover:bg-[#153552]">
                 <MessageCircle className="h-3.5 w-3.5 text-cyan-300" /><span>Teams</span>
@@ -777,15 +778,15 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           // every center's nested navigation. Keep group names internally for
           // filtering/search, but do not render rows such as
           // "Admin Center / Command" or "Officer Center / Field Tools".
-          const groupOpen = mobile || Boolean(query) || openNavGroup === group.label;
+          const groupOpen = Boolean(query) || openNavGroup === group.label;
           return (
             <div key={`${activeCenter}:${group.label}`} className={mobile ? 'mb-1' : 'mb-2'}>
-              {!mobile && (!collapsed || mobile) && (
+              {(!collapsed || mobile) && (
                 <button
                   type="button"
                   onClick={() => { if (!query) setNavGroup(group.label, !groupOpen); }}
                   aria-expanded={groupOpen}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-left text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7895b2] transition hover:bg-[#0d2135] hover:text-[#9fc7e8]"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-left text-[11px] font-bold uppercase tracking-[0.06em] text-[#9fc6e3] transition hover:bg-[#0d2135] hover:text-white"
                 >
                   <span>{group.label}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${groupOpen ? 'rotate-180' : ''}`} />
@@ -811,7 +812,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </div>
           );
         })}
-        {groups.length === 0 && mobile && query && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
+        {mobile && groups.length===0 && <div className="px-3 py-8 text-center text-sm text-[#a2bed6]">{query?'No authorized pages match your search.':'No additional pages are assigned to this account.'}</div>}
       </nav>
 
       <div className={`border-t border-[#1b3048] bg-[#06101b]/95 backdrop-blur ${mobile ? 'mobile-tool-footer' : 'p-2.5'}`}>
@@ -1501,6 +1502,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const openMobileToolsMenu = () => {
+    setSearch('');
     setMobileSection(null);
     setSearch('');
     const centers = allowedCenters(user);
@@ -1537,8 +1539,8 @@ export default function Layout({ children, currentPageName }) {
   }
 
   return <AcceptableUseGate user={user}><MicrosoftMailSetupGate user={user} enabled={false}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><PerformanceReviewTaskGate user={user} />{backgroundServicesReady && <NotificationMonitor user={user} />}{backgroundServicesReady && <OutlookNotificationMonitor user={user} />}{backgroundServicesReady && <TeamsNotificationMonitor user={user} />}<SupervisorOperationsMonitor user={user} enabled={backgroundServicesReady} /><CadSourceSyncMonitor user={user} /><GlobalMessageBanner user={user} /><CadVoiceBroadcastMonitor user={user} />{!allowedCenters(user).includes('student') && <WelcomeBriefing user={user} />}<MandatoryReadGate user={user} /><ForcedOOSOverlay />
-    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100050] flex items-center justify-center bg-black/75 p-2 backdrop-blur-[4px] sm:p-5" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
-      <motion.section initial={{ scale: 0.96, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.97, y: 12, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[min(80dvh,640px)] w-[min(94vw,620px)] overflow-hidden rounded-2xl border border-[#315879] bg-[#06101b] shadow-[0_30px_100px_rgba(0,0,0,.7)]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
+    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100050] flex items-stretch justify-start bg-black/75 p-0 backdrop-blur-[4px]" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
+      <motion.section initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -40, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[100dvh] max-h-[100dvh] w-[min(92vw,420px)] overflow-hidden rounded-r-2xl border-r border-[#315879] bg-[#06101b] shadow-[0_30px_100px_rgba(0,0,0,.7)]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => { if (user?.id) sessionStorage.removeItem(`bps-role-home-routed:${user.id}`); logout(true); }} />
       </motion.section>
     </motion.div>}</AnimatePresence>
