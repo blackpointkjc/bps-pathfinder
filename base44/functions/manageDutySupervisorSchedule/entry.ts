@@ -1,6 +1,7 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { validateBatch } from './batchPolicy.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import {sendCreditFreeEmail} from './creditFreeEmail.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
@@ -29,6 +30,21 @@ const hierarchy=['colonel','lt colonel','major','captain','lieutenant','first se
     || Boolean(n(actor.substation)&&n(officer.substation)===n(actor.substation));
 };
 const displayName = (user: any) => [user?.rank, user?.last_name].filter(Boolean).join(' ').trim() || user?.full_name || user?.email || 'Supervisor';
+
+const escapeMail=(value:any)=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+const supervisorHtml=(row:any,kind:string)=>`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#090c14;font-family:Arial,sans-serif;color:#f2f5f9"><table role="presentation" width="100%" style="background:#090c14"><tr><td align="center" style="padding:30px 12px"><table role="presentation" width="100%" style="max-width:600px;background:#111d2d;border:1px solid #d4af37;border-radius:13px"><tr><td align="center" style="padding:22px;background:#080b13"><img src="https://bpspf.blackpointkjc.com/black-point-shield.webp" alt="BlackPoint" width="170" style="max-width:100%;height:auto"><p style="color:#d4af37;letter-spacing:3px;font-size:12px">DUTY SUPERVISOR SCHEDULING</p></td></tr><tr><td style="padding:28px"><h1 style="font-size:23px;color:#ffffff">Duty assignment ${escapeMail(kind)}</h1><p>Your duty supervisor coverage has been ${escapeMail(kind)}.</p><p style="color:#cbd5e1;line-height:1.8"><strong>Date:</strong> ${escapeMail(row.assignment_date)}<br><strong>Hours:</strong> ${escapeMail(row.start_time)} – ${escapeMail(row.end_time)}<br><strong>Location:</strong> ${escapeMail(row.location||'All Sites')}</p><a href="https://bpspf.blackpointkjc.com/DutySupervisorScheduling" style="display:inline-block;margin-top:14px;padding:13px 20px;background:#d4af37;color:#111;text-decoration:none;font-weight:bold;border-radius:8px">View Duty Schedule</a></td></tr><tr><td style="padding:18px 28px;border-top:1px solid #30445b;color:#a7b6ca;font-size:12px">BlackPoint Pathfinder · Automated scheduling notice</td></tr></table></td></tr></table></body></html>`;
+async function notifyDutyAssignment(base44:any,row:any,kind:string){
+ const recipient=lower(row?.supervisor_email);
+ if(!recipient||recipient==='open')return {email_status:'skipped'};
+ const title='Duty supervisor assignment '+kind;
+ await base44.asServiceRole.entities.Notification.create({recipient_email:recipient,type:'schedule_changed',title,message:'Your duty coverage on '+row.assignment_date+' ('+row.start_time+' – '+row.end_time+') at '+(row.location||'All Sites')+' was '+kind+'. Review your duty schedule.',priority:'high',is_read:false,requires_acknowledgment:true,source_name:'Duty Supervisor Scheduling'}).catch(error=>console.warn('Duty supervisor in-app notice failed',String(error?.message||error)));
+ const eventKey='duty:'+String(row.id||'')+':'+kind+':'+String(row.updated_date||new Date().toISOString());
+ let status='failed',error='';
+ try{await sendCreditFreeEmail(base44,{to:recipient,subject:'BlackPoint Pathfinder | '+title,body:supervisorHtml(row,kind)});status='accepted';}
+ catch(reason){error=String(reason?.message||reason).slice(0,300);console.error('Duty supervisor email was not accepted',error);}
+ try{await base44.asServiceRole.entities.ScheduleEmailDelivery.create({event_key:eventKey,recipient_email:recipient,status,subject:title,provider:'Microsoft 365',error,attempted_at:new Date().toISOString(),related_id:String(row.id||''),...(status==='accepted'?{accepted_at:new Date().toISOString()}: {})});}catch(reason){console.warn('Duty email receipt not saved',String(reason?.message||reason));}
+ return {email_status:status,...(error?{email_error:error}:{})};
+}
 
 Deno.serve(async (req) => {
   try {
@@ -74,9 +90,9 @@ Deno.serve(async (req) => {
         return Response.json({error:'A selected duty supervisor is outside your platoon and operating area'},{status:403});
       const checked=validateBatch(rows,users,existing);
       if(checked.errors.length)return Response.json({error:checked.errors.join(' · '),validation_errors:checked.errors},{status:409});
-      let created=0;
-      for(const row of checked.planned){await base44.asServiceRole.entities.DutySupervisorAssignment.create({...row,created_by_email:me.email,updated_by_email:me.email});created++;}
-      return Response.json({success:true,created,skipped:checked.skipped});
+      let created=0,email_failed=0,email_accepted=0;
+      for(const row of checked.planned){const saved=await base44.asServiceRole.entities.DutySupervisorAssignment.create({...row,created_by_email:me.email,updated_by_email:me.email});created++;const result=await notifyDutyAssignment(base44,saved,'created');if(result.email_status==='accepted')email_accepted++;if(result.email_status==='failed')email_failed++;}
+      return Response.json({success:true,created,skipped:checked.skipped,email_failed,email_accepted});
     }
     if (action === 'delete') {
       const id = String(body.id || '');
@@ -86,11 +102,13 @@ Deno.serve(async (req) => {
         const users=await base44.asServiceRole.entities.User.filter({email:existing.supervisor_email},'-updated_date',1);
         if(!users[0]||!canOversee(me,users[0]))return Response.json({error:'Outside your assigned supervisor area'},{status:403});
       }
+      const deletedAssignment=await base44.asServiceRole.entities.DutySupervisorAssignment.get(id);
       await base44.asServiceRole.entities.DutySupervisorAssignment.delete(id);
+      const delivery=await notifyDutyAssignment(base44,deletedAssignment,'removed');
       await base44.asServiceRole.entities.AuditLog.create({
         entity_type: 'DutySupervisorAssignment', entity_id: id, action: 'delete', actor_id: String(me.id || me.email), actor_name: displayName(me), timestamp: new Date().toISOString(), description: 'Duty supervisor schedule assignment removed.'
       }).catch(() => null);
-      return Response.json({ success: true, deleted: id });
+      return Response.json({ success: true, deleted: id, ...delivery });
     }
 
     const row = body.assignment || {};
@@ -123,6 +141,7 @@ Deno.serve(async (req) => {
       updated_by_email: me.email || '',
     };
     let saved;
+    const original=row.id?await base44.asServiceRole.entities.DutySupervisorAssignment.get(String(row.id)):null;
     if (row.id) saved = await base44.asServiceRole.entities.DutySupervisorAssignment.update(String(row.id), payload);
     else saved = await base44.asServiceRole.entities.DutySupervisorAssignment.create({ ...payload, created_by_email: me.email || '' });
 
@@ -130,7 +149,11 @@ Deno.serve(async (req) => {
       entity_type: 'DutySupervisorAssignment', entity_id: String(saved?.id || row.id || ''), action: row.id ? 'update' : 'create', actor_id: String(me.id || me.email), actor_name: displayName(me), timestamp: new Date().toISOString(), description: `Duty supervisor scheduled: ${payload.supervisor_name} · ${payload.assignment_date} ${payload.start_time}-${payload.end_time} · ${payload.location}`
     }).catch(() => null);
 
-    return Response.json({ success: true, assignment: saved || payload });
+    const changes=[original?.supervisor_email,payload.supervisor_email].filter(Boolean);
+    const unique=[...new Set(changes.map(lower))];
+    const results=[];
+    for(const email of unique){const moved=original&&lower(original.supervisor_email)!==lower(payload.supervisor_email);const notice={...(email===lower(original?.supervisor_email)?original||payload:saved||payload),supervisor_email:email};results.push(await notifyDutyAssignment(base44,notice,moved&&email===lower(original.supervisor_email)?'removed':moved?'created':original?'updated':'created'));}
+    return Response.json({ success: true, assignment: saved || payload, email_failed:results.filter(item=>item.email_status==='failed').length,email_accepted:results.filter(item=>item.email_status==='accepted').length });
   } catch (error) {
     console.error('manageDutySupervisorSchedule failed', error);
     return Response.json({ error: error?.message || 'Unable to manage duty supervisor schedule.' }, { status: 500 });
