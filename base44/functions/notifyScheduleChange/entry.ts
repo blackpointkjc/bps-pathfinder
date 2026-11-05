@@ -1,5 +1,6 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import { sendCreditFreeEmail } from './creditFreeEmail.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
@@ -91,9 +92,8 @@ Deno.serve(async (req) => {
         ? `<p>A new shift was added to your published schedule.</p><p><strong>Added:</strong><br>${safe(current)}</p>`
         : `<p>Your published schedule was changed.</p><p><strong>Previous:</strong><br>${safe(previous)}</p><p><strong>Updated:</strong><br>${safe(current)}</p>`;
 
-    // Credit-free: deliver the schedule change as an in-app notification only.
-    // The branded SendEmail call was removed to stop integration-credit usage;
-    // officers still receive a high-priority notification they must acknowledge.
+    // In-app and branded email are separate channels: a Microsoft mail failure
+    // cannot erase a saved shift or its required acknowledgment notification.
     await base44.asServiceRole.entities.Notification.create({
       recipient_email: officer.email,
       type: 'schedule_changed',
@@ -105,7 +105,20 @@ Deno.serve(async (req) => {
       source_name: 'System Scheduling',
     });
 
-    return Response.json({ success: true, notified: officer.email });
+    const eventKey='shift:'+String(after?.id||before?.id||'unknown')+':'+changeType+':'+String(after?.updated_date||before?.updated_date||new Date().toISOString())+':'+officerEmail;
+    const receiptRows=await base44.asServiceRole.entities.ScheduleEmailDelivery.filter({event_key:eventKey},'-created_date',1).catch(()=>[]);
+    const receipt=receiptRows?.[0];
+    if(receipt?.status==='accepted')return Response.json({success:true,notified:officer.email,email_status:'accepted',duplicate:true});
+    const salutation=safe([officer.rank,officer.last_name||officer.first_name].filter(Boolean).join(' ')||officer.full_name||'Team Member');
+    const html=blackPointEmail(subject,`<p>Hello ${salutation},</p>${htmlDetail}<p>Please open Pathfinder to review and acknowledge this schedule update.</p>`);
+    let emailStatus='failed',emailError='';
+    try{
+      await sendCreditFreeEmail(base44,{to:officer.email,subject:'BlackPoint Pathfinder | '+subject,body:html});
+      emailStatus='accepted';
+    }catch(error){emailError=String(error?.message||'Microsoft 365 did not accept the message').slice(0,350);console.error('Schedule change HTML email not accepted',{eventKey,reason:emailError});}
+    const receiptData={event_key:eventKey,recipient_email:officer.email,status:emailStatus,subject,provider:'Microsoft 365',error:emailError,attempted_at:new Date().toISOString(),...(emailStatus==='accepted'?{accepted_at:new Date().toISOString()}:{}) ,related_id:String(after?.id||before?.id||'')};
+    try{if(receipt)await base44.asServiceRole.entities.ScheduleEmailDelivery.update(receipt.id,receiptData);else await base44.asServiceRole.entities.ScheduleEmailDelivery.create(receiptData);}catch(error){console.warn('Schedule mail receipt was not persisted',String(error?.message||error));}
+    return Response.json({success:true,notified:officer.email,email_status:emailStatus,...(emailError?{email_error:emailError}:{})});
   } catch (error) {
     console.error('notifyScheduleChange failed', error);
     return Response.json({ error: error?.message || 'Unable to send schedule change notification' }, { status: 500 });
