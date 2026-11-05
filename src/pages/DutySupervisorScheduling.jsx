@@ -121,12 +121,14 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
         const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action:'save', assignment:{ ...payload, id } });
         const result = response?.data || response || {};
         if (result.error) throw new Error(result.error);
+        if(result.email_failed)toast.warning('Duty assignment saved, but '+result.email_failed+' branded email(s) were not accepted by Microsoft 365.');
         return result.assignment;
       };
       const deleteAssignment = async row => {
         const response = await base44.functions.invoke('manageDutySupervisorSchedule', { action:'delete', id:row.id });
         const result = response?.data || response || {};
         if (result.error) throw new Error(result.error);
+        if(result.email_status==='failed')toast.warning('Duty assignment removed; branded email delivery failed: '+(result.email_error||'Check Microsoft 365 mailbox.'));
         return result;
       };
       if(!editing&&repeatWeek){
@@ -136,6 +138,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
        const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'batch',assignments:rows});
        if(response.data?.error)throw new Error(response.data.error);
        toast.success(response.data.created+' duty blocks created; '+response.data.skipped+' existing blocks retained.');
+       if(response.data.email_failed)toast.warning(response.data.email_failed+' branded duty schedule emails failed delivery acceptance.');
       }else if (editing) {
         const supervisor_email = requestedSupervisors[0];
         const existingByArea = new Map((editing.rows || []).map(row => [lower(row.location || 'ALL'), row]));
@@ -160,6 +163,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
     const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'copy_week',source_start:format(addDays(windowStart,-7),'yyyy-MM-dd'),target_start:format(windowStart,'yyyy-MM-dd'),supervisor_emails:form.supervisor_emails});
     if(response.data?.error)throw new Error(response.data.error);
     toast.success(response.data.created+' coverage blocks copied; '+response.data.skipped+' duplicates skipped.');
+    if(response.data.email_failed)toast.warning(response.data.email_failed+' branded duty schedule emails failed delivery acceptance.');
     await refreshCoverage();
    }catch(error){toast.error(error.response?.data?.error||error.message);}finally{setSaving(false);}
   };
@@ -172,6 +176,7 @@ export default function DutySupervisorScheduling({ embedded=false, weekStart, ed
         const response=await base44.functions.invoke('manageDutySupervisorSchedule',{action:'delete',id:row.id});
         const payload=response?.data||response||{};
         if(payload.error||!payload.success)throw new Error(payload.error||'Duty coverage was not removed.');
+        if(payload.email_status==='failed')toast.warning('Assignment removed, but email delivery failed: '+(payload.email_error||'Microsoft 365 mailbox unavailable.'));
         qc.invalidateQueries({queryKey:['supervisorScopedDutyScheduling']});
       }
       if(editing&&(editing.rows||[editing]).some(row=>(group.rows||[group]).some(removed=>removed.id===row.id)))reset(form.assignment_date);
