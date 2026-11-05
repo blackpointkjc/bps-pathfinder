@@ -87,11 +87,11 @@ async function performCadLiveSync() {
   if (health.rateLimitedUntil || health.readRetryAt) {
     return { skipped: true, reason: 'rate_limit_backoff' };
   }
-  // Routine dashboard reads must not starve emergency-call ingestion indefinitely.
-  // Skip only when the shared queue is materially overloaded or writes are active.
-  if (health.queuedReads >= 3 || health.activeWrites > 0) {
-    return { skipped: true, reason: 'app_data_loading' };
-  }
+  // Operational call ingestion has priority over routine dashboard reads.
+  // Do not skip the upstream source poll merely because unrelated read/write
+  // requests are running: sustained dashboard traffic can otherwise suppress
+  // CAD ingestion for many minutes. The global server lease, local cross-tab
+  // lock, cooldown and 429 backoff still prevent overlapping source polls.
   const backoffUntil = liveSyncBackoffUntil();
   if (backoffUntil > now) {
     return { skipped: true, reason: 'rate_limit_backoff', retry_after_ms: backoffUntil - now };
