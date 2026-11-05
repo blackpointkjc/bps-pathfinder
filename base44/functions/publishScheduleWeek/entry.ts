@@ -121,16 +121,6 @@ Deno.serve(async req => {
     await db.ScheduleWeekStatus.update(week.id,{delivery_status:pending||outstandingEmails?'pending':'complete',delivery_recipient_count:groups.size,delivery_sent_count:delivered,delivery_updated_at:new Date().toISOString()});
     return Response.json({success:true,is_ready:true,delivered,pending,email_accepted:emailAccepted,email_failed:emailFailed,email_pending:outstandingEmails,announcement_posted:true,week_start_date:start,week_end_date:end});
   } catch(error) {
-        if (Number(error?.status || error?.response?.status) === 429 || /rate.?limit/i.test(String(error?.message))) {
-          // Stop immediately; a retry will skip all already delivered notifications.
-          break;
-        }
-      }
-    }
-    const pending = groups.size-delivered;
-    await db.ScheduleWeekStatus.update(week.id,{delivery_status:pending?'pending':'complete',delivery_recipient_count:groups.size,delivery_sent_count:delivered,delivery_updated_at:new Date().toISOString()});
-    return Response.json({success:true,is_ready:true,delivered,pending,announcement_posted:true,email_recipients:emailRecipients,week_start_date:start,week_end_date:end});
-  } catch(error) {
     console.error('Schedule publication failed',error?.message);
     return Response.json({error:published?'Schedule published; announcement delivery needs retry.':'Unable to publish schedule.',published},{status:500});
   } finally { await release().catch(error=>console.warn('Schedule lease cleanup failed',error?.message)); }
