@@ -250,6 +250,18 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
     setScheduleLeaveWarning('');
   };
 
+  const sendShiftChangeNotice = async (payload) => {
+    try {
+      const response=await base44.functions.invoke('notifyScheduleChange',payload);
+      const result=response?.data||response||{};
+      if(result.error)throw new Error(result.error);
+      if(result.email_status==='failed')toast.warning('Shift saved and in-app alert sent, but the branded email was not accepted: '+(result.email_error||'Check Microsoft 365 management mailbox.'));
+      else if(result.email_status==='accepted')toast.success('Branded schedule email accepted by Microsoft 365.');
+      else if(result.skipped&&result.reason==='unpublished')toast.info('Shift saved. Email is held until the schedule is published.');
+      return result;
+    }catch(error){toast.warning('Shift saved, but the schedule notification failed: '+(error?.response?.data?.error||error.message));return {email_status:'failed'};}
+  };
+
   const createShiftMutation = useMutation({
     onError: error => { const message=error?.response?.data?.error || error?.message || 'Unable to assign shift';setScheduleSaveError(message);toast.error(message); },
     mutationFn: async (data) => {
@@ -257,7 +269,7 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
       const created = await base44.entities.Schedule.create(data);
       await syncOfficerVehicles(queryClient,true).catch(()=>toast.warning('Shift saved; automatic vehicle scheduling needs retry.'));
       if (created?.officer_email && created.officer_email !== 'OPEN') {
-        void base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: created, officer_email: created.officer_email }).catch(error => console.warn('Schedule add notification failed:', error?.message));
+        await sendShiftChangeNotice({ change_type: 'added', after: created, officer_email: created.officer_email });
       }
       return created;
     },
@@ -296,8 +308,8 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
       const created = await base44.entities.Schedule.bulkCreate(shiftsArray);
       await syncOfficerVehicles(queryClient,true).catch(()=>toast.warning('Shift saved; automatic vehicle scheduling needs retry.'));
       const createdRows = Array.isArray(created) ? created : [];
-      void Promise.all(createdRows.filter(row => row?.officer_email && row.officer_email !== 'OPEN').map(row =>
-        base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: row, officer_email: row.officer_email }).catch(error => console.warn('Bulk schedule notification failed:', error?.message))
+      await Promise.all(createdRows.filter(row => row?.officer_email && row.officer_email !== 'OPEN').map(row =>
+        sendShiftChangeNotice({change_type:'added',after:row,officer_email:row.officer_email})
       ));
       return created;
     },
@@ -324,12 +336,12 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
       await Promise.all(Array.from(affectedEmails).map(officerEmail => {
         const movedAway = before?.officer_email === officerEmail && updated?.officer_email !== officerEmail;
         const movedTo = updated?.officer_email === officerEmail && before?.officer_email !== officerEmail;
-        return base44.functions.invoke('notifyScheduleChange', {
+        return sendShiftChangeNotice({
           change_type: movedAway ? 'removed' : movedTo ? 'added' : 'updated',
           before: movedAway || !movedTo ? before : null,
           after: movedTo || !movedAway ? updated : null,
           officer_email: officerEmail
-        }).catch(error => console.warn('Schedule update notification failed:', error?.message));
+        });
       }));
       return updated;
     },
@@ -348,7 +360,7 @@ export default function ScheduleBoard({ embedded=false, onWeekChange, onScheduli
       const before = (schedules || []).find(shift => shift.id === id) || null;
       await base44.entities.Schedule.delete(id);
       if (before?.officer_email && before.officer_email !== 'OPEN') {
-        await base44.functions.invoke('notifyScheduleChange', { change_type: 'removed', before, officer_email: before.officer_email }).catch(error => console.warn('Schedule delete notification failed:', error?.message));
+        await sendShiftChangeNotice({ change_type: 'removed', before, officer_email: before.officer_email });
       }
       return id;
     },
