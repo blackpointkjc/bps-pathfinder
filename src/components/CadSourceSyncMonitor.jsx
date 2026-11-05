@@ -27,11 +27,14 @@ export default function CadSourceSyncMonitor({ user }) {
       if (!active || running || !navigator.onLine) return;
       const page = window.location.pathname + window.location.search;
       const onCommandScreen = /Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|SupervisorCenter|SupervisorOverview|SupervisorCommandBoard|SupervisorFieldOversight|admin_center=(cad|supervisor)/i.test(page);
-      const minimumInterval = document.visibilityState === 'visible' && onCommandScreen ? 60_000 : 120_000;
+      const minimumInterval = document.visibilityState === 'visible' && onCommandScreen ? 30_000 : 60_000;
       if (Date.now() - lastSyncAttemptAt < minimumInterval) return;
       const health=getBase44RequestHealth();
       const cooldown=Math.max(Date.parse(health.readRetryAt||'')||0,Date.parse(health.rateLimitedUntil||'')||0);
-      if(Date.now()<cooldown || Number(health.queuedReads||0)>=5)return;
+      // A large unrelated read queue must not block CAD source ingestion.
+      // Respect actual provider rate limits, but let the server lease protect
+      // against concurrent ingestion.
+      if(Date.now()<cooldown)return;
       lastSyncAttemptAt = Date.now();
       running = true;
       try {
@@ -45,11 +48,12 @@ export default function CadSourceSyncMonitor({ user }) {
         running = false;
       }
     };
-    // Use a slow watchdog with strict per-session and cross-tab throttles.
+    // A bounded watchdog refreshes active CAD sources promptly while the
+    // server lease and cross-tab throttles prevent duplicate ingestion.
     // On returning from a suspended tab, recover promptly rather than waiting
     // for the next scheduled interval.
     const first = window.setTimeout(sync, 4500);
-    const timer = window.setInterval(sync, 60_000);
+    const timer = window.setInterval(sync, 15_000);
     const resume = () => {
       if (!navigator.onLine || document.visibilityState !== 'visible') return;
       if (Date.now() - lastResumeAt < 15_000) return;
