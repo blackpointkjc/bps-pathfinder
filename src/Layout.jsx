@@ -1797,7 +1797,9 @@ export default function Layout({ children, currentPageName }) {
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
       <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${MODERNIZED_WORKSPACE_PAGES.has(currentPageName) ? 'pathfinder-modern-page' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
-    </section>
+      {/* Keep mobile tabs INSIDE the column-shaped workspace. As a sibling of
+          the workspace they became a full-height FLEX ROW ITEM, squeezing the
+          page and stretching Home into a vertical bar on iPhone. */}
     <nav className="pf-phone-navigation xl:hidden" aria-label="Mobile Pathfinder navigation">
       <Link to={createPageUrl(userHomePage)} aria-current={currentPageName === userHomePage ? 'page' : undefined} className="pf-phone-nav-item">
         <Home aria-hidden="true" /><span>Home</span>
@@ -1818,6 +1820,7 @@ export default function Layout({ children, currentPageName }) {
       )}
       <button type="button" className="pf-phone-nav-item" onClick={openMobileToolsMenu} aria-label="Open all Pathfinder tools" aria-expanded={mobileOpen}><Menu aria-hidden="true" /><span>Tools</span></button>
     </nav>
+    </section>
   </div></MicrosoftMailSetupGate></AcceptableUseGate>;
 }
 export {canAccessPage};

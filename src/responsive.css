@@ -549,3 +549,39 @@ html.pf-map-fullscreen .live-map-toolbar {
   .cad-app main.mobile-field-content .ia-detail-grid { display:flex; flex-direction:column; }
   .cad-app main.mobile-field-content :is(.portal-card,.ia-detail-main,.ia-analytics-panel) { min-width:0; max-width:100%; }
 }
+
+/* iPhone screenshot regression fix: mobile tabs MUST remain a short bottom
+   row inside the page column, never a stretched full-height sidebar. */
+@media (max-width: 1279px) {
+  .cad-app > section { display:flex; flex-direction:column; flex:1 1 0; min-height:0; min-width:0; }
+  .cad-app > section > main.mobile-field-content { flex:1 1 0; min-height:0; min-width:0; overflow-y:auto; }
+  .cad-app > section > nav.pf-phone-navigation {
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    grid-template-rows:minmax(0,1fr);
+    align-items:stretch;
+    flex:0 0 auto !important;
+    align-self:stretch;
+    width:100%;
+    min-width:0;
+    height:auto !important;
+    max-height:calc(76px + env(safe-area-inset-bottom));
+    padding:6px max(8px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+    overflow:hidden;
+    background:#071523;
+    border-top:1px solid #2c4962;
+  }
+  .cad-app > section > nav.pf-phone-navigation > .pf-phone-nav-item {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    align-self:stretch;
+    width:100%;
+    min-width:0;
+    height:54px;
+    min-height:54px;
+    max-height:54px;
+    border-radius:10px;
+  }
+}
