@@ -1,5 +1,6 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { isOutOfOffice } from './absencePolicy.ts';
+import { readRosterCalls } from './callLookup.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { LIVE_LOCATION_PRIVACY_USER_ID, stripLiveLocation } from './privacy.ts';
 import { isRateLimitError, rateLimitWaitMillis } from './rateLimitRetry.ts';
@@ -508,10 +509,10 @@ Deno.serve(async (req) => {
       if(!latestStatusByUnitCall.has(key))latestStatusByUnitCall.set(key,log);
     }
     const candidateCallIds = [...new Set(currentAssignmentRows.map((row:any)=>String(row.call_id)).filter(Boolean))].slice(0,20);
-    const dispatchCalls = await Promise.all(candidateCallIds.map(id=>base44.asServiceRole.entities.DispatchCall.get(id).catch((error:any)=>{
-      if(Number(error?.response?.status || error?.status)===404)return null;
-      throw error;
-    })));
+    const rosterCalls = await readRosterCalls(base44.asServiceRole.entities, [
+      ...candidateCallIds, ...(users || []).map((user:any) => user.current_call_id),
+    ]);
+    const dispatchCalls = candidateCallIds.map(id => rosterCalls.get(id)).filter(Boolean);
     const activeCallsById = new Map(dispatchCalls.filter((call:any)=>call && call.manual_dismissed!==true && !['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(call.status))).map((call:any)=>[String(call.id),call]));
     for (const assignment of currentAssignmentRows) {
       const call=activeCallsById.get(String(assignment.call_id));
@@ -525,10 +526,7 @@ Deno.serve(async (req) => {
     // a live CallAssignment. Honor such a pointer only if the CAD record itself
     // explicitly lists the officer and belongs to the current shift.
     const legacyUsers=(users||[]).filter((user:any)=>user.current_call_id&&!dispatchById.has(String(user.id)));
-    const legacyCalls=await Promise.all(legacyUsers.slice(0,12).map((user:any)=>base44.asServiceRole.entities.DispatchCall.get(String(user.current_call_id)).catch((error:any)=>{
-      if(Number(error?.response?.status || error?.status)===404)return null;
-      throw error;
-    })));
+    const legacyCalls=legacyUsers.slice(0,12).map((user:any)=>rosterCalls.get(String(user.current_call_id)));
     for(let i=0;i<legacyCalls.length;i++){
       const call=legacyCalls[i],officer=legacyUsers[i];
       if(!call||call.manual_dismissed===true||['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status)))continue;
