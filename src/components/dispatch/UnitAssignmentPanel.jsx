@@ -46,7 +46,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     };
     const eligibleUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!unavailableReason(u));
     const availableUnits=eligibleUnits.filter(u=>
-      &&(!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
+      (!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
     const heldUnits=[...units.filter(u=>isOperationalUnit(u)&&holdOf(u))];
     for(const held of heldRoster){if(!heldUnits.some(u=>String(u.user_id||u.id)===String(held.id)||String(u.email||u.officer_email||'').toLowerCase()===String(held.email||'').toLowerCase()))heldUnits.push(held);} 
     const otherActiveUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!eligibleUnits.includes(u)&&!heldUnits.includes(u));
