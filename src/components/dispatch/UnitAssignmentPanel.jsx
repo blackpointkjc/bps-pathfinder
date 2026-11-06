@@ -41,7 +41,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
       if (unit.session_active === false || unit.presence_state === 'offline') return 'Offline — reconnect Pathfinder';
       if (unit.connection_stale || unit.presence_state === 'stale') return 'Connection stale — waiting for heartbeat';
       const status = String(unit.status || '').trim().toLowerCase();
-      if (['out of service', 'off duty', 'distress', 'offline'].includes(status)) return unit.status;
+      if (['out of service', 'out-of-service', 'oos', 'distress', 'offline'].includes(status)) return unit.status;
       return '';
     };
     const eligibleUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!unavailableReason(u));
