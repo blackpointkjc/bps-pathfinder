@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
+import PublishedUpdateNotice from '@/components/PublishedUpdateNotice'
 import '@/index.css'
 import '@/responsive.css'
 import '@/field-readability.css'
@@ -64,7 +65,7 @@ if (!isBuilderPreview && 'serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   // <React.StrictMode>
-  <App />
+  <><App /><PublishedUpdateNotice /></>
   // </React.StrictMode>,
 )
 
