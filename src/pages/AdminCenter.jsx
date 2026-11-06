@@ -1,10 +1,9 @@
-import IAEntryLinks from '@/components/ia/IAEntryLinks';
 import { previewAccountType, previewDisplayName } from '@/utils/previewIdentity';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Briefcase, Building2, Calendar, ClipboardCheck, ClipboardList, Eye, GraduationCap, MessageCircle, Radio, Settings, Shield, Users } from 'lucide-react';
+import { Activity, Briefcase, Building2, Calendar, ClipboardList, Eye, MessageCircle, Settings, Shield, Users } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import { base44 } from '@/api/base44Client';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
@@ -54,16 +53,6 @@ const HRCenter = lazy(() => import('./HRCenter'));
 const ClientCenter = lazy(() => import('./ClientCenter'));
 const TrainerCenter = lazy(() => import('./TrainerCenter'));
 const StudentPortal = lazy(() => import('./StudentPortal'));
-
-const MASTER_SECTIONS = [
-  { id: 'admin', label: 'Administration', description: 'Administration-only command, scheduling, personnel, reports and system controls', icon: Settings },
-  { id: 'cad', label: 'CAD', description: 'CAD tools only', icon: Radio },
-  { id: 'officer', label: 'Officer', description: 'Officer tools only', icon: Shield },
-  { id: 'supervisor', label: 'Supervisor', description: 'Supervisor and inherited officer tools', icon: ClipboardCheck },
-  { id: 'hr', label: 'HR', description: 'HR tools only', icon: Briefcase },
-  { id: 'training', label: 'Trainer', description: 'Training operations and compliance', icon: GraduationCap },
-  { id: 'client', label: 'Client', description: 'Client portal tools only', icon: Building2 },
-];
 
 const ADMIN_SECTIONS = [
   { id: 'command', label: 'Overview & Analytics', description: 'Dashboard and company performance visibility', icon: Activity },
@@ -170,7 +159,7 @@ function AdminReportsQualityHub() {
 
 function AdminCommunicationsHub(){return <AdminAnnouncements embedded/>;}
 
-function AdministrationToolsOnly() {
+function AdministrationToolsOnly({ headerAction = null }) {
   return (
     <UnifiedCenter
       eyebrow="Administration"
@@ -179,6 +168,7 @@ function AdministrationToolsOnly() {
       sections={ADMIN_SECTIONS}
       defaultSection="command"
       queryParam="admin_ops_section"
+      headerAction={headerAction}
       embedded
     >
       {section => {
@@ -234,7 +224,6 @@ export default function AdminCenter() {
   const [previewError, setPreviewError] = useState('');
   const [previewRetry, setPreviewRetry] = useState(0);
   const signedInRoles = new Set([signedInUser?.role, ...(Array.isArray(signedInUser?.additional_roles) ? signedInUser.additional_roles : signedInUser?.additional_roles ? [signedInUser.additional_roles] : [])].filter(Boolean).map(value => String(value).toLowerCase()));
-  const masterSections = MASTER_SECTIONS.filter(item => (item.id !== 'training' || signedInRoles.has('admin') || signedInRoles.has('trainer') || signedInRoles.has('full_access')));
 
   const canPreview = signedInRoles.has('admin') || signedInRoles.has('full_access');
   // Preview is explicitly exited with Exit preview. Do not delete its
@@ -353,20 +342,5 @@ export default function AdminCenter() {
       <button type="button" onClick={exitShadow} className="min-h-10 rounded-lg border border-red-700 px-3 text-sm text-red-200">Exit preview</button>
     </div>{shadowContent}</div>;
 
-  return (
-    <UnifiedCenter
-      eyebrow="Master Administration"
-      title="Admin Center"
-      description="Administration and role-specific tools in one workspace. Choose a user in Preview as user to inspect their account workspace."
-      sections={masterSections}
-      defaultSection="admin"
-      queryParam="admin_center"
-      headerAction={() => <div className="flex items-center gap-2"><IAEntryLinks/>{canPreview?previewPicker:null}</div>}
-    >
-      {section => {
-        const mirror = section === 'cad' ? <CADCenter embedded /> : section === 'officer' ? <OfficerCenter embedded /> : section === 'supervisor' ? <SupervisorCenter embedded /> : section === 'hr' ? <HRCenter embedded /> : section === 'training' ? <TrainerCenter embedded /> : section === 'client' ? <ClientCenter embedded /> : <AdministrationToolsOnly />;
-        return <div className="min-w-0">{mirror}</div>;
-      }}
-    </UnifiedCenter>
-  );
+  return <AdministrationToolsOnly headerAction={canPreview ? previewPicker : null} />;
 }
