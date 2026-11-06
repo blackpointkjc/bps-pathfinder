@@ -22,6 +22,7 @@ const blankTile = () => {
 };
 
 const isCacheablePath = (pathname) =>
+  pathname !== '/pathfinder-version.json' &&
   !pathname.startsWith('/api/') &&
   !pathname.startsWith('/functions/') &&
   !pathname.startsWith('/_api/');
