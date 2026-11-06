@@ -8,13 +8,13 @@ const source=fs.readFileSync('base44/functions/geofenceDispatchAssignment/entry.
 async function call(){sdk.auth.me=async()=>null;const r=await handler(new Request('https://example.test',{method:'POST',headers:{authorization:'Bearer service-test','content-type':'application/json'},body:JSON.stringify({call_id:'public-call',public_fallback:true})}));return{status:r.status,...await r.json()};}
 
 const assignmentCount=()=>tables.CallAssignment?.length||0;
-reset();let r=await call();assert.equal(r.decision,'assigned');assert.equal(tables.CallAssignment[0].unit_id,'eligible');
-reset();tables.ActiveOfficer[0].latitude=null;tables.ActiveOfficer[0].longitude=null;tables.ActiveOfficer[0].gps_updated_at=null;tables.TimeEntry[0].location='Creighton';r=await call();assert.equal(assignmentCount(),0,'other-site clock-in cannot replace GPS');
-reset();tables.ActiveOfficer[0].latitude=null;tables.ActiveOfficer[0].longitude=null;tables.ActiveOfficer[0].gps_updated_at=null;tables.TimeEntry[0].location='100 Test Street';r=await call();assert.equal(assignmentCount(),1,'same-property clock-in fallback remains supported');
-reset();tables.TimeEntry=[];r=await call();assert.equal(assignmentCount(),0,'login clock_in_time is not a work punch');
-reset();tables.TimeEntry[0].on_break=true;r=await call();assert.equal(assignmentCount(),0,'unpaid break blocks automatic dispatch');
-reset();tables.User[0].dispatch_hold_new_calls=true;r=await call();assert.equal(assignmentCount(),0,'dispatch hold blocks automatic dispatch');
-reset();tables.ActiveOfficer[0].session_active=false;r=await call();assert.equal(assignmentCount(),0,'saved Available cannot override offline session');
-reset();tables.User.push({id:'closer',email:'closer@example.test',rank:'Officer',additional_roles:['officer'],status:'Available'});tables.ActiveOfficer.push({...tables.ActiveOfficer[0],id:'closer-live',officer_email:'closer@example.test',latitude:37.5401});tables.TimeEntry.push({officer_email:'closer@example.test',clock_in:clockIn});r=await call();assert.equal(tables.CallAssignment[0].unit_id,'closer','closest eligible GPS position wins');
-reset();tables.ActiveOfficer[0].latitude=null;tables.ActiveOfficer[0].longitude=null;tables.ActiveOfficer[0].gps_updated_at=null;tables.TimeEntry[0].location='100 Test Street';await call();r=await call();assert.equal(r.recommendations[0].distance_miles,null,'missing coordinates never become a 0,0 distance');
-console.log('PASS: current property fallback, nearest live GPS ranking, real clock-in, breaks, dispatch holds, offline exclusion, and null-coordinate distance.');
+reset();tables.TimeEntry=[];let r=await call();assert.equal(assignmentCount(),1,'online officer can be assigned without a payroll clock-in');
+reset();tables.ActiveOfficer[0].status='Enroute';tables.CallAssignment=[{call_id:'other',unit_id:'eligible',status:'pending'}];tables.DispatchCall.push({id:'other',status:'Dispatched'});r=await call();assert.equal(tables.CallAssignment.filter(a=>a.call_id==='public-call').length,1,'existing calls do not block additional calls');
+reset();tables.ActiveOfficer[0].status='Out of Service';r=await call();assert.equal(assignmentCount(),0,'OOS cannot be dispatched');
+reset();tables.ActiveOfficer[0].session_active=false;r=await call();assert.equal(assignmentCount(),0,'offline cannot be dispatched');
+reset();tables.ActiveOfficer[0].last_update=new Date(Date.now()-3600000).toISOString();r=await call();assert.equal(assignmentCount(),0,'stale heartbeat cannot count as online');
+reset();tables.ActiveOfficer[0].latitude=null;tables.ActiveOfficer[0].longitude=null;tables.TimeEntry[0].location='100 Test Street';r=await call();assert.equal(assignmentCount(),0,'clock-in site cannot substitute for distance');
+reset();tables.User[0].dispatch_hold_new_calls=true;r=await call();assert.equal(assignmentCount(),0,'explicit dispatch holds remain enforced');
+reset();tables.User.push({id:'closer',email:'closer@example.test',rank:'Officer',additional_roles:['officer'],status:'Available'});tables.ActiveOfficer.push({...tables.ActiveOfficer[0],id:'closer-live',officer_email:'closer@example.test',latitude:37.5401});r=await call();assert.equal(tables.CallAssignment[0].unit_id,'closer','closest online officer wins even without clock-in');
+console.log('PASS: closest online officer; no payroll or existing-call blocker; offline/OOS/stale/hold excluded; GPS required for nearest ranking.');
+
