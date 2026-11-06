@@ -36,12 +36,20 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     const assignedUnits = units.filter(u => isAssigned(u) && isOperationalUnit(u));
     
     const holdOf=unit=>localHold[unit.id]??unit.dispatch_hold_new_calls===true;
-    const isOperationalStatus=status=>!['out of service','distress','offline'].includes(String(status||'').toLowerCase());
-    const availableUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&isOperationalStatus(u.status)&&u.session_active!==false&&!holdOf(u)
+    const unavailableReason = unit => {
+      if (holdOf(unit)) return 'Dispatch hold — new calls blocked';
+      if (unit.session_active === false || unit.presence_state === 'offline') return 'Offline — reconnect Pathfinder';
+      if (unit.connection_stale || unit.presence_state === 'stale') return 'Connection stale — waiting for heartbeat';
+      const status = String(unit.status || '').trim().toLowerCase();
+      if (['out of service', 'off duty', 'distress', 'offline'].includes(status)) return unit.status;
+      return '';
+    };
+    const eligibleUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!unavailableReason(u));
+    const availableUnits=eligibleUnits.filter(u=>
       &&(!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
     const heldUnits=[...units.filter(u=>isOperationalUnit(u)&&holdOf(u))];
     for(const held of heldRoster){if(!heldUnits.some(u=>String(u.user_id||u.id)===String(held.id)||String(u.email||u.officer_email||'').toLowerCase()===String(held.email||'').toLowerCase()))heldUnits.push(held);} 
-    const otherActiveUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!availableUnits.includes(u)&&!heldUnits.includes(u));
+    const otherActiveUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!eligibleUnits.includes(u)&&!heldUnits.includes(u));
     const currentCallCount=unit=>(allAssignments||[]).filter(row=>String(row.unit_id)===String(unit.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase())).length;
     const changeHold=async(unit,hold)=>{
       setHolding(unit.id);
@@ -262,7 +270,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                         {otherActiveUnits.map(unit => (
                             <div key={unit.id} className="mb-1 flex items-center justify-between gap-2 text-xs text-slate-300">
                                 <span className="truncate">{unit.unit_number ? 'Unit ' + unit.unit_number + ' · ' : ''}{displayUnitName(unit)}</span>
-                                <span className="shrink-0 text-amber-400">{unit.status || 'Busy'}</span>
+                                <div className="min-w-0 text-right"><span className="block text-amber-400">{unavailableReason(unit) || 'Not eligible'}</span><span className="block text-[10px] text-slate-400">Saved status: {unit.status || 'Unknown'}{unit.clocked_in === false ? ' · No open clock-in' : ''}</span></div>
                             </div>
                         ))}
                     </details>
