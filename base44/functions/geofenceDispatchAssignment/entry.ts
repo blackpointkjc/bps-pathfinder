@@ -14,6 +14,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
 const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const hasCoordinates = (lat: any, lon: any) => lat != null && lon != null && String(lat).trim() !== '' && String(lon).trim() !== '' && Number.isFinite(Number(lat)) && Number.isFinite(Number(lon)) && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lon)) <= 180 && !(Number(lat) === 0 && Number(lon) === 0);
 const list = (value: any) => Array.isArray(value) ? value.map(lower).filter(Boolean) : String(value || '').split(',').map(lower).filter(Boolean);
 
 function distanceMiles(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -302,14 +303,10 @@ Deno.serve(async (req) => {
       const sessionAt = new Date(session?.last_update || session?.updated_date || session?.created_date || 0).getTime();
       const liveSessionFresh = Boolean(session && session.session_active !== false
         && Number.isFinite(sessionAt) && sessionAt >= heartbeatCutoff);
-      // Automatic assignment is a work-status action, not merely an app-login
-      // action. Require a real open TimeEntry when one exists in the scheduling
-      // system. A fresh ActiveOfficer session remains a compatibility fallback
-      // only for accounts whose legacy clock-in flow records clock_in_time on the
-      // live session but has not created a TimeEntry row.
-      const sessionHasWorkClock = Boolean(liveSessionFresh && session?.clock_in_time);
-      const clockInAt = new Date(openEntry?.clock_in || session?.clock_in_time || 0).getTime();
-      const clockedIn = Boolean(liveSessionFresh && (openEntry || sessionHasWorkClock)
+      // A login timestamp is not a work punch. Automatic assignment requires
+      // an actual open, non-break TimeEntry and a live officer connection.
+      const clockInAt = new Date(openEntry?.clock_in || 0).getTime();
+      const clockedIn = Boolean(liveSessionFresh && openEntry && !openEntry.on_break
         && Number.isFinite(clockInAt) && clockInAt > 0
         && (simulation || clockInAt <= incidentAt));
       const status = lower((liveSessionFresh ? session?.status : '') || officer.status || (openEntry ? 'Available' : ''));
@@ -319,8 +316,8 @@ Deno.serve(async (req) => {
       const lon = Number(session?.longitude);
       const reliableGps = Boolean(liveSessionFresh
         && Number.isFinite(gpsAt) && gpsAt >= freshCutoff
-        && Number.isFinite(lat) && Number.isFinite(lon)
-        && Number.isFinite(accuracy) && accuracy <= 100);
+        && hasCoordinates(session?.latitude, session?.longitude)
+        && session?.accuracy != null && Number.isFinite(accuracy) && accuracy >= 0 && accuracy <= 100);
 
       // GPS improves ranking but is not an eligibility requirement. If location
       // cannot be obtained, a true open TimeEntry is the authoritative fallback.
@@ -339,8 +336,13 @@ Deno.serve(async (req) => {
         propertyValues.some(propertyValue => authorization === propertyValue
           || (propertyValue.length >= 4 && (authorization.includes(propertyValue) || propertyValue.includes(authorization))))
       );
-      // Property/geofence membership affects ranking only. It never blocks a
-      // nearby officer from receiving the call.
+      // Without live GPS, only the CURRENT clocked-in property can establish
+      // a response location. Directory permissions and a shift at another site
+      // must never become a company-wide automatic-dispatch fallback.
+      const clockLocation = lower(openEntry?.location);
+      const clockedAtProperty = Boolean(clockLocation && [property.id, property.site_name, property.address].map(lower).filter(Boolean).some(value => clockLocation === value || (value.length >= 4 && clockLocation.startsWith(value + ' - '))));
+      if (!reliableGps && !clockedAtProperty) reasons.push('No fresh GPS and not clocked in at this property; dispatcher review required');
+      if (officer.dispatch_hold_new_calls === true) reasons.push('Dispatch hold blocks new calls');
 
       const officerQualifications = [
         ...list(officer.officer_certifications),
@@ -379,15 +381,15 @@ Deno.serve(async (req) => {
         clock_in_time: clockInTime,
       };
       if (reasons.length) {
-        const gpsReason = locationFallback && clockedIn ? ['GPS unavailable; clock-in fallback considered'] : [];
+        const gpsReason = locationFallback && clockedIn ? ['GPS unavailable; current-property clock-in required'] : [];
         excluded.push({ ...summary, reasons: [...reasons, ...gpsReason] });
       } else {
-        const score = locationFallback ? (authorizedForProperty ? 10000 : 11000) : Number(distance.toFixed(3));
+        const score = locationFallback ? 10000 : Number(distance.toFixed(3));
         ranked.push({
           ...summary,
           score,
           reasons: locationFallback
-            ? ['Clocked in', 'Available', authorizedForProperty ? 'Matching response area' : 'Company-wide clocked-in fallback', 'GPS unavailable; location requirement waived', 'No higher-priority assignment']
+            ? ['Clocked in at this property', 'Available', 'GPS unavailable; current-property clock-in fallback', 'No higher-priority assignment']
             : ['Clocked in', 'Available', 'Fresh reliable GPS', `Within ${radius.toFixed(1)} mile response radius`, 'Geofence membership not required', 'No higher-priority assignment'],
         });
       }
@@ -411,7 +413,7 @@ Deno.serve(async (req) => {
       const session = activeByEmail.get(lower(officer?.email));
       const lat = Number(session?.latitude);
       const lon = Number(session?.longitude);
-      const distance = Number.isFinite(lat) && Number.isFinite(lon)
+      const distance = hasCoordinates(session?.latitude, session?.longitude)
         ? distanceMiles(propertyLat, propertyLon, lat, lon)
         : Number.NaN;
       return {
