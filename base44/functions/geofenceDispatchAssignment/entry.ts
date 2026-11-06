@@ -194,9 +194,8 @@ Deno.serve(async (req) => {
 
     let users = await withRetry(() => base44.asServiceRole.entities.User.list('-updated_date', 750));
     let activeOfficers = await withRetry(() => base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 300));
-    let timeEntries = await withRetry(() => base44.asServiceRole.entities.TimeEntry.list('-clock_in', 1500));
-    let assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.list('-assigned_at', 800));
-    let currentCalls = await withRetry(() => base44.asServiceRole.entities.DispatchCall.list('-created_date', 500));
+    let timeEntries = await withRetry(() => base44.asServiceRole.entities.TimeEntry.filter({ archived: { $ne: true }, $or: [{ clock_out: null }, { clock_out: '' }, { clock_out: { $exists: false } }] }, '-clock_in', 1500));
+    let assignments = await withRetry(() => base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId }, '-assigned_at', 800));
 
     const propertyLat = property.latitude == null || property.latitude === '' ? NaN : Number(property.latitude);
     const propertyLon = property.longitude == null || property.longitude === '' ? NaN : Number(property.longitude);
@@ -250,7 +249,6 @@ Deno.serve(async (req) => {
         archived: false,
       }));
       assignments = [];
-      currentCalls = [call];
     }
 
     const requiredQualifications = list(property.auto_dispatch_required_qualifications);
@@ -278,20 +276,6 @@ Deno.serve(async (req) => {
         openEntryByEmail.set(email, entry);
       }
     }
-    // An assignment makes a unit busy only while its CAD call is still active.
-    // Historical rows were not always closed correctly, so treating every old
-    // pending/accepted CallAssignment as live can permanently block a unit from
-    // automatic dispatch.
-    const inactiveCallStatuses = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
-    const activeCallIds = new Set((currentCalls || [])
-      .filter((item: any) => !inactiveCallStatuses.has(lower(item.status)))
-      .map((item: any) => String(item.id)));
-    const busyUnitIds = new Set((assignments || [])
-      .filter((item: any) => item.call_id !== callId
-        && activeCallIds.has(String(item.call_id))
-        && !['cleared', 'cancelled', 'canceled'].includes(lower(item.status)))
-      .map((item: any) => String(item.unit_id)));
-
     const ranked: any[] = [];
     const excluded: any[] = [];
     for (const officer of users || []) {
