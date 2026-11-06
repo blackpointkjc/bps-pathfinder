@@ -8,10 +8,18 @@ export async function releaseClosedCall(entities: any, call: any) {
   const assignments = await entities.CallAssignment.filter({ call_id: callId }, '-assigned_at', 1000);
   const refs = new Set([...(call.assigned_units || []), ...assignments.map((a: any) => a.unit_id)].filter(Boolean).map(String));
   const users = new Map<string, any>();
-  const directUsers = await entities.User.filter({ current_call_id: callId }, '-updated_date', 1000);
-  directUsers.forEach((u: any) => users.set(u.id, u));
+  // User has no current_call_id schema field. Resolve legacy pointers through
+  // the operational records that actually persist it, without an invalid query.
+  const [linkedSessions, linkedUnits] = await Promise.all([
+    entities.ActiveOfficer.filter({ current_call_id: callId }, '-last_update', 1000),
+    entities.Unit.filter({ assigned_call_ids: { $in: [callId] } }, '-last_update_at', 1000),
+  ]);
+  for (const session of linkedSessions) if (session.officer_email) refs.add(String(session.officer_email));
+  for (const unit of linkedUnits) refs.add(String(unit.user_id || unit.id));
   for (const ref of refs) {
-    let user = await entities.User.get(ref).catch(() => null);
+    let user = ref.includes('@')
+      ? (await entities.User.filter({ email: ref }, '-updated_date', 1))[0]
+      : await entities.User.get(ref).catch(() => null);
     if (!user) {
       const unit = await entities.Unit.get(ref).catch(() => null);
       if (unit?.user_id) user = await entities.User.get(unit.user_id);
