@@ -606,7 +606,9 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         .filter(group => mobileSection !== 'reports' || /report|review|handover/i.test(group.label) || group.items.some(([name,page]) => /report|review|handover/i.test(name+' '+page)))
         .map(group => ({...group, centerKey:key, label:`${CENTER_CONFIG[key].label} / ${group.label}`})))
     : desktopCenterPage ? [] : center.groups;
-  const groups = sourceGroups
+  // Main navigation stays in the centers. Only show individual tools for an
+  // explicit search or Reports request; never rebuild nested workspace sidebars.
+  const groups = (mobile && !query && !mobileSection ? [] : sourceGroups)
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
     .map(group => ({
       ...group,
@@ -779,10 +781,10 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           // every center's nested navigation. Keep group names internally for
           // filtering/search, but do not render rows such as
           // "Admin Center / Command" or "Officer Center / Field Tools".
-          const groupOpen = Boolean(query) || openNavGroup === group.label;
+          const groupOpen = mobile || Boolean(query) || openNavGroup === group.label;
           return (
             <div key={`${activeCenter}:${group.label}`} className={mobile ? 'mb-1' : 'mb-2'}>
-              {(!collapsed || mobile) && (
+              {!mobile && !collapsed && (
                 <button
                   type="button"
                   onClick={() => { if (!query) setNavGroup(group.label, !groupOpen); }}
@@ -813,7 +815,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </div>
           );
         })}
-        {mobile && groups.length===0 && <div className="px-3 py-8 text-center text-sm text-[#a2bed6]">{query?'No authorized pages match your search.':'No additional pages are assigned to this account.'}</div>}
+        {mobile && (query || mobileSection) && groups.length===0 && <div className="px-3 py-8 text-center text-sm text-[#a2bed6]">{query?'No authorized pages match your search.':'No additional pages are assigned to this account.'}</div>}
       </nav>
 
       <div className={`border-t border-[#1b3048] bg-[#06101b]/95 backdrop-blur ${mobile ? 'mobile-tool-footer' : 'p-2.5'}`}>
@@ -1606,7 +1608,7 @@ export default function Layout({ children, currentPageName }) {
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="pathfinder-header relative z-[300] flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-          <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).includes('student')} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
+          <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student'} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
             <span>Tools</span>
           </button>
@@ -1640,7 +1642,7 @@ export default function Layout({ children, currentPageName }) {
             <span>{criticalOutage ? 'Outage' : 'System'}</span>
             {outages.length > 0 && <span className="rounded-full bg-black/25 px-1.5 py-0.5 text-[8px]">{outages.length}</span>}
           </button>
-          <div ref={gpsMenuRef} className={allowedCenters(user).includes('student') ? 'hidden' : 'relative'}>
+          <div ref={gpsMenuRef} className={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student' ? 'hidden' : 'relative'}>
             <button
               type="button"
               onClick={() => setGpsMenuOpen(open => !open)}
@@ -1648,16 +1650,18 @@ export default function Layout({ children, currentPageName }) {
               title="Change GPS / external antenna source"
               aria-label="Change GPS or external antenna source"
               aria-expanded={gpsMenuOpen}
+              aria-haspopup="dialog"
+              aria-controls="pathfinder-antenna-dialog"
             >
               <Radio className={`h-3.5 w-3.5 ${externalGps.connecting ? 'animate-pulse' : ''}`} />
-              <span className="hidden md:inline">{externalGps.connecting ? 'Connecting' : externalGps.connected ? 'External GPS' : 'Device GPS'}</span>
-              <span className="md:hidden">GPS</span>
+              <span className="hidden md:inline">{externalGps.connecting ? 'Connecting Antenna' : 'External Antenna'}</span>
+              <span className="md:hidden">Antenna</span>
               <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {gpsMenuOpen && typeof document !== 'undefined' && createPortal(
-              <div ref={gpsPopupRef} className="fixed right-3 top-[72px] z-[9999] max-h-[calc(100vh-84px)] w-[min(92vw,330px)] overflow-y-auto rounded-xl border border-[#315879] bg-[#071421] shadow-[0_18px_55px_rgba(0,0,0,.8)]">
+              <div ref={gpsPopupRef} id="pathfinder-antenna-dialog" role="dialog" aria-labelledby="pathfinder-antenna-title" className="fixed right-3 top-[72px] z-[9999] max-h-[calc(100vh-84px)] w-[min(92vw,330px)] overflow-y-auto rounded-xl border border-[#315879] bg-[#071421] shadow-[0_18px_55px_rgba(0,0,0,.8)]">
                 <div className="border-b border-[#233b55] bg-[#0b1c2b] px-3 py-3">
-                  <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">GPS / External Antenna</div>
+                  <div className="flex items-center justify-between gap-3"><h2 id="pathfinder-antenna-title" className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">GPS / External Antenna</h2><button type="button" onClick={() => setGpsMenuOpen(false)} aria-label="Close antenna settings" className="rounded p-2 text-slate-200 hover:bg-slate-700"><X className="h-4 w-4" /></button></div>
                   <div className="mt-1 text-[11px] font-bold text-white">
                     {externalGps.connecting ? 'Connecting to receiver…' : externalGps.connected ? 'External USB / NMEA receiver active' : 'Windows / device location active'}
                   </div>
@@ -1775,7 +1779,7 @@ export default function Layout({ children, currentPageName }) {
             type="button"
             onClick={refreshApplication}
             disabled={refreshingApp}
-            hidden={allowedCenters(user).includes('student')}
+            hidden={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student'}
             className="flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-600/60 bg-emerald-950/30 px-2.5 font-black uppercase tracking-[0.08em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-900/40 disabled:cursor-wait disabled:opacity-60 sm:px-3"
             title="Load the newest Pathfinder update"
             aria-label="Refresh Pathfinder and load the newest update"
