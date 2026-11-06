@@ -303,12 +303,7 @@ Deno.serve(async (req) => {
       const sessionAt = new Date(session?.last_update || session?.updated_date || session?.created_date || 0).getTime();
       const liveSessionFresh = Boolean(session && session.session_active !== false
         && Number.isFinite(sessionAt) && sessionAt >= heartbeatCutoff);
-      // A login timestamp is not a work punch. Automatic assignment requires
-      // an actual open, non-break TimeEntry and a live officer connection.
-      const clockInAt = new Date(openEntry?.clock_in || 0).getTime();
-      const clockedIn = Boolean(liveSessionFresh && openEntry && !openEntry.on_break
-        && Number.isFinite(clockInAt) && clockInAt > 0
-        && (simulation || clockInAt <= incidentAt));
+      // Dispatch eligibility is live presence and CAD status, independent of payroll punches.
       const status = lower((liveSessionFresh ? session?.status : '') || officer.status || (openEntry ? 'Available' : ''));
       const gpsAt = new Date(session?.gps_updated_at || 0).getTime();
       const accuracy = Number(session?.accuracy);
@@ -319,12 +314,9 @@ Deno.serve(async (req) => {
         && hasCoordinates(session?.latitude, session?.longitude)
         && session?.accuracy != null && Number.isFinite(accuracy) && accuracy >= 0 && accuracy <= 100);
 
-      // GPS improves ranking but is not an eligibility requirement. If location
-      // cannot be obtained, a true open TimeEntry is the authoritative fallback.
-      if (!clockedIn) reasons.push('Officer was not clocked in when the call occurred or lacks a recent active session');
-      if (status !== 'available') reasons.push(`Status is ${session?.status || officer.status || 'unknown'}, not Available`);
-      if (busyUnitIds.has(String(officer.id))) reasons.push('Officer has another active call assignment');
-
+      if (!liveSessionFresh) reasons.push('Officer is offline or connection is stale');
+      if (!status || ['out of service', 'out-of-service', 'oos', 'offline', 'distress'].includes(status)) reasons.push(`Status is ${session?.status || officer.status || 'unknown'}`);
+      if (!reliableGps) reasons.push('Fresh GPS required to determine the closest officer');
       const authorizationValues = [
         officer.assigned_location, officer.assigned_location_id, officer.location_id,
         ...(Array.isArray(officer.assigned_locations) ? officer.assigned_locations : []),
@@ -336,12 +328,6 @@ Deno.serve(async (req) => {
         propertyValues.some(propertyValue => authorization === propertyValue
           || (propertyValue.length >= 4 && (authorization.includes(propertyValue) || propertyValue.includes(authorization))))
       );
-      // Without live GPS, only the CURRENT clocked-in property can establish
-      // a response location. Directory permissions and a shift at another site
-      // must never become a company-wide automatic-dispatch fallback.
-      const clockLocation = lower(openEntry?.location);
-      const clockedAtProperty = Boolean(clockLocation && [property.id, property.site_name, property.address].map(lower).filter(Boolean).some(value => clockLocation === value || (value.length >= 4 && clockLocation.startsWith(value + ' - '))));
-      if (!reliableGps && !clockedAtProperty) reasons.push('No fresh GPS and not clocked in at this property; dispatcher review required');
       if (officer.dispatch_hold_new_calls === true) reasons.push('Dispatch hold blocks new calls');
 
       const officerQualifications = [
@@ -362,9 +348,9 @@ Deno.serve(async (req) => {
       if (missingEquipment.length) reasons.push(`Missing equipment: ${missingEquipment.join(', ')}`);
       if (requiredRanks.length && !requiredRanks.includes(lower(officer.rank))) reasons.push('Rank does not meet property policy');
 
-      const distance = reliableGps ? distanceMiles(propertyLat, propertyLon, lat, lon) : Number.POSITIVE_INFINITY;
+      const distance = reliableGps ? distanceMiles(hasCoordinates(call.latitude, call.longitude) ? Number(call.latitude) : propertyLat, hasCoordinates(call.latitude, call.longitude) ? Number(call.longitude) : propertyLon, lat, lon) : Number.POSITIVE_INFINITY;
       const distanceMeters = Number.isFinite(distance) ? distance * 1609.344 : Number.POSITIVE_INFINITY;
-      if (reliableGps && distanceMeters > nearbyLimitMeters) reasons.push(`Outside the ${radius.toFixed(1)} mile automatic-dispatch response radius`);
+      // Rank online units by distance; a payroll site or another active call does not exclude them.
 
       const locationFallback = !reliableGps;
       const clockInTime = openEntry?.clock_in || session?.clock_in_time || null;
@@ -381,16 +367,13 @@ Deno.serve(async (req) => {
         clock_in_time: clockInTime,
       };
       if (reasons.length) {
-        const gpsReason = locationFallback && clockedIn ? ['GPS unavailable; current-property clock-in required'] : [];
-        excluded.push({ ...summary, reasons: [...reasons, ...gpsReason] });
+        excluded.push({ ...summary, reasons });
       } else {
         const score = locationFallback ? 10000 : Number(distance.toFixed(3));
         ranked.push({
           ...summary,
           score,
-          reasons: locationFallback
-            ? ['Clocked in at this property', 'Available', 'GPS unavailable; current-property clock-in fallback', 'No higher-priority assignment']
-            : ['Clocked in', 'Available', 'Fresh reliable GPS', `Within ${radius.toFixed(1)} mile response radius`, 'Geofence membership not required', 'No higher-priority assignment'],
+          reasons: ['Online', 'Not Out of Service', 'Fresh reliable GPS', 'Ranked by distance to call; clock-in not required'],
         });
       }
     }
@@ -414,7 +397,7 @@ Deno.serve(async (req) => {
       const lat = Number(session?.latitude);
       const lon = Number(session?.longitude);
       const distance = hasCoordinates(session?.latitude, session?.longitude)
-        ? distanceMiles(propertyLat, propertyLon, lat, lon)
+        ? distanceMiles(hasCoordinates(call.latitude, call.longitude) ? Number(call.latitude) : propertyLat, hasCoordinates(call.latitude, call.longitude) ? Number(call.longitude) : propertyLon, lat, lon)
         : Number.NaN;
       return {
         unit_id: String(assignment.unit_id),
