@@ -63,8 +63,10 @@ export default function OfficerCertificationCenter() {
   const { data: currentUser } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   const officerUsers = useMemo(
-    () => users.filter(u => isOperationalOfficer(u) && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated'),
-    [users]
+    // Include a linked legacy personnel record only when a review link explicitly
+    // targets it. Do not silently classify it as an operational officer.
+    () => users.filter(u => (isOperationalOfficer(u) || (requestedOfficerId && String(u.id) === String(requestedOfficerId))) && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated'),
+    [users, requestedOfficerId]
   );
 
   const filteredUsers = useMemo(() => {
@@ -77,6 +79,7 @@ export default function OfficerCertificationCenter() {
   }, [officerUsers, search]);
 
   const selectedUser = officerUsers.find(u => u.id === selectedId) || null;
+  const nonOfficerLinkedRecord = selectedUser && !isOperationalOfficer(selectedUser);
   const canReview = currentUser?.role === 'admin' || (currentUser?.additional_roles || []).some(role => ['trainer','full_access'].includes(String(role).toLowerCase()));
   const { data: reviewTasks = [], isLoading: reviewsLoading, error: reviewsError } = useQuery({
     queryKey: ['officerCertificationReviews', selectedId, currentUser?.id],
@@ -277,9 +280,10 @@ export default function OfficerCertificationCenter() {
                   <div className="font-bold text-emerald-200">Certification review checklist</div>
                   <p className="mt-1 text-xs text-slate-300">Review this officer’s DCJS registration, firearm qualifications, expiration dates, and supporting certification records. Then mark the review complete. This closes the review task; it does not change any certification status or expiration date.</p>
                   {reviewsLoading ? <p className="mt-2 text-xs text-slate-300">Checking pending review tasks…</p> : reviewsError ? <p role="alert" className="mt-2 text-xs text-red-300">Unable to check review tasks: {reviewsError.message}</p> : <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <Button disabled={reviewMutation.isPending || !Array.isArray(selectedUser.officer_certifications) || selectedUser.officer_certifications.length === 0} onClick={() => reviewMutation.mutate(reviewTasks[0].id)} className="bg-emerald-700 text-white hover:bg-emerald-600"><CheckCircle className="mr-2 h-4 w-4" />{reviewMutation.isPending ? 'Completing review…' : 'Mark certification review complete'}</Button>
+                    <Button disabled={reviewMutation.isPending || (!nonOfficerLinkedRecord && (!Array.isArray(selectedUser.officer_certifications) || selectedUser.officer_certifications.length === 0))} onClick={() => reviewMutation.mutate(reviewTasks[0].id)} className="bg-emerald-700 text-white hover:bg-emerald-600"><CheckCircle className="mr-2 h-4 w-4" />{reviewMutation.isPending ? 'Completing review…' : nonOfficerLinkedRecord ? 'Close review — not an officer account' : 'Mark certification review complete'}</Button>
                     {reviewTasks.length > 1 && <span className="text-xs text-amber-200">{reviewTasks.length} open review assignments for this officer. Completing a verified review clears these duplicates.</span>}
-                    {(!Array.isArray(selectedUser.officer_certifications) || selectedUser.officer_certifications.length === 0) && <span className="text-xs text-amber-200">Save at least one certification record before completing this review.</span>}
+                    {nonOfficerLinkedRecord && <span className="text-xs text-amber-200">This linked record is not an officer account. Completing the task records it as not applicable; no credentials will be certified.</span>}
+                    {!nonOfficerLinkedRecord && (!Array.isArray(selectedUser.officer_certifications) || selectedUser.officer_certifications.length === 0) && <span className="text-xs text-amber-200">Save at least one certification record before completing this review.</span>}
                   </div>}
                 </div>}
                 <div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-sky-700 bg-sky-950/30 p-3"><div className="text-xs text-sky-300">DCJS Registration Expiration</div><div className="mt-1 font-bold text-white">{selectedUser.dcjs_expiration || 'Not recorded'}</div></div><div className="rounded-lg border border-amber-700 bg-amber-950/30 p-3"><div className="text-xs text-amber-300">Firearm Qualification Expiration</div><div className="mt-1 font-bold text-white">{(editFormData.officer_certifications || []).map(c=>c.firearm_expiration_date).filter(Boolean).sort().at(-1) || selectedUser.firearm_expiration || 'Not recorded'}</div></div></div>

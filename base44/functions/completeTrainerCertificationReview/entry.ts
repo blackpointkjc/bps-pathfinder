@@ -38,9 +38,14 @@ Deno.serve(async req => {
   if (me.role !== 'admin' && !roles.includes('full_access') && task.assigned_to !== me.id)
    return Response.json({error:'This certification review is assigned to another trainer'},{status:403});
   const officer = await api.asServiceRole.entities.User.get(task.related_id);
-  if (!officer || !(officer.additional_roles || []).includes('officer'))
-   return Response.json({error:'The officer record is unavailable'},{status:404});
-  if (!Array.isArray(officer.officer_certifications) || officer.officer_certifications.length === 0)
+  if (!officer) return Response.json({error:'The linked personnel record is unavailable'},{status:404});
+  const officerRole = (officer.additional_roles || []).some((role:any)=>String(role).toLowerCase()==='officer')
+   || ['officer','unarmed officer','senior officer','corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(String(officer.rank||'').trim().toLowerCase());
+  // A legacy Support Staff profile can have a stale officer-review task. Let
+  // admins close it as NOT APPLICABLE without claiming any credentials passed.
+  if (!officerRole && me.role !== 'admin')
+   return Response.json({error:'An administrator must resolve a review linked to a non-officer account'},{status:403});
+  if (officerRole && (!Array.isArray(officer.officer_certifications) || officer.officer_certifications.length === 0))
    return Response.json({error:'Update the officer certification file before completing this review'},{status:409});
   // A single officer may have a review task for each trainer. Once an authorized
   // reviewer verifies the file, close all outstanding copies so the administrator
@@ -51,10 +56,10 @@ Deno.serve(async req => {
   for (const row of duplicates.length ? duplicates : [task]) {
    await api.asServiceRole.entities.Task.update(row.id, {
     status:'completed',completed_at:completedAt,
-    notes:`Officer certification file reviewed by ${me.email || me.id} on ${completedAt}. Certification records verified present; individual credential validity remains governed by each credential's status and expiration date.`
+    notes:officerRole ? `Officer certification file reviewed by ${me.email || me.id} on ${completedAt}. Certification records verified present; individual credential validity remains governed by each credential's status and expiration date.` : `Closed as NOT APPLICABLE by ${me.email || me.id} on ${completedAt}: linked account is not an operational officer account. No certification was verified.`
    });
   }
-  return Response.json({success:true,completed_count:Math.max(duplicates.length,1),officer_id:task.related_id});
+  return Response.json({success:true,completed_count:Math.max(duplicates.length,1),officer_id:task.related_id,disposition:officerRole?'reviewed':'not_applicable'});
  } catch(error) {
   console.error('Certification review completion failed',error?.message || error);
   return Response.json({error:'Unable to complete certification review'},{status:500});
