@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, parseISO } from 'date-fns';
-import { Search, Send, Save, ShieldCheck, UserRound } from 'lucide-react';
+import { Search, Send, Save, ShieldCheck, UserRound, CheckCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { listTrainingUsers, invalidateTrainingUsers } from '@/lib/trainingDirectory';
 import { trainingCreate } from '@/lib/trainingRecordsApi';
@@ -77,6 +77,35 @@ export default function OfficerCertificationCenter() {
   }, [officerUsers, search]);
 
   const selectedUser = officerUsers.find(u => u.id === selectedId) || null;
+  const canReview = currentUser?.role === 'admin' || (currentUser?.additional_roles || []).some(role => ['trainer','full_access'].includes(String(role).toLowerCase()));
+  const { data: reviewTasks = [], isLoading: reviewsLoading, error: reviewsError } = useQuery({
+    queryKey: ['officerCertificationReviews', selectedId, currentUser?.id],
+    queryFn: async () => {
+      const rows = await base44.entities.Task.filter({related_id:selectedId}, '-created_date', 150);
+      return (rows || []).filter(task => task.title === 'Review new officer certifications' && ['open','in_progress'].includes(task.status || 'open') && (currentUser?.role === 'admin' || (currentUser?.additional_roles || []).includes('full_access') || String(task.assigned_to) === String(currentUser?.id)));
+    },
+    enabled: Boolean(selectedId && canReview),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+  const reviewMutation = useMutation({
+    mutationFn: async taskId => {
+      const response = await base44.functions.invoke('completeTrainerCertificationReview', {taskId});
+      const payload = response?.data?.data || response?.data || response || {};
+      if (!payload.success) throw new Error(payload.error || 'The certification review could not be completed.');
+      return payload;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({queryKey:['officerCertificationReviews',selectedId]}),
+        queryClient.invalidateQueries({queryKey:['adminOperationsBriefing']}),
+        queryClient.invalidateQueries({queryKey:['trainerOverviewSnapshot']}),
+        queryClient.invalidateQueries({queryKey:['roleWorkQueue']}),
+      ]);
+      toast.success('Officer certification review marked complete.');
+    },
+    onError: error => toast.error(error?.response?.data?.error || error.message || 'Unable to complete the review'),
+  });
 
   const openOfficer = (officer) => {
     setSelectedId(officer.id);
@@ -244,6 +273,15 @@ export default function OfficerCertificationCenter() {
                   <div className="min-w-0"><h2 className="truncate text-xl font-black text-white">{[selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.email}</h2><p className="text-xs text-slate-400">{[selectedUser.rank, selectedUser.unit_number && `Unit ${selectedUser.unit_number}`, selectedUser.division].filter(Boolean).join(' · ')}</p>{selectedUser.dcjs_number && <p className="mt-1 text-xs text-slate-500">DCJS #{selectedUser.dcjs_number}</p>}</div>
                   <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setPushOpen(true)}><Send className="mr-2 h-4 w-4" />Push Training</Button><Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}><Save className="mr-2 h-4 w-4" />{saveMutation.isPending ? 'Saving…' : 'Save Certifications'}</Button></div>
                 </div>
+                {canReview && (reviewsLoading || reviewsError || reviewTasks.length > 0) && <div className="rounded-xl border border-emerald-700/50 bg-emerald-950/20 p-4" aria-label="Pending certification review">
+                  <div className="font-bold text-emerald-200">Certification review checklist</div>
+                  <p className="mt-1 text-xs text-slate-300">Review this officer’s DCJS registration, firearm qualifications, expiration dates, and supporting certification records. Then mark the review complete. This closes the review task; it does not change any certification status or expiration date.</p>
+                  {reviewsLoading ? <p className="mt-2 text-xs text-slate-300">Checking pending review tasks…</p> : reviewsError ? <p role="alert" className="mt-2 text-xs text-red-300">Unable to check review tasks: {reviewsError.message}</p> : <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <Button disabled={reviewMutation.isPending || !Array.isArray(selectedUser.officer_certifications) || selectedUser.officer_certifications.length === 0} onClick={() => reviewMutation.mutate(reviewTasks[0].id)} className="bg-emerald-700 text-white hover:bg-emerald-600"><CheckCircle className="mr-2 h-4 w-4" />{reviewMutation.isPending ? 'Completing review…' : 'Mark certification review complete'}</Button>
+                    {reviewTasks.length > 1 && <span className="text-xs text-amber-200">{reviewTasks.length} open review assignments for this officer. Completing a verified review clears these duplicates.</span>}
+                    {(!Array.isArray(selectedUser.officer_certifications) || selectedUser.officer_certifications.length === 0) && <span className="text-xs text-amber-200">Save at least one certification record before completing this review.</span>}
+                  </div>}
+                </div>}
                 <div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-sky-700 bg-sky-950/30 p-3"><div className="text-xs text-sky-300">DCJS Registration Expiration</div><div className="mt-1 font-bold text-white">{selectedUser.dcjs_expiration || 'Not recorded'}</div></div><div className="rounded-lg border border-amber-700 bg-amber-950/30 p-3"><div className="text-xs text-amber-300">Firearm Qualification Expiration</div><div className="mt-1 font-bold text-white">{(editFormData.officer_certifications || []).map(c=>c.firearm_expiration_date).filter(Boolean).sort().at(-1) || selectedUser.firearm_expiration || 'Not recorded'}</div></div></div>
                 <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} onSaveCert={async certs => {
                   const result = await base44.functions.invoke('manageOfficerCertifications', { user_id:selectedUser.id, officer_certifications:certs });

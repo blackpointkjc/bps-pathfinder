@@ -42,11 +42,19 @@ Deno.serve(async req => {
    return Response.json({error:'The officer record is unavailable'},{status:404});
   if (!Array.isArray(officer.officer_certifications) || officer.officer_certifications.length === 0)
    return Response.json({error:'Update the officer certification file before completing this review'},{status:409});
-  await api.asServiceRole.entities.Task.update(task.id, {
-   status:'completed',completed_at:new Date().toISOString(),
-   notes:'Trainer verified that officer certification records are present in the personnel file.'
-  });
-  return Response.json({success:true});
+  // A single officer may have a review task for each trainer. Once an authorized
+  // reviewer verifies the file, close all outstanding copies so the administrator
+  // dashboard does not keep showing the same completed officer review.
+  const pending = await api.asServiceRole.entities.Task.filter({related_id:task.related_id},'-created_date',100);
+  const duplicates = (pending || []).filter((row:any)=>row.title === 'Review new officer certifications' && ['open','in_progress'].includes(row.status));
+  const completedAt=new Date().toISOString();
+  for (const row of duplicates.length ? duplicates : [task]) {
+   await api.asServiceRole.entities.Task.update(row.id, {
+    status:'completed',completed_at:completedAt,
+    notes:`Officer certification file reviewed by ${me.email || me.id} on ${completedAt}. Certification records verified present; individual credential validity remains governed by each credential's status and expiration date.`
+   });
+  }
+  return Response.json({success:true,completed_count:Math.max(duplicates.length,1),officer_id:task.related_id});
  } catch(error) {
   console.error('Certification review completion failed',error?.message || error);
   return Response.json({error:'Unable to complete certification review'},{status:500});
