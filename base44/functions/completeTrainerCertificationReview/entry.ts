@@ -35,6 +35,8 @@ Deno.serve(async req => {
   const task = await api.asServiceRole.entities.Task.get(String(taskId || ''));
   if (!task || task.title !== 'Review new officer certifications')
    return Response.json({error:'Certification review task was not found'},{status:404});
+  if (!['open','in_progress'].includes(String(task.status || 'open')))
+   return Response.json({error:'This certification review is already closed'},{status:409});
   if (me.role !== 'admin' && !roles.includes('full_access') && task.assigned_to !== me.id)
    return Response.json({error:'This certification review is assigned to another trainer'},{status:403});
   const officer = await api.asServiceRole.entities.User.get(task.related_id);
