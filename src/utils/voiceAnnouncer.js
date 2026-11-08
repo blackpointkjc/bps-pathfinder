@@ -3,6 +3,7 @@
 // It is calm, authoritative, and synthetic without cloning any named voice.
 
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+import { formatCadReferenceForSpeech } from '@/utils/cadSpeechReference';
 
 let lastText = '';
 let lastAt = 0;
@@ -405,7 +406,7 @@ export function announceVoice(text, options = {}) {
   // Keep every caller on the same voice/cadence. Call-site rate/pitch overrides
   // were the reason users heard two noticeably different announcement voices.
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
-  const clean = String(text)
+  const clean = formatCadReferenceForSpeech(text)
     .replace(/\b(?:1st|first)\s+resp(?:onder)?\b/gi, 'First Responder')
     .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
@@ -420,7 +421,7 @@ export function announceVoice(text, options = {}) {
 export function announceVoiceAsync(text, options = {}) {
   if (!text || !isVoiceSupported() || (!options.force && !isVoiceEnabled())) return Promise.resolve(false);
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
-  const clean = String(text)
+  const clean = formatCadReferenceForSpeech(text)
     .replace(/\b(?:1st|first)\s+resp(?:onder)?\b/gi, 'First Responder')
     .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
