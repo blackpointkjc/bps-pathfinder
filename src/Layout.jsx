@@ -23,6 +23,7 @@ import { base44, clearBase44ReadCache } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
+import { mayReceivePropertyAlarm } from '@/lib/clockedPropertyAlarm';
 import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
 import { cleanIncident } from '@/utils/callUtils';
@@ -1356,6 +1357,13 @@ export default function Layout({ children, currentPageName }) {
         }
         const linkedCall = callById.get(String(record.callId));
         const location = locationById.get(String(record.propertyId));
+        // The popup is as site-specific as its horn and voice. An admin merely
+        // being online must not wake them for a property they are not covering.
+        if (!await mayReceivePropertyAlarm(base44,user,location) || cancelled) {
+          setPropertyAlert(null);
+          setPropertyAlertSilenced(false);
+          return;
+        }
         const call = linkedCall || {
           id: record.callId,
           incident: record.callIncident || 'Unknown incident',
