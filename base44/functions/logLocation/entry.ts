@@ -228,7 +228,9 @@ Deno.serve(async (req) => {
       rank: String(user.rank || ''),
       profile_photo_url: String(user.profile_photo_url || ''),
       unit_number: String(user.unit_number || ''),
-      current_location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
+      // Assignment/site names are not device positions. Only a verified fix may
+      // label a coordinate as the current location.
+      current_location: String(body.current_location || 'GPS pending'),
       clock_in_time: String(body.clock_in_time || now),
       tracking_session_key: trackingSessionKey,
       last_update: now,
@@ -286,6 +288,7 @@ Deno.serve(async (req) => {
       // froze at the old position for the entire drive. Real movement must update
       // the live marker right away.
       acceptedForPosition = true;
+      liveData.current_location = `GPS ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
       liveData.gps_updated_at = new Date(deviceFixAt).toISOString();
       liveData.latitude = latitude;
       liveData.longitude = longitude;
@@ -469,7 +472,8 @@ Deno.serve(async (req) => {
             time_entry_id: historySessionId,
             officer_email: officerEmail,
             officer_name: String(liveData.officer_name),
-            location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
+            // Never stamp an assigned property onto an unrelated GPS coordinate.
+            location: `GPS ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
             latitude,
             longitude,
             timestamp: new Date(deviceFixAt).toISOString(),
