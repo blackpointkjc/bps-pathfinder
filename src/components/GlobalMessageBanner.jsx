@@ -7,6 +7,8 @@ import { createPageUrl } from '../utils';
 import { announceVoice, announceVoiceAsync, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { playPropertyHorn } from '@/utils/alertUtils';
+import { propertyAlertWasTimely } from '@/lib/propertyAlertFreshness';
+import { mayReceivePropertyAlarm } from '@/lib/clockedPropertyAlarm';
 import { isClockedInAtProperty, getActiveTimeEntry } from '@/lib/clockedPropertyAlarm';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
 
@@ -568,7 +570,9 @@ export default function GlobalMessageBanner({ user }) {
       const isFreshLivePropertyAlert = Number.isFinite(liveReferenceAt)
         && liveAgeMs >= 0
         && liveAgeMs <= LIVE_PROPERTY_ALERT_MAX_AGE_MS;
-      if (!isFreshLivePropertyAlert) {
+      if (!isFreshLivePropertyAlert || !propertyAlertWasTimely(record)) {
+        // A call first published 18 minutes after its actual receive time is
+        // history discovered late, not a brand-new emergency alarm.
         knownIds.current.add(key);
         return;
       }
@@ -593,7 +597,9 @@ export default function GlobalMessageBanner({ user }) {
         const cadNumber = String(record.cadNumber || '');
         const announcementText = `Active call for service at ${record.propertyName || 'monitored property'}. ${record.callIncident || 'Call for service'} at ${record.callLocation || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
 
-        if (allowAudio && !announcedPropertySpeech.current.has(propertyEventKey)) {
+        const property = allowAudio ? await base44.entities.Location.get(record.propertyId).catch(()=>null) : null;
+        const onPost = allowAudio && await mayReceivePropertyAlarm(base44,user,property);
+        if (onPost && !announcedPropertySpeech.current.has(propertyEventKey)) {
           const settings = audioSettings.current;
           const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
           const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
@@ -698,7 +704,8 @@ export default function GlobalMessageBanner({ user }) {
       // speech whenever that log row was created before this browser subscribed.
       // Claim the canonical property+call+status event so multiple tabs/devices
       // still speak it only once for this user.
-      if (allowAudio && !announcedPropertySpeech.current.has(propertyEventKey)) {
+      const onPost = allowAudio && await mayReceivePropertyAlarm(base44,user,monitoredProperty);
+      if (onPost && !announcedPropertySpeech.current.has(propertyEventKey)) {
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
         const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
@@ -796,6 +803,12 @@ export default function GlobalMessageBanner({ user }) {
         if (knownIds.current.has(key)) return;
         const email = normalized(user.email);
         if (!email) return;
+        if (record.event_type === 'property_alert') {
+          const matching = record.call_id ? await base44.entities.PropertyAlert.filter({callId:record.call_id},'-created_date',10).catch(()=>[]) : [];
+          const match = matching.find(alert => alert.propertyId && alert.is_test !== true && propertyAlertWasTimely(alert));
+          const property=match ? await base44.entities.Location.get(match.propertyId).catch(()=>null) : null;
+          if (!await mayReceivePropertyAlarm(base44,user,property)) return;
+        }
         const claim = await claimAnnouncementEvent({
           event_key: record.event_key,
           event_id: record.id,
