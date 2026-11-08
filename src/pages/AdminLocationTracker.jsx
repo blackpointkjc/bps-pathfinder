@@ -310,9 +310,9 @@ export default function AdminLocationTracker({ embedded = false }) {
     for (const row of activeOfficerLocations || []) {
       const email = String(row.officer_email || '').toLowerCase();
       if (!email) continue;
-      const stamp = new Date(row.last_update || row.updated_date || row.created_date || 0).getTime();
+      const stamp = new Date(row.gps_updated_at || row.last_gps_updated_at || row.last_update || row.updated_date || row.created_date || 0).getTime();
       const existing = map.get(email);
-      const existingStamp = existing ? new Date(existing.last_update || existing.updated_date || existing.created_date || 0).getTime() : -Infinity;
+      const existingStamp = existing ? new Date(existing.gps_updated_at || existing.last_gps_updated_at || existing.last_update || existing.updated_date || existing.created_date || 0).getTime() : -Infinity;
       if (!existing || stamp > existingStamp) map.set(email, row);
     }
     return map;
@@ -335,9 +335,9 @@ export default function AdminLocationTracker({ embedded = false }) {
       return {
         ...locationData,
         id: locationData.id,
-        current_location: !locationIsPlaceholder
-          ? rawLocation
-          : (coordinateLabel || profile?.assigned_location || (sessionActive ? 'Location pending' : 'Last known location unavailable')),
+        // A property/assignment label is never proof of the device's position.
+        // Prefer actual coordinates so a stale Creighton label cannot override an Oliver Crossing fix.
+        current_location: hasGps ? coordinateLabel : (sessionActive ? 'GPS unavailable — assigned site is not a live position' : 'Last known GPS unavailable'),
         clock_in_time: sessionActive ? locationData.clock_in_time : null,
         user_role: locationData.user_role || profile?.role || 'user',
         user_status: sessionActive ? (locationData.status || profile?.status || 'Available') : 'Offline',
@@ -997,7 +997,7 @@ export default function AdminLocationTracker({ embedded = false }) {
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-wide text-slate-500">Last Update</p>
                         <p className="text-sm font-semibold text-slate-100">
-                          {officer.last_update ? format(new Date(officer.last_update), 'h:mm:ss a') : 'No GPS data'}
+                          {officer.gps_timestamp ? format(new Date(officer.gps_timestamp), 'MMM d, h:mm:ss a') : 'No GPS fix recorded'}
                         </p>
                       </div>
                     </div>

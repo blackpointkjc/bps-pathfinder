@@ -137,9 +137,24 @@ Deno.serve(async req => {
       .sort((a,b) => stamp(a.timestamp)-stamp(b.timestamp));
     if(includeLegacy)warnings.push('Includes GPS recorded under a separate historical Support Staff login. These points are marked with their original account; this does not establish that the Colonel account generated them.');
     const geofenceAlerts = alertRows.filter(row => inWindow(row.created_date));
-    const entries = timeEntries.filter(row => dayKey(row.clock_in) <= date && (!row.clock_out || dayKey(row.clock_out) >= date))
+    // Apply the same selected Eastern window to shift entries as GPS/alerts.
+    // Include overlapping shifts, but never label an entire unrelated shift as part of a six-hour report.
+    const selectedDays = hasWindow && startTime > endTime ? [date, nextDate] : [date];
+    const entryOverlapsWindow = (row:any) => {
+      const entryStart = stamp(row.clock_in);
+      const entryEnd = row.clock_out ? stamp(row.clock_out) : Date.now();
+      if (!Number.isFinite(entryStart) || !Number.isFinite(entryEnd) || entryEnd < entryStart) return false;
+      if (!hasWindow) return selectedDays.some(day => dayKey(row.clock_in) <= day && (!row.clock_out || dayKey(row.clock_out) >= day));
+      // A bounded scan accounts for DST transitions without treating ET as fixed UTC-5.
+      const scanStart = Math.max(entryStart, stamp(start.toISOString()) - 24*3600000);
+      const scanEnd = Math.min(entryEnd, stamp(end) + 24*3600000);
+      for (let at=scanStart;at<=scanEnd;at+=60000) if (inWindow(new Date(at).toISOString())) return true;
+      return false;
+    };
+    const entries = timeEntries.filter(entryOverlapsWindow)
       .map(({ id, clock_in, clock_out, location }: any) => ({ id, clock_in, clock_out, location }))
       .sort((a:any,b:any) => stamp(a.clock_in) - stamp(b.clock_in));
+    if (hasWindow) warnings.push('Shift entries overlapping the selected window are shown with their actual clock-in/out times; GPS counts and route include only pings inside the window.');
     return Response.json({ history, geofenceAlerts, entries, warnings, date, officer_email: officer?.email || email, matched_email_aliases: officerEmails, legacy_gps_available:canIncludeLegacy, legacy_gps_included:includeLegacy, legacy_gps_email:canIncludeLegacy?legacyEmail:null, window_label: windowLabel, timeZone: 'America/New_York', generatedAt: new Date().toISOString() });
   } catch (error) {
     console.error('Location audit report failed', error);

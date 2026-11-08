@@ -17,9 +17,9 @@ let supervisorOfficerPending = null;
 // Directory data changes infrequently and every management mutation explicitly
 // invalidates this cache. A longer TTL prevents each page transition from reloading
 // five large directory entities and competing with CAD/time-clock requests.
-const TTL_MS = 10 * 60_000;
+const TTL_MS = 2 * 60_000; // Portrait and personnel updates must converge across open sessions.
 const STALE_CACHE_MAX_MS = 24 * 60 * 60_000;
-const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v11';
+const DIRECTORY_STORAGE_KEY = 'bps:app-directory:last-good:v12';
 try{for(const key of Object.keys(localStorage))if(key.startsWith('bps:app-directory:last-good:')&&key!==DIRECTORY_STORAGE_KEY)localStorage.removeItem(key);}catch{}
 
 function readPersistedDirectory() {
