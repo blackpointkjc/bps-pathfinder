@@ -1329,7 +1329,7 @@ export default function Layout({ children, currentPageName }) {
           const linkedCall = callById.get(String(item.callId));
           const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.source_key || item.callId;
           const eventKey = `${item.propertyId}|${stableCallId}`;
-          const createdTime = new Date(item.created_date || 0).getTime();
+          const createdTime = parseCadUtcTime(item.created_date);
           // PropertyAlert creation is the live Pathfinder event. The public CAD
           // source may publish a call several minutes after its reported call time,
           // so gating this popup by callTime incorrectly suppresses brand-new alerts.

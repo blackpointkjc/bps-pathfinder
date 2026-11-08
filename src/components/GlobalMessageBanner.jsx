@@ -7,9 +7,8 @@ import { createPageUrl } from '../utils';
 import { announceVoice, announceVoiceAsync, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 import { playPropertyHorn } from '@/utils/alertUtils';
-import { propertyAlertWasTimely } from '@/lib/propertyAlertFreshness';
+import { propertyAlertWasTimely, parseCadUtcTime } from '@/lib/propertyAlertFreshness';
 import { mayReceivePropertyAlarm } from '@/lib/clockedPropertyAlarm';
-import { isClockedInAtProperty, getActiveTimeEntry } from '@/lib/clockedPropertyAlarm';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
 
 const SOURCES = [
@@ -540,13 +539,8 @@ export default function GlobalMessageBanner({ user }) {
           id = alerts.find(row => row.is_test !== true && !['resolved','false_alarm','test','inactive','closed'].includes(normalized(row.lifecycle_status)))?.propertyId;
         }
         if (!id || id === 'public-helpme') return active && isCurrent();
-        const [property, response] = await Promise.all([
-          base44.entities.Location.get(id),
-          base44.functions.invoke('getMyTimeEntries', { active_only: true }),
-        ]);
-        const payload = response?.data || response || {};
-        if (property?.active !== false && property?.property_monitoring_enabled === true
-          && Array.isArray(payload.entries) && isClockedInAtProperty(payload.entries, property)) {
+        const property = await base44.entities.Location.get(id);
+        if (await mayReceivePropertyAlarm(base44,user,property,{fresh:true})) {
           await playPropertyHorn(() => active && isCurrent());
         }
       } catch (error) {
@@ -561,7 +555,7 @@ export default function GlobalMessageBanner({ user }) {
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
       if (knownIds.current.has(key)) return;
-      const alertCreatedAt = new Date(record.created_date || 0).getTime();
+      const alertCreatedAt = parseCadUtcTime(record.created_date);
       // The public CAD source can expose a call several minutes after its reported
       // receive time. PropertyAlert.created_date is the moment Pathfinder verified
       // the monitored-property event, so live audio freshness must use that event.
@@ -930,7 +924,7 @@ export default function GlobalMessageBanner({ user }) {
           (records || []).slice().reverse().forEach(record => {
             if (!record?.id) return;
 
-            const created = new Date(record.created_date || 0).getTime();
+            const created = parseCadUtcTime(record.created_date);
             if (Number.isFinite(created) && created >= propertyCutoff) {
               // A verified property alert arriving during connection is still
               // actionable for a short interval. Claim once, never replay later.
@@ -1024,7 +1018,7 @@ export default function GlobalMessageBanner({ user }) {
       }, '-created_date', 50)
         .then(records => (records || [])
           .filter(record => {
-            const created = new Date(record.created_date || 0).getTime();
+            const created = parseCadUtcTime(record.created_date);
             // Finished/retired tasks are acknowledged by the supervisor sync;
             // never replay an old task as a blocking red banner on sign-in.
             return Number.isFinite(created) && Date.now() - created <= 15 * 60 * 1000;
@@ -1101,7 +1095,7 @@ export default function GlobalMessageBanner({ user }) {
       });
       const accountCreated = user?.created_date ? new Date(user.created_date).getTime() : 0;
       (announcements || []).slice().reverse().forEach(record => {
-        const created = new Date(record.created_date || 0).getTime();
+        const created = parseCadUtcTime(record.created_date);
         if (!created || (accountCreated && created < accountCreated) || seen.has(record.id)) return;
         const ageDays = (Date.now() - created) / 86400000;
         const active = record.priority === 'urgent' ? ageDays <= 30 : record.priority === 'important' ? ageDays <= 14 : ageDays <= 7;
