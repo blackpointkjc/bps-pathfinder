@@ -26,7 +26,11 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
     form.dataset.aiReviewed = 'false';
 
     const invalidate = (event) => {
-      if (event.target?.dataset?.aiReviewIgnore === 'true') return;
+      const target = event.target;
+      if (target?.dataset?.aiReviewIgnore === 'true') return;
+      const type = String(target?.type || '').toLowerCase();
+      const fieldKey = `${target?.name || ''} ${target?.id || ''} ${target?.getAttribute?.('aria-label') || ''}`;
+      if (skipInputTypes.has(type) || technicalFieldHints.test(fieldKey)) return;
       setReviewed(false);
       form.dataset.aiReviewed = 'false';
       onReviewedChange?.(false);
