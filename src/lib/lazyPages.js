@@ -21,11 +21,39 @@ const registry = generatedConfig.match(/^export const PAGES\s*=\s*\{([\s\S]*?)\n
 const entries = [...registry.matchAll(/["']([^"']+)["']\s*:\s*(\w+)/g)].map(([, name, component]) => [name, imports[component]]);
 const routes = new Map([...entries, ['ProfessionalStandards','ProfessionalStandards.jsx'], ['VisitorPortal','VisitorPortal.jsx'], ['ParkingRecords', 'ParkingRecords.jsx'], ['ClientParkingRecords', 'ClientParkingRecords.jsx'], ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx'], ['AdminBrowserControl', 'AdminBrowserControl.jsx'], ['CorporateBrowser', 'CorporateBrowser.jsx']]);
 const loadedModules=new Map(),modulePromises=new Map(),routeLoaders=new Map();
+// A module request can fail while the preview server is rebuilding. Retry once,
+// then reload the app shell a bounded number of times to fetch a clean graph.
+const MODULE_FETCH_ERROR=/Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|dynamically imported module/i;
+const RECOVERY_KEY='bps:module-recovery';
+const isModuleFetchError=error=>MODULE_FETCH_ERROR.test(String(error?.message||error||''));
+function recoverModuleGraph(){
+ try{
+  const state=JSON.parse(sessionStorage.getItem(RECOVERY_KEY)||'{}');
+  if((state.count||0)>=2||Date.now()-(state.at||0)<20000)return false;
+  sessionStorage.setItem(RECOVERY_KEY,JSON.stringify({count:(state.count||0)+1,at:Date.now()}));
+ }catch{return false;}
+ window.location.reload();
+ return true;
+}
+async function importWithRecovery(source){
+ try{
+  return await source();
+ }catch(error){
+  if(!isModuleFetchError(error))throw error;
+  await new Promise(resolve=>setTimeout(resolve,700));
+  try{
+   return await source();
+  }catch(retryError){
+   if(recoverModuleGraph())return new Promise(()=>{});
+   throw retryError;
+  }
+ }
+}
 const Pages = Object.fromEntries([...routes].map(([name,file])=>{
  const source=browserRouteLoaders[name]||pageModules['../pages/'+file];
  if(!source)throw new Error('Missing route module: '+name);
  const load=()=>{
-  if(!modulePromises.has(file))modulePromises.set(file,source().then(value=>{loadedModules.set(file,value);return value;}).catch(error=>{modulePromises.delete(file);throw error;}));
+  if(!modulePromises.has(file))modulePromises.set(file,importWithRecovery(source).then(value=>{loadedModules.set(file,value);return value;}).catch(error=>{modulePromises.delete(file);throw error;}));
   return modulePromises.get(file);
  };
  routeLoaders.set(name,load);
