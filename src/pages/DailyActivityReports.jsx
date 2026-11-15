@@ -19,7 +19,6 @@ import { useNavigate } from "react-router-dom";
 import { format, subDays, isAfter } from "date-fns";
 import StatusBadge from "../components/dashboard/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
@@ -66,6 +65,7 @@ export default function DailyActivityReports() {
   const [entryText, setEntryText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [darReviewed, setDarReviewed] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState("");
   const [showSiteCheckModal, setShowSiteCheckModal] = useState(false);
@@ -350,6 +350,7 @@ export default function DailyActivityReports() {
       setShowForm(false);
       setEditingReport(null);
       setEditingTodoId(null);
+      setDarReviewed(false);
       setSignatureUrl("");
       setShowSignaturePad(false);
       setFormData({
@@ -386,7 +387,12 @@ export default function DailyActivityReports() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
+    if (!darReviewed) {
+      toast.error('Run the report review before submitting. Your draft has not been changed.');
+      return;
+    }
+
     if (!formData.location) {
       alert('Please select a location before submitting the report.');
       return;
@@ -431,6 +437,7 @@ export default function DailyActivityReports() {
     
     setEditingReport(report);
     setEditingTodoId(todoId);
+    setDarReviewed(false);
     setSignatureUrl(report.signature_url || "");
     setShowSignaturePad(false);
     const entriesArray = parseHourlyEntries(report.hourly_entries);
@@ -796,6 +803,7 @@ export default function DailyActivityReports() {
               setEditingTodoId(null);
               setShowForm(!showForm);
               if (!showForm) {
+                setDarReviewed(false);
                 setFormData({
                   report_date: format(new Date(), 'yyyy-MM-dd'),
     linked_call_id: "",
@@ -1087,14 +1095,7 @@ export default function DailyActivityReports() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="incidents">Incidents</Label>
-                    <ReportAIEnhancer 
-                      text={formData.incidents}
-                      onEnhanced={(enhanced) => setFormData({...formData, incidents: enhanced})}
-                      fieldName="incidents"
-                    />
-                  </div>
+                  <Label htmlFor="incidents">Incidents</Label>
                   <Textarea
                     id="incidents"
                     placeholder="Describe any incidents (if none, leave blank)..."
@@ -1223,7 +1224,7 @@ export default function DailyActivityReports() {
                       {saving ? 'Saving...' : 'Save as Draft'}
                     </Button>
                   )}
-                  <RequiredAIReportReview />
+                  <RequiredAIReportReview manageSubmit onReviewedChange={setDarReviewed} />
                   <Button
                     type="submit"
                     disabled={saveReportMutation.isPending || uploading || saving}
