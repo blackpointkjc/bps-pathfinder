@@ -86,7 +86,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
 // A read-only roster load must not write an IA audit event on every refresh.
   const requestedKind=n((await req.clone().json().catch(()=>({}))).kind);
   const directoryOnly=requestedKind==='personnel'&&!admin(me)&&!commandWide(me)&&(role(me).has('officer')||role(me).has('trainer'));
-  if(!directoryOnly&&!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!['corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel'].includes(n(me.rank)))return Response.json({error:'Supervisor access required'},{status:403});
+  if(!directoryOnly&&!admin(me)&&!role(me).has('supervisor')&&me.is_supervisor!==true&&!(level(me.rank)>=0&&level(me.rank)<=7))return Response.json({error:'Supervisor access required'},{status:403});
   const body=await req.json().catch(()=>({})),kind=n(body.kind),entity=entities[kind];
   if(kind==='portrait'){
     const photoId=String(body.id||'');
