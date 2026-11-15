@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { listDirectoryUsers, listDirectoryDivisions } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import OrgAssignmentFields from '@/components/admin/OrgAssignmentFields';
 
 export default function AdminOfficerRoster() {
@@ -52,6 +53,8 @@ export default function AdminOfficerRoster() {
     queryKey: ['allUsers'],
     queryFn: () => listDirectoryUsers(),
   });
+
+  const officerUsers = (allUsers || []).filter(isOperationalOfficer);
 
   const { data: divisions = [] } = useQuery({ queryKey: ['adminOfficerRosterDivisions'], queryFn: () => listDirectoryDivisions('division_name', 1000) });
 
@@ -104,7 +107,7 @@ export default function AdminOfficerRoster() {
   };
 
   const handleCopyFromUser = () => {
-    const selectedUser = allUsers?.find(u => u.email === selectedUserToCopy);
+    const selectedUser = officerUsers.find(u => u.email === selectedUserToCopy);
     if (selectedUser) {
       setFormData({
         first_name: selectedUser.first_name || "",
@@ -154,7 +157,7 @@ export default function AdminOfficerRoster() {
       const toRemove = [];
       const activeOfficerEmails = new Set();
 
-      allUsers?.forEach(u => {
+      officerUsers.forEach(u => {
         // Skip if they don't have basic info
         if (!u.first_name || !u.last_name || !u.email) return;
 
@@ -342,7 +345,7 @@ export default function AdminOfficerRoster() {
                       <SelectValue placeholder="Select an officer to copy..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {allUsers?.map((u) => (
+                      {officerUsers.map((u) => (
                         <SelectItem key={u.email} value={u.email}>
                           {u.first_name} {u.last_name} - {u.email}
                         </SelectItem>
