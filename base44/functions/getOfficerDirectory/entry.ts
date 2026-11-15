@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const allAccess = roleSet.has('admin') || roleSet.has('full_access');
     const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(String(user.rank || '').trim().toLowerCase());
     const rankChain=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
-    const level=(value:any)=>{const raw=String(value||'').toLowerCase().trim().replace(/[.]/g,'').replace(/\\s*\\(.*\\)\\s*$/,'').replace(/\\s+/g,' ');return rankChain.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
+    const level=(value:any)=>{const raw=String(value||'').toLowerCase().trim().replace(/[.]/g,'').replace(/\s*\(.*\)\s*$/,'').replace(/\s+/g,' ');return rankChain.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
     const inScope = (person:any) => {
       if (allAccess || !supervisor) return true;
       if(level(user.rank)<0||level(person.rank)<=level(user.rank))return false;
