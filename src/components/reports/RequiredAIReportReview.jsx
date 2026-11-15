@@ -15,7 +15,7 @@ function setNativeValue(element, value) {
   element.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-export default function RequiredAIReportReview({ label = 'Review Report', manageSubmit = false, onReviewedChange, extraFields = [], onReviewingChange, reviewRevision }) {
+export default function RequiredAIReportReview({ label = 'Review Report', manageSubmit = false, optional = false, onReviewedChange, extraFields = [], onReviewingChange, reviewRevision }) {
   const buttonRef = useRef(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewed, setReviewed] = useState(false);
@@ -131,8 +131,8 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
       <div className="mb-3 flex min-w-0 items-start gap-2 text-sm">
         {reviewed ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" /> : <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400" />}
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-slate-100">Required AI Review</p>
-          <p className="break-words text-xs leading-5 text-slate-400">Review the suggested wording before submitting. Any later edit requires another review.</p>
+          <p className="font-semibold text-slate-100">{optional ? 'AI Report Review (Optional)' : 'Required AI Review'}</p>
+          <p className="break-words text-xs leading-5 text-slate-400">{optional ? 'Use the on-device review to polish the report before submitting. You can submit without running it.' : 'Review the suggested wording before submitting. Any later edit requires another review.'}</p>
         </div>
       </div>
       <Button ref={buttonRef} type="button" onClick={review} disabled={reviewing} className={`h-auto w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-5 sm:w-auto ${reviewed ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
