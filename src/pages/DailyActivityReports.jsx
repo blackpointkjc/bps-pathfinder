@@ -1231,6 +1231,7 @@ export default function DailyActivityReports() {
                   )}
                   <RequiredAIReportReview
                     manageSubmit
+                    optional
                     onReviewingChange={setDarReviewing}
                     reviewRevision={() => JSON.stringify(darFormDataRef.current.hourly_entries_array.map(entry => [entry.time, entry.text]))}
                     extraFields={formData.hourly_entries_array.map((entry, index) => ({
