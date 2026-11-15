@@ -146,7 +146,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
    return {...p,division:p.division||match.division,subdivision:p.subdivision||match.subdivision,substation:p.substation||match.substation,assigned_site_name:match.site_name};
   });
   const hasOfficerRole=(p:any)=>new Set([p?.role,...(Array.isArray(p?.additional_roles)?p.additional_roles:[])].map(n)).has('officer');
-  const people=resolvedUsers.filter((p:any)=>(level(me.rank)<0||lowerRank(me,p))&&area(me,p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))&&hasOfficerRole(p));
+  const people=resolvedUsers.filter((p:any)=>(level(me.rank)>=0?lowerRank(me,p):admin(me))&&area(me,p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))&&hasOfficerRole(p));
   const configuredPlatoons=kind==='personnel'?await sdk.asServiceRole.entities.CompanyPlatoon.list('region',1000).catch(()=>[]):[];
   const personPlatoons=resolvedUsers.filter((p:any)=>p.platoon&&p.platoon!=='Command'&&p.division).map((p:any)=>({name:String(p.platoon),region:String(p.division)}));
   const allRegionPlatoons=[...configuredPlatoons.filter((p:any)=>p.active!==false),...personPlatoons];
@@ -162,7 +162,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
     const officer=resolvedUsers.find((p:any)=>hasOfficerRole(p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))
       && ((email&&[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).includes(email))||(id&&String(p.id)===id)));
     if(!officer)return false;
-    if(level(me.rank)>=0&&!lowerRank(me,officer))return false;
+    if(level(me.rank)>=0?!lowerRank(me,officer):!admin(me))return false;
    }
    if(admin(me))return true;
    if(kind==='chat')return emails.has(n(r.sender_email))||n(r.sender_email)===n(me.email);
