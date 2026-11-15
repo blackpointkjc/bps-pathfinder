@@ -646,10 +646,18 @@ const functions = new Proxy(rawBase44.functions, {
     return (name, payload) => {
       const functionName = String(name);
       const key = `function:${functionName}:${stableKey(payload || {})}`;
-      const task = async () => {try{const result=await value.call(target,name,payload);if((result.data?.receipt?.tracking_code||result.data?.receipt?.pending))window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:result.data.receipt}));return result;}catch(error){// A background endpoint can have stale authorization state even when
-        // the active portalSession remains valid. Only the central auth guard
-        // may request a global logout after verifying the canonical session.
-        throw error;}};
+      const task = async () => {
+        const run=async()=>{const result=await value.call(target,name,payload);if((result.data?.receipt?.tracking_code||result.data?.receipt?.pending))window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:result.data.receipt}));return result;};
+        try{return await run();}catch(error){
+          const data=error?.response?.data||error?.data||{};
+          // The platform rotates access tokens during a live session. Bind the
+          // current token to this account's portal session once and retry, so a
+          // rotated token never reads as a signed-out session on one screen.
+          // Only the central auth guard may ask the operator to sign in again.
+          if(functionName==='portalSession'||data?.code!=='SESSION_REAUTH_REQUIRED')throw error;
+          try{await rawBase44.functions.invoke('portalSession',{action:'check'});}catch{throw error;}
+          return await run();
+        }};
       const meta = { kind: 'function', name: functionName, action: String(payload?.action || '').toLowerCase() || '',
         locationTransition: payload?.end_session === true || payload?.reset_gps === true || payload?.status_changed === true };
 

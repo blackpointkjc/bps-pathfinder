@@ -108,7 +108,12 @@ Deno.serve(async (req) => {
       
       // Only count hours if NOT during PTO
       if (!isDuringPTO) {
-        const hoursWorked = (clockOut - clockIn) / (1000 * 60 * 60);
+        // A damaged punch (for example a clock-out saved with the wrong year)
+        // must never move an accrual balance. Only a shift that runs forward and
+        // fits inside one day counts as worked time.
+        if (!Number.isFinite(clockIn.getTime()) || !Number.isFinite(clockOut.getTime())) continue;
+        const hoursWorked = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
+        if (!(hoursWorked > 0) || hoursWorked > 24) continue;
         totalHoursWorked += hoursWorked;
       }
     }
@@ -117,7 +122,7 @@ Deno.serve(async (req) => {
     // Colonel/Lt Colonel accrue up to 180 hours/year; every other rank accrues
     // up to 40 hours/year.
     const accrualRate = annualEntitlement / 2040;
-    const ptoAccruedFromWork = Math.min(annualEntitlement, totalHoursWorked * accrualRate);
+    const ptoAccruedFromWork = Math.max(0, Math.min(annualEntitlement, totalHoursWorked * accrualRate));
 
     // Earned PTO comes only from worked hours. There is no sick-leave conversion
     // or sick-time credit in the PTO accrual calculation.
