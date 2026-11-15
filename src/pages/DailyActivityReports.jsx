@@ -782,6 +782,7 @@ export default function DailyActivityReports() {
         location={formData.location}
         currentEntries={formData.hourly_entries_array}
         onEntryAdded={(entry) => {
+          setDarReviewed(false);
           setFormData(prev => ({
             ...prev,
             hourly_entries_array: [...prev.hourly_entries_array, entry]
