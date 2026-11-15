@@ -74,10 +74,13 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
       const originals = controls.map(control => control.value.trim());
       // One report-level action runs the on-device model across narrative fields.
       // This keeps report review private and avoids Base44 integration credits.
-      const rewritten = await Promise.all(originals.map(async (text, index) => ({
-        index,
-        text: await rewriteOnDevice(text, setProgress),
-      })));
+      const rewritten = [];
+      for (let index = 0; index < originals.length; index += 1) {
+        rewritten.push({
+          index,
+          text: await rewriteOnDevice(originals[index], setProgress),
+        });
+      }
       if (controls.some((control, index) => control.value.trim() !== originals[index])) {
         throw new Error('The report changed while AI review was running. Your original text was preserved; review the updated report again.');
       }
@@ -118,6 +121,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
         {reviewing ? 'Reviewing Report…' : reviewed ? 'AI Review Complete' : label}
       </Button>
       {reviewing && <p role="status" className="mt-2 break-words text-xs text-slate-400">{progress || 'Preparing the local AI model…'}</p>}
+      <p className="mt-2 text-xs leading-5 text-slate-500">Runs privately on this device. First use downloads and caches the model; no app integration credits are used.</p>
     </div>
   );
 }
