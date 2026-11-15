@@ -1,16 +1,15 @@
 export function isOperationalOfficer(user) {
   if (!user?.email || user.termination_date) return false;
-  const roles = new Set((user.additional_roles || []).map(role => String(role).toLowerCase()));
-  const rank = String(user.rank || '').trim().toLowerCase();
-  const type = String(user.user_type || user.account_type || user.portal_type || '').toLowerCase();
-  const status = String(user.account_status || '').toLowerCase();
+  const roles = new Set((user.additional_roles || []).map(role => String(role).trim().toLowerCase()));
+  const type = String(user.user_type || user.account_type || user.portal_type || '').trim().toLowerCase();
+  const status = String(user.account_status || '').trim().toLowerCase();
+  const employment = String(user.employment_status || '').trim().toLowerCase();
   if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
   if (['client', 'student', 'pending'].includes(type) || status === 'pending') return false;
-  const operationalRanks = new Set([
-    'officer','unarmed officer','senior officer','corporal','sergeant','first sergeant',
-    'lieutenant','captain','major','lt colonel','lieutenant colonel','colonel','supervisor'
-  ]);
-  return roles.has('officer') || roles.has('cad_access') || roles.has('supervisor') || operationalRanks.has(rank);
+  if (['terminated', 'suspended'].includes(employment) || ['terminated', 'suspended', 'disabled'].includes(status)) return false;
+  // Officer selectors are role-based, never inferred from rank, CAD access,
+  // supervisor status, or an employee's job title.
+  return roles.has('officer');
 }
 
 export function hasOfficerAdditionalRole(user) {
