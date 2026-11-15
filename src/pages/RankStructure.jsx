@@ -28,7 +28,7 @@ const isOperational = user => {
   const active = Boolean(user?.email && !user?.termination_date && user?.disabled !== true
     && !['terminated','suspended'].includes(String(user?.employment_status || '').toLowerCase())
     && !['terminated','suspended','disabled','pending'].includes(String(user?.account_status || '').toLowerCase()));
-  const companyCommandAccount = COMMAND_RANKS.has(rank) && active && !roles.has('client') && !roles.has('student');
+  const companyCommandAccount = COMMAND_RANKS.has(rank) && active && !roles.has('client') && !roles.has('student') && !roles.has('pending');
   return (isOperationalOfficer(user) || companyCommandAccount) && RANKS.includes(rank);
 };
 const isColonelHiers = person => String(person?.id || '') === '6ae7d733d4b1a647cd3e6f38' || (
