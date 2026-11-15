@@ -1,4 +1,3 @@
-import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { requestCadLiveSync } from '@/lib/cadCallFeed';
 import { getBase44RequestHealth } from '@/api/base44Client';
@@ -7,7 +6,6 @@ import { getBase44RequestHealth } from '@/api/base44Client';
 // cadCallFeed shares a cross-tab cooldown/lock; the server has its own ingestion lease.
 // PropertyAlert realtime remains responsible for speaking alerts exactly once.
 export default function CadSourceSyncMonitor({ user }) {
-  const location=useLocation();
   useEffect(() => {
     const role = String(user?.role || '').toLowerCase();
     const roles = new Set((user?.additional_roles || []).map(value => String(value).toLowerCase()));

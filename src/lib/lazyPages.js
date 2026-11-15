@@ -21,39 +21,51 @@ const registry = generatedConfig.match(/^export const PAGES\s*=\s*\{([\s\S]*?)\n
 const entries = [...registry.matchAll(/["']([^"']+)["']\s*:\s*(\w+)/g)].map(([, name, component]) => [name, imports[component]]);
 const routes = new Map([...entries, ['ProfessionalStandards','ProfessionalStandards.jsx'], ['VisitorPortal','VisitorPortal.jsx'], ['ParkingRecords', 'ParkingRecords.jsx'], ['ClientParkingRecords', 'ClientParkingRecords.jsx'], ['UnitStatus', 'UnitStatus.jsx'], ['AdminAbsenceCoverage', 'AdminAbsenceCoverage.jsx'], ['AdminBrowserControl', 'AdminBrowserControl.jsx'], ['CorporateBrowser', 'CorporateBrowser.jsx']]);
 const loadedModules=new Map(),modulePromises=new Map(),routeLoaders=new Map();
-// A module request can fail while the preview server is rebuilding. Retry once,
-// then reload the app shell a bounded number of times to fetch a clean graph.
+// A module request can fail while the preview server is rebuilding or restarting.
+// Wait for it to come back, re-request the module, and only then reload the shell.
 const MODULE_FETCH_ERROR=/Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|dynamically imported module/i;
 const RECOVERY_KEY='bps:module-recovery';
+const RETRY_DELAYS=[600,1500,3000];
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const isModuleFetchError=error=>MODULE_FETCH_ERROR.test(String(error?.message||error||''));
 function recoverModuleGraph(){
  try{
   const state=JSON.parse(sessionStorage.getItem(RECOVERY_KEY)||'{}');
-  if((state.count||0)>=2||Date.now()-(state.at||0)<20000)return false;
+  if((state.count||0)>=4||Date.now()-(state.at||0)<15000)return false;
   sessionStorage.setItem(RECOVERY_KEY,JSON.stringify({count:(state.count||0)+1,at:Date.now()}));
  }catch{return false;}
  window.location.reload();
  return true;
 }
-async function importWithRecovery(source){
- try{
-  return await source();
- }catch(error){
-  if(!isModuleFetchError(error))throw error;
-  await new Promise(resolve=>setTimeout(resolve,700));
+async function importWithRecovery(source,file){
+ let lastError;
+ const attempts=RETRY_DELAYS.length+1;
+ for(let index=0;index<attempts;index+=1){
+  if(index>0)await sleep(RETRY_DELAYS[index-1]);
   try{
    return await source();
-  }catch(retryError){
-   if(recoverModuleGraph())return new Promise(()=>{});
-   throw retryError;
+  }catch(error){
+   lastError=error;
+   if(!isModuleFetchError(error))throw error;
+   // Development server restarted under an open preview: ask for the module with
+   // a fresh cache key so the browser cannot reuse the failed module graph.
+   if(import.meta.env.DEV){
+    try{
+     return await import(/* @vite-ignore */ `/src/pages/${file}?t=${Date.now()}`);
+    }catch(bustError){
+     lastError=bustError;
+    }
+   }
   }
  }
+ if(recoverModuleGraph())return new Promise(()=>{});
+ throw lastError;
 }
 const Pages = Object.fromEntries([...routes].map(([name,file])=>{
  const source=browserRouteLoaders[name]||pageModules['../pages/'+file];
  if(!source)throw new Error('Missing route module: '+name);
  const load=()=>{
-  if(!modulePromises.has(file))modulePromises.set(file,importWithRecovery(source).then(value=>{loadedModules.set(file,value);return value;}).catch(error=>{modulePromises.delete(file);throw error;}));
+  if(!modulePromises.has(file))modulePromises.set(file,importWithRecovery(source,file).then(value=>{loadedModules.set(file,value);return value;}).catch(error=>{modulePromises.delete(file);throw error;}));
   return modulePromises.get(file);
  };
  routeLoaders.set(name,load);
