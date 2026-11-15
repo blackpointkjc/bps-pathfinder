@@ -126,12 +126,27 @@ export default function SupervisorOverview() {
     ...(tasks.followUps || []).map(row => ({ id:row.id, source_id:row.id, kind:'duty_follow_up', title:row.title || 'Assigned Follow-up', person:row.officer_name || 'Officer', detail:row.summary || '' })),
     ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:row.kind, page:row.page, title:row.title || 'Assigned Report Review', person:row.person || 'Officer', detail:row.detail || '' })),
   ];
-  const taskQueue = [...new Map(taskQueueCandidates.map(item => [
-    item.kind === 'missing_report'
-      ? `${item.kind}|${item.person}|${item.title}|${item.detail}`
-      : `${item.kind || 'task'}|${item.source_id || item.id || item.title}`,
-    item,
-  ])).values()];
+  const taskQueueByKey = new Map();
+  for (const item of taskQueueCandidates) {
+    if (item.kind === 'missing_report') {
+      const personKey = String(item.person || 'Officer').trim().toLowerCase();
+      const detailParts = String(item.detail || '').split('·').map(part => part.trim()).filter(Boolean);
+      const siteKey = (detailParts.length > 1 ? detailParts[1] : detailParts[0] || 'site').toLowerCase();
+      const key = `missing_report|${personKey}|${siteKey}`;
+      const existing = taskQueueByKey.get(key);
+      if (existing) {
+        const details = new Set([...(existing.details || [existing.detail]), item.detail].filter(Boolean));
+        existing.details = [...details];
+        existing.detail = existing.details.join(' · ');
+      } else {
+        taskQueueByKey.set(key, { ...item, details: item.detail ? [item.detail] : [] });
+      }
+      continue;
+    }
+    const key = `${item.kind || 'task'}|${item.source_id || item.id || item.title}`;
+    if (!taskQueueByKey.has(key)) taskQueueByKey.set(key, item);
+  }
+  const taskQueue = [...taskQueueByKey.values()];
 
   const degraded = Boolean(error || data.failures?.length);
   const totalTasks = taskQueue.length;
