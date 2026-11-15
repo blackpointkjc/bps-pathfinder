@@ -1020,7 +1020,7 @@ function chooseCanonical(records: any[]) {
 }
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 15_000;
+const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 5_000;
 
 async function acquireIngestionLease(base44: any) {
   const token = crypto.randomUUID();
