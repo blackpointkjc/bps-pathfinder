@@ -15,7 +15,7 @@ function setNativeValue(element, value) {
   element.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-export default function RequiredAIReportReview({ label = 'Review Report', manageSubmit = false, onReviewedChange }) {
+export default function RequiredAIReportReview({ label = 'Review Report', manageSubmit = false, onReviewedChange, extraFields = [], onReviewingChange }) {
   const buttonRef = useRef(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewed, setReviewed] = useState(false);
@@ -63,16 +63,20 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
       if (skipInputTypes.has(type) || technicalFieldHints.test(fieldKey)) return false;
       return typeof el.value === 'string' && el.value.trim().length >= 2;
     });
-    if (!controls.length) {
+    const additional = (extraFields || []).filter(field => String(field?.value || '').trim().length >= 2);
+    if (!controls.length && !additional.length) {
       toast.error('Add report narrative details before requesting AI review.');
       return;
     }
 
     setReviewing(true);
+    onReviewingChange?.(true);
     setProgress('Preparing local AI review…');
     try {
       const originals = controls.map(control => control.value.trim());
-      // One report-level action runs the on-device model across narrative fields.
+      const extraOriginals = additional.map(field => String(field.value).trim());
+      // One report-level action runs the on-device model across narrative fields,
+      // including DAR hourly entries held in React state rather than text inputs.
       // This keeps report review private and avoids Base44 integration credits.
       const rewritten = [];
       for (let index = 0; index < originals.length; index += 1) {
@@ -81,7 +85,15 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
           text: await rewriteOnDevice(originals[index], setProgress),
         });
       }
-      if (controls.some((control, index) => control.value.trim() !== originals[index])) {
+      const rewrittenExtra = [];
+      for (let index = 0; index < extraOriginals.length; index += 1) {
+        rewrittenExtra.push({
+          index,
+          text: await rewriteOnDevice(extraOriginals[index], setProgress),
+        });
+      }
+      if (controls.some((control, index) => control.value.trim() !== originals[index])
+        || additional.some((field, index) => typeof field.getValue === 'function' && String(field.getValue() || '').trim() !== extraOriginals[index])) {
         throw new Error('The report changed while AI review was running. Your original text was preserved; review the updated report again.');
       }
       rewritten.forEach(item => {
@@ -91,6 +103,10 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
           setNativeValue(control, item.text.trim());
           delete control.dataset.aiReviewIgnore;
         }
+      });
+      rewrittenExtra.forEach(item => {
+        const field = additional[item.index];
+        if (field && item.text) field.onChange?.(item.text.trim());
       });
       form.dataset.aiReviewed = 'true';
       setReviewed(true);
@@ -104,6 +120,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
       toast.error(error?.message || 'Unable to review the report right now.');
     } finally {
       setReviewing(false);
+      onReviewingChange?.(false);
     }
   };
 
