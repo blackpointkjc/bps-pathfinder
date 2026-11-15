@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { rewriteOnDevice } from '@/lib/localRewrite';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
   const buttonRef = useRef(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [progress, setProgress] = useState('');
 
   useEffect(() => {
     const form = buttonRef.current?.closest('form');
@@ -32,6 +33,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
       const fieldKey = `${target?.name || ''} ${target?.id || ''} ${target?.getAttribute?.('aria-label') || ''}`;
       if (skipInputTypes.has(type) || technicalFieldHints.test(fieldKey)) return;
       setReviewed(false);
+      setProgress('');
       form.dataset.aiReviewed = 'false';
       onReviewedChange?.(false);
     };
@@ -67,17 +69,18 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
     }
 
     setReviewing(true);
+    setProgress('Preparing local AI review…');
     try {
-      const fields = controls.map((el, index) => ({
+      const originals = controls.map(control => control.value.trim());
+      // One report-level action runs the on-device model across narrative fields.
+      // This keeps report review private and avoids Base44 integration credits.
+      const rewritten = await Promise.all(originals.map(async (text, index) => ({
         index,
-        field: el.name || el.id || `field_${index}`,
-        text: el.value.trim(),
-      }));
-      const response = await base44.functions.invoke('professionalizeReport', { fields });
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      const rewritten = payload.fields || [];
-      if (!rewritten.length) throw new Error('The AI review returned no revisions. Please try again.');
+        text: await rewriteOnDevice(text, setProgress),
+      })));
+      if (controls.some((control, index) => control.value.trim() !== originals[index])) {
+        throw new Error('The report changed while AI review was running. Your original text was preserved; review the updated report again.');
+      }
       rewritten.forEach(item => {
         const control = controls[item.index];
         if (control && item.text) {
@@ -93,6 +96,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
     } catch (error) {
       form.dataset.aiReviewed = 'false';
       setReviewed(false);
+      setProgress('');
       onReviewedChange?.(false);
       toast.error(error?.message || 'Unable to review the report right now.');
     } finally {
@@ -113,6 +117,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
         {reviewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : reviewed ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
         {reviewing ? 'Reviewing Report…' : reviewed ? 'AI Review Complete' : label}
       </Button>
+      {reviewing && <p role="status" className="mt-2 break-words text-xs text-slate-400">{progress || 'Preparing the local AI model…'}</p>}
     </div>
   );
 }
