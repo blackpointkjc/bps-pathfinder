@@ -18,7 +18,7 @@ const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a
 
 const TIME_ZONE = 'America/New_York';
 const normalized = (value: unknown) => String(value || '').trim().toLowerCase();
-const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => normalized(role)));
+const rolesOf = (user: any) => new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map((role: unknown) => normalized(role)));
 const isPending = (row: any) => normalized(row?.status) === 'pending';
 const displayName = (user: any) => [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
   || user?.full_name || user?.email || 'Employee';
