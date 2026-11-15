@@ -12,9 +12,9 @@ import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/disp
 
 
 const DashboardDataContext = createContext(null);
-const POLL_INTERVAL_MS = 60_000;        // Live subscriptions repaint immediately; this is missed-event recovery only
+const POLL_INTERVAL_MS = 10_000;        // Realtime paints immediately; recover missed CAD events within seconds
 const RATE_LIMIT_BACKOFF_MS = 15_000;   // Brief local pause only; never make CAD appear dead for minutes after one 429
-const MIN_REFRESH_MS = 5_000;           // Full-list reads are fallback only; realtime events update the queue directly
+const MIN_REFRESH_MS = 3_000;           // Keep fallback reads responsive without overlapping realtime updates
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
 const ACTIVE_CALL_CACHE_KEY = 'bps-cad-verified-calls-v4';
 // Keep the last good queue through a long minimized/idle period. Individual calls
