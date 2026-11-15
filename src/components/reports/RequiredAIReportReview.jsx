@@ -5,7 +5,7 @@ import { CheckCircle2, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const skipInputTypes = new Set(['date', 'time', 'datetime-local', 'number', 'email', 'tel', 'checkbox', 'radio', 'file', 'hidden', 'submit', 'button']);
-const technicalFieldHints = /(^|_)(id|status|email|phone|date|time|dob|license|plate|signature|report_number|call_number|unit_number)($|_)/i;
+const technicalFieldHints = /(^|_)(id|status|email|phone|date|time|dob|license|plate|signature|report_number|call_number|unit_number|location|site|shift|weather|mileage|patrol_count|visitors_logged|doors_checked|linked_call|photo|officer)($|_)/i;
 
 function setNativeValue(element, value) {
   const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -15,7 +15,7 @@ function setNativeValue(element, value) {
   element.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-export default function RequiredAIReportReview({ label = 'Review & Professionalize Report' }) {
+export default function RequiredAIReportReview({ label = 'Review Report', manageSubmit = false, onReviewedChange }) {
   const buttonRef = useRef(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewed, setReviewed] = useState(false);
@@ -29,6 +29,7 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
       if (event.target?.dataset?.aiReviewIgnore === 'true') return;
       setReviewed(false);
       form.dataset.aiReviewed = 'false';
+      onReviewedChange?.(false);
     };
     const guard = (event) => {
       if (form.dataset.aiReviewed !== 'true') {
@@ -38,12 +39,14 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
       }
     };
     form.addEventListener('input', invalidate);
-    form.addEventListener('submit', guard, true);
+    form.addEventListener('change', invalidate);
+    if (!manageSubmit) form.addEventListener('submit', guard, true);
     return () => {
       form.removeEventListener('input', invalidate);
-      form.removeEventListener('submit', guard, true);
+      form.removeEventListener('change', invalidate);
+      if (!manageSubmit) form.removeEventListener('submit', guard, true);
     };
-  }, []);
+  }, [manageSubmit, onReviewedChange]);
 
   const review = async () => {
     const form = buttonRef.current?.closest('form');
@@ -81,8 +84,12 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
       });
       form.dataset.aiReviewed = 'true';
       setReviewed(true);
+      onReviewedChange?.(true);
       toast.success(`AI review complete. ${rewritten.length} report field${rewritten.length === 1 ? '' : 's'} reviewed. Read the revisions before submitting.`);
     } catch (error) {
+      form.dataset.aiReviewed = 'false';
+      setReviewed(false);
+      onReviewedChange?.(false);
       toast.error(error?.message || 'Unable to review the report right now.');
     } finally {
       setReviewing(false);
@@ -95,7 +102,7 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
         {reviewed ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" /> : <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400" />}
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-slate-100">Required AI Review</p>
-          <p className="break-words text-xs leading-5 text-slate-400">The officer must review the rewritten wording. Any later edit requires another review.</p>
+          <p className="break-words text-xs leading-5 text-slate-400">Review the suggested wording before submitting. Any later edit requires another review.</p>
         </div>
       </div>
       <Button ref={buttonRef} type="button" onClick={review} disabled={reviewing} className={`h-auto w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-5 sm:w-auto ${reviewed ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
