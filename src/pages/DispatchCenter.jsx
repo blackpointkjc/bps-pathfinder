@@ -181,13 +181,11 @@ export default function DispatchCenter({embedded=false}) {
         const unsubscribeUnits = subscribeOfficerLocationChanges(scheduleUnitRefresh);
         const localInterval = setInterval(() => {
             if (document.visibilityState !== 'visible' || !navigator.onLine) return;
-            // Live DispatchCall subscriptions paint new/changed calls immediately.
-            // Reconcile with the backend only every 90 seconds or on the
-            // ingestion-finished signal. The former 20s forced cache flush
-            // caused overlapping 500-row reads on every mounted CAD screen.
-            if(Date.now()-lastActiveCallsLoadRef.current < 85_000)return;
+            // Realtime paints calls first; this short reconciliation is the safety net
+            // for a dropped websocket event or a browser reconnect.
+            if(Date.now()-lastActiveCallsLoadRef.current < 4_000)return;
             void loadActiveCalls();
-        }, 90_000);
+        }, 5_000);
 
         // Visible Dispatch Center screens share the guarded upstream sync lock.
         // Repaint immediately after persisted writes complete so the queue does
@@ -202,7 +200,7 @@ export default function DispatchCenter({embedded=false}) {
         const unitsInterval = setInterval(() => {
             if (document.visibilityState === 'visible') loadUnits();
         }, 2 * 60 * 1000);
-        const secondaryInterval = setInterval(loadMonitoredProperties, 5 * 60 * 1000);
+        const secondaryInterval = setInterval(loadMonitoredProperties, 60 * 1000);
         const onStatusChanged = (event) => {
             const detail = event?.detail || {};
             if (detail.email && detail.status) {
