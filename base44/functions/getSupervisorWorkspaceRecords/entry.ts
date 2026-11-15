@@ -21,7 +21,7 @@ const admin=(u:any)=>role(u).has('admin')||role(u).has('full_access')||u.ps_role
 const commandWide=(u:any)=>['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(n(u?.rank).replace(/[.]/g,''));
 const senior=(u:any)=>['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(u.rank));
 const rankOrder=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
-const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'');return rankOrder.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
+const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'').replace(/\\s*\\(.*\\)\\s*$/,'').replace(/\\s+/g,' ');return rankOrder.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
 const lowerRank=(me:any,p:any)=>level(me.rank)>=0&&level(p.rank)>level(me.rank);
 const area=(me:any,p:any,hasPlatoon=true)=>admin(me)||commandWide(me)||(
   (hasPlatoon?lowerRank(me,p):true)
