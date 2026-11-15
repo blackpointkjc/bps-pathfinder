@@ -305,6 +305,7 @@ Deno.serve(async (req) => {
     const officerEmails = new Set((users || [])
       .filter((user:any) => [user.role, ...(Array.isArray(user.additional_roles) ? user.additional_roles : [])]
         .some((value:any) => normalized(value) === 'officer')
+        && !user.disabled
         && !user.termination_date
         && !['terminated','suspended'].includes(normalized(user.employment_status))
         && !['terminated','suspended','disabled','pending'].includes(normalized(user.account_status)))
