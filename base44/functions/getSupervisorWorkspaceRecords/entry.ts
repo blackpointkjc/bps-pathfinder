@@ -63,7 +63,7 @@ async function personnelDirectory(sdk:any){
  if(!personnelLoading)personnelLoading=(async()=>{
    const [roster,configured]=await Promise.all([
       sdk.asServiceRole.entities.User.list('last_name',1000),
-      sdk.asServiceRole.entities.CompanyPlatoon.list('region',100).catch(()=>[]),
+      sdk.asServiceRole.entities.CompanyPlatoon.list('region',1000).catch(()=>[]),
    ]);
    const snapshot={at:Date.now(),staff:(roster||[]).filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated'),configured:configured||[]};
    personnelCache=snapshot;return snapshot;
