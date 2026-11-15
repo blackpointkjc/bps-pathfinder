@@ -166,6 +166,7 @@ Deno.serve(async (req) => {
     const tasks:any[] = [];
 
     for (const shift of schedules || []) {
+      if (!userByEmail.has(lower(shift.officer_email))) continue;
       if (shift.archived === true || shift.is_open === true || lower(shift.officer_email) === 'open' || ['called_out','sent_home'].includes(lower(shift.attendance_status))) continue;
       const start = wallMinutes(shift.start_time);
       // Allow a 15-minute grace period; don't send first-time alerts hours late.
@@ -202,6 +203,7 @@ Deno.serve(async (req) => {
     const sessionSourceEntries = (timeEntries || [])
       .filter((entry:any) => entry?.id && entry.clock_in && entry.clock_out && entry.archived !== true && entry.performance_exception !== true)
       .filter((entry:any) => new Date(entry.clock_out).getTime() >= now - 21*86400000)
+      .filter((entry:any) => userByEmail.has(lower(entry.officer_email)))
       .sort((a:any,b:any) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
     const sessions:any[] = [];
     const byOfficerSessions = new Map<string, any[]>();
@@ -266,11 +268,13 @@ Deno.serve(async (req) => {
     }
 
     for (const row of complaints || []) {
+      if (!userByEmail.has(lower(row.officer_email))) continue;
       if (!['pending','under_investigation'].includes(lower(row.investigation_status))) continue;
       const officer = userByEmail.get(lower(row.officer_email));
       tasks.push({ key:`complaint-${row.id}`, kind:'complaint', source_id:String(row.id), officer_id:String(officer?.id || ''), officer_email:lower(row.officer_email), title:'Complaint Investigation', person:displayName(officer || { email:row.officer_email }), location:clean(row.location), detail:'Complaint investigation or follow-up required', priority:'high', speech:`Attention supervisor. A complaint investigation requires action for ${displayName(officer || { email:row.officer_email })}. The task is assigned to you.` });
     }
     for (const row of writeups || []) {
+      if (!userByEmail.has(lower(row.officer_email))) continue;
       if (lower(row.status) !== 'pending_approval') continue;
       const officer = userByEmail.get(lower(row.officer_email));
       tasks.push({ key:`writeup-${row.id}`, kind:'writeup', source_id:String(row.id), officer_id:String(officer?.id || ''), officer_email:lower(row.officer_email), title:'Write-Up Review', person:displayName(officer || { email:row.officer_email }), location:clean(row.location), detail:'Disciplinary review requires supervisor action', priority:'high', speech:`Attention supervisor. A write-up requires supervisory review for ${displayName(officer || { email:row.officer_email })}. The task is assigned to you.` });
@@ -278,6 +282,7 @@ Deno.serve(async (req) => {
     for (const row of reviews || []) {
       const stage = lower(row.workflow_stage || (row.supervisor_review_pending ? 'supervisor_pending' : ''));
       const officer = userById.get(String(row.officer_id || '')) || userByEmail.get(lower(row.officer_email));
+      if (!officer) continue;
       if (stage === 'supervisor_pending' && !row.supervisor_review_completed) {
         tasks.push({ key:`review-${row.id}`, kind:'review', source_id:String(row.id), officer_id:String(officer?.id || row.officer_id || ''), officer_email:lower(row.officer_email), title:'Performance Review Pending', person:displayName(officer || { email:row.officer_email }), location:clean(officer?.assigned_location), detail:'Supervisor review and ratings require action', priority:'high', speech:`Attention supervisor. A performance review for ${displayName(officer || { email:row.officer_email })} requires your action.` });
       }
@@ -286,6 +291,7 @@ Deno.serve(async (req) => {
       }
     }
     for (const row of inspections || []) {
+      if (!userByEmail.has(lower(row.officer_email))) continue;
       if (!row.follow_up_required || row.follow_up_completed) continue;
       const officer = userByEmail.get(lower(row.officer_email));
       tasks.push({ key:`inspection-${row.id}`, kind:'inspection', source_id:String(row.id), officer_id:String(officer?.id || ''), officer_email:lower(row.officer_email), title:'Officer Inspection Follow-Up', person:displayName(officer || { email:row.officer_email }), location:clean(row.location), detail:clean(row.location) || 'Inspection follow-up required', priority:'high', speech:`Attention supervisor. An officer inspection follow-up is pending for ${displayName(officer || { email:row.officer_email })}. The task is assigned to you.` });
