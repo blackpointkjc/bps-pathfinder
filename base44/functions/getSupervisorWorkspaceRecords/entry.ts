@@ -107,9 +107,9 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
       && !p.termination_date && p.disabled!==true
       && !['terminated','suspended'].includes(n(p.employment_status))
       && !['terminated','suspended','disabled','pending'].includes(n(p.account_status)));
-    // Supervisors may only see active officers strictly below their own rank.
-    // Administrator/full-access access remains governed by the separate admin policy.
-    const rankScopedOfficers=activeOfficers.filter((p:any)=>admin(me)||lowerRank(me,p));
+    // Any user with an operational rank sees only active officers strictly below
+    // that rank. Unranked administrator accounts retain their separate admin access.
+    const rankScopedOfficers=activeOfficers.filter((p:any)=>level(me.rank)<0||lowerRank(me,p));
     const allowed=rankScopedOfficers.filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
     const entries=new Map<string,{region:string,platoon:string}>();
     for(const p of configured||[]){if(p.active!==false&&p.region&&p.name)entries.set(`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name});}
@@ -138,7 +138,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
    return {...p,division:p.division||match.division,subdivision:p.subdivision||match.subdivision,substation:p.substation||match.substation,assigned_site_name:match.site_name};
   });
   const hasOfficerRole=(p:any)=>new Set([p?.role,...(Array.isArray(p?.additional_roles)?p.additional_roles:[])].map(n)).has('officer');
-  const people=resolvedUsers.filter((p:any)=>(admin(me)||lowerRank(me,p))&&area(me,p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))&&hasOfficerRole(p));
+  const people=resolvedUsers.filter((p:any)=>(level(me.rank)<0||lowerRank(me,p))&&area(me,p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))&&hasOfficerRole(p));
   const configuredPlatoons=kind==='personnel'?await sdk.asServiceRole.entities.CompanyPlatoon.list('region',1000).catch(()=>[]):[];
   const personPlatoons=resolvedUsers.filter((p:any)=>p.platoon&&p.platoon!=='Command'&&p.division).map((p:any)=>({name:String(p.platoon),region:String(p.division)}));
   const allRegionPlatoons=[...configuredPlatoons.filter((p:any)=>p.active!==false),...personPlatoons];
@@ -154,7 +154,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
     const officer=resolvedUsers.find((p:any)=>hasOfficerRole(p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))
       && ((email&&[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).includes(email))||(id&&String(p.id)===id)));
     if(!officer)return false;
-    if(!admin(me)&&!lowerRank(me,officer))return false;
+    if(level(me.rank)>=0&&!lowerRank(me,officer))return false;
    }
    if(admin(me))return true;
    if(kind==='chat')return emails.has(n(r.sender_email))||n(r.sender_email)===n(me.email);
