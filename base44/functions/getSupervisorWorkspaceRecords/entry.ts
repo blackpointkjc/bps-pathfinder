@@ -127,7 +127,8 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
    if(!match)return p;
    return {...p,division:p.division||match.division,subdivision:p.subdivision||match.subdivision,substation:p.substation||match.substation,assigned_site_name:match.site_name};
   });
-  const people=resolvedUsers.filter((p:any)=>area(me,p)&&!p.termination_date&&n(p.employment_status)!=='terminated'&&Array.isArray(p.additional_roles)&&p.additional_roles.some((value:any)=>n(value)==='officer'));
+  const hasOfficerRole=(p:any)=>new Set([p?.role,...(Array.isArray(p?.additional_roles)?p.additional_roles:[])].map(n)).has('officer');
+  const people=resolvedUsers.filter((p:any)=>area(me,p)&&!p.termination_date&&n(p.employment_status)!=='terminated'&&hasOfficerRole(p));
   const configuredPlatoons=kind==='personnel'?await sdk.asServiceRole.entities.CompanyPlatoon.list('region',1000).catch(()=>[]):[];
   const personPlatoons=resolvedUsers.filter((p:any)=>p.platoon&&p.platoon!=='Command'&&p.division).map((p:any)=>({name:String(p.platoon),region:String(p.division)}));
   const allRegionPlatoons=[...configuredPlatoons.filter((p:any)=>p.active!==false),...personPlatoons];
@@ -138,6 +139,12 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
   const emails=new Set(people.flatMap((p:any)=>[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).filter(Boolean)));
   const ids=new Set(people.map((p:any)=>String(p.id)));
   const visible=(r:any)=>{
+   if(['force','writeups','inspections'].includes(kind)){
+    const email=n(r.officer_email||r.employee_email),id=String(r.officer_id||r.employee_id||'');
+    const officer=resolvedUsers.find((p:any)=>hasOfficerRole(p)&&!p.termination_date&&n(p.employment_status)!=='terminated'
+      && ((email&&[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).includes(email))||(id&&String(p.id)===id)));
+    if(!officer)return false;
+   }
    if(admin(me))return true;
    if(kind==='chat')return emails.has(n(r.sender_email))||n(r.sender_email)===n(me.email);
    if(kind==='handovers')return [r.departing_supervisor_email,r.incoming_supervisor_email].some(v=>emails.has(n(v))||n(v)===n(me.email));
@@ -181,7 +188,8 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
    if(action!=='create'&&(!existing||!visible(existing)))return Response.json({error:'Record is outside your assigned platoon and area'},{status:403});
    const sourceEmail=n(data.officer_email||existing?.officer_email);
    const target=people.find((p:any)=>[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).includes(sourceEmail));
-   if(!admin(me)&&(!target||!sourceEmail))return Response.json({error:'Select an officer in your assigned platoon and area'},{status:403});
+   if(!target||!sourceEmail)return Response.json({error:'Select an active employee who holds the Officer role'},{status:403});
+   if(!admin(me)&&!people.some((p:any)=>String(p.id)===String(target.id)))return Response.json({error:'Select an officer in your assigned platoon and area'},{status:403});
    if(!admin(me)&&action!=='create'&&n(data.officer_email)!==n(existing.officer_email))
      return Response.json({error:'The officer on an existing report cannot be reassigned'},{status:403});
    let result:any;
