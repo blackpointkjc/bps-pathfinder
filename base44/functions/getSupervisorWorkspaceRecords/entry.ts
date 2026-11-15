@@ -107,13 +107,16 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
       && !p.termination_date && p.disabled!==true
       && !['terminated','suspended'].includes(n(p.employment_status))
       && !['terminated','suspended','disabled','pending'].includes(n(p.account_status)));
-    const allowed=activeOfficers.filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
+    // Supervisors may only see active officers strictly below their own rank.
+    // Administrator/full-access access remains governed by the separate admin policy.
+    const rankScopedOfficers=activeOfficers.filter((p:any)=>admin(me)||lowerRank(me,p));
+    const allowed=rankScopedOfficers.filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
     const entries=new Map<string,{region:string,platoon:string}>();
     for(const p of configured||[]){if(p.active!==false&&p.region&&p.name)entries.set(`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name});}
     for(const p of staff){if(p.division&&p.platoon&&n(p.platoon)!=='command')entries.set(`${n(p.division)}|${n(p.platoon)}`,{region:p.division,platoon:p.platoon});}
     const visible=[...entries.values()].filter(p=>admin(me)||commandWide(me)||(n(p.region)===n(me.division)&&n(p.platoon)===n(me.oversight_platoon||me.platoon)));
-    const commands=visible.map(p=>activePlatoonCommand(activeOfficers,p.platoon,p.region));
-    const company=(admin(me)||commandWide(me))?activeOfficers.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
+    const commands=visible.map(p=>activePlatoonCommand(rankScopedOfficers,p.platoon,p.region));
+    const company=(admin(me)||commandWide(me))?rankScopedOfficers.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
     const selected=[...new Map([...allowed,...company].map((p:any)=>[String(p.id),p])).values()];
     const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:p.mobile_phone||p.phone_number||p.cell_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',updated_date:p.updated_date||'',oversight_platoon:p.oversight_platoon||'',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
     return Response.json({success:true,officers,platoon_commands:commands,platoons:visible.map(p=>({name:p.platoon,platoon:p.platoon,region:p.region,active:true})),regions:[...new Set(visible.map(p=>p.region))]});
@@ -135,7 +138,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
    return {...p,division:p.division||match.division,subdivision:p.subdivision||match.subdivision,substation:p.substation||match.substation,assigned_site_name:match.site_name};
   });
   const hasOfficerRole=(p:any)=>new Set([p?.role,...(Array.isArray(p?.additional_roles)?p.additional_roles:[])].map(n)).has('officer');
-  const people=resolvedUsers.filter((p:any)=>area(me,p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))&&hasOfficerRole(p));
+  const people=resolvedUsers.filter((p:any)=>(admin(me)||lowerRank(me,p))&&area(me,p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))&&hasOfficerRole(p));
   const configuredPlatoons=kind==='personnel'?await sdk.asServiceRole.entities.CompanyPlatoon.list('region',1000).catch(()=>[]):[];
   const personPlatoons=resolvedUsers.filter((p:any)=>p.platoon&&p.platoon!=='Command'&&p.division).map((p:any)=>({name:String(p.platoon),region:String(p.division)}));
   const allRegionPlatoons=[...configuredPlatoons.filter((p:any)=>p.active!==false),...personPlatoons];
@@ -151,6 +154,7 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
     const officer=resolvedUsers.find((p:any)=>hasOfficerRole(p)&&!p.termination_date&&p.disabled!==true&&!['terminated','suspended'].includes(n(p.employment_status))&&!['terminated','suspended','disabled','pending'].includes(n(p.account_status))
       && ((email&&[p.email,p.work_email,p.pathfinder_email,p.microsoft_email,p.outlook_email,...(p.email_aliases||[])].map(n).includes(email))||(id&&String(p.id)===id)));
     if(!officer)return false;
+    if(!admin(me)&&!lowerRank(me,officer))return false;
    }
    if(admin(me))return true;
    if(kind==='chat')return emails.has(n(r.sender_email))||n(r.sender_email)===n(me.email);
