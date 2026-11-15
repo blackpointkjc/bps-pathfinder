@@ -145,7 +145,7 @@ export default function AdminOfficerRoster() {
   };
 
   const handleAutoSync = async () => {
-    if (!await confirmInApp('Auto-sync all active officers from Manage Officers? This will update existing entries, add new ones, and remove terminated/client-only users.')) {
+    if (!await confirmInApp('Auto-sync only active accounts with the Officer role? This updates existing roster entries, adds missing officers, and removes accounts without an active Officer role.')) {
       return;
     }
 
