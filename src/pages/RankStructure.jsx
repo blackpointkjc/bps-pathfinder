@@ -22,7 +22,7 @@ const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Serg
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
 const rolesOf = user => new Set((user?.additional_roles || []).map(r=>String(r).toLowerCase()));
 const displayName = user => `${user?.rank || 'Officer'} ${user?.last_name || user?.first_name || user?.email || ''}`.trim();
-const isOperational = user => isOperationalOfficer(user) && RANKS.includes(user?.rank);
+const isOperational = user => isOperationalOfficer(user) && RANKS.includes(normalizeRank(user?.rank));
 const isColonelHiers = person => String(person?.id || '') === '6ae7d733d4b1a647cd3e6f38' || (
   String(person?.rank || '').toLowerCase() === 'colonel' &&
   String(person?.first_name || '').toLowerCase() === 'kavon' &&
