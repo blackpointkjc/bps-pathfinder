@@ -103,18 +103,20 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
     // not return large original photos for every officer. A single dedicated
     // snapshot replaces 3-4 competing requests during Rank Structure startup.
     const {staff,configured}=await personnelDirectory(sdk);
-    const isActivePersonnel=(p:any)=>!p.termination_date&&p.disabled!==true
+    const isActivePersonnel=(p:any)=>!!p?.email&&!p.termination_date&&p.disabled!==true
       && !['terminated','suspended'].includes(n(p.employment_status))
       && !['terminated','suspended','disabled','pending'].includes(n(p.account_status));
-    const hasOfficerRole=(p:any)=>new Set([p?.role,...(Array.isArray(p?.additional_roles)?p.additional_roles:[])].map(n)).has('officer');
+    const accountRoles=(p:any)=>new Set([p?.role,...(Array.isArray(p?.additional_roles)?p.additional_roles:[])].map(n));
+    const hasOfficerRole=(p:any)=>accountRoles(p).has('officer');
     const isCompanyCommandRank=(p:any)=>level(p.rank)>=0&&level(p.rank)<=2;
+    const isNonPortalAccount=(p:any)=>!['client','student','pending'].some(value=>accountRoles(p).has(value))
+      && !['client','student','pending'].includes(n(p.user_type||p.account_type||p.portal_type));
     // Company command is represented by rank even when its account's primary
-    // application role is admin/supervisor rather than Officer.
-    const activePersonnel=staff.filter((p:any)=>isActivePersonnel(p)
-      && (hasOfficerRole(p)||(isCompanyCommandRank(p)&&!new Set([p?.role,...(Array.isArray(p?.additional_roles)?p.additional_roles:[])].map(n)).has('client'))));
+    // application role is admin/supervisor rather than Officer. Portal-only
+    // accounts are never included in the personnel command chart.
+    const activePersonnel=staff.filter((p:any)=>isActivePersonnel(p)&&isNonPortalAccount(p)
+      && (hasOfficerRole(p)||isCompanyCommandRank(p)));
     const activeOfficers=activePersonnel.filter(hasOfficerRole);
-    // Any user with an operational rank sees only active officers strictly below
-    // that rank. Unranked administrator accounts retain their separate admin access.
     const allowed=(directoryOnly?activeOfficers:activePersonnel).filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
     const entries=new Map<string,{region:string,platoon:string}>();
     for(const p of configured||[]){if(p.active!==false&&p.region&&p.name)entries.set(`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name});}
