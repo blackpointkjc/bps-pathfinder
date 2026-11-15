@@ -88,7 +88,7 @@ const wallMinutes = (value:any) => {
   return hour * 60 + Number(match[2]);
 };
 
-const rolesOf = (u:any) => new Set((u?.additional_roles || []).map((r:any) => String(r).toLowerCase()));
+const rolesOf = (u:any) => new Set([u?.role,...(u?.additional_roles || [])].filter(Boolean).map((r:any) => String(r).toLowerCase()));
 const operational = (u:any) => {
   const roles = rolesOf(u);
   const type = normalized(u?.user_type || u?.account_type || u?.portal_type);
