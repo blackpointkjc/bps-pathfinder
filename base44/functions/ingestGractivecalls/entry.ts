@@ -1,8 +1,152 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
-import { fetchCadSource } from './sourceFetch.ts';
-import { releaseClosedCall } from './releaseClosedCall.ts';
+
+
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { tomtomGeocode } from './tomtomGeocode.ts';
+
+// Retry one failed public-source request inside a bounded 15-second budget.
+// The canonical JSON endpoint is private/non-cacheable. The website fallback may
+// be CDN-cached, so callers must not use it to veto newer JSON incidents.
+async function fetchCadSource(primaryUrl: string, fallbackUrl: string, accept: string) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(attempt ? fallbackUrl : primaryUrl, {
+        cache: 'no-store',
+        headers: { Accept: accept, 'User-Agent': 'BPS-Pathfinder-CAD/4.4', 'Cache-Control': 'no-cache, no-store, max-age=0', Pragma: 'no-cache' },
+        signal: AbortSignal.timeout(attempt ? 5000 : 10000),
+      });
+      if (!response.ok) {
+        const error = new Error('CAD source returned HTTP ' + response.status);
+        if (response.status < 500 && response.status !== 429) throw Object.assign(error, { permanent: true });
+        throw error;
+      }
+      // Read the body under the same timeout, not after the retry budget expires.
+      const text = await response.text();
+      return { text, cacheAgeSeconds: Number(response.headers.get('Age') || 0), fetchedAt: new Date().toISOString() };
+    } catch (error) {
+      lastError = error;
+      if ((error as any)?.permanent) break;
+    }
+  }
+  throw lastError;
+}
+
+const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+const isClosedCall = (call: any) => !call || call.manual_dismissed === true || ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status));
+
+// Update every duty-status mirror without modifying presence, GPS or clock records.
+// Re-running after a partial failure repairs the same terminal transition.
+async function releaseClosedCall(entities: any, call: any) {
+  const callId = String(call.id);
+  const assignments = await entities.CallAssignment.filter({ call_id: callId }, '-assigned_at', 1000);
+  const refs = new Set([...(call.assigned_units || []), ...assignments.map((a: any) => a.unit_id)].filter(Boolean).map(String));
+  const users = new Map<string, any>();
+  // User has no current_call_id schema field. Resolve legacy pointers through
+  // the operational records that actually persist it, without an invalid query.
+  const [linkedSessions, linkedUnits] = await Promise.all([
+    entities.ActiveOfficer.filter({ current_call_id: callId }, '-last_update', 1000),
+    entities.Unit.filter({ assigned_call_ids: { $in: [callId] } }, '-last_update_at', 1000),
+  ]);
+  for (const session of linkedSessions) if (session.officer_email) refs.add(String(session.officer_email));
+  for (const unit of linkedUnits) refs.add(String(unit.user_id || unit.id));
+  for (const ref of refs) {
+    let user = ref.includes('@')
+      ? (await entities.User.filter({ email: ref }, '-updated_date', 1))[0]
+      : await entities.User.get(ref).catch(() => null);
+    if (!user) {
+      const unit = await entities.Unit.get(ref).catch(() => null);
+      if (unit?.user_id) user = await entities.User.get(unit.user_id);
+      else {
+        const active = await entities.ActiveOfficer.get(ref).catch(() => null);
+        const email = active?.officer_email || (ref.includes('@') ? ref : '');
+        if (email) user = (await entities.User.filter({ email }, '-updated_date', 1))[0];
+      }
+    }
+    if (user) users.set(user.id, user);
+  }
+  const now = new Date().toISOString();
+  for (const assignment of assignments) {
+    if (lower(assignment.status) !== 'cleared') await entities.CallAssignment.update(assignment.id, { status: 'cleared', cleared_at: assignment.cleared_at || now });
+  }
+  for (const user of users.values()) {
+    const units = await entities.Unit.filter({ user_id: user.id }, '-last_update_at', 100);
+    const sessions = await entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 100);
+    const stillLinked = String(user.current_call_id || '') === callId || sessions.some((s: any) => String(s.current_call_id || '') === callId) || units.some((u: any) => (u.assigned_call_ids || []).map(String).includes(callId));
+    const hadActiveAssignment = assignments.some((a: any) => !['cleared','cancelled','canceled'].includes(lower(a.status)) && [user.id, user.email, ...units.map((u: any) => u.id), ...sessions.map((s: any) => s.id)].includes(a.unit_id));
+    if (!stillLinked && !hadActiveAssignment) continue;
+    const aliases = [...new Set([user.id, user.email, ...units.map((u: any) => u.id), ...sessions.map((s: any) => s.id)].filter(Boolean).map(String))];
+    const pending: any[] = [];
+    for (const alias of aliases) pending.push(...await entities.CallAssignment.filter({ unit_id: alias }, '-assigned_at', 1000));
+    const candidateIds = new Set<string>([
+      ...pending.filter(a => !['cleared','cancelled','canceled'].includes(lower(a.status))).map(a => String(a.call_id)),
+      user.current_call_id, ...sessions.map((s: any) => s.current_call_id),
+      ...units.flatMap((u: any) => u.assigned_call_ids || []),
+    ].filter(Boolean).map(String));
+    // Also cover legacy calls that have assigned_units but no CallAssignment row.
+    const legacy = await entities.DispatchCall.filter({ assigned_units: { $in: aliases } }, '-updated_date', 1000);
+    legacy.forEach((c: any) => candidateIds.add(String(c.id)));
+    candidateIds.delete(callId);
+    const remaining: any[] = [];
+    for (const id of candidateIds) {
+      const other = await entities.DispatchCall.get(id);
+      if (!isClosedCall(other)) remaining.push(other);
+    }
+    const next = remaining[0];
+    const current = await entities.User.get(user.id);
+    const protectedStatus = ['out of service','distress','emergency','dispatch'].includes(lower(current.status)) || current.distress_active === true || sessions.some((s: any) => s.distress_active === true || ['distress','emergency'].includes(lower(s.status)));
+    const distress = sessions.find((s: any) => ['distress','emergency'].includes(lower(s.status)));
+    const status = protectedStatus ? (distress?.status || current.status) : next ? (['dispatched','enroute','on scene','busy'].includes(lower(current.status)) ? current.status : 'Dispatched') : 'Available';
+    const patch = {
+      status, current_call_id: next ? String(next.id) : '',
+      current_call_info: next ? [next.incident || 'Call for service', next.location].filter(Boolean).join(' · ').slice(0,500) : '',
+      last_updated: now, status_since: status === current.status ? current.status_since || now : now,
+    };
+    await entities.User.update(user.id, patch);
+    for (const unit of units) await entities.Unit.update(unit.id, { ...patch, assigned_call_ids: remaining.map(c => String(c.id)) });
+    for (const session of sessions) await entities.ActiveOfficer.update(session.id, { ...patch, ...(!next && !protectedStatus ? { show_lights: false } : {}) });
+  }
+  return { released_officer_ids: [...users.keys()] };
+}
+
+// Shared server-only TomTom first-choice geocoder for CAD/dispatch, properties,
+// and PulsePoint; never send either service key to the browser.
+const bounds = { minLat: 36.0, maxLat: 39.6, minLon: -83.8, maxLon: -75.0 };
+async function tomtomGeocode(address: string, options: { strictNumber?: boolean } = {}) {
+  const query = String(address || '').trim();
+  if (query.length < 5 || /^(?:unknown|address unavailable|unassigned|n\/a)$/i.test(query)) return null;
+  const expectedNumber = query.match(/^\s*(\d{1,6})\b/)?.[1] || '';
+  const keys = [...new Set([Deno.env.get('TOMTOM_API_KEY'),Deno.env.get('TOMTOM_API_KEY_BACKUP')].filter(Boolean))];
+  for (const key of keys) {
+    const params = new URLSearchParams({ key: String(key), limit: '5', countrySet: 'US', language: 'en-US', typeahead: 'false' });
+    const endpoint = `https://api.tomtom.com/search/2/search/${encodeURIComponent(query)}.json?${params}`;
+    let response: Response;
+    try { response = await fetch(endpoint, { signal: AbortSignal.timeout(4200), headers: { Accept: 'application/json' } }); }
+    catch { continue; }
+    if (!response.ok) {
+      if ([401,403,408,429,500,502,503,504].includes(response.status)) continue;
+      break;
+    }
+    const data = await response.json().catch(() => null);
+    for (const item of data?.results || []) {
+      const lat = Number(item.position?.lat), lon = Number(item.position?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < bounds.minLat || lat > bounds.maxLat || lon < bounds.minLon || lon > bounds.maxLon) continue;
+      const roadAddress = String(item.address?.freeformAddress || '');
+      const candidateNumber = String(item.address?.streetNumber || '');
+      const candidateType = String(item.type || '').toLowerCase();
+      if (expectedNumber && options.strictNumber !== false && candidateNumber !== expectedNumber) continue;
+      // Reject POI/city-only results when the caller needs an exact numbered address.
+      if (expectedNumber && !candidateType.includes('address') && candidateNumber !== expectedNumber) continue;
+      return { latitude: lat, longitude: lon, lat, lon,
+        formatted_address: roadAddress || query, geo_method:'tomtom',
+        geo_confidence: expectedNumber && candidateNumber === expectedNumber ? 'high' : 'medium',
+        geo_approximate: !expectedNumber || candidateNumber !== expectedNumber,
+        provider:'TomTom Search' };
+    }
+    return null;
+  }
+  return null;
+}
+
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
