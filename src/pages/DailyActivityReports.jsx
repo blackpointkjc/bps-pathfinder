@@ -65,7 +65,6 @@ export default function DailyActivityReports() {
   const [entryText, setEntryText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [darReviewed, setDarReviewed] = useState(false);
   const [darReviewing, setDarReviewing] = useState(false);
   const darFormDataRef = useRef(formData);
   useEffect(() => { darFormDataRef.current = formData; }, [formData]);
@@ -353,7 +352,7 @@ export default function DailyActivityReports() {
       setShowForm(false);
       setEditingReport(null);
       setEditingTodoId(null);
-      setDarReviewed(false);
+      
       
       setSignatureUrl("");
       setShowSignaturePad(false);
@@ -391,11 +390,6 @@ export default function DailyActivityReports() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    if (!darReviewed) {
-      toast.error('Review the report with AI before submitting. Your draft is still here.');
-      return;
-    }
 
     if (!formData.location) {
       alert('Please select a location before submitting the report.');
@@ -441,7 +435,7 @@ export default function DailyActivityReports() {
     
     setEditingReport(report);
     setEditingTodoId(todoId);
-    setDarReviewed(false);
+    
     
     setSignatureUrl(report.signature_url || "");
     setShowSignaturePad(false);
@@ -782,7 +776,7 @@ export default function DailyActivityReports() {
         location={formData.location}
         currentEntries={formData.hourly_entries_array}
         onEntryAdded={(entry) => {
-          setDarReviewed(false);
+          
           setFormData(prev => ({
             ...prev,
             hourly_entries_array: [...prev.hourly_entries_array, entry]
@@ -807,7 +801,7 @@ export default function DailyActivityReports() {
             onClick={() => {
               setEditingReport(null);
               setEditingTodoId(null);
-              setDarReviewed(false);
+              
               setShowForm(!showForm);
               if (!showForm) {
                 
@@ -1000,7 +994,7 @@ export default function DailyActivityReports() {
                          onClick={() => {
                            if (entryText) {
                              const autoTime = format(new Date(), 'h:mm a');
-                             setDarReviewed(false);
+                             
                              setFormData(prev => ({
                                ...prev,
                                hourly_entries_array: [...prev.hourly_entries_array, { time: autoTime, text: entryText }]
@@ -1046,7 +1040,7 @@ export default function DailyActivityReports() {
                                size="sm"
                                variant="ghost"
                                onClick={() => {
-                                 setDarReviewed(false);
+                                 
                                  setFormData(prev => ({
                                    ...prev,
                                    hourly_entries_array: prev.hourly_entries_array.filter((_, i) => i !== idx)
@@ -1237,7 +1231,6 @@ export default function DailyActivityReports() {
                   )}
                   <RequiredAIReportReview
                     manageSubmit
-                    onReviewedChange={setDarReviewed}
                     onReviewingChange={setDarReviewing}
                     reviewRevision={() => JSON.stringify(darFormDataRef.current.hourly_entries_array.map(entry => [entry.time, entry.text]))}
                     extraFields={formData.hourly_entries_array.map((entry, index) => ({
