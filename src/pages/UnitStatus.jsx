@@ -30,6 +30,9 @@ function UnitStatusPage() {
             return { ...person,
                 rank: profile?.rank || person.rank,
                 last_name: profile?.last_name || person.last_name,
+                additional_roles: profile?.additional_roles || person.additional_roles || [],
+                employment_status: profile?.employment_status || person.employment_status,
+                account_status: profile?.account_status || person.account_status,
                 platoon: profile?.platoon || profile?.oversight_platoon || person.platoon || person.oversight_platoon || null };
         }));
     }, [users, directory]);
