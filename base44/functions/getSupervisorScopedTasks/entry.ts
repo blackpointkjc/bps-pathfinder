@@ -91,16 +91,16 @@ const wallMinutes = (value:any) => {
 const rolesOf = (u:any) => new Set((u?.additional_roles || []).map((r:any) => String(r).toLowerCase()));
 const operational = (u:any) => {
   const roles = rolesOf(u);
-  const rank = normalizeRank(u?.rank);
   const type = normalized(u?.user_type || u?.account_type || u?.portal_type);
   const accountStatus = normalized(u?.account_status);
+  const employment = normalized(u?.employment_status);
   if (!u?.email || u?.termination_date) return false;
   if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
   if (['client','student','pending'].includes(type) || accountStatus === 'pending') return false;
-  // Operational officer status is established by rank OR officer/CAD/supervisor role.
-  // Requiring both officer + cad_access excluded legitimate command staff and was
-  // the reason several supervisor officer dropdowns appeared empty.
-  return OPERATIONAL_RANKS.has(rank) || roles.has('officer') || roles.has('cad_access') || roles.has('supervisor');
+  if (['terminated','suspended'].includes(employment) || ['terminated','suspended','disabled'].includes(accountStatus)) return false;
+  // Only an explicit Officer role makes an account an officer for report,
+  // attendance, and supervisor operational rosters.
+  return roles.has('officer');
 };
 
 Deno.serve(async (req) => {
