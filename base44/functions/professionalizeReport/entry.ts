@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const roles = new Set((user.additional_roles || []).map((r: unknown) => String(r).toLowerCase()));
-    const allowed = user.role === 'admin' || roles.has('officer') || roles.has('supervisor') || roles.has('full_access');
+    const allowed = user.role === 'admin' || user.role === 'supervisor' || user.is_supervisor === true
+      || roles.has('officer') || roles.has('supervisor') || roles.has('full_access');
     if (!allowed) return Response.json({ error: 'Officer access required' }, { status: 403 });
 
     const { fields } = await req.json();
