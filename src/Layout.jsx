@@ -1416,11 +1416,11 @@ export default function Layout({ children, currentPageName }) {
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
         if (!cancelled && document.visibilityState === 'visible') monitor();
-      }, 1200);
+      }, 150);
     };
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') monitor();
-    }, 60000);
+    }, 10000);
     const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(scheduleMonitor);
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') scheduleMonitor();
