@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     for (const user of users || []) {
       const hasOfficerRole = [user?.role, ...(Array.isArray(user?.additional_roles) ? user.additional_roles : [])]
         .some((value:any) => lower(value) === 'officer');
-      if (!hasOfficerRole || !user?.email || user.termination_date
+      if (!hasOfficerRole || !user?.email || user.termination_date || user.disabled === true
           || ['terminated','suspended'].includes(lower(user.employment_status))
           || ['terminated','suspended','disabled','pending'].includes(lower(user.account_status))) continue;
       userByEmail.set(lower(user.email), user);
