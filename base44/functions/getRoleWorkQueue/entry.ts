@@ -302,6 +302,13 @@ Deno.serve(async (req) => {
 
     const now = easternParts();
     const fiveMinutesAgo = now.minutes - 5;
+    const officerEmails = new Set((users || [])
+      .filter((user:any) => Array.isArray(user.additional_roles)
+        && user.additional_roles.some((value:any) => normalized(value) === 'officer')
+        && !user.termination_date
+        && !['terminated','suspended'].includes(normalized(user.employment_status))
+        && !['terminated','suspended','disabled','pending'].includes(normalized(user.account_status)))
+      .map((user:any) => normalized(user.email)).filter(Boolean));
     const userByEmail = new Map((users || []).filter((user: any) => user?.email)
       .map((user: any) => [normalized(user.email), user]));
     const userById = new Map((users || []).filter((user: any) => user?.id)
@@ -373,6 +380,7 @@ Deno.serve(async (req) => {
     const missingReports = queueRole !== 'hr' ? (() => {
       const eligible = (entries || [])
         .filter((entry:any) => entry.clock_in && entry.clock_out && entry.archived !== true && entry.performance_exception !== true)
+        .filter((entry:any) => officerEmails.has(normalized(entry.officer_email)))
         .filter((entry:any) => new Date(entry.clock_out).getTime() >= recentCutoff)
         .sort((a:any,b:any) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
       const sessions:any[] = [];
@@ -398,7 +406,7 @@ Deno.serve(async (req) => {
           session.dates.add(easternParts(entry.clock_in).date);
         }
       }
-      return sessions.flatMap((session:any) => {
+      const missing = sessions.flatMap((session:any) => {
         const entryIds = new Set(session.entries.map((entry:any) => String(entry.id)));
         const covered = dutyReports.some((report:any) => {
           if (report.shift_id && entryIds.has(String(report.shift_id))) return true;
@@ -418,6 +426,13 @@ Deno.serve(async (req) => {
           break_periods:session.entries.flatMap((entry:any) => Array.isArray(entry.break_periods) ? entry.break_periods : []),
           session_entry_ids:session.entries.map((entry:any) => entry.id),
         }];
+      });
+      const seenMissing = new Set<string>();
+      return missing.filter((entry:any) => {
+        const key = `${normalized(entry.officer_email)}|${easternParts(entry.clock_in).date}|${siteKey(entry.location)}`;
+        if (seenMissing.has(key)) return false;
+        seenMissing.add(key);
+        return true;
       });
     })() : [];
 
