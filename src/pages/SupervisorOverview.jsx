@@ -127,7 +127,10 @@ export default function SupervisorOverview() {
     ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:row.kind, page:row.page, title:row.title || 'Assigned Report Review', person:row.person || 'Officer', detail:row.detail || '' })),
   ];
   const taskQueue = [...new Map(taskQueueCandidates.map(item => [
-    `${item.kind || 'task'}|${item.source_id || item.id || item.title}`, item,
+    item.kind === 'missing_report'
+      ? `${item.kind}|${item.person}|${item.title}|${item.detail}`
+      : `${item.kind || 'task'}|${item.source_id || item.id || item.title}`,
+    item,
   ])).values()];
 
   const degraded = Boolean(error || data.failures?.length);
