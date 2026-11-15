@@ -6,9 +6,9 @@ const RECOVERY_COOLDOWN_MS = 30 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
 const LAST_SUCCESSFUL_SOURCE_POLL_KEY = 'bps:cad-last-successful-source-poll-at:v1';
-const BUSY_LEASE_RETRY_MS = 15_000;
+const BUSY_LEASE_RETRY_MS = 5_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
-const LIVE_SYNC_COOLDOWN_MS = 15 * 1000;
+const LIVE_SYNC_COOLDOWN_MS = 5 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 60 * 1000;
 let liveSyncInFlight = null;
 
