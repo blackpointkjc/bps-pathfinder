@@ -94,7 +94,7 @@ const operational = (u:any) => {
   const type = normalized(u?.user_type || u?.account_type || u?.portal_type);
   const accountStatus = normalized(u?.account_status);
   const employment = normalized(u?.employment_status);
-  if (!u?.email || u?.termination_date) return false;
+  if (!u?.email || u?.termination_date || u?.disabled === true) return false;
   if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
   if (['client','student','pending'].includes(type) || accountStatus === 'pending') return false;
   if (['terminated','suspended'].includes(employment) || ['terminated','suspended','disabled'].includes(accountStatus)) return false;
