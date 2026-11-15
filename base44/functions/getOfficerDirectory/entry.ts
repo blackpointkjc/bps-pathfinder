@@ -55,7 +55,9 @@ Deno.serve(async (req) => {
     const officers = (users || [])
       .filter((entry: any) => {
         if (!inScope(entry)) return false;
-        if (!entry?.email || entry.termination_date) return false;
+        if (!entry?.email || entry.termination_date || entry.disabled === true) return false;
+        if (['terminated','suspended'].includes(String(entry.employment_status || '').trim().toLowerCase())) return false;
+        if (['terminated','suspended','disabled','pending'].includes(String(entry.account_status || '').trim().toLowerCase())) return false;
         const roles = new Set([entry.role, ...(entry.additional_roles || [])].filter(Boolean).map((role: string) => String(role).toLowerCase()));
         return roles.has('officer');
       })
@@ -90,7 +92,8 @@ Deno.serve(async (req) => {
         pto_year_to_date_used: Number(entry.pto_year_to_date_used || 0),
         sick_time_balance_hours: Number(entry.sick_time_balance_hours || 0),
         sick_time_year_to_date_used: Number(entry.sick_time_year_to_date_used || 0),
-        additional_roles: entry.additional_roles || ['officer'],
+        role: entry.role || '',
+        additional_roles: entry.additional_roles || [],
         employment_status: entry.employment_status || '',
         status: entry.status || '',
         assigned_location: entry.assigned_location || '',
