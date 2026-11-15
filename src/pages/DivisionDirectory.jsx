@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Users, Search, Phone, Mail, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { listDirectoryDivisions, listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 
 
@@ -53,6 +54,7 @@ export default function DivisionDirectory() {
 
     return allUsers
       .filter(u => {
+        if (!isOperationalOfficer(u)) return false;
         if (hasSupervisorAccess(user) && !withinPersonnelOversightScope(user || {}, u)) return false;
         // Operational directory never exposes client, student, or pending accounts.
         const roles = new Set([u.role, ...(u.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
