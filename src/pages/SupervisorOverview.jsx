@@ -121,16 +121,32 @@ export default function SupervisorOverview() {
     assignment_basis: row.assignment_basis,
     assigned_distance_miles: row.assigned_distance_miles,
   }));
-  const taskQueue = [
-    ...(tasks.queueTasks || []).map(row => ({ id:row.task_key, source_id:row.source_id, kind:row.source_kind, title:row.title || 'Assigned Supervisor Task', person:row.person || 'Officer', detail:row.source_location || '' })),
+  const taskQueueCandidates = [
+    ...(tasks.queueTasks || []).map(row => ({ id:row.task_key, source_id:row.source_id, kind:row.source_kind, title:row.title || 'Assigned Supervisor Task', person:row.person || 'Officer', detail:row.source_location || '', priority:row.priority || 'normal' })),
     ...(tasks.followUps || []).map(row => ({ id:row.id, source_id:row.id, kind:'duty_follow_up', title:row.title || 'Assigned Follow-up', person:row.officer_name || 'Officer', detail:row.summary || '' })),
     ...reportTasks.map(row => ({ id:row.id, source_id:row.source_id, kind:row.kind, page:row.page, title:row.title || 'Assigned Report Review', person:row.person || 'Officer', detail:row.detail || '' })),
   ];
+  const taskQueue = [...new Map(taskQueueCandidates.map(item => [
+    `${item.kind || 'task'}|${item.source_id || item.id || item.title}`, item,
+  ])).values()];
 
   const degraded = Boolean(error || data.failures?.length);
   const totalTasks = taskQueue.length;
+  // Command Attention is a summary of categories and counts. Pending Actions
+  // below is the actionable item list; the same report is never rendered twice.
+  const groupedAttention = new Map();
+  for (const item of taskQueue) {
+    const key = String(item.title || item.kind || 'Supervisor Task');
+    const current = groupedAttention.get(key) || { label:key, people:new Set(), count:0 };
+    current.count += 1;
+    if (item.person) current.people.add(item.person);
+    groupedAttention.set(key, current);
+  }
   const attention = [
-    ...taskQueue.filter(item => item.kind !== 'report_review').slice(0,4).map(item => ({ label: item.title, detail: `${item.person} · ${item.detail}` })),
+    ...[...groupedAttention.values()].slice(0,4).map(item => ({
+      label:item.count > 1 ? `${item.label} · ${item.count}` : item.label,
+      detail:[...item.people].slice(0,3).join(', ') || 'Supervisor follow-up required',
+    })),
     ...supervisorRequests.slice(0,2).map(row => ({ label: 'Supervisor Request', detail: row.call_number || row.location || 'Field request pending' })),
     ...welfare.slice(0,2).map(row => ({ label: 'Welfare Check', detail: operationalName(row, directory, { fallback: 'Officer' }) })),
   ].slice(0,7);
