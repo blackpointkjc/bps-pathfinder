@@ -1,6 +1,6 @@
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import { completeReportTodo } from '@/lib/reportTodoApi';
@@ -66,6 +66,9 @@ export default function DailyActivityReports() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [darReviewed, setDarReviewed] = useState(false);
+  const [darReviewing, setDarReviewing] = useState(false);
+  const darFormDataRef = useRef(formData);
+  useEffect(() => { darFormDataRef.current = formData; }, [formData]);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState("");
   const [showSiteCheckModal, setShowSiteCheckModal] = useState(false);
@@ -996,6 +999,7 @@ export default function DailyActivityReports() {
                          onClick={() => {
                            if (entryText) {
                              const autoTime = format(new Date(), 'h:mm a');
+                             setDarReviewed(false);
                              setFormData(prev => ({
                                ...prev,
                                hourly_entries_array: [...prev.hourly_entries_array, { time: autoTime, text: entryText }]
@@ -1040,10 +1044,13 @@ export default function DailyActivityReports() {
                                type="button"
                                size="sm"
                                variant="ghost"
-                               onClick={() => setFormData(prev => ({
-                                 ...prev,
-                                 hourly_entries_array: prev.hourly_entries_array.filter((_, i) => i !== idx)
-                               }))}
+                               onClick={() => {
+                                 setDarReviewed(false);
+                                 setFormData(prev => ({
+                                   ...prev,
+                                   hourly_entries_array: prev.hourly_entries_array.filter((_, i) => i !== idx)
+                                 }));
+                               }}
                                className="text-red-600 hover:text-red-700"
                              >
                                ×
@@ -1227,10 +1234,25 @@ export default function DailyActivityReports() {
                       {saving ? 'Saving...' : 'Save as Draft'}
                     </Button>
                   )}
-                  <RequiredAIReportReview manageSubmit onReviewedChange={setDarReviewed} />
+                  <RequiredAIReportReview
+                    manageSubmit
+                    onReviewedChange={setDarReviewed}
+                    onReviewingChange={setDarReviewing}
+                    reviewRevision={() => JSON.stringify(darFormDataRef.current.hourly_entries_array.map(entry => [entry.time, entry.text]))}
+                    extraFields={formData.hourly_entries_array.map((entry, index) => ({
+                      value: entry.text,
+                      getValue: () => darFormDataRef.current.hourly_entries_array[index]?.text,
+                      onChange: text => setFormData(previous => ({
+                        ...previous,
+                        hourly_entries_array: previous.hourly_entries_array.map((current, currentIndex) =>
+                          currentIndex === index ? { ...current, text } : current
+                        )
+                      }))
+                    }))}
+                  />
                   <Button
                     type="submit"
-                    disabled={saveReportMutation.isPending || uploading || saving}
+                    disabled={saveReportMutation.isPending || uploading || saving || darReviewing}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     {saveReportMutation.isPending ? 'Submitting...' : 'Submit Report'}
