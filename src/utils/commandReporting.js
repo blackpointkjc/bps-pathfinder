@@ -56,7 +56,7 @@ function baseReportingSupervisors(person, users = []) {
  if(COMMAND_TIERS.includes(commandRank(person))){
    if(commandRank(person)==='Colonel')return [];
    if(commandRank(person)==='Lt Colonel')return active.filter(p=>commandRank(p)==='Colonel').sort(comparePersonnel).slice(0,1);
-   return active.filter(p=>commandRank(p)==='Lt Colonel').sort(comparePersonnel).slice(0,1);
+   return active.filter(p=>['Colonel','Lt Colonel'].includes(commandRank(p))).sort(comparePersonnel);
  }
  if(rank<3||rank>=999)return [];
  const supervisor=previewAutomaticSupervisor(person,active);
