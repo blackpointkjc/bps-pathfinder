@@ -18,10 +18,11 @@ const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a
 const n=(v:any)=>String(v??'').trim().toLowerCase();
 const role=(u:any)=>new Set([u.role,...(u.additional_roles||[])].map(n));
 const admin=(u:any)=>role(u).has('admin')||role(u).has('full_access')||u.ps_role==='reviewer';
-const commandWide=(u:any)=>['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(n(u?.rank).replace(/[.]/g,''));
-const senior=(u:any)=>['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(n(u.rank));
+const rankText=(value:any)=>n(value).replace(/[.]/g,'').replace(/\s*\(.*\)\s*$/,'').replace(/\s+/g,' ');
+const commandWide=(u:any)=>['colonel','lt colonel','lieutenant colonel','lt col','major'].includes(rankText(u?.rank));
+const senior=(u:any)=>['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(rankText(u.rank));
 const rankOrder=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
-const level=(value:any)=>{const raw=n(value).replace(/[.]/g,'').replace(/\s*\(.*\)\s*$/,'').replace(/\s+/g,' ');return rankOrder.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
+const level=(value:any)=>{const raw=rankText(value);return rankOrder.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
 const lowerRank=(me:any,p:any)=>level(me.rank)>=0&&level(p.rank)>level(me.rank);
 const area=(me:any,p:any,hasPlatoon=true)=>admin(me)||commandWide(me)||(
   (hasPlatoon?lowerRank(me,p):true)
