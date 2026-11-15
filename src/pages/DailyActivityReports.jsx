@@ -388,11 +388,6 @@ export default function DailyActivityReports() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!darReviewed) {
-      toast.error('Run the report review before submitting. Your draft has not been changed.');
-      return;
-    }
-
     if (!formData.location) {
       alert('Please select a location before submitting the report.');
       return;
