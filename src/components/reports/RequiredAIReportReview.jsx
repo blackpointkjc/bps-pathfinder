@@ -15,7 +15,7 @@ function setNativeValue(element, value) {
   element.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-export default function RequiredAIReportReview({ label = 'Review Report', manageSubmit = false, onReviewedChange, extraFields = [], onReviewingChange }) {
+export default function RequiredAIReportReview({ label = 'Review Report', manageSubmit = false, onReviewedChange, extraFields = [], onReviewingChange, reviewRevision }) {
   const buttonRef = useRef(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewed, setReviewed] = useState(false);
@@ -73,6 +73,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
     onReviewingChange?.(true);
     setProgress('Preparing local AI review…');
     try {
+      const revisionAtStart = typeof reviewRevision === 'function' ? reviewRevision() : null;
       const originals = controls.map(control => control.value.trim());
       const extraOriginals = additional.map(field => String(field.value).trim());
       // One report-level action runs the on-device model across narrative fields,
@@ -93,7 +94,8 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
         });
       }
       if (controls.some((control, index) => control.value.trim() !== originals[index])
-        || additional.some((field, index) => typeof field.getValue === 'function' && String(field.getValue() || '').trim() !== extraOriginals[index])) {
+        || additional.some((field, index) => typeof field.getValue === 'function' && String(field.getValue() || '').trim() !== extraOriginals[index])
+        || (typeof reviewRevision === 'function' && reviewRevision() !== revisionAtStart)) {
         throw new Error('The report changed while AI review was running. Your original text was preserved; review the updated report again.');
       }
       rewritten.forEach(item => {
