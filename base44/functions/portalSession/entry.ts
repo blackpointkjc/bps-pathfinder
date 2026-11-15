@@ -1,5 +1,6 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClient,createClientFromRequest} from 'npm:@base44/sdk';
+import {portalSessionState} from '../../shared/portalLoginGuard.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 const IDLE_MS=13*60*60*1000;
 const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
@@ -30,16 +31,19 @@ export default async function(req){
   if(inactive(user))return expired();
   const token=String(req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
   if(!token)return expired();
-  const rows=await db.PortalAuthSession.filter({token_hash:await digest(token)},'-created_date',1),row=rows[0];
-  if(!row||row.user_id!==user.id||row.revoked||Date.parse(row.started_at)<Date.parse(__portalReauthAfter)||Date.now()-Date.parse(row.last_activity_at)>=IDLE_MS)return expired();
+  // A platform token rotation must never end a live portal session. The shared
+  // guard re-binds the newest token to the account's active session row.
+  const sessionState=await portalSessionState(req,sdk,user);
+  if(sessionState.state==='invalid')return expired();
+  const row=sessionState.row||{};
   const locks=await db.AccountLock.filter({user_id:user.id,locked:true},'-created_date',1);
   if(locks.length)return expired();
   if(body.action==='sign_out'){
-   await db.PortalAuthSession.update(row.id,{revoked:true,revoked_at:new Date().toISOString()});
+   if(row.id)await db.PortalAuthSession.update(row.id,{revoked:true,revoked_at:new Date().toISOString()});
    return Response.json({success:true});
   }
   if(!['check','activity'].includes(body.action))return Response.json({error:'Unknown session action.'},{status:400});
-  if(body.action==='activity')await db.PortalAuthSession.update(row.id,{last_activity_at:new Date().toISOString()});
-  return Response.json({success:true,session_started_at:row.started_at,inactivity_minutes:780});
+  if(body.action==='activity'&&row.id)await db.PortalAuthSession.update(row.id,{last_activity_at:new Date().toISOString()});
+  return Response.json({success:true,session_started_at:row.started_at||'',inactivity_minutes:780});
  }catch{return Response.json({error:'Your session could not be verified. Please sign in again.'},{status:503});}
 }

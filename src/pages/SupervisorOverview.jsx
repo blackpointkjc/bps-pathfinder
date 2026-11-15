@@ -64,7 +64,15 @@ export default function SupervisorOverview() {
     queryKey: ['supervisorOverviewSnapshot',user?.id],
     queryFn: async () => {
       const failures = [];
-      const read = async (label, loader, fallback = {}) => { try { const response=await loader(); const value=response?.data||response; if(value?.error)throw new Error(value.error); return value; } catch { failures.push(label); return fallback; } };
+      // One bounded retry per section: a single throttled or interrupted read must
+      // not be reported to the supervisor as missing command data.
+      const read = async (label, loader, fallback = {}) => {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try { const response=await loader(); const value=response?.data||response; if(value?.error)throw new Error(value.error); return value; }
+          catch { if (attempt === 0) { await new Promise(resolve => setTimeout(resolve, 1200)); continue; } failures.push(label); return fallback; }
+        }
+        return fallback;
+      };
       const supervisorAssignments = {};
       const taskResult = await read('Assigned personnel actions', () => base44.functions.invoke('getSupervisorScopedTasks', {}));
       const taskPayload = taskResult?.data || taskResult || {};

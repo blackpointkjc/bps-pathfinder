@@ -1,6 +1,6 @@
 import AIRewriteField from '@/components/AIRewriteField';
 import {useEffect,useMemo,useState,useRef} from 'react';
-import { base44,clearBase44ReadCacheMatching } from '@/api/base44Client';
+import { base44,clearBase44ReadCacheMatching,getBase44RequestHealth } from '@/api/base44Client';
 import { getClientPortalUser } from '@/utils/clientPreview';
 import VehicleFields from '@/components/reports/VehicleFields';
 import RentRollImportPanel from '@/components/reports/RentRollImportPanel';
@@ -56,7 +56,19 @@ export default function ParkingRecords({mode='officer'}){
  const [sessionUser,setSessionUser]=useState(null),[returnedTasks,setReturnedTasks]=useState([]);
  const [car,setCar]=useState(blankCar),[carId,setCarId]=useState(''),[rentSearch,setRentSearch]=useState(''),[siteAuto,setSiteAuto]=useState(false),[importing,setImporting]=useState(false),[directoryRetry,setDirectoryRetry]=useState(0),[directoryBusy,setDirectoryBusy]=useState(true),[loadedSite,setLoadedSite]=useState('');
  const lastSite=useRef(site),readSequence=useRef(0);
+ const throttleRetryTimer=useRef(null);
  lastSite.current=site;
+ // A property read can be refused while the shared data service is cooling down
+ // from unrelated requests. Retry once when that cooldown ends instead of leaving
+ // the operator with an empty rent roll.
+ const isThrottled=error=>/rate limit|too many requests|\b429\b|throttled/i.test(String(error?.message||error||''));
+ const scheduleThrottleRetry=(sequence,retry)=>{
+  const health=getBase44RequestHealth?.()||{};
+  const waitMs=Math.max(0,Date.parse(health.rateLimitedUntil||'')-Date.now(),Date.parse(health.readRetryAt||'')-Date.now());
+  window.clearTimeout(throttleRetryTimer.current);
+  throttleRetryTimer.current=window.setTimeout(()=>{if(readSequence.current===sequence)void retry();},Math.min(Math.max(waitMs+1500,2000),30000));
+ };
+ useEffect(()=>()=>window.clearTimeout(throttleRetryTimer.current),[]);
  const action=async (name,payload={})=>{
   try{
     const response=await base44.functions.invoke('manageParkingRecords',{action:name,site_name:site,...payload});const output=response?.data||response||{};
@@ -91,7 +103,14 @@ export default function ParkingRecords({mode='officer'}){
       (client?(unique.find(loc=>[...clientSites].some(x=>siteKey(x)===siteKey(loc)))||unique[0]||''):
         unique.length===1?unique[0]:'');
     if(!cancelled){setSites(unique);setSite(prev=>unique.some(name=>siteKey(name)===siteKey(prev))?prev:preferred);setSiteAuto(!!dutySite&&siteKey(preferred)===siteKey(dutySite));if(!unique.length)setError('No active, authorized properties are available for Parking or Rent Roll. Inactive properties are hidden.');}
-   }catch(e){if(!cancelled)setError('Property locations unavailable: '+e.message);}
+   }catch(e){
+    if(!cancelled){
+      if(isThrottled(e)){
+        setError('Property locations are temporarily rate limited. Retrying automatically when the cooldown ends.');
+        scheduleThrottleRetry(readSequence.current,()=>setDirectoryRetry(n=>n+1));
+      } else setError('Property locations unavailable: '+e.message);
+    }
+   }
    finally{if(!cancelled)setDirectoryBusy(false);}
  })();return()=>{cancelled=true};},[client,directoryRetry]);
  const refresh=async()=>{
@@ -113,7 +132,14 @@ export default function ParkingRecords({mode='officer'}){
     }
     if(sequence!==readSequence.current||requestedSite!==lastSite.current)return;
     setData(result);setLoadedSite(requestedSite);
-  }catch(e){if(sequence===readSequence.current&&requestedSite===lastSite.current)setError(e.message||'Parking records unavailable');}
+  }catch(e){
+    if(sequence===readSequence.current&&requestedSite===lastSite.current){
+      if(isThrottled(e)){
+        setError('Parking and Rent Roll are temporarily rate limited. Retrying automatically when the cooldown ends.');
+        scheduleThrottleRetry(sequence,()=>refresh());
+      } else setError(e.message||'Parking records unavailable');
+    }
+  }
   finally{if(sequence===readSequence.current)setLoading(false);}
  };
  useEffect(()=>{if(client)return;let active=true;

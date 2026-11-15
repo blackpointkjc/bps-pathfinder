@@ -102,6 +102,10 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    // One automatic retry keeps a single interrupted or throttled read from
+    // replacing the whole employee directory with an error.
+    retry: 1,
+    retryDelay: 900,
   });
 
 
