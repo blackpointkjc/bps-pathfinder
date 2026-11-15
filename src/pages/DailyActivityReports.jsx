@@ -65,6 +65,7 @@ export default function DailyActivityReports() {
   const [entryText, setEntryText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [darReviewed, setDarReviewed] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState("");
   const [showSiteCheckModal, setShowSiteCheckModal] = useState(false);
@@ -349,6 +350,7 @@ export default function DailyActivityReports() {
       setShowForm(false);
       setEditingReport(null);
       setEditingTodoId(null);
+      setDarReviewed(false);
       
       setSignatureUrl("");
       setShowSignaturePad(false);
@@ -386,6 +388,11 @@ export default function DailyActivityReports() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!darReviewed) {
+      toast.error('Review the report with AI before submitting. Your draft is still here.');
+      return;
+    }
 
     if (!formData.location) {
       alert('Please select a location before submitting the report.');
@@ -431,6 +438,7 @@ export default function DailyActivityReports() {
     
     setEditingReport(report);
     setEditingTodoId(todoId);
+    setDarReviewed(false);
     
     setSignatureUrl(report.signature_url || "");
     setShowSignaturePad(false);
@@ -795,6 +803,7 @@ export default function DailyActivityReports() {
             onClick={() => {
               setEditingReport(null);
               setEditingTodoId(null);
+              setDarReviewed(false);
               setShowForm(!showForm);
               if (!showForm) {
                 
@@ -1218,7 +1227,7 @@ export default function DailyActivityReports() {
                       {saving ? 'Saving...' : 'Save as Draft'}
                     </Button>
                   )}
-                  <RequiredAIReportReview manageSubmit />
+                  <RequiredAIReportReview manageSubmit onReviewedChange={setDarReviewed} />
                   <Button
                     type="submit"
                     disabled={saveReportMutation.isPending || uploading || saving}
