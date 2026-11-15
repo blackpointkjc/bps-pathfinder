@@ -4,10 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#080808" />
     <link rel="manifest" href="/manifest.json" />
     <title>Base44 APP</title>
+    <!-- Paint the shell dark before any script or stylesheet loads. Without this
+         the browser shows its default white canvas for the first moments of every
+         load, which reads as a white flash above the login screen and the
+         workspace while the application boots. -->
+    <style>html,body{background:#080808;}</style>
   </head>
-  <body>
+  <body style="background:#080808">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

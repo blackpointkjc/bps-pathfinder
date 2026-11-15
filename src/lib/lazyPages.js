@@ -2,7 +2,6 @@ import { lazy,createElement,useState } from 'react';
 import Layout,{canAccessPage} from '@/Layout';
 import {prepareToolLoaders} from './workspacePreparation';
 import {queryClientInstance} from './query-client';
-import {withRequestTimeout} from './requestTimeout';
 import generatedConfig from '../pages.config.js?raw';
 
 // Read generated route metadata as text, preserving aliases without eager page imports.
@@ -81,9 +80,10 @@ const Pages = Object.fromEntries([...routes].map(([name,file])=>{
 const mainPage = generatedConfig.match(/^export const pagesConfig\s*=\s*\{\s*mainPage:\s*["']([^"']+)["']/m)?.[1] || 'Home';
 export const pagesConfig = { Pages, mainPage, Layout };
 
-// Load the same modules used by React.lazy before the welcome screen closes.
+// Load the same page modules used by React.lazy before the welcome screen closes.
 // No page is mounted here; imports cannot submit a form or run component effects.
-const toolComponents=import.meta.glob('../components/**/*.jsx');
+// Each page module pulls in the components it renders, so warming the pages is
+// enough and every tool still opens instantly from the cache.
 const prepared=new Map();
 export function prepareWorkspace(user,onProgress){
  if(prepared.has(user.id))return prepared.get(user.id);
@@ -91,20 +91,16 @@ export function prepareWorkspace(user,onProgress){
  const selected=approved?[...routes].filter(([name])=>canAccessPage(user,name)):[];
  const loaders=[...new Set(selected.map(([name])=>routeLoaders.get(name)))];
  const exclusive=!approved||(user.additional_roles||[]).some(r=>['visitor','student','client'].includes(r));
- if(!exclusive)loaders.push(...Object.values(toolComponents));
- const task=prepareToolLoaders(loaders,{onProgress,minimumMs:3000,warmData:async()=>{
+ const task=prepareToolLoaders(loaders,{onProgress,minimumMs:700,concurrency:10,warmData:async()=>{
+  // Warm the shared workspace data without making the operator wait for it.
+  // Every screen already renders its own loading state, so these requests can
+  // finish behind the open workspace instead of holding the welcome screen.
   queryClientInstance.setQueryData(['currentUser'],user);
   if(!exclusive&&(user.role==='admin'||(user.additional_roles||[]).length)){
-   const {getAppDirectory}=await import('./appDirectory');await getAppDirectory();
+   import('./appDirectory').then(({getAppDirectory})=>getAppDirectory()).catch(()=>{});
   }
   const photo=user.profile_photo_url || user.profile_photo_original_url;
-  if(photo)await new Promise(resolve=>{const image=new Image();const timer=setTimeout(resolve,5000);const done=()=>{clearTimeout(timer);resolve();};image.onload=done;image.onerror=done;image.src=photo;if(image.complete)done();});
-  // Await the initial visible workspace reads once. Their later polling cycles
-  // and unrelated background GPS traffic must never hold Welcome open.
-  const initialReads=queryClientInstance.getQueryCache().findAll({fetchStatus:'fetching'})
-    .filter(query=>query.getObserversCount()>0&&query.state.data===undefined)
-    .map(query=>query.promise).filter(Boolean);
-  if(initialReads.length)await withRequestTimeout(Promise.allSettled(initialReads),25000,'Initial workspace data');
+  if(photo){const image=new Image();image.src=photo;}
  }}).catch(error=>{prepared.delete(user.id);throw error;});
  prepared.set(user.id,task);return task;
 }

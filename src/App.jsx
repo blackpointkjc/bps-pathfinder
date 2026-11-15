@@ -270,10 +270,18 @@ const AuthenticatedApp = () => {
   useEffect(()=>{
     if(!user?.id||publicEntry||preparedUserId===user.id)return;
     let active=true;setStartupError('');
+    // Preloading tools is an optimization, so it must never be able to hold an
+    // operator outside the workspace. The welcome screen closes as soon as the
+    // preload finishes, or after a short cap, and any tool that missed it loads
+    // on demand when opened.
+    let entered=false;
+    const enter=()=>{if(active&&!entered){entered=true;setPreparedUserId(user.id);sessionStorage.removeItem('bps:portal-welcome');}};
+    const cap=setTimeout(enter,8000);
     prepareWorkspace(user,progress=>{if(active)setStartupProgress(progress);})
-      .then(()=>{if(active){setPreparedUserId(user.id);sessionStorage.removeItem('bps:portal-welcome');}})
-      .catch(error=>{if(active)setStartupError(error.message);});
-    return()=>{active=false;};
+      .then(enter)
+      .catch(error=>{console.warn('[Pathfinder] Workspace preload did not finish:',error?.message||error);enter();})
+      .finally(()=>clearTimeout(cap));
+    return()=>{active=false;clearTimeout(cap);};
   },[user?.id,publicEntry,preparedUserId]);
   const welcomeOverlay = user && preparedUserId!==user.id && !publicEntry ? <div className="portal-welcome" role="status" aria-live="polite"><div>
     {(user.profile_photo_url || user.profile_photo_original_url) ? <img src={user.profile_photo_url || user.profile_photo_original_url} alt="Your profile" /> : <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full border-2 border-amber-400 text-4xl">{String(user.last_name || user.full_name || '?').slice(0,1)}</div>}
