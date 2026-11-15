@@ -1,5 +1,5 @@
 export function isOperationalOfficer(user) {
-  if (!user?.email || user.termination_date) return false;
+  if (!user?.email || user.termination_date || user.disabled === true) return false;
   const roles = new Set([user.role, ...(user.additional_roles || [])].filter(Boolean).map(role => String(role).trim().toLowerCase()));
   const type = String(user.user_type || user.account_type || user.portal_type || '').trim().toLowerCase();
   const status = String(user.account_status || '').trim().toLowerCase();
