@@ -65,7 +65,6 @@ export default function DailyActivityReports() {
   const [entryText, setEntryText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [darReviewed, setDarReviewed] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState("");
   const [showSiteCheckModal, setShowSiteCheckModal] = useState(false);
@@ -350,7 +349,7 @@ export default function DailyActivityReports() {
       setShowForm(false);
       setEditingReport(null);
       setEditingTodoId(null);
-      setDarReviewed(false);
+      
       setSignatureUrl("");
       setShowSignaturePad(false);
       setFormData({
@@ -432,7 +431,7 @@ export default function DailyActivityReports() {
     
     setEditingReport(report);
     setEditingTodoId(todoId);
-    setDarReviewed(false);
+    
     setSignatureUrl(report.signature_url || "");
     setShowSignaturePad(false);
     const entriesArray = parseHourlyEntries(report.hourly_entries);
@@ -798,7 +797,7 @@ export default function DailyActivityReports() {
               setEditingTodoId(null);
               setShowForm(!showForm);
               if (!showForm) {
-                setDarReviewed(false);
+                
                 setFormData({
                   report_date: format(new Date(), 'yyyy-MM-dd'),
     linked_call_id: "",
@@ -1219,7 +1218,7 @@ export default function DailyActivityReports() {
                       {saving ? 'Saving...' : 'Save as Draft'}
                     </Button>
                   )}
-                  <RequiredAIReportReview manageSubmit onReviewedChange={setDarReviewed} />
+                  <RequiredAIReportReview manageSubmit />
                   <Button
                     type="submit"
                     disabled={saveReportMutation.isPending || uploading || saving}
