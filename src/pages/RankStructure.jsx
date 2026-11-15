@@ -22,7 +22,15 @@ const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Serg
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
 const rolesOf = user => new Set((user?.additional_roles || []).map(r=>String(r).toLowerCase()));
 const displayName = user => `${user?.rank || 'Officer'} ${user?.last_name || user?.first_name || user?.email || ''}`.trim();
-const isOperational = user => isOperationalOfficer(user) && RANKS.includes(normalizeRank(user?.rank));
+const isOperational = user => {
+  const rank = normalizeRank(user?.rank);
+  const roles = new Set([user?.role, ...(Array.isArray(user?.additional_roles) ? user.additional_roles : [])].map(value => String(value || '').trim().toLowerCase()));
+  const active = Boolean(user?.email && !user?.termination_date && user?.disabled !== true
+    && !['terminated','suspended'].includes(String(user?.employment_status || '').toLowerCase())
+    && !['terminated','suspended','disabled','pending'].includes(String(user?.account_status || '').toLowerCase()));
+  const companyCommandAccount = COMMAND_RANKS.has(rank) && active && !roles.has('client') && !roles.has('student');
+  return (isOperationalOfficer(user) || companyCommandAccount) && RANKS.includes(rank);
+};
 const isColonelHiers = person => String(person?.id || '') === '6ae7d733d4b1a647cd3e6f38' || (
   String(person?.rank || '').toLowerCase() === 'colonel' &&
   String(person?.first_name || '').toLowerCase() === 'kavon' &&
