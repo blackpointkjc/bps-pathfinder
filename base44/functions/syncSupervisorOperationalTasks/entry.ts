@@ -112,7 +112,12 @@ Deno.serve(async (req) => {
     const userByEmail = new Map<string, any>();
     const userById = new Map<string, any>();
     for (const user of users || []) {
-      if (user?.email) userByEmail.set(lower(user.email), user);
+      const hasOfficerRole = Array.isArray(user?.additional_roles)
+        && user.additional_roles.some((value:any) => lower(value) === 'officer');
+      if (!hasOfficerRole || !user?.email || user.termination_date
+          || ['terminated','suspended'].includes(lower(user.employment_status))
+          || ['terminated','suspended','disabled','pending'].includes(lower(user.account_status))) continue;
+      userByEmail.set(lower(user.email), user);
       if (user?.id) userById.set(String(user.id), user);
     }
     const newestActive = new Map<string, any>();
@@ -222,7 +227,25 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Merge separated TimeEntry rows for the same officer, Eastern date,
+    // and site into one report obligation. Duplicate clock records must not
+    // create multiple identical supervisor actions.
+    const canonicalSessions = new Map<string, any>();
     for (const session of sessions) {
+      const dateKey = [...session.dates].sort().join(',');
+      const siteKey = [...session.sites].filter(Boolean).sort().join(',');
+      const key = `${session.officer_email}|${dateKey}|${siteKey}`;
+      const existing = canonicalSessions.get(key);
+      if (existing) {
+        existing.entries.push(...session.entries);
+        existing.start_ms = Math.min(existing.start_ms, session.start_ms);
+        existing.end_ms = Math.max(existing.end_ms, session.end_ms);
+      } else {
+        canonicalSessions.set(key, { ...session, entries:[...session.entries] });
+      }
+    }
+
+    for (const session of canonicalSessions.values()) {
       const entryIds = new Set(session.entries.map((entry:any) => String(entry.id)));
       const covered = validDutyReports.some((report:any) => {
         if (report.shift_id && entryIds.has(String(report.shift_id))) return true;
@@ -236,7 +259,7 @@ Deno.serve(async (req) => {
       const siteLabel = [...session.sites].filter(Boolean).join(' / ') || siteNameFrom(first.location) || 'assigned site';
       tasks.push({
         key:`missing-report-${first.id}`, kind:'missing_report', source_id:String(first.id), officer_id:String(officer?.id || ''), officer_email:session.officer_email,
-        title:'Required Daily Report Missing', person:displayName(officer || { email:session.officer_email }), location:siteLabel,
+        title:'Required Site Report Missing', person:displayName(officer || { email:session.officer_email }), location:siteLabel,
         detail:`${dayKey(first.clock_in)} · ${siteLabel}`, priority:'high',
         speech:`Attention supervisor. A required daily activity report is missing for ${displayName(officer || { email:session.officer_email })} at ${siteLabel}. Follow-up is assigned to you.`,
       });
