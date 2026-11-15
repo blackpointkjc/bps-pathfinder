@@ -4,7 +4,7 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const CACHE_KEY = 'bps-cad-active-calls-v6';
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
-const MEMORY_DEDUPE_MS = 12_000;
+const MEMORY_DEDUPE_MS = 3_000;
 let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
