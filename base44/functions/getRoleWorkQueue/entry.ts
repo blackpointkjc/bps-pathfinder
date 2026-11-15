@@ -303,8 +303,8 @@ Deno.serve(async (req) => {
     const now = easternParts();
     const fiveMinutesAgo = now.minutes - 5;
     const officerEmails = new Set((users || [])
-      .filter((user:any) => Array.isArray(user.additional_roles)
-        && user.additional_roles.some((value:any) => normalized(value) === 'officer')
+      .filter((user:any) => [user.role, ...(Array.isArray(user.additional_roles) ? user.additional_roles : [])]
+        .some((value:any) => normalized(value) === 'officer')
         && !user.termination_date
         && !['terminated','suspended'].includes(normalized(user.employment_status))
         && !['terminated','suspended','disabled','pending'].includes(normalized(user.account_status)))
