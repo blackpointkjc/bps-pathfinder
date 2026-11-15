@@ -36,9 +36,9 @@ Deno.serve(async (req) => {
     const email = (value: any) => String(value || '').trim().toLowerCase();
 
     const roleSet = new Set([user.role, ...(user.additional_roles || [])].map((role:any) => String(role || '').toLowerCase()));
-    const supervisor = roleSet.has('supervisor') || user.is_supervisor === true || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col','first sergeant','sergeant','corporal'].includes(String(user.rank || '').trim().toLowerCase());
-    const allAccess = roleSet.has('admin') || roleSet.has('full_access');
     const rankText=(value:any)=>String(value||'').toLowerCase().trim().replace(/[.]/g,'').replace(/\s*\(.*\)\s*$/,'').replace(/\s+/g,' ');
+    const supervisor = roleSet.has('supervisor') || user.is_supervisor === true || ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col','first sergeant','sergeant','corporal'].includes(rankText(user.rank));
+    const allAccess = roleSet.has('admin') || roleSet.has('full_access');
     const senior = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','lt','lt col'].includes(rankText(user.rank));
     const rankChain=['colonel','lt colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'];
     const level=(value:any)=>{const raw=rankText(value);return rankChain.indexOf(raw==='lieutenant colonel'||raw==='lt col'?'lt colonel':raw);};
