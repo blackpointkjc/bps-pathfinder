@@ -130,9 +130,7 @@ export default function SupervisorOverview() {
   for (const item of taskQueueCandidates) {
     if (item.kind === 'missing_report') {
       const personKey = String(item.person || 'Officer').trim().toLowerCase();
-      const detailParts = String(item.detail || '').split('·').map(part => part.trim()).filter(Boolean);
-      const siteKey = (detailParts.length > 1 ? detailParts[1] : detailParts[0] || 'site').toLowerCase();
-      const key = `missing_report|${personKey}|${siteKey}`;
+      const key = `missing_report|${personKey}`;
       const existing = taskQueueByKey.get(key);
       if (existing) {
         const details = new Set([...(existing.details || [existing.detail]), item.detail].filter(Boolean));
