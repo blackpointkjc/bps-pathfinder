@@ -62,7 +62,7 @@ async function personnelDirectory(sdk:any){
  if(personnelCache && Date.now()-personnelCache.at<15000)return personnelCache;
  if(!personnelLoading)personnelLoading=(async()=>{
    const [roster,configured]=await Promise.all([
-      sdk.asServiceRole.entities.User.list('last_name',500),
+      sdk.asServiceRole.entities.User.list('last_name',1000),
       sdk.asServiceRole.entities.CompanyPlatoon.list('region',100).catch(()=>[]),
    ]);
    const snapshot={at:Date.now(),staff:(roster||[]).filter((p:any)=>!p.termination_date&&n(p.employment_status)!=='terminated'),configured:configured||[]};
@@ -109,14 +109,13 @@ if(!await verifiedPS(sdk,me,req))return Response.json({error:'Additional email v
       && !['terminated','suspended','disabled','pending'].includes(n(p.account_status)));
     // Any user with an operational rank sees only active officers strictly below
     // that rank. Unranked administrator accounts retain their separate admin access.
-    const rankScopedOfficers=activeOfficers.filter((p:any)=>level(me.rank)<0||lowerRank(me,p));
-    const allowed=rankScopedOfficers.filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
+    const allowed=activeOfficers.filter((p:any)=>directoryOnly?(String(p.id)===String(me.id)||(!!n(me.platoon)&&n(p.platoon)===n(me.platoon)&&!!n(me.division)&&n(p.division)===n(me.division))):area(me,p));
     const entries=new Map<string,{region:string,platoon:string}>();
     for(const p of configured||[]){if(p.active!==false&&p.region&&p.name)entries.set(`${n(p.region)}|${n(p.name)}`,{region:p.region,platoon:p.name});}
     for(const p of staff){if(p.division&&p.platoon&&n(p.platoon)!=='command')entries.set(`${n(p.division)}|${n(p.platoon)}`,{region:p.division,platoon:p.platoon});}
     const visible=[...entries.values()].filter(p=>admin(me)||commandWide(me)||(n(p.region)===n(me.division)&&n(p.platoon)===n(me.oversight_platoon||me.platoon)));
-    const commands=visible.map(p=>activePlatoonCommand(rankScopedOfficers,p.platoon,p.region));
-    const company=(admin(me)||commandWide(me))?rankScopedOfficers.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
+    const commands=visible.map(p=>activePlatoonCommand(activeOfficers,p.platoon,p.region));
+    const company=(admin(me)||commandWide(me))?activeOfficers.filter((p:any)=>level(p.rank)>=0&&level(p.rank)<=2):[];
     const selected=[...new Map([...allowed,...company].map((p:any)=>[String(p.id),p])).values()];
     const officers=selected.map((p:any)=>({id:p.id,email:p.email,first_name:p.first_name||'',last_name:p.last_name||'',rank:p.rank,platoon:p.platoon||'',division:p.division||'',subdivision:p.subdivision||'',substation:p.substation||'',badge_number:p.badge_number||'',unit_number:p.unit_number||'',work_email:p.work_email||p.email||'',mobile_phone:p.mobile_phone||p.phone_number||p.cell_phone||'',assigned_location:p.assigned_location||'',assigned_site_name:p.assigned_site_name||'',supervisor_id:p.supervisor_id||'',employment_status:p.employment_status||'active',updated_date:p.updated_date||'',oversight_platoon:p.oversight_platoon||'',profile_photo_url:String(p.profile_photo_url||'').length<=150000?p.profile_photo_url||'':''}));
     return Response.json({success:true,officers,platoon_commands:commands,platoons:visible.map(p=>({name:p.platoon,platoon:p.platoon,region:p.region,active:true})),regions:[...new Set(visible.map(p=>p.region))]});
