@@ -60,7 +60,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
                 {active.slice(0, 200).map(call => (
                   <CommandItem key={call.id} value={call.id} onSelect={() => handleSelect(call.id)} className="gap-2">
                     <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Active</span>
-                    {call.property_name && <span className="rounded bg-amber-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Property</span>}
+                    {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Property</span>}
                     <span className="min-w-0 flex-1 truncate">{label(call)}</span>
                     {value === call.id && <Check className="h-4 w-4 shrink-0" />}
                   </CommandItem>
@@ -74,7 +74,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
                   {history.slice(0, 200).map(call => (
                     <CommandItem key={call.id} value={call.id} onSelect={() => handleSelect(call.id)} className="gap-2">
                       <span className="rounded bg-slate-600 px-1.5 py-0.5 text-[10px] font-bold text-white">History</span>
-                      {call.property_name && <span className="rounded bg-amber-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Property</span>}
+                      {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">Property</span>}
                       <span className="min-w-0 flex-1 truncate">{label(call)}</span>
                       {value === call.id && <Check className="h-4 w-4 shrink-0" />}
                     </CommandItem>

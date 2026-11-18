@@ -73,12 +73,12 @@ export default function TopNotificationBanner({ user }) {
 
   const getBgColor = (type) => {
     switch (type) {
-      case 'shift_posted': return 'bg-gradient-to-r from-amber-500 to-amber-600';
+      case 'shift_posted': return 'bg-gradient-to-r from-blue-500 to-indigo-600';
       case 'bid_accepted': return 'bg-gradient-to-r from-green-500 to-emerald-600';
       case 'bid_rejected': return 'bg-gradient-to-r from-red-500 to-pink-600';
       case 'schedule_conflict': return 'bg-gradient-to-r from-amber-500 to-orange-600';
-      case 'upcoming_shift': return 'bg-gradient-to-r from-purple-500 to-amber-600';
-      case 'training_reminder': return 'bg-gradient-to-r from-amber-500 to-amber-600';
+      case 'upcoming_shift': return 'bg-gradient-to-r from-purple-500 to-violet-600';
+      case 'training_reminder': return 'bg-gradient-to-r from-indigo-500 to-blue-600';
       default: return 'bg-gradient-to-r from-slate-500 to-slate-600';
     }
   };

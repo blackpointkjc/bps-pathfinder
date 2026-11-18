@@ -233,7 +233,7 @@ export default function IDScanner({ onDataExtracted, onClose }) {
   };
 
   return (
-    <Card className="border-2 border-blue-300 bg-amber-50">
+    <Card className="border-2 border-blue-300 bg-blue-50">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-blue-900"><Scan className="h-5 w-5" />Scan ID or Driver's License</CardTitle>

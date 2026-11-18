@@ -398,20 +398,20 @@ function AdminTrainingContent({ embedded = false }) {
   }
 
   return (
-    <div className={embedded ? "w-full bg-transparent px-4 py-5 md:px-6 md:py-6" : "min-h-screen bg-gradient-to-br from-slate-50 via-amber-50 to-purple-50 p-4 md:p-8"}>
+    <div className={embedded ? "w-full bg-transparent px-4 py-5 md:px-6 md:py-6" : "min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 md:p-8"}>
       <div className={embedded ? "w-full space-y-5" : "max-w-7xl mx-auto space-y-8"}>
         <div className={embedded ? "flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" : "bg-white rounded-2xl shadow-xl p-8 border border-slate-200"}>
           <div className="flex items-center justify-between flex-wrap gap-4 w-full">
             <div className="flex items-center gap-3">
-              <div className={embedded ? "w-10 h-10 bg-gradient-to-br from-amber-500 to-purple-600 rounded-xl flex items-center justify-center" : "w-16 h-16 bg-gradient-to-br from-amber-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg"}>
+              <div className={embedded ? "w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center" : "w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg"}>
                 <GraduationCap className={embedded ? "w-5 h-5 text-white" : "w-8 h-8 text-white"} />
               </div>
               <div>
-                <h1 className={embedded ? "text-lg font-bold text-slate-900" : "text-4xl font-bold bg-gradient-to-r from-amber-600 to-purple-600 bg-clip-text text-transparent"}>{embedded ? 'Training Modules' : 'Training Creation'}</h1>
+                <h1 className={embedded ? "text-lg font-bold text-slate-900" : "text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"}>{embedded ? 'Training Modules' : 'Training Creation'}</h1>
                 <p className="text-slate-600 text-sm">Create DCJS or company training classes and assign them directly to officers or students</p>
               </div>
             </div>
-            <Button onClick={() => { resetForm(); setShowDialog(true); }} className={embedded ? "bg-amber-700 hover:bg-stone-800" : "bg-gradient-to-r from-amber-600 to-purple-600 hover:from-amber-700 hover:to-purple-700 shadow-lg h-12 px-6"}>
+            <Button onClick={() => { resetForm(); setShowDialog(true); }} className={embedded ? "bg-blue-700 hover:bg-blue-800" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg h-12 px-6"}>
               <Plus className="w-4 h-4 mr-2" />Create Training Class
             </Button>
           </div>
@@ -420,7 +420,7 @@ function AdminTrainingContent({ embedded = false }) {
         <div className="space-y-8">
           <div>
             <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <div className="w-2 h-8 bg-gradient-to-b from-amber-500 to-purple-600 rounded-full"></div>
+              <div className="w-2 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full"></div>
               Active Training Modules
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -429,11 +429,11 @@ function AdminTrainingContent({ embedded = false }) {
                 const completionPercentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
                 return (
                   <Card key={module.id} className="border-none shadow-xl hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden group">
-                    <div className={`h-2 ${module.required ? 'bg-gradient-to-r from-red-500 to-pink-600' : 'bg-gradient-to-r from-amber-500 to-purple-600'}`}></div>
+                    <div className={`h-2 ${module.required ? 'bg-gradient-to-r from-red-500 to-pink-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}></div>
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1">
-                          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                             <GraduationCap className="w-6 h-6 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -453,8 +453,8 @@ function AdminTrainingContent({ embedded = false }) {
                     <CardContent className="space-y-3">
                       <p className="text-sm text-slate-600 line-clamp-2">{module.description}</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {module.course_id && <Badge className="text-xs bg-amber-100 text-blue-800 border border-blue-300 font-mono">{module.course_id}</Badge>}
-                        {module.training_category === "dcjs" ? <Badge className="text-xs bg-amber-600 text-white">DCJS</Badge> : <Badge className="text-xs bg-purple-600 text-white">Company</Badge>}
+                        {module.course_id && <Badge className="text-xs bg-blue-100 text-blue-800 border border-blue-300 font-mono">{module.course_id}</Badge>}
+                        {module.training_category === "dcjs" ? <Badge className="text-xs bg-blue-600 text-white">DCJS</Badge> : <Badge className="text-xs bg-purple-600 text-white">Company</Badge>}
                         <Badge className="text-xs bg-slate-100 text-slate-700 border border-slate-200">{module.category.replace(/_/g, ' ')}</Badge>
                         {module.renewal_period_months > 0 && <Badge variant="outline" className="text-xs border-amber-400 text-amber-700">Renews {module.renewal_period_months}mo</Badge>}
                         {module.required && <Badge className="text-xs bg-red-600 text-white">Required</Badge>}
@@ -490,7 +490,7 @@ function AdminTrainingContent({ embedded = false }) {
                           </div>
                           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-gradient-to-r from-amber-500 to-purple-600 transition-all duration-500"
+                              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500"
                               style={{ width: `${completionPercentage}%` }}
                             ></div>
                           </div>
@@ -505,7 +505,7 @@ function AdminTrainingContent({ embedded = false }) {
             {activeModules.length === 0 && (
               <Card className="border-none shadow-xl">
                 <CardContent className="p-16 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-amber-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <GraduationCap className="w-10 h-10 text-slate-400" />
                   </div>
                   <p className="text-slate-600 text-lg">No active training modules yet</p>
@@ -551,7 +551,7 @@ function AdminTrainingContent({ embedded = false }) {
            <div className="space-y-2">
              <Label className="text-sm font-semibold text-slate-700">Training Type *</Label>
              <div className="flex gap-4">
-               <label className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer flex-1 transition-all ${formData.training_category === "dcjs" ? "border-blue-600 bg-amber-50" : "border-slate-200 hover:border-blue-300"}`}>
+               <label className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer flex-1 transition-all ${formData.training_category === "dcjs" ? "border-blue-600 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}>
                  <input
                    type="radio"
                    name="training_category"
@@ -701,7 +701,7 @@ function AdminTrainingContent({ embedded = false }) {
 
                  {/* Document */}
                  <div className="rounded-lg border-2 transition-all overflow-hidden" style={{ borderColor: formData.material_types?.includes('document') ? '#3b82f6' : '#e2e8f0' }}>
-                   <label className={`flex items-center gap-3 p-4 cursor-pointer ${formData.material_types?.includes('document') ? 'bg-amber-50' : 'bg-white hover:bg-slate-50'}`}>
+                   <label className={`flex items-center gap-3 p-4 cursor-pointer ${formData.material_types?.includes('document') ? 'bg-blue-50' : 'bg-white hover:bg-slate-50'}`}>
                      <input
                        type="checkbox"
                        checked={formData.material_types?.includes('document') || false}
@@ -712,7 +712,7 @@ function AdminTrainingContent({ embedded = false }) {
                      <span className={`font-semibold text-sm ${formData.material_types?.includes('document') ? 'text-blue-800' : 'text-slate-600'}`}>📄 Document</span>
                    </label>
                    {formData.material_types?.includes('document') && (
-                     <div className="p-4 border-t-2 border-blue-200 bg-amber-50 space-y-2">
+                     <div className="p-4 border-t-2 border-blue-200 bg-blue-50 space-y-2">
                        <Label className="text-xs font-semibold text-blue-800">Upload Training Document (PDF, DOCX, or PowerPoint)</Label>
                        <div className="flex gap-2 items-center">
                          <Input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={(e) => handleFileUpload(e, 'document_url')} disabled={uploading} className="bg-white" />
@@ -895,7 +895,7 @@ function AdminTrainingContent({ embedded = false }) {
               />
             </div>
 
-            <div className="space-y-4 rounded-lg border border-indigo-200 bg-amber-50 p-4">
+            <div className="space-y-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
               <div>
                 <Label className="text-sm font-semibold text-indigo-950">Assign Training</Label>
                 <p className="text-xs text-indigo-700">Officers and students have separate dropdowns. Choose officers, students, or both. Leave both blank to make the class available to every training learner.</p>

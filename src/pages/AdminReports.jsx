@@ -1070,8 +1070,8 @@ function ReportReviewQueue() {
     const location = locations?.find(loc => loc.site_name === report.location);
 
     return (
-      <Card className={`overflow-hidden border border-slate-700/70 bg-[#111316] text-slate-100 shadow-lg ${isApproved ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-amber-400'}`}>
-        <CardHeader className="border-b border-slate-800 bg-[#191a1b] p-4">
+      <Card className={`overflow-hidden border border-slate-700/70 bg-[#0d1724] text-slate-100 shadow-lg ${isApproved ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-amber-400'}`}>
+        <CardHeader className="border-b border-slate-800 bg-[#111d2b] p-4">
           <CardTitle className="flex flex-col gap-3 text-slate-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1181,12 +1181,12 @@ function ReportReviewQueue() {
   const pendingTotal = pendingQueue.length;
 
   return (
-    <div className="min-h-full bg-[#111316] p-2 text-slate-100 md:p-3">
+    <div className="min-h-full bg-[#07111d] p-2 text-slate-100 md:p-3">
       <div className="w-full space-y-3">
         {user?.role === 'admin' && <AcceptableUseReport />}
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-700/70 bg-[#111316] px-3 py-2 shadow-lg">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-700/70 bg-[#0b1624] px-3 py-2 shadow-lg">
           <div className="mr-auto flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-amber-500/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">
               <ClipboardList className="h-4 w-4 text-cyan-300" />
             </div>
             <div>
@@ -1197,11 +1197,11 @@ function ReportReviewQueue() {
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-amber-300">{pendingTotal}</span><span className="ml-1.5 text-[8px] font-black uppercase text-amber-100/60">Pending</span></div>
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-emerald-300">{Object.values(archiveData).reduce((sum, rows) => sum + rows.length, 0)}</span><span className="ml-1.5 text-[8px] font-black uppercase text-emerald-100/60">Reviewed</span></div>
-            <div className="rounded-lg border border-blue-500/30 bg-amber-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-blue-300">{reviewTypes.filter(type => type.rows.length).length}</span><span className="ml-1.5 text-[8px] font-black uppercase text-blue-100/60">Queues</span></div>
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-blue-300">{reviewTypes.filter(type => type.rows.length).length}</span><span className="ml-1.5 text-[8px] font-black uppercase text-blue-100/60">Queues</span></div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-700/70 bg-[#111316] px-3 py-2">
+        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-700/70 bg-[#0a1421] px-3 py-2">
           <div className="mr-auto">
             <div className="text-[9px] font-black uppercase tracking-[.14em] text-emerald-400">Archive Filters</div>
             <div className="text-xs font-bold text-slate-300">Reviewed report history</div>
@@ -1212,20 +1212,20 @@ function ReportReviewQueue() {
         </div>
 
         <section className="grid gap-3 xl:grid-cols-[230px_minmax(0,1fr)]">
-          <aside className="h-fit rounded-xl border border-slate-700/70 bg-[#111316] p-2">
+          <aside className="h-fit rounded-xl border border-slate-700/70 bg-[#0a1421] p-2">
             <div className="px-2 pb-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-500">Review Queues</div>
             <div className="space-y-1">
-              <button onClick={() => setSelectedReviewType('all')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-black ${selectedReviewType === 'all' ? 'border-cyan-500 bg-amber-500/15 text-cyan-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span>All Pending</span><span>{pendingTotal}</span></button>
-              {reviewTypes.map(type => { const Icon = type.icon; return <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-amber-500/15 text-blue-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0"/><span className="truncate">{type.label}</span></span><span>{type.rows.length}</span></button>; })}
+              <button onClick={() => setSelectedReviewType('all')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-black ${selectedReviewType === 'all' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span>All Pending</span><span>{pendingTotal}</span></button>
+              {reviewTypes.map(type => { const Icon = type.icon; return <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-blue-500/15 text-blue-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0"/><span className="truncate">{type.label}</span></span><span>{type.rows.length}</span></button>; })}
               <button onClick={() => setSelectedReviewType('qr_patrol')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === 'qr_patrol' ? 'border-emerald-500 bg-emerald-500/15 text-emerald-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex items-center gap-2"><QrCode className="h-3.5 w-3.5"/>QR Patrol</span></button>
             </div>
           </aside>
 
-          <div className="min-w-0 rounded-xl border border-slate-700/70 bg-[#111316] p-2 md:p-3">
+          <div className="min-w-0 rounded-xl border border-slate-700/70 bg-[#0a1421] p-2 md:p-3">
           {selectedReviewType === 'qr_patrol' ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#111316]"><AdminQRReports embedded /></div>
+            <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1522]"><AdminQRReports embedded /></div>
           ) : visibleReviewQueue.length === 0 ? (
-            <Card className="border-dashed border-slate-700 bg-[#111316] text-slate-300">
+            <Card className="border-dashed border-slate-700 bg-[#0b1522] text-slate-300">
               <CardContent className="p-12 text-center"><FileText className="mx-auto mb-3 h-12 w-12 text-slate-600" /><h3 className="text-lg font-bold text-white">No reports waiting in this queue</h3><p className="mt-1 text-sm text-slate-500">Submitted reports will appear here until they are approved or returned for revision.</p></CardContent>
             </Card>
           ) : (
@@ -1236,8 +1236,8 @@ function ReportReviewQueue() {
           </div>
         </section>
 
-        <Card className="overflow-hidden border-slate-700/70 bg-[#111316] text-slate-100 shadow-lg">
-          <CardHeader className="border-b border-slate-800 bg-[#111316] px-3 py-2">
+        <Card className="overflow-hidden border-slate-700/70 bg-[#0a1421] text-slate-100 shadow-lg">
+          <CardHeader className="border-b border-slate-800 bg-[#0b1624] px-3 py-2">
             <CardTitle className="flex items-center gap-2 text-sm text-white">
               <FileText className="h-4 w-4 text-emerald-300" />
               Reviewed Report Archive
@@ -1255,7 +1255,7 @@ function ReportReviewQueue() {
 
               <div className="space-y-3">
                 {archiveData[selectedArchiveType].map((report) => (
-                  <div key={report.id} className="rounded-lg border border-slate-800 bg-[#111316] px-3 py-2">
+                  <div key={report.id} className="rounded-lg border border-slate-800 bg-[#08111d] px-3 py-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <h4 className="truncate text-xs font-black text-white">{getOfficerName(report.created_by_id || report.created_by)}</h4>
@@ -1388,7 +1388,7 @@ function ReportReviewQueue() {
                       <Badge className={
                         viewingReport.severity === 'critical' ? 'bg-red-600' :
                         viewingReport.severity === 'high' ? 'bg-orange-600' :
-                        viewingReport.severity === 'medium' ? 'bg-yellow-600' : 'bg-amber-600'
+                        viewingReport.severity === 'medium' ? 'bg-yellow-600' : 'bg-blue-600'
                       }>
                         {viewingReport.severity?.toUpperCase()}
                       </Badge>
@@ -1599,10 +1599,10 @@ export default function AdminReports(){
   };
   if(movedReview)return <Navigate replace to={'/ProfessionalStandards?section='+movedReview}/>;
   return <div className="space-y-3">
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#635336] bg-[#191a1b] px-3 py-3 text-white">
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#314b65] bg-[#0b1c2e] px-3 py-3 text-white">
       <div className="min-w-0 flex-1"><h1 className="text-base font-bold">Report Review</h1><p className="text-xs text-slate-400">Reports, reviews, parking, residents and records — one workspace</p></div>
       <label className="min-w-[210px] flex-1 text-[11px] font-semibold text-cyan-200 sm:flex-none">Review category
-        <select aria-label="Select report review category" value={active} onChange={event=>change(event.target.value)} className="mt-1 block h-10 w-full min-w-[230px] max-w-[330px] rounded-lg border border-[#967a47] bg-[#222321] px-3 text-sm font-bold text-white">
+        <select aria-label="Select report review category" value={active} onChange={event=>change(event.target.value)} className="mt-1 block h-10 w-full min-w-[230px] max-w-[330px] rounded-lg border border-[#426786] bg-[#102b44] px-3 text-sm font-bold text-white">
           {REPORT_WORKSPACES.map(([id,label])=><option key={id} value={id}>{label}</option>)}
         </select>
       </label>

@@ -54,7 +54,7 @@ export default function BrowserIdleGuard({ minutes, children }) {
           lastActivity.current = Date.now();
           setLocked(false);
         }}
-        className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-cyan-700 bg-amber-600/20 px-4 text-sm font-semibold text-cyan-100 hover:bg-amber-600/30"
+        className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-cyan-700 bg-cyan-600/20 px-4 text-sm font-semibold text-cyan-100 hover:bg-cyan-600/30"
       >
         Resume session
       </button>

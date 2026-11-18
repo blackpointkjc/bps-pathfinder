@@ -24,11 +24,11 @@ function CaseRow({ row }) {
   const isSummons = row.kind === 'Summons';
   const outcome = row.magistrate_disposition;
   return (
-    <div className="rounded-xl border border-slate-700/80 bg-[#191a1b] p-4 text-slate-200">
+    <div className="rounded-xl border border-slate-700/80 bg-[#101b29] p-4 text-slate-200">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className={isComplaint ? 'bg-red-950 text-red-200' : isSummons ? 'bg-stone-900 text-blue-200' : 'bg-stone-900 text-violet-200'}>{row.kind}</Badge>
+            <Badge className={isComplaint ? 'bg-red-950 text-red-200' : isSummons ? 'bg-blue-950 text-blue-200' : 'bg-violet-950 text-violet-200'}>{row.kind}</Badge>
             <strong className="text-white">{row.number || 'Unnumbered record'}</strong>
             <Badge variant="outline" className="border-slate-600 text-slate-300">{text(row.status).replaceAll('_', ' ').toUpperCase() || 'DRAFT'}</Badge>
             {outcome && <Badge className={outcome === 'granted' ? 'bg-emerald-700' : outcome === 'denied' ? 'bg-red-700' : 'bg-amber-700'}><Gavel className="mr-1 h-3 w-3" />{outcome.replaceAll('_', ' ').toUpperCase()}</Badge>}
@@ -98,8 +98,8 @@ export default function LegalCaseHistoryPanel({ audience = 'officer', clientLoca
   }, [audience, clientLocations, data, limit, user]);
 
   return (
-    <Card className="border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
-      <CardHeader className="border-b border-slate-800 bg-[#191a1b]">
+    <Card className="border-slate-700/80 bg-[#0c1725] text-slate-100 shadow-xl">
+      <CardHeader className="border-b border-slate-800 bg-[#111d2b]">
         <CardTitle className="flex items-center gap-2 text-white"><Scale className="h-5 w-5 text-violet-300" />{title}</CardTitle>
         <p className="text-xs text-slate-400">Review complaints, summonses and witness subpoenas together, including their CAD link and magistrate result.</p>
       </CardHeader>

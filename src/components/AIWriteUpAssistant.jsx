@@ -55,7 +55,7 @@ Provide concise, professional suggestions.`,
       variant="outline"
       onClick={generateSuggestions}
       disabled={loading || !description || description.length < 20}
-      className="bg-gradient-to-r from-purple-50 to-amber-50 border-purple-300 hover:from-purple-100 hover:to-amber-100"
+      className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-300 hover:from-purple-100 hover:to-indigo-100"
     >
       {loading ? (
         <>

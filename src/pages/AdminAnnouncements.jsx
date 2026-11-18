@@ -214,7 +214,7 @@ export default function AdminAnnouncements() {
   const priorityConfig = {
     urgent: "bg-red-100 text-red-800 border-red-300",
     important: "bg-amber-100 text-amber-800 border-amber-300",
-    normal: "bg-amber-100 text-blue-800 border-blue-300",
+    normal: "bg-blue-100 text-blue-800 border-blue-300",
   };
 
   const getReadStats = (announcement) => {
@@ -239,13 +239,13 @@ export default function AdminAnnouncements() {
   }) || [];
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-5">
         <WorkspaceHeader eyebrow="Administration / Communications" title="Manage Announcements" description="Publish company updates, target the right audience and track read receipts." metrics={[
           {label:'Announcements',value:filteredAnnouncements.length},
           {label:'Officer recipients',value:activeOfficers.length}
         ]}>
-          <Button onClick={()=>setShowForm(!showForm)} className="bg-amber-700 hover:bg-amber-600"><Plus className="mr-2 h-4 w-4"/>{showForm?'Close composer':'New announcement'}</Button>
+          <Button onClick={()=>setShowForm(!showForm)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-2 h-4 w-4"/>{showForm?'Close composer':'New announcement'}</Button>
         </WorkspaceHeader>
         <div className="flex flex-wrap gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3">
           <Input aria-label="Search announcements" placeholder="Search title or message" value={announcementSearch} onChange={e=>setAnnouncementSearch(e.target.value)} className="min-w-48 flex-1 border-slate-600 bg-slate-950 text-white"/>
@@ -412,7 +412,7 @@ export default function AdminAnnouncements() {
                   <Button
                     type="submit"
                     disabled={createAnnouncementMutation.isPending}
-                    className="bg-amber-600 hover:bg-amber-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     {createAnnouncementMutation.isPending ? 'Posting...' : 'Post Announcement'}
                   </Button>
@@ -465,7 +465,7 @@ export default function AdminAnnouncements() {
                         href={announcement.attachment_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-blue-700 rounded-lg hover:bg-amber-100 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
                       >
                         <Eye className="w-4 h-4" />
                         <span className="text-sm font-medium">View Document</span>

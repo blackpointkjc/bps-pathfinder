@@ -209,7 +209,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
                     <span>{msg.sender_name || 'Dispatch'}</span>
                     {broadcast && <span className="rounded bg-amber-900/50 px-1.5 py-0.5 text-[9px] text-amber-300">COMPANY WIDE</span>}
                   </div>
-                  <div className={`rounded-xl border px-4 py-2 text-left text-sm ${mine ? 'border-blue-500/50 bg-amber-700 text-white' : broadcast ? 'border-amber-600/50 bg-amber-950/50 text-amber-100' : 'border-slate-700 bg-slate-800 text-slate-100'}`}>
+                  <div className={`rounded-xl border px-4 py-2 text-left text-sm ${mine ? 'border-blue-500/50 bg-blue-700 text-white' : broadcast ? 'border-amber-600/50 bg-amber-950/50 text-amber-100' : 'border-slate-700 bg-slate-800 text-slate-100'}`}>
                     {msg.message}
                   </div>
                   <div className="mt-1 px-1 text-[10px] text-slate-500">
@@ -258,7 +258,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
           ) : (
             <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={inboxOnly ? 'Write a private message...' : dispatchMode ? 'Direct dispatch message...' : 'Reply to dispatch...'} className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500" />
           )}
-          <Button onClick={sendMessage} disabled={!newMessage.trim() || (inboxOnly && !selectedRecipient)} className="bg-amber-700 hover:bg-amber-600"><Send className="h-4 w-4" /></Button>
+          <Button onClick={sendMessage} disabled={!newMessage.trim() || (inboxOnly && !selectedRecipient)} className="bg-blue-700 hover:bg-blue-600"><Send className="h-4 w-4" /></Button>
         </div>
       </div>
     </div>

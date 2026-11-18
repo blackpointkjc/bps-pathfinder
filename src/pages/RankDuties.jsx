@@ -101,7 +101,7 @@ export default function RankDuties() {
     {
       rank: "Senior Officer / Lead Officer",
       unitSeries: "450-499",
-      color: "bg-amber-600",
+      color: "bg-blue-600",
       duties: [
         "Lead shifts in absence of Corporal",
         "Act as Corporal at direction of Sergeant",
@@ -152,7 +152,7 @@ export default function RankDuties() {
     {
       rank: "Special Conservator",
       unitSeries: "700-799",
-      color: "bg-amber-600",
+      color: "bg-indigo-600",
       duties: [
         "Specialized security assignments",
         "Courtroom security and bailiff duties",
@@ -173,7 +173,7 @@ export default function RankDuties() {
   };
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />
@@ -226,7 +226,7 @@ export default function RankDuties() {
           ))}
         </div>
 
-        <Card className="border-none shadow-lg bg-gradient-to-r from-amber-50 to-amber-50">
+        <Card className="border-none shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardContent className="p-6">
             <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
               <UserCheck className="w-5 h-5" />

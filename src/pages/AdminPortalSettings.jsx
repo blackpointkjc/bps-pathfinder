@@ -82,13 +82,13 @@ export default function AdminPortalSettings() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="mx-auto max-w-6xl">
         <WorkspaceHeader eyebrow="Administration / Preferences" title="Portal Visibility Settings" description="Choose the workspaces shown in your navigation. These preferences apply to your account." metrics={[
           {label:'Available workspaces',value:portals.length},
           {label:'Visible',value:portals.filter(p=>!hiddenPortals.includes(p.id)).length}
         ]}>
-          <Button onClick={handleSave} disabled={updateSettingsMutation.isPending} className="bg-amber-700 hover:bg-amber-600">{updateSettingsMutation.isPending?'Saving…':'Save preferences'}</Button>
+          <Button onClick={handleSave} disabled={updateSettingsMutation.isPending} className="bg-cyan-700 hover:bg-cyan-600">{updateSettingsMutation.isPending?'Saving…':'Save preferences'}</Button>
         </WorkspaceHeader>
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)]">
           <section className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900">

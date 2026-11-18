@@ -196,7 +196,7 @@ export default function DivisionDirectory() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {displayUsers.map((officer) => (
                 <Card key={officer.id} className="border-none shadow-lg hover:shadow-xl transition-shadow">
-                  <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 p-6 flex flex-col items-center text-center">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 flex flex-col items-center text-center">
                     {officer.profile_photo_url ? (
                       <img
                         src={officer.profile_photo_url}
@@ -219,7 +219,7 @@ export default function DivisionDirectory() {
                         {officer.rank || officer.displayRole || 'Officer'}
                       </Badge>
                       {officer.unit_number && (
-                        <Badge variant="outline" className="bg-amber-50 text-indigo-700">
+                        <Badge variant="outline" className="bg-indigo-50 text-indigo-700">
                           Unit {officer.unit_number}
                         </Badge>
                       )}

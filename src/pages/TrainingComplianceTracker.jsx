@@ -18,7 +18,7 @@ import { listTrainingUsers } from '@/lib/trainingDirectory';
 import { Navigate } from 'react-router-dom';
 
 const STATUS_COLORS = {
-  assigned: "bg-amber-100 text-blue-800",
+  assigned: "bg-blue-100 text-blue-800",
   in_progress: "bg-yellow-100 text-yellow-800",
   pending_review: "bg-orange-100 text-orange-800",
   approved: "bg-green-100 text-green-800",
@@ -527,7 +527,7 @@ function TrainingComplianceTrackerContent({ embedded = false }) {
 
   return (
     <>
-    <div className={embedded ? "w-full overflow-x-hidden bg-transparent text-slate-100" : "min-h-screen w-full overflow-x-hidden bg-[#090a0c] p-3 text-slate-100 md:p-5"}>
+    <div className={embedded ? "w-full overflow-x-hidden bg-transparent text-slate-100" : "min-h-screen w-full overflow-x-hidden bg-[#080f1a] p-3 text-slate-100 md:p-5"}>
       <div className={embedded ? "w-full min-w-0 space-y-5" : "mx-auto w-full max-w-[1600px] min-w-0 space-y-5"}>
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -557,7 +557,7 @@ function TrainingComplianceTrackerContent({ embedded = false }) {
             </button>
             <button
               onClick={() => printReport('all')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors shadow-sm"
             >
               <FileText className="w-4 h-4" />
               Full Report
@@ -661,7 +661,7 @@ function TrainingComplianceTrackerContent({ embedded = false }) {
                       <div className="flex-1 min-w-48">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-semibold text-slate-900">{t.name}</h3>
-                          <Badge className="bg-amber-100 text-blue-800 text-xs capitalize">{t.category?.replace(/_/g, ' ')}</Badge>
+                          <Badge className="bg-blue-100 text-blue-800 text-xs capitalize">{t.category?.replace(/_/g, ' ')}</Badge>
                           {matchedModule && <Badge className="bg-purple-100 text-purple-800 text-xs">Company Module</Badge>}
                         </div>
                         <div className="flex items-center gap-3 mt-2">

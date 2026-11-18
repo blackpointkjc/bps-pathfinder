@@ -284,7 +284,7 @@ export default function AdminPayrollConfig() {
           </CardContent>
         </Card>
 
-        <Alert className="bg-amber-50 border-blue-200">
+        <Alert className="bg-blue-50 border-blue-200">
           <AlertCircle className="w-4 h-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
             Fields marked with * are required and will appear on tax forms and payroll documents.

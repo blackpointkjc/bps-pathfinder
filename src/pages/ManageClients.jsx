@@ -195,7 +195,7 @@ export default function ManageClients() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <WorkspaceHeader eyebrow="Administration / Client services" title="Manage Clients" description="Client contacts, portfolio access and property assignments." metrics={[
           {label:'Client accounts',value:clientUsers?.length||0},

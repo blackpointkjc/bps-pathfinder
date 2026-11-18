@@ -59,7 +59,7 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
   };
 
   return (
-    <div className="space-y-2 rounded-lg border border-cyan-500/30 bg-stone-900/10 p-3">
+    <div className="space-y-2 rounded-lg border border-cyan-500/30 bg-cyan-950/10 p-3">
       <Label className="flex items-center gap-2"><Radio className="h-4 w-4 text-cyan-500" />{label}</Label>
       <CallLinkCombobox
         calls={calls}

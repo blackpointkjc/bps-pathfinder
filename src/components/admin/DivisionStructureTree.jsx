@@ -27,7 +27,7 @@ function RowActions({ record, onEdit, onToggleActive, onDelete, onAdd, addLabel 
   return (
     <div className="flex shrink-0 items-center gap-1">
       {onAdd && (
-        <Button variant="outline" size="sm" onClick={() => onAdd(record)} className="h-8 whitespace-nowrap border-cyan-800 bg-stone-900/40 px-2 text-[10px] font-bold text-cyan-200 hover:bg-stone-900/50">
+        <Button variant="outline" size="sm" onClick={() => onAdd(record)} className="h-8 whitespace-nowrap border-cyan-800 bg-cyan-950/40 px-2 text-[10px] font-bold text-cyan-200 hover:bg-cyan-900/50">
           <Plus className="mr-1 h-3 w-3" />{addLabel}
         </Button>
       )}
@@ -64,7 +64,7 @@ export default function DivisionStructureTree({ regions = [], stats = {}, onEdit
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center">
         <p className="text-sm text-slate-400">No company structure yet. Add your first region (for example Virginia).</p>
         {onAddRegion && (
-          <Button onClick={onAddRegion} className="mt-3 bg-amber-600 hover:bg-amber-700">
+          <Button onClick={onAddRegion} className="mt-3 bg-blue-600 hover:bg-blue-700">
             <Plus className="mr-2 h-4 w-4" />Add Region
           </Button>
         )}
@@ -88,7 +88,7 @@ export default function DivisionStructureTree({ regions = [], stats = {}, onEdit
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="truncate text-base font-black text-white">{region.name}</h3>
-                    <Badge className="border border-blue-700 bg-stone-900/60 text-[10px] font-bold uppercase text-blue-200">Region</Badge>
+                    <Badge className="border border-blue-700 bg-blue-950/60 text-[10px] font-bold uppercase text-blue-200">Region</Badge>
                     <ActiveBadge active={region.record?.active} />
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -127,7 +127,7 @@ export default function DivisionStructureTree({ regions = [], stats = {}, onEdit
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <h4 className="truncate text-sm font-bold text-cyan-100">{division.name}</h4>
-                              <Badge className="border border-cyan-800 bg-stone-900/60 text-[10px] font-bold uppercase text-cyan-200">Division</Badge>
+                              <Badge className="border border-cyan-800 bg-cyan-950/60 text-[10px] font-bold uppercase text-cyan-200">Division</Badge>
                               <ActiveBadge active={division.record?.active} />
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">

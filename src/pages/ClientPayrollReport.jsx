@@ -350,7 +350,7 @@ export default function ClientPayrollReport() {
         {clientInvoices.length > 0 && <Button onClick={() => setShowInvoiceDialog(true)} variant="outline" className="border-slate-600 bg-slate-800 text-white hover:bg-slate-700">View Issued Invoices ({clientInvoices.length})</Button>}
       </div>
 
-      {billingLoading && <div className="mb-5 rounded-xl border border-blue-800 bg-stone-900/40 p-4 text-sm text-blue-200">Loading live timesheets and billing…</div>}
+      {billingLoading && <div className="mb-5 rounded-xl border border-blue-800 bg-blue-950/40 p-4 text-sm text-blue-200">Loading live timesheets and billing…</div>}
       {billingError && <div className="mb-5 rounded-xl border border-red-800 bg-red-950/40 p-4 text-sm text-red-200">Billing data could not be loaded: {billingLoadError?.message || 'Unknown error'}</div>}
 
       {/* Invoice Notification Dialog */}
@@ -374,7 +374,7 @@ export default function ClientPayrollReport() {
                           <p className="font-semibold text-slate-900">{invoice.site_name}</p>
                         </div>
                         <div className="min-w-0 text-right">
-                          <Badge className={invoice.status === 'paid' ? 'bg-green-600' : invoice.status === 'overdue' ? 'bg-red-600' : 'bg-amber-600'}>
+                          <Badge className={invoice.status === 'paid' ? 'bg-green-600' : invoice.status === 'overdue' ? 'bg-red-600' : 'bg-blue-600'}>
                             {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </Badge>
                           <p className="text-sm text-slate-600 mt-2">
@@ -424,7 +424,7 @@ export default function ClientPayrollReport() {
                         </div>
                       </div>
                       {invoice.notes && (
-                        <div className="p-3 bg-amber-50 rounded text-sm text-slate-700">
+                        <div className="p-3 bg-blue-50 rounded text-sm text-slate-700">
                           <p className="font-medium mb-1">Notes:</p>
                           <p>{invoice.notes}</p>
                         </div>

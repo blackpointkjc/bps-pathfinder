@@ -518,7 +518,7 @@ export default function AdminPTOLossReport() {
   }
 
   return (
-    <div className="bps-command-page pto-loss-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page pto-loss-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-3">
@@ -537,7 +537,7 @@ export default function AdminPTOLossReport() {
                 <FileText className="w-4 h-4 mr-2" />
                 {showDetailedView ? 'Summary View' : 'Detailed View'}
               </Button>
-              <Button onClick={handlePrint} className="bg-amber-600 hover:bg-amber-700">
+              <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700">
                 <Printer className="w-4 h-4 mr-2" />
                 Print Report
               </Button>
@@ -545,7 +545,7 @@ export default function AdminPTOLossReport() {
           </div>
 
         <Card className="border-none shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <CardTitle className="flex items-center gap-2">
               <Filter className="w-5 h-5 text-blue-600" />
               Filters
@@ -683,7 +683,7 @@ export default function AdminPTOLossReport() {
                 <p className="text-4xl font-bold text-orange-600">{filteredOfficers.length}</p>
                 <p className="text-xs text-slate-500 mt-1">of {officersWithPTOLoss.length} total</p>
               </div>
-              <div className="text-center p-6 bg-amber-50 rounded-lg border-2 border-blue-200">
+              <div className="text-center p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
                 <p className="text-sm text-slate-600 mb-2">Carryover Cap</p>
                 <p className="text-4xl font-bold text-blue-600">40</p>
                 <p className="text-xs text-slate-500 mt-1">hours maximum</p>

@@ -554,7 +554,7 @@ export default function AdminSupervisorReports() {
 
   const getSeverityColor = (severity) => {
     switch (severity) {
-      case 'verbal_warning': return 'bg-amber-100 text-blue-800 border-blue-200';
+      case 'verbal_warning': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'written_warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'final_warning': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'suspension_recommended': return 'bg-red-100 text-red-800 border-red-200';
@@ -564,7 +564,7 @@ export default function AdminSupervisorReports() {
   };
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />
@@ -588,7 +588,7 @@ export default function AdminSupervisorReports() {
               <Check className="w-4 h-4 mr-2" />
               Approved ({approvedWriteUps.length})
             </TabsTrigger>
-            <TabsTrigger value="inspections" className="data-[state=active]:bg-amber-50 data-[state=active]:text-blue-900">
+            <TabsTrigger value="inspections" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-900">
               <ClipboardCheck className="w-4 h-4 mr-2" />
               Inspections ({inspections?.length || 0})
             </TabsTrigger>

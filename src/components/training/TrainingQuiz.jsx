@@ -95,11 +95,11 @@ export default function TrainingQuiz({ questions, passingScore, onComplete, subm
 
   return (
     <div className="space-y-4">
-      <Card className="border-blue-200 bg-amber-50">
+      <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-blue-900">Training Quiz</CardTitle>
-            <Badge className="bg-amber-600">
+            <Badge className="bg-blue-600">
               {Object.keys(answers).length}/{questions.length} Answered
             </Badge>
           </div>
@@ -119,7 +119,7 @@ export default function TrainingQuiz({ questions, passingScore, onComplete, subm
           <Card key={idx} className={`${answers[idx] !== undefined ? 'border-green-200' : 'border-slate-200'}`}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <span className="bg-amber-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">
+                <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">
                   {idx + 1}
                 </span>
                 {question.question}

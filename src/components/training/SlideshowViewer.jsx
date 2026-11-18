@@ -73,7 +73,7 @@ export default function SlideshowViewer({ slides, secondsPerSlide, onComplete })
 
   return (
     <div className="space-y-4" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
-      <div className="bg-gradient-to-r from-amber-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-slate-700">
             Slide {currentSlide + 1} of {slides.length}
@@ -148,7 +148,7 @@ export default function SlideshowViewer({ slides, secondsPerSlide, onComplete })
           <Button
             onClick={handleNext}
             disabled={!canAdvance}
-            className="flex-1 bg-amber-600 hover:bg-amber-700"
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
           >
             Next
             <ChevronRight className="w-4 h-4 ml-2" />

@@ -46,7 +46,7 @@ export default function DutyAttendanceItem({ item, reason, saving, onExempt, onR
             onChange={event => setReasonText(event.target.value)}
             onKeyDown={event => { if (event.key === 'Enter') save(); }}
             placeholder="Reason for exemption (required)"
-            className="h-9 min-w-[180px] flex-1 border-slate-700 bg-[#111316] text-xs text-white"
+            className="h-9 min-w-[180px] flex-1 border-slate-700 bg-[#08121d] text-xs text-white"
           />
           <button type="button" onClick={save} disabled={!canSave} className="rounded-md border border-emerald-500/50 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-bold text-emerald-100 disabled:opacity-50">Save</button>
           <button type="button" onClick={() => { setOpen(false); setReasonText(''); }} className="rounded-md border border-slate-600 px-3 py-1.5 text-[11px] font-bold text-slate-300">Cancel</button>

@@ -341,7 +341,7 @@ export default function AdminClientReports() {
     .sort(comparePersonnel);
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-center gap-4 print:mb-8">
           <div>
@@ -460,7 +460,7 @@ export default function AdminClientReports() {
             <div className="flex gap-3 mt-4 flex-wrap">
               <Button 
                 onClick={handlePrint} 
-                className="bg-amber-600 hover:bg-amber-700"
+                className="bg-blue-600 hover:bg-blue-700"
                 disabled={!selectedLocation}
               >
                 <Printer className="w-4 h-4 mr-2" />
@@ -513,7 +513,7 @@ export default function AdminClientReports() {
                 </div>
               </div>
 
-              <div className="mb-6 bg-amber-50 p-4 rounded-lg">
+              <div className="mb-6 bg-blue-50 p-4 rounded-lg">
                 <div className="text-center">
                   <p className="text-sm text-blue-700 font-medium">Total Hours for Period</p>
                   <p className="text-3xl font-bold text-blue-900">{grandTotal.toFixed(2)} hours</p>

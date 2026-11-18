@@ -151,11 +151,11 @@ export default function SupervisorCallOuts() {
   const recentCallOuts = callOuts.filter(row=>(callType==='all'||row.call_out_type===callType)&&(!callStart||row.call_out_date>=callStart)&&(!callEnd||row.call_out_date<=callEnd)&&[calloutName(row.officer_email,row.officer_name),row.location,row.original_location,row.destination_location,row.reason].join(' ').toLowerCase().includes(callSearch.toLowerCase()));
 
   return (
-    <div className="p-4 md:p-6 min-h-full bg-[#111316] text-white">
+    <div className="p-4 md:p-6 min-h-full bg-[#080f1b] text-white">
       <div className="max-w-7xl mx-auto space-y-8">
         <WorkspaceHeader eyebrow="Command / Attendance" title="Call-Out Management" description="Record missed shifts, early dismissals and reassignments against the officer’s scheduled post." metrics={[
           {label:'Records shown',value:recentCallOuts.length},{label:'Called out',value:recentCallOuts.filter(c=>c.call_out_type==='called_out').length},{label:'Reassignments',value:recentCallOuts.filter(c=>c.call_out_type==='reassigned').length}
-        ]}><Button variant="outline" onClick={()=>refreshCallOuts()}>Refresh</Button><Button onClick={()=>setShowDialog(true)} className="bg-amber-700 hover:bg-amber-600"><Plus className="mr-2 h-4 w-4"/>Record attendance change</Button></WorkspaceHeader>
+        ]}><Button variant="outline" onClick={()=>refreshCallOuts()}>Refresh</Button><Button onClick={()=>setShowDialog(true)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-2 h-4 w-4"/>Record attendance change</Button></WorkspaceHeader>
         <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900 p-4 sm:grid-cols-2 xl:grid-cols-4">
           <label className="text-xs text-slate-400">Search records<Input aria-label="Search call-outs" value={callSearch} onChange={e=>setCallSearch(e.target.value)} placeholder="Officer, unit, property or reason" className="mt-1 bg-slate-950"/></label>
           <label className="text-xs text-slate-400">Attendance event<select aria-label="Call-out event type" value={callType} onChange={e=>setCallType(e.target.value)} className="mt-1 h-10 w-full rounded border border-slate-600 bg-slate-950 px-3 text-sm"><option value="all">All events</option><option value="called_out">Called out</option><option value="sent_home">Sent home / early dismissal</option><option value="reassigned">Reassignment</option></select></label>
@@ -166,7 +166,7 @@ export default function SupervisorCallOuts() {
         <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900">
           <table className="w-full text-left text-sm"><thead className="bg-slate-950 text-xs uppercase text-slate-400"><tr><th className="p-4">Officer / Date</th><th className="p-4">Event</th><th className="p-4">Shift / Property</th><th className="p-4">Reason / Recorded by</th></tr></thead><tbody className="divide-y divide-slate-700">{recentCallOuts.map(row=><tr key={row.id} className="align-top hover:bg-slate-800/60">
             <td className="p-4"><strong className="block text-white">{calloutName(row.officer_email,row.officer_name)}</strong><span className="mt-1 block text-xs text-slate-400">{String(row.call_out_date||'').slice(0,10)} · {row.call_out_time}</span></td>
-            <td className="p-4"><span className={'inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs '+(row.call_out_type==='called_out'?'bg-red-950 text-red-200':row.call_out_type==='reassigned'?'bg-stone-900 text-cyan-200':'bg-amber-950 text-amber-200')}>{row.call_out_type==='called_out'?'Called out':row.call_out_type==='reassigned'?'Reassigned':'Early dismissal'}</span>{row.affects_pto&&<p className="mt-2 text-xs text-slate-400">No PTO accrual</p>}</td>
+            <td className="p-4"><span className={'inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs '+(row.call_out_type==='called_out'?'bg-red-950 text-red-200':row.call_out_type==='reassigned'?'bg-cyan-950 text-cyan-200':'bg-amber-950 text-amber-200')}>{row.call_out_type==='called_out'?'Called out':row.call_out_type==='reassigned'?'Reassigned':'Early dismissal'}</span>{row.affects_pto&&<p className="mt-2 text-xs text-slate-400">No PTO accrual</p>}</td>
             <td className="p-4 text-slate-300">{row.original_location||row.location||'Not recorded'}{row.destination_location&&<p className="mt-1 text-cyan-200">→ {row.destination_location}</p>}</td>
             <td className="max-w-lg p-4"><p className="text-slate-200">{row.reason||'Not recorded'}</p><p className="mt-2 text-xs text-slate-400">{calloutName(row.supervisor_email,row.supervisor_name)}</p>{row.call_out_type==='reassigned'&&<p className="mt-2 text-xs text-cyan-300">Original-site incident scoring excludes calls after reassignment.</p>}</td>
           </tr>)}</tbody></table>{!recentCallOuts.length&&<p role="status" className="p-10 text-center text-sm text-slate-400">{callOutLoading?'Loading attendance records…':callOutError?'Records unavailable. Retry refresh.':'No attendance changes match these filters.'}</p>}
@@ -259,7 +259,7 @@ export default function SupervisorCallOuts() {
                 </div>
                 <div><Label>New Shift Start *</Label><Input type="time" value={formData.destination_start_time} onChange={event => setFormData(current => ({...current,destination_start_time:event.target.value}))}/></div>
                 <div><Label>New Shift End *</Label><Input type="time" value={formData.destination_end_time} onChange={event => setFormData(current => ({...current,destination_end_time:event.target.value}))}/></div>
-                <div className="md:col-span-2 rounded-lg border border-blue-200 bg-amber-50 p-3 text-sm text-blue-800">
+                <div className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
                   Incident-report requirements at the original property after this reassignment time will be excluded from the officer's Job Duty metric.
                 </div>
               </div>
@@ -286,7 +286,7 @@ export default function SupervisorCallOuts() {
               />
             </div>
 
-            <div className={`p-4 rounded-lg border ${formData.call_out_type === 'reassigned' ? 'bg-amber-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
+            <div className={`p-4 rounded-lg border ${formData.call_out_type === 'reassigned' ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
               <p className={`text-sm ${formData.call_out_type === 'reassigned' ? 'text-blue-800' : 'text-amber-800'}`}>
                 <strong>Important:</strong> {formData.call_out_type === 'reassigned'
                   ? 'A reassignment does not count as an attendance call-out. Property-call Incident Report requirements at the original location after the reassignment time will be excluded from Job Duty performance.'

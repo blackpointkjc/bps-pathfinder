@@ -118,7 +118,7 @@ export default function SupervisorInspections() {
   const getRatingColor = (rating) => {
     switch (normalizeRating(rating)) {
       case 'excellent': return 'bg-green-100 text-green-800 border-green-200';
-      case 'satisfactory': return 'bg-amber-100 text-blue-800 border-blue-200';
+      case 'satisfactory': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'needs_improvement': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'unsatisfactory': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-slate-800 text-slate-200 border-slate-600';
@@ -136,7 +136,7 @@ export default function SupervisorInspections() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-[#111316] text-slate-100">
+    <div className="p-4 md:p-8 min-h-screen bg-[#0b1420] text-slate-100">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="mobile-page-header flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div>
@@ -404,7 +404,7 @@ export default function SupervisorInspections() {
           </Card>
         )}
 
-        <Card className="border border-slate-700 bg-[#191a1b] shadow-lg">
+        <Card className="border border-slate-700 bg-[#111d2b] shadow-lg">
           <CardHeader className="border-b border-slate-700">
             <CardTitle className="text-white">Inspection History</CardTitle>
           </CardHeader>
@@ -413,7 +413,7 @@ export default function SupervisorInspections() {
               {inspectionsLoading && <p className="py-8 text-center text-slate-400">Loading inspections...</p>}
               {inspectionsError && <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-200">Unable to load inspections: {inspectionsError.message}</div>}
               {!inspectionsLoading && !inspectionsError && inspections.map((inspection) => (
-                <div key={inspection.id} className="rounded-lg border border-slate-700 bg-[#111316] p-5">
+                <div key={inspection.id} className="rounded-lg border border-slate-700 bg-[#0d1825] p-5">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-bold text-white text-lg">{inspection.officer_inspected || 'Officer not selected'}</p>
@@ -430,7 +430,7 @@ export default function SupervisorInspections() {
                       ) : (
                         <>
                           <Badge className="border border-amber-600 bg-amber-950/40 text-amber-300">DRAFT — NEEDS COMPLETION</Badge>
-                          <Button type="button" size="sm" onClick={() => startEditingDraft(inspection)} className="bg-amber-700 text-white hover:bg-amber-600">
+                          <Button type="button" size="sm" onClick={() => startEditingDraft(inspection)} className="bg-blue-700 text-white hover:bg-blue-600">
                             <Pencil className="mr-1 h-3.5 w-3.5" /> EDIT DRAFT
                           </Button>
                         </>

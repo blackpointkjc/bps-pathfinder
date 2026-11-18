@@ -392,7 +392,7 @@ export default function AccountingProfit() {
       </section>
 
       {endDate<startDate&&<p role="alert" className="mb-3 rounded-lg border border-red-500 p-3 text-sm text-red-200">The period end cannot precede the period start.</p>}
-      {periodPending&&<div role="status" className="mb-5 rounded-xl border border-sky-800 bg-stone-900/20 p-4 text-sm text-sky-100">Recalculating company profit for {startDate} through {endDate}. Prior-period figures are hidden until the server confirms this range.</div>}
+      {periodPending&&<div role="status" className="mb-5 rounded-xl border border-sky-800 bg-sky-950/20 p-4 text-sm text-sky-100">Recalculating company profit for {startDate} through {endDate}. Prior-period figures are hidden until the server confirms this range.</div>}
       {reportMatchesDates&&<div className="mb-4 text-xs font-bold text-emerald-300">Verified report dates: {companyLedger.period_start} through {companyLedger.period_end} · Last computed {accountingData.as_of?new Date(accountingData.as_of).toLocaleString():'Not synced'}</div>}
       {accountingError && (
         <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-700/60 bg-red-950/40 p-4 text-red-100">
@@ -554,7 +554,7 @@ export default function AccountingProfit() {
                     <div key={officer} className="rounded-xl border border-slate-700 bg-slate-950/55 p-4">
                       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-blue-600 font-bold">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
                             {officer.split(' ').map(n => n[0]).join('')}
                           </div>
                           <div>

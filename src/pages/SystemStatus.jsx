@@ -11,7 +11,7 @@ import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 const severityConfig = {
   outage: { label: 'System Outage', icon: ServerCrash, border: 'border-red-600/60', bg: 'bg-red-950/35', text: 'text-red-300' },
   degraded: { label: 'Degraded Service', icon: AlertTriangle, border: 'border-amber-600/60', bg: 'bg-amber-950/30', text: 'text-amber-300' },
-  maintenance: { label: 'Maintenance', icon: Wrench, border: 'border-blue-600/60', bg: 'bg-stone-900/30', text: 'text-blue-300' },
+  maintenance: { label: 'Maintenance', icon: Wrench, border: 'border-blue-600/60', bg: 'bg-blue-950/30', text: 'text-blue-300' },
 };
 
 const formatTime = value => {
@@ -135,10 +135,10 @@ export default function SystemStatus() {
   }, [activeOutages, diagnosticIssues]);
 
   return (
-    <div className="min-h-full bg-[#090a0c] p-3 text-white sm:p-5">
+    <div className="min-h-full bg-[#060b12] p-3 text-white sm:p-5">
       {currentUser?.role === 'admin' && <RateLimitDiagnostics open={apiTraceOpen} onClose={() => setApiTraceOpen(false)} />}
       <div className="mx-auto max-w-5xl">
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700 bg-[#111316] p-4 shadow-xl">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700 bg-[#0a1623] p-4 shadow-xl">
           <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${statusIssues.length ? 'border-red-600/50 bg-red-950/50 text-red-300' : 'border-emerald-600/50 bg-emerald-950/30 text-emerald-300'}`}>
             {statusIssues.length ? <ServerCrash className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
           </div>
@@ -162,11 +162,11 @@ export default function SystemStatus() {
 
         {currentUser?.role === 'admin' && (
           <div className="mb-4 grid gap-2 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-700 bg-[#111316] px-3 py-2">
+            <div className="rounded-xl border border-slate-700 bg-[#0a1623] px-3 py-2">
               <div className="text-[8px] font-black uppercase tracking-[.14em] text-slate-500">Queued API Reads</div>
               <div className="mt-1 text-lg font-black text-cyan-300">{requestHealth.queuedReads}</div>
             </div>
-            <div className="rounded-xl border border-slate-700 bg-[#111316] px-3 py-2">
+            <div className="rounded-xl border border-slate-700 bg-[#0a1623] px-3 py-2">
               <div className="text-[8px] font-black uppercase tracking-[.14em] text-slate-500">Active API Requests</div>
               <div className="mt-1 text-lg font-black text-blue-300">{requestHealth.activeReads + requestHealth.activeWrites}</div>
             </div>
@@ -178,7 +178,7 @@ export default function SystemStatus() {
         )}
 
         {loading ? (
-          <div className="flex min-h-56 items-center justify-center rounded-2xl border border-slate-800 bg-[#111316]">
+          <div className="flex min-h-56 items-center justify-center rounded-2xl border border-slate-800 bg-[#08111d]">
             <RefreshCw className="h-6 w-6 animate-spin text-slate-500" />
           </div>
         ) : statusIssues.length === 0 ? (

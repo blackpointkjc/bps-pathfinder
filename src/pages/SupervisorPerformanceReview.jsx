@@ -286,7 +286,7 @@ export default function SupervisorPerformanceReview() {
 
         {selectedReview ? (
           <Card className="border-none shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-amber-50">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
               <CardTitle className="flex items-center justify-between">
                 <span>Review with {selectedReview.officer_name}</span>
                 <Button
@@ -302,7 +302,7 @@ export default function SupervisorPerformanceReview() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
-              <div className="p-4 bg-amber-50 rounded-lg border border-blue-200">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm font-semibold text-blue-900 mb-2">Review Period</p>
                 <p className="text-lg font-bold text-blue-700">
                   {format(parseISO(selectedReview.review_period_start), 'MMM d, yyyy')} - {format(parseISO(selectedReview.review_period_end), 'MMM d, yyyy')}
@@ -375,7 +375,7 @@ export default function SupervisorPerformanceReview() {
               )}
 
               {selectedReview.goals && (
-                <div className="p-4 bg-amber-50 rounded-lg border border-blue-200">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <h4 className="font-semibold text-blue-900 mb-2">Goals for Next Period</h4>
                   <p className="text-slate-700">{selectedReview.goals}</p>
                 </div>
@@ -419,7 +419,7 @@ export default function SupervisorPerformanceReview() {
                   />
                 </div>
 
-                <div className="p-4 rounded-lg border bg-stone-900/30 border-blue-700">
+                <div className="p-4 rounded-lg border bg-blue-950/30 border-blue-700">
                   <p className="font-semibold text-blue-300">Next step: officer response</p>
                   <p className="text-sm text-slate-300 mt-1">Submitting your ratings routes this review to the officer. The officer will provide a self-rating, comments, and an electronic signature before HR receives it for final approval.</p>
                 </div>
@@ -429,7 +429,7 @@ export default function SupervisorPerformanceReview() {
                 <Button
                   variant="outline"
                   onClick={() => printReview(selectedReview)}
-                  className="bg-amber-50 text-blue-700 border-blue-300 hover:bg-amber-100"
+                  className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
                 >
                   <Printer className="w-4 h-4 mr-2" />
                   Print Review Document
@@ -511,19 +511,19 @@ export default function SupervisorPerformanceReview() {
         )}
 
         {!selectedReview && awaitingOfficerReviews.length > 0 && (
-          <Card className="overflow-hidden border border-slate-700 bg-[#111316] text-slate-100 shadow-xl">
-            <CardHeader className="border-b border-slate-800 bg-[#191a1b]">
+          <Card className="overflow-hidden border border-slate-700 bg-[#0d1725] text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-slate-800 bg-[#101b29]">
               <CardTitle className="text-white">Awaiting Officer Response ({awaitingOfficerReviews.length})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-4">
               {awaitingOfficerReviews.map(review => (
-                <div key={review.id} className="rounded-xl border border-slate-700 bg-[#191a1b] p-4">
+                <div key={review.id} className="rounded-xl border border-slate-700 bg-[#101b29] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-black text-white">{review.officer_name}</p>
                       <p className="text-sm text-slate-400">{format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}</p>
                     </div>
-                    <div className="rounded-full border border-blue-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-blue-200">Officer response required</div>
+                    <div className="rounded-full border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-200">Officer response required</div>
                   </div>
                 </div>
               ))}

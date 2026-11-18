@@ -35,8 +35,8 @@ export default function PendingUserOnboarding({ user }) {
    } catch (err) { setError(err?.response?.data?.error || err?.message || 'Unable to save profile'); }
    finally { setBusy(false); }
  };
- return <main className="fixed inset-0 overflow-y-auto bg-[#090a0c] p-4 text-white sm:p-8">
-  <section className="mx-auto max-w-3xl rounded-2xl border border-amber-600/40 bg-[#191a1b] p-6 shadow-xl">
+ return <main className="fixed inset-0 overflow-y-auto bg-[#060b13] p-4 text-white sm:p-8">
+  <section className="mx-auto max-w-3xl rounded-2xl border border-amber-600/40 bg-[#101c2c] p-6 shadow-xl">
    <p className="text-xs font-bold uppercase tracking-widest text-amber-400">Black Point | Secure registration</p>
    <h1 className="mt-2 text-2xl font-black">{denied?'Account request declined':submitted ? (isStudent ? 'Pending trainer review' : 'Pending administrator approval') : (isStudent ? 'Complete your student registration' : 'Complete your new account profile')}</h1>
    {denied?<div className="mt-5 space-y-3 text-slate-200"><p>An administrator declined this account request. Staff workspaces remain unavailable.</p><p>Contact BlackPoint administration if you need the decision reviewed.</p></div>:submitted && isStudent ? <div className="mt-5"><StudentPortal onboardingOnly /></div> : submitted ? <div className="mt-5 space-y-4 text-slate-200">

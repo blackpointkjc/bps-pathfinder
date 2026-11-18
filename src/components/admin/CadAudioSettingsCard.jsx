@@ -99,7 +99,7 @@ export default function CadAudioSettingsCard({ user }) {
 
   return (
     <Card className="border-none shadow-xl">
-      <CardHeader className="bg-gradient-to-r from-slate-50 to-amber-50">
+      <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50">
         <CardTitle className="flex items-center gap-2"><Volume2 className="h-5 w-5 text-blue-600" />CAD Audio Announcements</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 p-6">

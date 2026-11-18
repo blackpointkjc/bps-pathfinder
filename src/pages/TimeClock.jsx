@@ -777,9 +777,9 @@ export default function TimeClock() {
   const shiftStatePending = isLoading && activeEntry === undefined;
 
   return (
-    <div className="min-h-screen bg-[#111316] px-3 py-4 text-slate-100 sm:px-5 md:px-8 md:py-7">
+    <div className="min-h-screen bg-[#08111d] px-3 py-4 text-slate-100 sm:px-5 md:px-8 md:py-7">
       <div className="mx-auto max-w-5xl space-y-5 md:space-y-6">
-        <div className="rounded-2xl border border-[#635336] bg-[#111316] px-4 py-4 shadow-xl sm:px-6">
+        <div className="rounded-2xl border border-[#21384f] bg-[#0d1825] px-4 py-4 shadow-xl sm:px-6">
           <h1 className="mb-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Time Clock</h1>
           <p className="text-sm text-slate-400 sm:text-base">Track your shift hours{isAdmin ? '' : ' with live location tracking'}</p>
         </div>
@@ -804,10 +804,10 @@ export default function TimeClock() {
           </div>
         )}
 
-        <Card className="overflow-hidden border border-[#635336] bg-[#111316] text-slate-100 shadow-2xl">
-          <CardHeader className={`border-b border-[#635336] ${activeEntry ? 'bg-[#0f2a22]' : 'bg-[#222321]'}`}>
+        <Card className="overflow-hidden border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-2xl">
+          <CardHeader className={`border-b border-[#29445f] ${activeEntry ? 'bg-[#0f2a22]' : 'bg-[#10263b]'}`}>
             <CardTitle className="flex items-center gap-3 text-xl font-black text-white sm:text-2xl">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${activeEntry ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-blue-500/40 bg-amber-500/10'}`}>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${activeEntry ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-blue-500/40 bg-blue-500/10'}`}>
                 <Clock className={`h-5 w-5 ${activeEntry ? 'text-emerald-300' : 'text-blue-300'}`} />
               </div>
               {shiftStatePending ? 'Checking Current Shift' : activeEntry ? 'Currently On Duty' : 'Ready to Clock In'}
@@ -833,13 +833,13 @@ export default function TimeClock() {
                     <span className="text-sm font-black uppercase tracking-wide text-emerald-200">Active Shift{!isAdmin && ' · Live Tracking Enabled'}</span>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-[#635336] bg-[#111316] p-4">
+                    <div className="rounded-xl border border-[#2b4158] bg-[#0a1521] p-4">
                       <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Clocked In</p>
                       <p className="text-2xl font-black text-white">
                         {format(new Date(activeEntry.clock_in), 'h:mm a')}
                       </p>
                     </div>
-                    <div className="min-w-0 rounded-xl border border-[#635336] bg-[#111316] p-4">
+                    <div className="min-w-0 rounded-xl border border-[#2b4158] bg-[#0a1521] p-4">
                       <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Location</p>
                       <p className="flex min-w-0 items-start gap-2 break-words text-base font-bold leading-6 text-white sm:text-lg">
                         <MapPin className="mt-1 h-4 w-4 shrink-0 text-blue-300" />
@@ -854,7 +854,7 @@ export default function TimeClock() {
                   </div>
                   {!isAdmin && (
                     <>
-                      <div className="mt-4 rounded-xl border border-blue-500/25 bg-amber-500/10 p-3">
+                      <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-3">
                         <p className="flex items-start gap-2 text-xs leading-5 text-blue-200">
                           <Navigation className="mt-0.5 h-4 w-4 shrink-0 animate-pulse" />
                           Pathfinder is receiving your live device location through the shared location service. Keep location permission enabled for accurate status, geofence, and history updates.
@@ -872,7 +872,7 @@ export default function TimeClock() {
 
                 {currentLocationCoords && !isAdmin && (
                   <Card className="border-none shadow-lg overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-amber-50 to-purple-50 border-b">
+                    <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <MapPin className="w-5 h-5 text-blue-600" />
                         Your Current Location
@@ -912,7 +912,7 @@ export default function TimeClock() {
                         </MapContainer>}
                         {tomTomClockFailed&&useTomTomClockMap&&<button type="button" className="absolute bottom-2 left-2 z-[600] rounded border border-amber-500 bg-slate-950 p-2 text-xs text-amber-200" onClick={()=>setTomTomClockFailed(false)}>TomTom unavailable · Retry map</button>}
                       </div>
-                      <div className="p-3 bg-amber-50 border-t border-blue-200">
+                      <div className="p-3 bg-blue-50 border-t border-blue-200">
                         <p className="text-xs text-blue-900">
                           <MapPin className="w-3 h-3 inline mr-1" />
                           GPS: {currentLocationCoords.lat.toFixed(6)}, {currentLocationCoords.lng.toFixed(6)}
@@ -935,7 +935,7 @@ export default function TimeClock() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={4}
-                    className="min-h-[110px] resize-none border-[#635336] bg-[#111316] text-white placeholder:text-slate-500 focus-visible:ring-blue-500"
+                    className="min-h-[110px] resize-none border-[#36516b] bg-[#091522] text-white placeholder:text-slate-500 focus-visible:ring-blue-500"
                   />
                 </div>
 
@@ -995,7 +995,7 @@ export default function TimeClock() {
                 </div>
 
                 {selectedLocation && !isAdmin && (
-                  <div className="bg-amber-50 border-2 border-blue-300 rounded-lg p-4">
+                  <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div>
@@ -1011,7 +1011,7 @@ export default function TimeClock() {
                 <Button
                   onClick={handleClockIn}
                   disabled={clockInMutation.isPending || verifyingLocation || !selectedLocation}
-                  className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-stone-800 text-white py-6 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-6 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {verifyingLocation ? (
                     <>
@@ -1042,8 +1042,8 @@ export default function TimeClock() {
             {/* The existing active shift display card starts here. Modified its className. */}
             {/* This card is now nested inside the activeEntry check. */}
             
-            <Card className="border border-[#635336] bg-[#111316] text-slate-100 shadow-xl"> {/* New Card for Switch Site */}
-              <CardHeader className="border-b border-[#635336]">
+            <Card className="border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-xl"> {/* New Card for Switch Site */}
+              <CardHeader className="border-b border-[#29445f]">
                 <CardTitle className="flex items-center gap-2 text-blue-300">
                   <MapPin className="h-5 w-5" />
                   Switch Site
@@ -1057,7 +1057,7 @@ export default function TimeClock() {
                   <div className="space-y-2">
                     <Label htmlFor="new_site">Select New Site</Label>
                     <Select value={selectedNewSite} onValueChange={setSelectedNewSite}>
-                      <SelectTrigger id="new_site" className="min-h-[46px] border-[#635336] bg-[#111316] text-white">
+                      <SelectTrigger id="new_site" className="min-h-[46px] border-[#36516b] bg-[#091522] text-white">
                         <SelectValue placeholder="Choose a site..." />
                       </SelectTrigger>
                       <SelectContent className="max-h-[60vh]">
@@ -1078,7 +1078,7 @@ export default function TimeClock() {
                   <Button
                     onClick={handleSwitchSite}
                     disabled={switchSiteMutation.isPending || !selectedNewSite || switchingSite}
-                    className="w-full bg-amber-600 hover:bg-amber-700"
+                    className="w-full bg-blue-600 hover:bg-blue-700"
                   >
                     {switchSiteMutation.isPending || switchingSite ? 'Switching Sites...' : 'Switch Site'}
                   </Button>
@@ -1088,8 +1088,8 @@ export default function TimeClock() {
           </>
         )}
 
-        <Card className="border border-[#635336] bg-[#111316] text-slate-100 shadow-xl">
-          <CardHeader className="border-b border-[#635336]">
+        <Card className="border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-xl">
+          <CardHeader className="border-b border-[#29445f]">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-blue-600" />
@@ -1100,7 +1100,7 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={handlePrintTimeEntries}
-                  className="border-[#635336] bg-[#111316] text-blue-200 hover:bg-[#222321]"
+                  className="border-[#36516b] bg-[#091522] text-blue-200 hover:bg-[#10263b]"
                 >
                   <Printer className="w-4 h-4 mr-2" />
                   Print
@@ -1117,7 +1117,7 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={setThisWeek}
-                  className="border-[#635336] bg-[#111316] text-xs text-slate-100 hover:bg-[#222321] hover:text-white"
+                  className="border-[#36516b] bg-[#091522] text-xs text-slate-100 hover:bg-[#16304a] hover:text-white"
                 >
                   This Week
                 </Button>
@@ -1125,7 +1125,7 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={setLastWeek}
-                  className="border-[#635336] bg-[#111316] text-xs text-slate-100 hover:bg-[#222321] hover:text-white"
+                  className="border-[#36516b] bg-[#091522] text-xs text-slate-100 hover:bg-[#16304a] hover:text-white"
                 >
                   Last Week
                 </Button>
@@ -1133,7 +1133,7 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={setLast2Weeks}
-                  className="border-[#635336] bg-[#111316] text-xs text-slate-100 hover:bg-[#222321] hover:text-white"
+                  className="border-[#36516b] bg-[#091522] text-xs text-slate-100 hover:bg-[#16304a] hover:text-white"
                 >
                   Last 2 Weeks
                 </Button>
@@ -1146,7 +1146,7 @@ export default function TimeClock() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="border-[#635336] bg-[#111316] text-sm text-white"
+                    className="border-[#36516b] bg-[#091522] text-sm text-white"
                   />
                 </div>
                 <div className="space-y-1">
@@ -1156,7 +1156,7 @@ export default function TimeClock() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="border-[#635336] bg-[#111316] text-sm text-white"
+                    className="border-[#36516b] bg-[#091522] text-sm text-white"
                   />
                 </div>
               </div>
@@ -1165,7 +1165,7 @@ export default function TimeClock() {
           <CardContent className="pt-6">
             <div className="space-y-3">
               {recentEntries?.map((entry) => (
-                <div key={entry.id} className="flex flex-col gap-3 rounded-xl border border-[#635336] bg-[#111316] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div key={entry.id} className="flex flex-col gap-3 rounded-xl border border-[#2b4158] bg-[#0a1521] p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-bold text-white">
                       {format(new Date(entry.clock_in), 'MMM d, yyyy')}
@@ -1199,7 +1199,7 @@ export default function TimeClock() {
         </Card>
 
         {!isAdmin && (
-          <div className="rounded-xl border border-blue-500/25 bg-amber-500/10 p-4">
+          <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4">
             <p className="text-sm leading-6 text-blue-200">
               <strong>Duty Tracking:</strong> Pathfinder begins live GPS and one-minute history only after you clock in and stops tracking when you clock out. Location permission must remain available during the shift.
             </p>

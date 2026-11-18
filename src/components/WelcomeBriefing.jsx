@@ -68,11 +68,11 @@ function displayName(user) {
 
 function BriefCard({ icon: Icon, label, value, detail, tone = 'blue', onClick }) {
   const toneClasses = {
-    blue: 'border-blue-800/60 bg-stone-900/25 text-blue-300',
+    blue: 'border-blue-800/60 bg-blue-950/25 text-blue-300',
     amber: 'border-amber-800/60 bg-amber-950/25 text-amber-300',
     red: 'border-red-800/60 bg-red-950/25 text-red-300',
     emerald: 'border-emerald-800/60 bg-emerald-950/25 text-emerald-300',
-    violet: 'border-violet-800/60 bg-stone-900/25 text-violet-300',
+    violet: 'border-violet-800/60 bg-violet-950/25 text-violet-300',
     slate: 'border-slate-700 bg-slate-900/70 text-slate-300',
   }[tone] || 'border-slate-700 bg-slate-900/70 text-slate-300';
   const Tag = onClick ? 'button' : 'div';
@@ -559,25 +559,25 @@ export default function WelcomeBriefing({ user }) {
 
   return createPortal(
     <>
-    {browsingBriefing && !open && <div role="status" className="fixed bottom-3 left-3 right-3 z-[2147481000] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400 bg-[#191a1b] p-3 text-xs font-semibold text-amber-100 shadow-2xl">
+    {browsingBriefing && !open && <div role="status" className="fixed bottom-3 left-3 right-3 z-[2147481000] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400 bg-[#111d2b] p-3 text-xs font-semibold text-amber-100 shadow-2xl">
       <span>Shift briefing not acknowledged. Return to finish your session briefing.</span>
       <button type="button" onClick={() => { setBrowsingBriefing(false); setOpen(true); }} className="min-h-10 rounded-lg border border-amber-400 px-3 py-2 font-black">Return to briefing</button>
     </div>}
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pf-session-briefing-overlay fixed inset-0 z-[2147482000] flex items-center justify-center overflow-hidden bg-black/75 p-2 backdrop-blur-md sm:p-4">
-          <motion.div initial={{ opacity: 0, scale: .96, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 12 }} transition={{ type: 'spring', damping: 24, stiffness: 260 }} role="dialog" aria-modal="true" aria-labelledby="pf-session-briefing-title" className="pf-session-briefing-dialog flex h-[min(92dvh,900px)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-[#635336] bg-gradient-to-br from-[#111316] via-[#111316] to-[#090a0c] text-white shadow-[0_40px_120px_rgba(0,0,0,.65)]">
-            <div className="relative flex-none overflow-hidden border-b border-[#635336] px-4 py-3 sm:px-6 sm:py-4">
-              <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl" />
+          <motion.div initial={{ opacity: 0, scale: .96, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 12 }} transition={{ type: 'spring', damping: 24, stiffness: 260 }} role="dialog" aria-modal="true" aria-labelledby="pf-session-briefing-title" className="pf-session-briefing-dialog flex h-[min(92dvh,900px)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-[#274764] bg-gradient-to-br from-[#0b1725] via-[#09131f] to-[#060c14] text-white shadow-[0_40px_120px_rgba(0,0,0,.65)]">
+            <div className="relative flex-none overflow-hidden border-b border-[#21384f] px-4 py-3 sm:px-6 sm:py-4">
+              <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-36 w-36 rounded-full bg-amber-400/5 blur-3xl" />
               <div className="relative flex items-start gap-3 sm:gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-gradient-to-br from-amber-500/20 to-amber-400/10 shadow-lg sm:h-12 sm:w-12"><Sparkles className="h-6 w-6 text-cyan-300" /></div>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-gradient-to-br from-blue-500/20 to-cyan-400/10 shadow-lg sm:h-12 sm:w-12"><Sparkles className="h-6 w-6 text-cyan-300" /></div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[9px] font-black uppercase tracking-[.22em] text-cyan-300">Pathfinder Start-of-Session Brief</div>
                   <h1 id="pf-session-briefing-title" className="mt-1 break-words text-xl font-black tracking-tight sm:text-2xl">Welcome, {displayName(user)}</h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                     <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1">{offlineText}</span>
-                    <span className={`rounded-full border px-2.5 py-1 font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-stone-900/40 text-blue-300'}`}>STATUS: {String(status).toUpperCase()}</span>
+                    <span className={`rounded-full border px-2.5 py-1 font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-blue-950/40 text-blue-300'}`}>STATUS: {String(status).toUpperCase()}</span>
                   </div>
                 </div>
 
@@ -598,8 +598,8 @@ export default function WelcomeBriefing({ user }) {
                       <button type="button" onClick={() => { propertyRetryRef.current = 0; propertySourcesFailed ? refreshPropertyAlerts() : loadRef.current?.(); }} disabled={propertyLoading} className="shrink-0 rounded-lg border border-amber-500/60 bg-amber-900/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-100 hover:bg-amber-900/70">Retry</button>
                     </div>
                   )}
-                  <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-r from-stone-900/20 to-stone-900/20 p-3 sm:p-4">
-                    <div className="flex flex-wrap items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-200">Duty Status Snapshot</div><span className={`ml-auto rounded-full border px-2.5 py-1 text-[10px] font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-stone-900/50 text-blue-300'}`}>{String(status).toUpperCase()}</span></div>
+                  <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 p-3 sm:p-4">
+                    <div className="flex flex-wrap items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-200">Duty Status Snapshot</div><span className={`ml-auto rounded-full border px-2.5 py-1 text-[10px] font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-blue-950/50 text-blue-300'}`}>{String(status).toUpperCase()}</span></div>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                       <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500"><Shield className="h-3.5 w-3.5"/>CAD Status</div><div className="mt-1 text-sm font-black text-white">{status}</div><div className="mt-1 text-[10px] text-slate-400">{currentCall ? `Assigned: ${currentCall}` : 'No active CAD call assignment'}</div></div>
                       <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500"><Users className="h-3.5 w-3.5"/>Partner / Team</div><div className="mt-1 truncate text-sm font-black text-white">{partnerName || 'No partner assigned'}</div><div className="mt-1 text-[10px] text-slate-400">{brief.unit?.union_id ? 'CAD team union active' : brief.shift?.partner_officer_email ? 'Scheduled partner' : 'Operating solo'}</div></div>
@@ -648,14 +648,14 @@ export default function WelcomeBriefing({ user }) {
                           return <div key={row.email} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3">
                             <div className="flex items-start gap-2"><span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.45)]"/><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-white">{name}</div><div className="mt-0.5 text-[9px] font-bold text-blue-300">{liveStatus}</div></div></div>
                             <div className="mt-2 text-[10px] text-slate-400">{row.entry?.location || row.unit?.current_call_info || 'On duty'}</div>
-                            {(row.unit?.partner_name || row.vehicle?.vehicle_label) && <div className="mt-2 flex flex-wrap gap-1.5">{row.unit?.partner_name && <span className="rounded border border-blue-800/50 bg-stone-900/30 px-1.5 py-0.5 text-[9px] text-blue-300">w/ {row.unit.partner_name}</span>}{row.vehicle?.vehicle_label && <span className="rounded border border-amber-800/50 bg-amber-950/30 px-1.5 py-0.5 text-[9px] text-amber-300">{row.vehicle.vehicle_label}</span>}</div>}
+                            {(row.unit?.partner_name || row.vehicle?.vehicle_label) && <div className="mt-2 flex flex-wrap gap-1.5">{row.unit?.partner_name && <span className="rounded border border-blue-800/50 bg-blue-950/30 px-1.5 py-0.5 text-[9px] text-blue-300">w/ {row.unit.partner_name}</span>}{row.vehicle?.vehicle_label && <span className="rounded border border-amber-800/50 bg-amber-950/30 px-1.5 py-0.5 text-[9px] text-amber-300">{row.vehicle.vehicle_label}</span>}</div>}
                           </div>;
                         })}
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-900/40 bg-stone-900/10 p-2.5">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-900/40 bg-cyan-950/10 p-2.5">
                     <span role="status" className="text-[10px] font-semibold text-cyan-200">{briefingUpdatedAt ? `Activity updated ${briefingUpdatedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}` : 'Loading current briefing activity'}</span>
                     <button type="button" disabled={briefingRefreshing} onClick={refreshActivity} className="min-h-10 rounded-lg border border-cyan-600/70 px-3 text-xs font-bold text-cyan-100 disabled:opacity-50">{briefingRefreshing ? 'Refreshing…' : 'Refresh briefing'}</button>
                   </div>
@@ -668,7 +668,7 @@ export default function WelcomeBriefing({ user }) {
                     <BriefCard icon={Siren} label="Property Calls While Away" value={propertyLoading ? 'Loading…' : propertySourcesFailed ? (brief.propertyAlerts.length || 'Unavailable') : brief.propertyAlerts.length} detail={propertySourcesFailed ? 'Retrying property alerts; last loaded results are retained.' : brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={propertySourcesFailed ? 'amber' : brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
 
-                  {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0 || brief.tasks.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-stone-900/10 p-3 sm:p-4">
+                  {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0 || brief.tasks.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-violet-950/10 p-3 sm:p-4">
                     <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-violet-200">Updates Requiring Attention</div></div>
                     <div className="mt-2 space-y-2">
                       {[...brief.appUpdates, ...brief.updates].slice(0, 4).map(item => <div key={`update-${item.id}`} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3"><div className="text-xs font-black text-white">{item.title || item.type || 'System Update'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || item.description || 'A new update is available in Pathfinder.'}</div></div>)}
@@ -690,16 +690,16 @@ export default function WelcomeBriefing({ user }) {
               )}
             </div>
 
-            <div className="pf-session-briefing-footer min-w-0 flex-none border-t border-[#635336] bg-[#111316]/95 px-3 py-2.5 sm:px-5">
+            <div className="pf-session-briefing-footer min-w-0 flex-none border-t border-[#21384f] bg-[#07111c]/95 px-3 py-2.5 sm:px-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500"><CheckCircle2 className="h-3.5 w-3.5"/><span>Review your briefing, then acknowledge it to start your session.</span></div>
                 <div className="pf-session-briefing-actions flex min-w-0 gap-2 sm:ml-auto">
-                  <button type="button" onClick={() => go('OfficerInbox')} disabled={startingSession} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-blue-700/60 bg-stone-900/30 px-4 text-xs font-black text-blue-200 hover:bg-stone-900/40 disabled:opacity-50 sm:flex-none"><MessageCircle className="h-4 w-4"/>INBOX</button>
-                  <button type="button" onClick={startSession} disabled={startingSession} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-600 px-4 text-xs font-black text-white shadow-lg hover:from-amber-500 hover:to-amber-500 disabled:cursor-wait disabled:opacity-70 sm:flex-none">{startingSession ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"/>STARTING…</> : <><CheckCircle2 className="h-4 w-4"/>START SESSION</>}</button>
+                  <button type="button" onClick={() => go('OfficerInbox')} disabled={startingSession} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-blue-700/60 bg-blue-950/30 px-4 text-xs font-black text-blue-200 hover:bg-blue-900/40 disabled:opacity-50 sm:flex-none"><MessageCircle className="h-4 w-4"/>INBOX</button>
+                  <button type="button" onClick={startSession} disabled={startingSession} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 text-xs font-black text-white shadow-lg hover:from-cyan-500 hover:to-blue-500 disabled:cursor-wait disabled:opacity-70 sm:flex-none">{startingSession ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"/>STARTING…</> : <><CheckCircle2 className="h-4 w-4"/>START SESSION</>}</button>
                 </div>
               </div>
               {startSessionError && <div className="mt-2 rounded-lg border border-red-700/60 bg-red-950/40 px-3 py-2 text-[11px] font-bold text-red-200">{startSessionError}</div>}
-              <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-800"><motion.div className="h-full origin-left bg-gradient-to-r from-amber-400 to-amber-500" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 30, ease: 'linear' }} /></div>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-800"><motion.div className="h-full origin-left bg-gradient-to-r from-cyan-400 to-blue-500" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 30, ease: 'linear' }} /></div>
             </div>
           </motion.div>
         </motion.div>

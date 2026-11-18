@@ -151,7 +151,7 @@ export default function ActiveTracker() {
           </Card>
         )}
 
-        <div className="bg-amber-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
             <strong>Note:</strong> Officer locations update automatically while they are signed into the app. 
             Live location comes from the same canonical Pathfinder GPS/session feed used by CAD. This page refreshes every 30 seconds and also refreshes when you return to the window.

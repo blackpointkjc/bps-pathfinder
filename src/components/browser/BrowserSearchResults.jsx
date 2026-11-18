@@ -35,7 +35,7 @@ export default function BrowserSearchResults({ results = [], busyDomain = '', on
                 type="button"
                 onClick={() => onOpen(result.url, true, 'search')}
                 disabled={busyDomain === result.domain}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-cyan-700 bg-amber-600/15 px-3 text-xs font-semibold text-cyan-100 transition hover:bg-amber-600/25 disabled:opacity-60"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-cyan-700 bg-cyan-600/15 px-3 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-600/25 disabled:opacity-60"
               >
                 {busyDomain === result.domain ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
                 Open source

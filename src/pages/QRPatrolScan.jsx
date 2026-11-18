@@ -89,13 +89,13 @@ function HourlyRoundsTracker({ siteCheckpoints, todayScans, shiftStart, activeSi
         <CardContent className="p-0">
           <div className="divide-y">
             {slotsWithStatus.map((slot) => (
-              <div key={slot.roundNumber} className={`px-4 py-3 ${slot.isOpen ? 'bg-amber-50' : ''}`}>
+              <div key={slot.roundNumber} className={`px-4 py-3 ${slot.isOpen ? 'bg-blue-50' : ''}`}>
                 {/* Round header */}
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                     slot.complete ? 'bg-green-500 text-white' :
                     slot.isOpen && slot.partial ? 'bg-amber-400 text-white' :
-                    slot.isOpen ? 'bg-amber-500 text-white' :
+                    slot.isOpen ? 'bg-blue-500 text-white' :
                     slot.missed ? 'bg-red-400 text-white' :
                     'bg-slate-200 text-slate-500'
                   }`}>
@@ -491,9 +491,9 @@ export default function QRPatrolScan() {
   };
 
   return (
-    <div className="bps-command-page mx-auto max-w-3xl space-y-4 bg-[#090a0c] p-4 pb-10 text-white md:p-6">
+    <div className="bps-command-page mx-auto max-w-3xl space-y-4 bg-[#080d16] p-4 pb-10 text-white md:p-6">
       <div className="flex items-center gap-3 mb-2">
-        <div className="bg-amber-600 p-2 rounded-xl">
+        <div className="bg-blue-600 p-2 rounded-xl">
           <QrCode className="w-6 h-6 text-white" />
         </div>
         <div>
@@ -538,7 +538,7 @@ export default function QRPatrolScan() {
       {!scanning && !processing && (
         <Button
           onClick={startCamera}
-          className="w-full h-20 text-xl bg-amber-600 hover:bg-amber-700 rounded-2xl shadow-lg"
+          className="w-full h-20 text-xl bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg"
         >
           <Camera className="w-8 h-8 mr-3" />
           Scan QR Code
@@ -546,7 +546,7 @@ export default function QRPatrolScan() {
       )}
 
       {processing && (
-        <Card className="border-2 border-blue-300 bg-amber-50">
+        <Card className="border-2 border-blue-300 bg-blue-50">
           <CardContent className="p-6 text-center">
             <div className="w-8 h-8 border-4 border-blue-400 border-t-blue-700 rounded-full animate-spin mx-auto mb-3" />
             <p className="text-blue-800 font-semibold">Processing scan...</p>
@@ -556,11 +556,11 @@ export default function QRPatrolScan() {
 
       {scanning && (
         <Card className="border-2 border-blue-400 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-amber-600">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-blue-600">
             <CardTitle className="text-white flex items-center gap-2 text-base">
               <ScanLine className="w-5 h-5" /> Point camera at QR code
             </CardTitle>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-amber-700" onClick={stopCamera}>
+            <Button variant="ghost" size="sm" className="text-white hover:bg-blue-700" onClick={stopCamera}>
               <X className="w-5 h-5" />
             </Button>
           </CardHeader>
@@ -601,7 +601,7 @@ export default function QRPatrolScan() {
                   <Badge className={`${lastScan.status === 'success' ? 'bg-green-100 text-green-800 border-green-300' : lastScan.status === 'outside_property' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-amber-100 text-amber-800 border-amber-300'}`}>
                     {lastScan.status === 'success' ? '✅ Logged Successfully' : lastScan.status.replace(/_/g, ' ')}
                   </Badge>
-                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={startCamera}>
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={startCamera}>
                     <Camera className="w-4 h-4 mr-1" /> Scan Next
                   </Button>
                 </div>

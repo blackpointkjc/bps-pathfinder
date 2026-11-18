@@ -225,7 +225,7 @@ export default function ZebraScanner({ onDataScanned, recordType = "person", use
   };
 
   return (
-    <Card className="border-2 border-blue-500 bg-gradient-to-br from-amber-50 to-amber-50">
+    <Card className="border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export default function ZebraScanner({ onDataScanned, recordType = "person", use
         <div className="relative">
           <div className="bg-white border-4 border-blue-400 rounded-lg p-6 text-center">
             <div className="flex items-center justify-center mb-3">
-              <div className="w-12 h-12 bg-amber-600 rounded-full flex items-center justify-center animate-pulse">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center animate-pulse">
                 <Scan className="w-6 h-6 text-white" />
               </div>
             </div>

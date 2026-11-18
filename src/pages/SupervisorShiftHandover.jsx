@@ -56,9 +56,9 @@ export default function SupervisorShiftHandover() {
   if (user && !isSupervisor(user)) return <div className="p-8 text-center text-slate-400">Supervisor access required.</div>;
 
   return <div className="min-h-full bg-[radial-gradient(circle_at_top_left,_#0e2a31_0,_#07111d_45%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6"><div className="mx-auto max-w-[1500px] space-y-5">
-    <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#191a1b] via-[#111316] to-[#111316] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
+    <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#0f2934] via-[#0b1725] to-[#07101c] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
       <div className="min-w-0"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 shrink-0 text-cyan-300"/><h1 className="break-words text-xl font-black md:text-2xl">Duty Supervisor Shift Handover</h1></div><p className="mt-1 max-w-3xl break-words text-sm leading-5 text-slate-400">Assigned-platoon and operating-area handoff between duty supervisors. Use this for staffing, active calls, serious incidents, safety issues, unresolved problems, fleet/equipment concerns, and follow-up items.</p></div>
-      <Button className="w-full shrink-0 rounded-xl bg-amber-700 hover:bg-amber-600 sm:w-auto" onClick={()=>setShowForm(value=>!value)}><Plus className="mr-2 h-4 w-4"/>New Supervisor Handover</Button>
+      <Button className="w-full shrink-0 rounded-xl bg-cyan-700 hover:bg-cyan-600 sm:w-auto" onClick={()=>setShowForm(value=>!value)}><Plus className="mr-2 h-4 w-4"/>New Supervisor Handover</Button>
     </div>
 
     {showForm && <Card className="border-slate-700 bg-slate-900 text-slate-100"><CardHeader><CardTitle className="break-words">New Duty Supervisor Handover</CardTitle></CardHeader><CardContent><form className="space-y-4" onSubmit={e=>{e.preventDefault();create.mutate();}}>

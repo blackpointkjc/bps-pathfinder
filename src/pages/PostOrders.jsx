@@ -78,7 +78,7 @@ export default function PostOrders() {
 
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <WorkspaceHeader eyebrow="Field operations / Site reference" title="Post Orders" description="Site instructions, patrol requirements, contacts and the chain of command." metrics={[
           {label:'Active properties',value:locations?.length||0},
@@ -128,7 +128,7 @@ export default function PostOrders() {
           <div className="space-y-5">
             <nav aria-label="Post order contents" className="sticky top-0 z-10 flex flex-wrap gap-2 rounded-xl border border-slate-600 bg-slate-950/95 p-3 shadow-lg backdrop-blur">{[['contacts','Contacts & command'],['overview','Site overview'],['general','Company orders'],['patrol','Patrol schedule'],['duties','Special duties'],['emergency','Emergency contacts']].map(([id,title])=><a key={id} href={'#post-'+id} className="rounded-lg px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-slate-800">{title}</a>)}</nav>
             {/* Site Header */}
-            <Card className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-xl bg-gradient-to-r from-stone-900 to-slate-900 text-white">
+            <Card className="scroll-mt-24 border-slate-700 bg-slate-900 text-slate-100 shadow-xl bg-gradient-to-r from-cyan-950 to-slate-900 text-white">
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <Shield className="w-8 h-8" />
@@ -248,7 +248,7 @@ export default function PostOrders() {
                     </a>
                   </div>
                   {selectedPostOrder.non_emergency_police && (
-                    <div className="p-3 bg-stone-900/40 rounded-lg border border-blue-700">
+                    <div className="p-3 bg-blue-950/40 rounded-lg border border-blue-700">
                       <p className="text-sm font-semibold text-blue-200 mb-1">Non-Emergency:</p>
                       <a href={`tel:${selectedPostOrder.non_emergency_police}`} className="text-xl font-bold text-blue-600">
                         {selectedPostOrder.non_emergency_police}

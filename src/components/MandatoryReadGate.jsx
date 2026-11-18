@@ -112,8 +112,8 @@ export default function MandatoryReadGate({ user }) {
   if (current.type === 'schedule') {
     return (
       <div className="pointer-events-none fixed left-1/2 top-5 z-[10000] w-[min(94vw,760px)] -translate-x-1/2">
-        <div className="pointer-events-auto overflow-hidden rounded-2xl border border-amber-400/60 bg-[#111316]/98 text-white shadow-2xl backdrop-blur-xl">
-          <div className="flex items-start gap-3 border-b border-slate-800 bg-[#111316] p-4">
+        <div className="pointer-events-auto overflow-hidden rounded-2xl border border-amber-400/60 bg-[#09121f]/98 text-white shadow-2xl backdrop-blur-xl">
+          <div className="flex items-start gap-3 border-b border-slate-800 bg-[#0d1726] p-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300"><AlertTriangle className="h-5 w-5"/></div>
             <div className="min-w-0 flex-1"><div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">{record.source_name || 'System Scheduling'} · Acknowledgment Required</div><h2 className="mt-1 break-words text-lg font-black">{title}</h2><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{message}</p></div>
           </div>
@@ -125,9 +125,9 @@ export default function MandatoryReadGate({ user }) {
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-5">
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-amber-500/50 bg-[#111316] text-white shadow-2xl">
-        <div className="flex items-center gap-3 border-b border-slate-800 bg-[#111316] p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-blue-300">
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-amber-500/50 bg-[#09121f] text-white shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-slate-800 bg-[#0d1726] p-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
             <MessageCircle className="h-5 w-5"/>
           </div>
           <div className="min-w-0 flex-1">

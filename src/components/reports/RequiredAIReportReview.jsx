@@ -135,7 +135,7 @@ export default function RequiredAIReportReview({ label = 'Review Report', manage
           <p className="break-words text-xs leading-5 text-slate-400">{optional ? 'Use the on-device review to polish the report before submitting. You can submit without running it.' : 'Review the suggested wording before submitting. Any later edit requires another review.'}</p>
         </div>
       </div>
-      <Button ref={buttonRef} type="button" onClick={review} disabled={reviewing} className={`h-auto w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-5 sm:w-auto ${reviewed ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-amber-700 hover:bg-amber-600'}`}>
+      <Button ref={buttonRef} type="button" onClick={review} disabled={reviewing} className={`h-auto w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-5 sm:w-auto ${reviewed ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
         {reviewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : reviewed ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
         {reviewing ? 'Reviewing Report…' : reviewed ? 'AI Review Complete' : label}
       </Button>

@@ -901,7 +901,7 @@ export default function ClientReports() {
                 {archiveTypes.map(type => {
                   const Icon = type.icon;
                   const active = selectedArchiveType === type.value;
-                  return <button key={type.value} type="button" onClick={() => setSelectedArchiveType(type.value)} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition ${active ? 'border-blue-400 bg-amber-600 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500'}`}><Icon className="h-4 w-4" />{type.label}<span className="rounded-full bg-black/20 px-1.5 py-0.5">{reports?.[type.value]?.length || 0}</span></button>;
+                  return <button key={type.value} type="button" onClick={() => setSelectedArchiveType(type.value)} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition ${active ? 'border-blue-400 bg-blue-600 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500'}`}><Icon className="h-4 w-4" />{type.label}<span className="rounded-full bg-black/20 px-1.5 py-0.5">{reports?.[type.value]?.length || 0}</span></button>;
                 })}
               </div>
 
@@ -910,7 +910,7 @@ export default function ClientReports() {
                   <div key={report.id} className="rounded-xl border border-slate-700 bg-slate-800 p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="mb-1 flex flex-wrap items-center gap-2"><h4 className="font-semibold text-white">{getOfficerName(getReportOfficerEmail(report))}</h4><Badge className="border border-blue-800 bg-stone-900 text-blue-200">{report.location}</Badge></div>
+                        <div className="mb-1 flex flex-wrap items-center gap-2"><h4 className="font-semibold text-white">{getOfficerName(getReportOfficerEmail(report))}</h4><Badge className="border border-blue-800 bg-blue-950 text-blue-200">{report.location}</Badge></div>
                         <p className="text-sm text-slate-400">
                           {format(new Date(
                             report.shift_date || report.incident_date || report.notice_date || 
@@ -1094,7 +1094,7 @@ export default function ClientReports() {
                       <Badge className={
                         viewingReport.severity === 'critical' ? 'bg-red-600' :
                         viewingReport.severity === 'high' ? 'bg-orange-600' :
-                        viewingReport.severity === 'medium' ? 'bg-yellow-600' : 'bg-amber-600'
+                        viewingReport.severity === 'medium' ? 'bg-yellow-600' : 'bg-blue-600'
                       }>
                         {viewingReport.severity?.toUpperCase()}
                       </Badge>

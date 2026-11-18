@@ -53,7 +53,7 @@ export default function PWAInstallPrompt() {
     <Card className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 shadow-2xl border-2 border-blue-500 animate-in slide-in-from-bottom">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center">
+          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
             <Smartphone className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1">
@@ -65,7 +65,7 @@ export default function PWAInstallPrompt() {
               <Button 
                 onClick={handleInstall}
                 size="sm"
-                className="bg-amber-600 hover:bg-amber-700"
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 <Download className="w-4 h-4 mr-1" />
                 Install

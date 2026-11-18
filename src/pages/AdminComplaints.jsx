@@ -130,9 +130,9 @@ This is a formal notification and will be part of your personnel file pending in
   }
 
   return (
-    <div className={embedded ? "bps-command-page min-h-0 bg-[#090a0c] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8"}>
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
       <div className="mx-auto w-full max-w-6xl space-y-4">
-        <div className={`flex items-center justify-between gap-3 ${embedded ? 'rounded-xl border border-slate-700 bg-[#111316] p-3' : ''}`}>
+        <div className={`flex items-center justify-between gap-3 ${embedded ? 'rounded-xl border border-slate-700 bg-[#0a1724] p-3' : ''}`}>
           <div>
             <div className="text-[9px] font-black uppercase tracking-[.16em] text-red-300">Personnel Quality</div>
             <h1 className="mt-0.5 flex items-center gap-2 text-xl font-black text-white">
@@ -248,7 +248,7 @@ This is a formal notification and will be part of your personnel file pending in
                           <Button
                             size="sm"
                             onClick={() => setEditingComplaint(comp)}
-                            className="bg-amber-600 hover:bg-amber-700"
+                            className="bg-blue-600 hover:bg-blue-700"
                           >
                             <FileText className="w-4 h-4 mr-1" />
                             Update Investigation
@@ -490,7 +490,7 @@ This is a formal notification and will be part of your personnel file pending in
                       editingComplaint.investigation_notes
                     )}
                     disabled={updateComplaintMutation.isPending}
-                    className="bg-amber-600 hover:bg-amber-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     {updateComplaintMutation.isPending ? 'Updating...' : 'Update Investigation'}
                   </Button>

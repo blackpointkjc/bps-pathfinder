@@ -45,6 +45,6 @@ export default function PublishedUpdateNotice() {
   };
   return <aside role="status" aria-live="polite" className="fixed inset-x-3 top-3 z-[100200] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-400 bg-slate-950 px-4 py-3 text-white shadow-2xl" style={{ top: 'max(12px, env(safe-area-inset-top))' }}>
     <div><strong className="block text-sm">Please refresh</strong><p className="text-xs text-slate-300">A new Pathfinder update has been published. Save your work, then refresh.</p></div>
-    <button type="button" disabled={refreshing} onClick={refresh} className="min-h-10 rounded-lg bg-amber-400 px-4 text-sm font-bold text-slate-950 disabled:opacity-60">{refreshing ? 'Refreshing…' : 'Refresh now'}</button>
+    <button type="button" disabled={refreshing} onClick={refresh} className="min-h-10 rounded-lg bg-cyan-400 px-4 text-sm font-bold text-slate-950 disabled:opacity-60">{refreshing ? 'Refreshing…' : 'Refresh now'}</button>
   </aside>;
 }

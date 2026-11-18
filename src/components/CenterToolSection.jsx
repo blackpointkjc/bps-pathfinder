@@ -39,7 +39,7 @@ export default function CenterToolSection({ tools, defaultTool, queryParam = 'to
   return (
     <div className={`w-full ${workspaceClassName} ${fullCanvas ? 'flex h-[65dvh] min-h-[320px] xl:h-[calc(100vh-150px)] xl:min-h-[680px] flex-col' : ''}`}>
       {safeTools.length > 1 && (
-        <div className="flex min-h-10 items-center gap-2 border-b border-slate-800/70 bg-[#111316] px-2 py-1 md:px-3">
+        <div className="flex min-h-10 items-center gap-2 border-b border-slate-800/70 bg-[#08111e] px-2 py-1 md:px-3">
           {!collapsed && <div className="min-w-0 flex-1">
             <AdaptiveSelector
               label="Page"

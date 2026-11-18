@@ -132,7 +132,7 @@ export default function OfficerAvailability() {
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
-              className="w-full bg-amber-600 hover:bg-amber-700"
+              className="w-full bg-blue-600 hover:bg-blue-700"
             >
               <Save className="w-4 h-4 mr-2" />
               {saveMutation.isPending ? 'Submitting...' : 'Submit Availability for Approval'}

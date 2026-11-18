@@ -23,7 +23,7 @@ export default function UnitDutyBoard({ units = [], calls = [], fullPage = false
     const [platoon,setPlatoon]=useState('ALL');
     const [expanded, setExpanded] = useState(fullPage);
     const rows = dutyRows(units, calls, query, status).filter(u=>platoon==='ALL'||(u.platoon||u.oversight_platoon)===platoon);
-    return <section aria-label="Unit duty status" className="min-w-0 flex-none border-b border-slate-700 bg-[#111316] p-2 text-slate-200">
+    return <section aria-label="Unit duty status" className="min-w-0 flex-none border-b border-slate-700 bg-[#07111d] p-2 text-slate-200">
         <div className="flex flex-wrap items-center gap-2">
             <button type="button" hidden={fullPage} aria-expanded={expanded} onClick={() => setExpanded(v => !v)} className="rounded border border-slate-600 px-3 py-1.5 text-xs font-bold">
                 {expanded ? 'Hide units' : 'All units'} · {rows.length}

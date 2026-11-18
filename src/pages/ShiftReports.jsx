@@ -794,7 +794,7 @@ export default function ShiftReports() {
 
         {showForm && canSubmit && ( // Only show form if canSubmit is true
           <Card className="border-none shadow-xl">
-            <CardHeader className={editingReport ? "bg-gradient-to-r from-amber-50 to-purple-50" : "bg-gradient-to-r from-emerald-50 to-teal-50"}>
+            <CardHeader className={editingReport ? "bg-gradient-to-r from-blue-50 to-purple-50" : "bg-gradient-to-r from-emerald-50 to-teal-50"}>
               <CardTitle className="flex items-center gap-2">
                 {editingReport ? (
                   <>
@@ -1017,7 +1017,7 @@ export default function ShiftReports() {
                   <Button
                     type="submit"
                     disabled={saveReportMutation.isPending || uploading || saving}
-                    className={editingReport ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}
+                    className={editingReport ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}
                   >
                     {saveReportMutation.isPending ? 'Submitting...' : (editingReport ? 'Update Report' : 'Submit Report')}
                   </Button>
@@ -1125,7 +1125,7 @@ export default function ShiftReports() {
                               onClick={() => printReport(report)}
                               size="sm"
                               variant="outline"
-                              className="text-blue-700 border-blue-300 hover:bg-amber-50"
+                              className="text-blue-700 border-blue-300 hover:bg-blue-50"
                             >
                               <Printer className="w-4 h-4 mr-1" />
                               Print
@@ -1213,7 +1213,7 @@ export default function ShiftReports() {
                               onClick={() => printReport(report)}
                               size="sm"
                               variant="outline"
-                              className="text-blue-700 border-blue-300 hover:bg-amber-50"
+                              className="text-blue-700 border-blue-300 hover:bg-blue-50"
                             >
                               <Printer className="w-4 h-4 mr-1" />
                               Print
@@ -1287,7 +1287,7 @@ export default function ShiftReports() {
                               onClick={() => printReport(report)}
                               size="sm"
                               variant="outline"
-                              className="text-blue-700 border-blue-300 hover:bg-amber-50"
+                              className="text-blue-700 border-blue-300 hover:bg-blue-50"
                             >
                               <Printer className="w-4 h-4 mr-1" />
                               Print

@@ -39,7 +39,7 @@ export default function ForcedOOSOverlay() {
             initial={{ scale: 0.94, y: 24, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.96, y: 12, opacity: 0 }}
-            className="w-full max-w-md overflow-hidden rounded-2xl border-2 border-red-600/70 bg-[#111316] shadow-[0_0_60px_rgba(239,68,68,.4)]"
+            className="w-full max-w-md overflow-hidden rounded-2xl border-2 border-red-600/70 bg-[#0b1523] shadow-[0_0_60px_rgba(239,68,68,.4)]"
           >
             {/* Header */}
             <div className="flex items-center gap-3 border-b border-red-700/60 bg-red-950/70 px-5 py-4">

@@ -275,11 +275,11 @@ export default function FleetVehicleAssignments({ embedded=false, weekStart, edi
 
   if (isLoadingAuth) return <div className="p-6 text-slate-300">Loading fleet schedule…</div>;
 
-  return <div className={embedded?"text-white":"bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-6"}>
+  return <div className={embedded?"text-white":"bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-6"}>
     <div className="mx-auto max-w-[1500px] space-y-4">
       {isAdmin&&<div className="flex flex-wrap items-center gap-3"><Button type="button" onClick={async()=>{try{const result=await syncOfficerVehicles(qc);qc.setQueryData(['fleetDefaultSync'],result);toast.success(result.created+' reservations created.');}catch(error){toast.error(error.message);}}}>Sync officer vehicle defaults</Button><span className="text-xs text-slate-400">Set default vehicles under Company Assets. Manual shift assignments take priority.</span></div>}
       {syncReport?.conflicts?.length>0&&<div role="alert" className="rounded-lg border border-amber-700 p-3 text-xs text-amber-200">{syncReport.conflicts.map((item,index)=><p key={index}>{item.officer_name} · {item.shift_date} {item.start_time}–{item.end_time}: {item.reason}</p>)}</div>}
-      {!editorOnly&&<section className="rounded-[28px] border border-slate-700/80 bg-[#111316] p-5 shadow-2xl md:p-6"><div className="flex flex-wrap items-center gap-3">
+      {!editorOnly&&<section className="rounded-[28px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-2xl md:p-6"><div className="flex flex-wrap items-center gap-3">
         <Car className="h-7 w-7 text-amber-400" />
         <div>
           <h2 className="text-lg font-bold">Shift vehicle reservations</h2>

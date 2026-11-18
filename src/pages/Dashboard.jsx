@@ -253,22 +253,22 @@ export default function Dashboard({ embedded = false }) {
   };
 
   const allQuickActions = [
-    { id: "time_clock", title: "Time Clock", description: "Clock in/out", icon: Clock, color: "from-amber-500 to-amber-600", url: createPageUrl("TimeClock"), category: "main" },
-    { id: "schedule", title: "My Schedule", description: "View shifts", icon: Calendar, color: "from-amber-500 to-purple-600", url: createPageUrl("Schedule"), category: "main" },
+    { id: "time_clock", title: "Time Clock", description: "Clock in/out", icon: Clock, color: "from-blue-500 to-blue-600", url: createPageUrl("TimeClock"), category: "main" },
+    { id: "schedule", title: "My Schedule", description: "View shifts", icon: Calendar, color: "from-violet-500 to-purple-600", url: createPageUrl("Schedule"), category: "main" },
     { id: "my_performance", title: "My Performance", description: "View analytics", icon: ClipboardList, color: "from-emerald-500 to-green-600", url: createPageUrl("MyPerformanceAnalytics"), category: "main" },
-    { id: "my_reviews", title: "Reviews & Feedback", description: reviewResponseRequired ? "Response required" : "View evaluations", icon: ClipboardCheck, color: reviewResponseRequired ? "from-amber-500 to-orange-600" : "from-amber-500 to-amber-600", url: createPageUrl("OfficerPerformanceReviews"), category: "main" },
+    { id: "my_reviews", title: "Reviews & Feedback", description: reviewResponseRequired ? "Response required" : "View evaluations", icon: ClipboardCheck, color: reviewResponseRequired ? "from-amber-500 to-orange-600" : "from-indigo-500 to-violet-600", url: createPageUrl("OfficerPerformanceReviews"), category: "main" },
     { id: "open_shifts", title: "Open Shifts", description: "Bid on shifts", icon: Briefcase, color: "from-amber-500 to-orange-600", url: createPageUrl("OpenShifts"), category: "schedule" },
-    { id: "time_requests", title: "Time Off", description: "Request PTO", icon: CalendarClock, color: "from-teal-500 to-amber-600", url: createPageUrl("TimeRequests"), category: "schedule" },
+    { id: "time_requests", title: "Time Off", description: "Request PTO", icon: CalendarClock, color: "from-teal-500 to-cyan-600", url: createPageUrl("TimeRequests"), category: "schedule" },
     { id: "payroll_dates", title: "Payroll", description: "View pay schedule", icon: DollarSign, color: "from-emerald-500 to-green-600", url: createPageUrl("PayrollDates"), category: "schedule" },
-    { id: "daily_activity", title: "Daily Activity", description: "Submit report", icon: FileText, color: "from-amber-500 to-amber-600", url: createPageUrl("DailyActivityReports"), category: "reports" },
+    { id: "daily_activity", title: "Daily Activity", description: "Submit report", icon: FileText, color: "from-blue-500 to-indigo-600", url: createPageUrl("DailyActivityReports"), category: "reports" },
     { id: "incident", title: "Incident", description: "Report incident", icon: AlertTriangle, color: "from-red-500 to-rose-600", url: createPageUrl("IncidentReports"), category: "reports" },
     { id: "trespass", title: "Trespass", description: "Issue notice", icon: UserX, color: "from-rose-600 to-red-700", url: createPageUrl("TrespassingNotices"), category: "reports" },
     { id: "maintenance", title: "Maintenance", description: "Report issue", icon: Wrench, color: "from-slate-500 to-slate-600", url: createPageUrl("MaintenanceReports"), category: "reports" },
     { id: "open_door", title: "Open Door", description: "Report door", icon: DoorOpen, color: "from-yellow-500 to-amber-600", url: createPageUrl("OpenDoorReports"), category: "reports" },
     { id: "criminal", title: "Criminal", description: "File complaint", icon: Shield, color: "from-slate-600 to-slate-700", url: createPageUrl("CriminalComplaints"), category: "reports" },
-    { id: "confidential", title: "Confidential", description: "Private report", icon: ShieldCheck, color: "from-purple-600 to-amber-700", url: createPageUrl("ConfidentialReport"), category: "reports" },
-    { id: "team_chat", title: "Team Chat", description: "Message team", icon: MessageCircle, color: "from-amber-500 to-amber-600", url: createPageUrl("TeamChat"), category: "communication" },
-    { id: "announcements", title: "Announcements", description: "View updates", icon: Megaphone, color: "from-amber-500 to-amber-600", url: createPageUrl("Announcements"), category: "communication" },
+    { id: "confidential", title: "Confidential", description: "Private report", icon: ShieldCheck, color: "from-purple-600 to-violet-700", url: createPageUrl("ConfidentialReport"), category: "reports" },
+    { id: "team_chat", title: "Team Chat", description: "Message team", icon: MessageCircle, color: "from-cyan-500 to-blue-600", url: createPageUrl("TeamChat"), category: "communication" },
+    { id: "announcements", title: "Announcements", description: "View updates", icon: Megaphone, color: "from-indigo-500 to-blue-600", url: createPageUrl("Announcements"), category: "communication" },
     { id: "training", title: "Training", description: "View courses", icon: GraduationCap, color: "from-pink-500 to-rose-600", url: createPageUrl("OfficerTraining"), category: "resources" },
     { id: "rank_duties", title: "Rank Duties", description: "View responsibilities", icon: Shield, color: "from-slate-500 to-slate-600", url: createPageUrl("RankDuties"), category: "resources" },
     { id: "qr_patrol", title: "QR Patrol", description: "Scan checkpoints", icon: MapPin, color: "from-teal-500 to-emerald-600", url: createPageUrl("QRPatrolScan"), category: "main" },
@@ -279,8 +279,8 @@ export default function Dashboard({ embedded = false }) {
     <div className={`bps-command-page relative overflow-hidden bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-screen'}`}>
       {/* Cinematic animated gradient mesh background */}
       {!embedded && <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-amber-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-amber-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '1s' }} />
+        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-violet-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '1s' }} />
         <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] rounded-full bg-emerald-600/15 blur-[120px] animate-pulse" style={{ animationDuration: '12s', animationDelay: '2s' }} />
       </div>}
       {/* Subtle grid overlay */}
@@ -301,13 +301,13 @@ export default function Dashboard({ embedded = false }) {
         {/* Cinematic Hero */}
         <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 via-slate-900/75 to-slate-800/50 p-5 backdrop-blur-xl md:p-7">
           {/* Glow accents */}
-          <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-amber-500/20 blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-amber-500/20 blur-3xl" />
+          <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-violet-500/20 blur-3xl" />
           
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex min-w-0 items-center gap-4">
               <div className="relative hidden shrink-0 md:flex">
-                <div className="absolute inset-0 rounded-2xl bg-amber-500/25 blur-xl" />
+                <div className="absolute inset-0 rounded-2xl bg-blue-500/25 blur-xl" />
                 <img src={LOGO_URL} alt="Black Point Protection" className="relative h-14 w-14 object-contain" />
               </div>
               <div className="min-w-0">
@@ -332,7 +332,7 @@ export default function Dashboard({ embedded = false }) {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('pathfinder:open-mobile-tools'))}
-              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-blue-400/30 bg-gradient-to-r from-amber-600 to-amber-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-600/25 lg:hidden"
+              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-blue-400/30 bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-600/25 lg:hidden"
             >
               <LayoutDashboard className="mr-2 h-5 w-5" />
               Browse All Tools
@@ -341,7 +341,7 @@ export default function Dashboard({ embedded = false }) {
             <div className="hidden lg:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="group bg-gradient-to-r from-amber-600 to-amber-600 hover:from-amber-500 hover:to-amber-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 transition-all duration-300 rounded-xl px-5 py-2.5 border border-white/10">
+                <Button className="group bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 transition-all duration-300 rounded-xl px-5 py-2.5 border border-white/10">
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   All Tools
                   <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
@@ -440,8 +440,8 @@ export default function Dashboard({ embedded = false }) {
 
           {/* Today's Schedule */}
           <motion.div variants={itemVariants}>
-            <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-stone-900/60 to-stone-900/20 backdrop-blur-xl p-5 md:p-6 transition-all duration-300 hover:scale-[1.02]">
-              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-amber-500/20 blur-2xl" />
+            <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 to-indigo-900/20 backdrop-blur-xl p-5 md:p-6 transition-all duration-300 hover:scale-[1.02]">
+              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-violet-500/20 blur-2xl" />
               <div className="relative">
                 <div className="flex items-center gap-2 mb-3">
                   <Calendar className="w-4 h-4 text-violet-400" />
@@ -546,10 +546,10 @@ export default function Dashboard({ embedded = false }) {
 
         {/* Today's Shift Banner */}
         {todaySchedule?.length > 0 && (
-          <motion.div variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-r from-stone-900/50 to-stone-900/30 backdrop-blur-xl p-4 md:p-5">
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-amber-500/15 blur-2xl" />
+          <motion.div variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-950/50 to-indigo-950/30 backdrop-blur-xl p-4 md:p-5">
+            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-violet-500/15 blur-2xl" />
             <div className="relative flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/10 border border-violet-500/20 flex-shrink-0">
+              <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20 flex-shrink-0">
                 <Calendar className="h-4 w-4 md:h-5 md:w-5 text-violet-400" />
               </div>
               <div className="text-violet-100 text-sm md:text-base">
@@ -565,7 +565,7 @@ export default function Dashboard({ embedded = false }) {
         {/* Quick Actions */}
         <motion.div variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-xl p-5 md:p-6">
           <div className="flex items-center gap-2 mb-5">
-            <div className="p-1.5 rounded-lg bg-amber-500/10 border border-blue-500/20">
+            <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
               <TrendingUp className="w-4 h-4 text-blue-400" />
             </div>
             <h2 className="text-lg md:text-xl font-bold text-white">Quick Actions</h2>

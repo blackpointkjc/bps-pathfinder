@@ -125,7 +125,7 @@ export default function BrowserUserAssignment({ focusEmail = '' }) {
                   type="button"
                   onClick={() => setSelectedEmail(user.email)}
                   className={`flex w-full items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-left text-xs transition ${
-                    selectedEmail === user.email ? 'border-cyan-700 bg-amber-600/15 text-white' : 'border-slate-800 text-slate-300 hover:border-slate-600'
+                    selectedEmail === user.email ? 'border-cyan-700 bg-cyan-600/15 text-white' : 'border-slate-800 text-slate-300 hover:border-slate-600'
                   }`}
                 >
                   <span className="min-w-0">
@@ -170,7 +170,7 @@ export default function BrowserUserAssignment({ focusEmail = '' }) {
                   type="button"
                   disabled={!targetPolicy || saving}
                   onClick={assign}
-                  className="min-h-10 rounded-lg border border-cyan-700 bg-amber-600/20 px-3 text-xs font-semibold text-cyan-100 disabled:opacity-60"
+                  className="min-h-10 rounded-lg border border-cyan-700 bg-cyan-600/20 px-3 text-xs font-semibold text-cyan-100 disabled:opacity-60"
                 >
                   {saving ? 'Saving…' : 'Assign personal override'}
                 </button>

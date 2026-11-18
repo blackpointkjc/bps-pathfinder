@@ -273,21 +273,21 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         <div className="shrink-0 border-b border-slate-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div><h1 className="text-xl font-black">Teams Messages</h1><p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">Microsoft Teams only</p></div>
-            <button onClick={() => setNewThread(true)} className="rounded-full bg-amber-600 p-2 hover:bg-amber-500"><Plus className="h-4 w-4" /></button>
+            <button onClick={() => setNewThread(true)} className="rounded-full bg-blue-600 p-2 hover:bg-blue-500"><Plus className="h-4 w-4" /></button>
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Teams conversations" className="w-full bg-transparent text-sm outline-none" /></div>
         </div>
         {!checkingMicrosoft && !microsoftConnected && (
-          <div className="border-b border-blue-800 bg-stone-900/40 p-3">
+          <div className="border-b border-blue-800 bg-blue-950/40 p-3">
             <div className="text-xs font-bold text-white">Sign in with your Microsoft Teams account to view Teams messages.</div>
             <div className="mt-1 text-xs text-blue-200">Your Purelymail/IMAP email stays connected in Mail Center. Teams uses a separate Microsoft Teams sign-in—not an Outlook email setup. Once signed in, Pathfinder will reuse your Teams session while valid.</div>
-            <button type="button" onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft Teams sign-in'))} className="mt-2 rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white hover:bg-amber-500">SIGN IN TO MICROSOFT TEAMS</button>
+            <button type="button" onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft Teams sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">SIGN IN TO MICROSOFT TEAMS</button>
           </div>
         )}
         {syncError && microsoftConnected && (
-          <div className="border-b border-slate-800 bg-[#111316] p-3">
+          <div className="border-b border-slate-800 bg-[#101725] p-3">
             <div className="text-xs font-bold text-slate-300">{needsMicrosoftConnection ? 'Your Teams session has expired. Sign in to Teams again.' : `Teams could not refresh: ${syncError}`}</div>
-            {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-2 rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white hover:bg-amber-500">SIGN IN TO TEAMS</button>}
+            {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">SIGN IN TO TEAMS</button>}
           </div>
         )}
         <div className="flex-1 overflow-y-auto">
@@ -295,7 +295,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
           {!loadingChats && visibleChats.map(chat => {
             const unread = isChatUnread(chat);
             return <button key={chat.id} onClick={() => { setSelectedChatId(chat.id); markChatSeen(chat); }} className={`flex w-full min-w-0 items-center gap-3 border-b border-slate-800 p-3 sm:p-4 text-left hover:bg-slate-800 ${selectedChatId === chat.id ? 'bg-slate-800' : ''}`}>
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-amber-600/30"><MessageCircle className="h-5 w-5 text-blue-300" />{unread && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-slate-950 bg-red-500" />}</div>
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/30"><MessageCircle className="h-5 w-5 text-blue-300" />{unread && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-slate-950 bg-red-500" />}</div>
               <div className="min-w-0 flex-1"><div className={`truncate text-sm ${unread ? 'font-black text-white' : 'font-bold text-slate-300'}`}>{chatName(chat)}</div><div className="truncate text-xs text-slate-500">{chat.chatType === 'group' ? 'Teams group chat' : 'Teams direct message'}</div></div>
               {unread && <span className="rounded-full bg-red-500 px-2 py-1 text-[9px] font-black text-white">NEW</span>}
             </button>;
@@ -311,16 +311,16 @@ export default function UniversalInbox({ currentUser, users = [] }) {
             {loadingMessages && <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading Teams history…</div>}
             {!loadingMessages && chatMessages.map(message => {
               const mine = String(message.sender_microsoft_id || '') === String(microsoftMe?.id || '');
-              return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className="max-w-[78%]"><div className={`mb-1 px-2 text-[10px] text-slate-500 ${mine ? 'text-right' : ''}`}>{mine ? 'You' : message.sender_name}</div><div className={`break-words rounded-2xl px-4 py-2 text-sm ${mine ? 'rounded-br-sm bg-amber-600' : 'rounded-bl-sm bg-slate-800'}`}>{messageBody(message)}</div><div className={`mt-1 px-2 text-[9px] text-slate-600 ${mine ? 'text-right' : ''}`}>{message.created_date ? new Date(message.created_date).toLocaleString() : ''}</div></div></div>;
+              return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className="max-w-[78%]"><div className={`mb-1 px-2 text-[10px] text-slate-500 ${mine ? 'text-right' : ''}`}>{mine ? 'You' : message.sender_name}</div><div className={`break-words rounded-2xl px-4 py-2 text-sm ${mine ? 'rounded-br-sm bg-blue-600' : 'rounded-bl-sm bg-slate-800'}`}>{messageBody(message)}</div><div className={`mt-1 px-2 text-[9px] text-slate-600 ${mine ? 'text-right' : ''}`}>{message.created_date ? new Date(message.created_date).toLocaleString() : ''}</div></div></div>;
             })}
             {!loadingMessages && !chatMessages.length && <div className="py-12 text-center text-sm text-slate-500">No messages were returned from this Teams conversation.</div>}
             <div ref={messagesEndRef} aria-hidden="true" />
           </div>
-          <div className="flex shrink-0 gap-2 border-t border-slate-700 p-2.5 sm:p-4"><input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder="Message in Microsoft Teams" className="min-w-0 flex-1 rounded-full border border-slate-600 bg-slate-800 px-4 py-2 text-sm outline-none focus:border-blue-400" /><button onClick={send} disabled={!text.trim() || sending} className="rounded-full bg-amber-600 p-3 disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button></div>
+          <div className="flex shrink-0 gap-2 border-t border-slate-700 p-2.5 sm:p-4"><input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder="Message in Microsoft Teams" className="min-w-0 flex-1 rounded-full border border-slate-600 bg-slate-800 px-4 py-2 text-sm outline-none focus:border-blue-400" /><button onClick={send} disabled={!text.trim() || sending} className="rounded-full bg-blue-600 p-3 disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button></div>
         </> : <div className="m-auto text-center text-slate-500"><MessageCircle className="mx-auto mb-3 h-12 w-12" /><p>Select a Microsoft Teams conversation</p></div>}
       </section>
 
-      {newThread && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"><div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="flex items-center justify-between"><h2 className="text-lg font-black">New Teams Message</h2><button onClick={() => setNewThread(false)}><X className="h-5 w-5" /></button></div><p className="mt-1 text-xs text-slate-400">Choose Pathfinder users who have connected their Black Point Microsoft account.</p><div className="mt-4 max-h-80 space-y-1 overflow-y-auto">{activeUsers.map(user => <label key={user.id} className="flex cursor-pointer items-center gap-3 rounded-lg p-3 hover:bg-slate-800"><input type="checkbox" checked={selectedPeople.includes(user.id)} onChange={() => setSelectedPeople(current => current.includes(user.id) ? current.filter(id => id !== user.id) : [...current, user.id])} /><span className="text-sm font-bold">{nameOf(user)}</span><span className="ml-auto truncate text-xs text-slate-500">{user.email}</span></label>)}</div><button onClick={createThread} disabled={!selectedPeople.length || sending} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 py-3 text-sm font-black disabled:opacity-40">{sending && <Loader2 className="h-4 w-4 animate-spin" />}Create Teams Conversation</button></div></div>}
+      {newThread && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"><div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="flex items-center justify-between"><h2 className="text-lg font-black">New Teams Message</h2><button onClick={() => setNewThread(false)}><X className="h-5 w-5" /></button></div><p className="mt-1 text-xs text-slate-400">Choose Pathfinder users who have connected their Black Point Microsoft account.</p><div className="mt-4 max-h-80 space-y-1 overflow-y-auto">{activeUsers.map(user => <label key={user.id} className="flex cursor-pointer items-center gap-3 rounded-lg p-3 hover:bg-slate-800"><input type="checkbox" checked={selectedPeople.includes(user.id)} onChange={() => setSelectedPeople(current => current.includes(user.id) ? current.filter(id => id !== user.id) : [...current, user.id])} /><span className="text-sm font-bold">{nameOf(user)}</span><span className="ml-auto truncate text-xs text-slate-500">{user.email}</span></label>)}</div><button onClick={createThread} disabled={!selectedPeople.length || sending} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 text-sm font-black disabled:opacity-40">{sending && <Loader2 className="h-4 w-4 animate-spin" />}Create Teams Conversation</button></div></div>}
     </div>
   );
 }

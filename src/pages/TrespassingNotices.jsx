@@ -655,7 +655,7 @@ export default function TrespassingNotices() {
                               <div className="flex gap-2 flex-wrap items-center">
                                 <Badge className="bg-red-600 text-white">Active</Badge>
                                 {notice.police_notified && (
-                                  <Badge className="bg-amber-100 text-blue-800 border-blue-200">
+                                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                                     Police Notified
                                   </Badge>
                                 )}
@@ -677,7 +677,7 @@ export default function TrespassingNotices() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => printNotice(notice)}
-                                  className="bg-amber-50 text-blue-800 border-blue-200 hover:bg-amber-100"
+                                  className="bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
                                 >
                                   <Printer className="w-4 h-4 mr-2" />
                                   Print
@@ -787,7 +787,7 @@ export default function TrespassingNotices() {
                 variant="outline"
                 size="sm"
                 onClick={() => printNotice(selectedNotice)}
-                className="bg-amber-50 text-blue-800 border-blue-200 hover:bg-amber-100"
+                className="bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Print Notice

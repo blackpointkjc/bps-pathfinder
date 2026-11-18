@@ -94,8 +94,8 @@ export default function EnforcementLegalWorkspace({ tools, queryParam = 'tool', 
   };
 
   return (
-    <div className="w-full bg-[#111316]">
-      <div className="sticky top-0 z-40 border-b border-[#635336] bg-[#111316]/95 px-3 py-3 shadow-xl backdrop-blur md:px-4">
+    <div className="w-full bg-[#07101b]">
+      <div className="sticky top-0 z-40 border-b border-[#284661] bg-[#071421]/95 px-3 py-3 shadow-xl backdrop-blur md:px-4">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
             <div className="min-w-0 lg:w-64">
@@ -108,7 +108,7 @@ export default function EnforcementLegalWorkspace({ tools, queryParam = 'tool', 
                 value={search}
                 onChange={event => setSearch(event.target.value)}
                 placeholder="Describe a situation or search name, DOB, ID, vehicle, Virginia code, warrant, report or CAD #…"
-                className="h-11 border-[#967a47] bg-[#090a0c] pl-10 pr-10 text-sm text-white placeholder:text-slate-600 focus-visible:ring-cyan-500"
+                className="h-11 border-[#315879] bg-[#050c14] pl-10 pr-10 text-sm text-white placeholder:text-slate-600 focus-visible:ring-cyan-500"
                 aria-label="Search all Enforcement and Legal records"
               />
               {search && (
@@ -119,16 +119,16 @@ export default function EnforcementLegalWorkspace({ tools, queryParam = 'tool', 
             </div>
             {debouncedSearch.length >= 2 && (
               <div className="flex flex-wrap gap-1.5 text-[9px] font-black uppercase">
-                <span className="rounded-full border border-blue-800 bg-stone-900/40 px-2 py-1 text-blue-200">Law {counts.law || 0}</span>
+                <span className="rounded-full border border-blue-800 bg-blue-950/40 px-2 py-1 text-blue-200">Law {counts.law || 0}</span>
                 <span className="rounded-full border border-amber-800 bg-amber-950/40 px-2 py-1 text-amber-200">Trespass {counts.trespass || 0}</span>
                 <span className="rounded-full border border-red-800 bg-red-950/40 px-2 py-1 text-red-200">Complaints {counts.complaint || 0}</span>
-                <span className="rounded-full border border-violet-800 bg-stone-900/40 px-2 py-1 text-violet-200">Summons {counts.summons || 0}</span>
+                <span className="rounded-full border border-violet-800 bg-violet-950/40 px-2 py-1 text-violet-200">Summons {counts.summons || 0}</span>
               </div>
             )}
           </div>
 
           {debouncedSearch.length >= 2 && (
-            <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-[#090a0c]">
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-[#050c14]">
               {isFetching && (
                 <div className="flex items-center gap-2 px-4 py-3 text-xs font-bold text-cyan-200"><Loader2 className="h-4 w-4 animate-spin" /> Searching Enforcement & Legal…</div>
               )}

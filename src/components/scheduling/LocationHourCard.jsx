@@ -18,7 +18,7 @@ export default function LocationHourCard({ location, hours }) {
       hoursColor = 'text-green-700';
       statusLabel = <span className="text-green-600 font-bold">✓ AT MAX</span>;
     } else {
-      cardClass = 'bg-amber-50 border-blue-300';
+      cardClass = 'bg-blue-50 border-blue-300';
       hoursColor = 'text-blue-700';
       statusLabel = <span className="text-blue-600 font-bold">Under Max</span>;
     }

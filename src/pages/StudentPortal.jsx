@@ -143,13 +143,13 @@ export default function StudentPortal({ onboardingOnly = false }) {
     return <div className="mx-auto max-w-2xl rounded-2xl border border-amber-500/40 bg-slate-900 p-6 text-slate-100">
       <h2 className="text-xl font-bold text-amber-300">Student profile received</h2>
       <p className="mt-3 text-sm">Your student profile has been saved. Submit your registration for trainer review. Your courses will become available after your enrollment is approved.</p>
-      <button type="button" disabled={savingProfile} onClick={submitCompletedRegistration} className="mt-4 rounded-lg bg-[#b69346] px-4 py-2 text-sm font-semibold text-white">{savingProfile ? 'Submitting…' : 'Submit Registration for Review'}</button>
+      <button type="button" disabled={savingProfile} onClick={submitCompletedRegistration} className="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white">{savingProfile ? 'Submitting…' : 'Submit Registration for Review'}</button>
     </div>;
   }
 
   if (!profileComplete && isPreview) {
     return (
-      <div className="min-h-full bg-[#090a0c] p-4 text-white md:p-6">
+      <div className="min-h-full bg-[#080d16] p-4 text-white md:p-6">
         <div className="mx-auto max-w-3xl rounded-2xl border border-amber-500/40 bg-amber-950/20 p-6">
           <div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Student Account Preview</div>
           <h2 className="mt-2 text-2xl font-black">{user?.first_name || ''} {user?.last_name || ''}</h2>
@@ -161,13 +161,13 @@ export default function StudentPortal({ onboardingOnly = false }) {
 
   if (!profileComplete) {
     return (
-      <div className="min-h-screen bg-[#f8f4e9] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-violet-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-lg shadow-xl border-violet-200">
           <CardHeader className="text-center border-b border-violet-100 pb-4">
-            <div className="w-14 h-14 bg-[#b69346] rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="w-14 h-14 bg-violet-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <User className="w-7 h-7 text-white" />
             </div>
-            <CardTitle className="text-2xl text-[#5e451e]">Complete Your Profile</CardTitle>
+            <CardTitle className="text-2xl text-violet-900">Complete Your Profile</CardTitle>
             <p className="text-slate-500 text-sm mt-1">Before you can access your training courses, you must complete your student profile.</p>
           </CardHeader>
           <CardContent className="pt-6">
@@ -223,7 +223,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
                   onChange={(e) => setProfileForm(p => ({ ...p, dcjs_number: e.target.value }))}
                 />
               </div>
-              <Button type="submit" disabled={savingProfile} className="w-full bg-[#b69346] hover:bg-[#9c7f3a] mt-2">
+              <Button type="submit" disabled={savingProfile} className="w-full bg-violet-600 hover:bg-violet-700 mt-2">
                 {savingProfile ? "Saving..." : "Save Profile & Access Training"}
               </Button>
             </form>
@@ -249,14 +249,14 @@ export default function StudentPortal({ onboardingOnly = false }) {
   const pendingModules = assignedModules.filter(m => !myCompletions.some(c => c.training_module_id === m.id && c.completed));
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-amber-50 via-slate-50 to-white p-4 md:p-8">
+    <div className="min-h-full bg-gradient-to-b from-violet-50 via-slate-50 to-white p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-7">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 bg-gradient-to-br from-amber-700 to-stone-800 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="w-14 h-14 bg-gradient-to-br from-violet-700 to-indigo-800 rounded-2xl flex items-center justify-center shadow-lg">
             <GraduationCap className="w-7 h-7 text-white" />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#92743d] mb-0.5">Black Point Protection</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-violet-500 mb-0.5">Black Point Protection</p>
             <h1 className="text-2xl font-black text-slate-900 md:text-3xl">Student Learning Dashboard</h1>
             <p className="text-slate-500 text-sm">Welcome back, {user.first_name}. Your courses, progress, and completed learning are all here.</p>
           </div>
@@ -276,9 +276,9 @@ export default function StudentPortal({ onboardingOnly = false }) {
               <p className="text-xs text-slate-600 mt-1">Completed</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm bg-[#f8f4e9]">
+          <Card className="border-none shadow-sm bg-violet-50">
             <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-[#8b692d]">{assignedModules.length}</p>
+              <p className="text-3xl font-bold text-violet-600">{assignedModules.length}</p>
               <p className="text-xs text-slate-600 mt-1">Total Assigned</p>
             </CardContent>
           </Card>
@@ -297,7 +297,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
                   <div className={`h-1.5 ${module.required ? 'bg-red-500' : 'bg-amber-400'}`} />
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                         <GraduationCap className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
@@ -308,9 +308,9 @@ export default function StudentPortal({ onboardingOnly = false }) {
                     </div>
                     <p className="text-sm text-slate-600 line-clamp-2">{module.description}</p>
                     {module.training_category === 'dcjs' && (
-                      <Badge className="bg-[#eee2c4] text-[#5c451c] text-xs">DCJS Training</Badge>
+                      <Badge className="bg-blue-100 text-blue-800 text-xs">DCJS Training</Badge>
                     )}
-                    <Button onClick={() => setViewingModule(module)} className="w-full bg-gradient-to-r from-amber-600 to-purple-600 text-white" size="sm">
+                    <Button onClick={() => setViewingModule(module)} className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white" size="sm">
                       Start Training →
                     </Button>
                   </CardContent>
@@ -366,7 +366,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader className="border-b pb-3 flex-shrink-0">
             <DialogTitle className="text-lg flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <GraduationCap className="w-4 h-4 text-white" />
               </div>
               <span className="truncate">{viewingModule?.title}</span>

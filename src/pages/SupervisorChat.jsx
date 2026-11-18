@@ -245,10 +245,10 @@ export default function SupervisorChat() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090a0c] p-3 text-slate-100 md:p-6">
+    <div className="min-h-screen bg-[#07101a] p-3 text-slate-100 md:p-6">
       <div className="mx-auto h-[calc(100dvh-5rem)] max-w-5xl">
-        <Card className="flex h-full flex-col overflow-hidden border border-slate-800 bg-[#111316] shadow-2xl">
-          <CardHeader className="flex-shrink-0 border-b border-slate-800 bg-gradient-to-r from-[#191a1b] to-[#111316] text-white">
+        <Card className="flex h-full flex-col overflow-hidden border border-slate-800 bg-[#0d1623] shadow-2xl">
+          <CardHeader className="flex-shrink-0 border-b border-slate-800 bg-gradient-to-r from-[#101b29] to-[#0b1722] text-white">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <UserCheck className="h-6 w-6 text-emerald-400" />
@@ -265,11 +265,11 @@ export default function SupervisorChat() {
             </div>
           </CardHeader>
 
-          <div className="flex items-center gap-2 border-b border-slate-800 bg-[#111316] px-4 py-2 text-[11px] font-bold text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-400" />Your assigned platoon and operating-area chat is active{allAccess && teamsConfig?.enabled ? ' · Teams mirror connected' : ''}</div>
+          <div className="flex items-center gap-2 border-b border-slate-800 bg-[#0a1320] px-4 py-2 text-[11px] font-bold text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-400" />Your assigned platoon and operating-area chat is active{allAccess && teamsConfig?.enabled ? ' · Teams mirror connected' : ''}</div>
           {allAccess && (teamsSyncError || liveTeamsError) && (
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-[#111316] px-4 py-2 text-[10px] text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-[#101725] px-4 py-2 text-[10px] text-slate-500">
               <span>{needsMicrosoftConnection ? 'Connect Microsoft 365 to load and mirror the Supervisors Chat channel.' : 'Microsoft Teams mirror could not refresh. Pathfinder chat continues normally.'}</span>
-              {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-amber-600 px-2.5 py-1.5 font-black text-white hover:bg-amber-500">CONNECT MICROSOFT 365</button>}
+              {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-blue-600 px-2.5 py-1.5 font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}
             </div>
           )}
 

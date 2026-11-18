@@ -47,11 +47,11 @@ export default class PageErrorBoundary extends React.Component {
           <p className="mt-3 text-sm leading-6 text-slate-300">{message}</p>
           <div className="mt-5 flex flex-wrap gap-3">
             {assetLoadFailure ? (
-              <button type="button" onClick={requestFreshApplication} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600">Refresh app files</button>
+              <button type="button" onClick={requestFreshApplication} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-600">Refresh app files</button>
             ) : (
               <button type="button" onClick={() => this.setState({ error: null })} className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-bold hover:bg-slate-700">Try Again</button>
             )}
-            <button type="button" onClick={requestFreshApplication} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600">Reload Pathfinder</button>
+            <button type="button" onClick={requestFreshApplication} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600">Reload Pathfinder</button>
           </div>
         </div>
       </div>

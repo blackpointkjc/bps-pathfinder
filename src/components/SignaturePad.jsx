@@ -115,14 +115,14 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
 
   return (
     <Card className="w-full max-w-full overflow-hidden border-2 border-blue-500">
-      <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardTitle className="flex items-center gap-2">
           <PenTool className="w-5 h-5 text-blue-600" />
           Sign Report - {officerName}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 p-3 sm:p-6">
-        <div className="bg-amber-50 border border-blue-200 rounded-lg p-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-900 font-medium text-center">
             Use your finger to sign on the pad below
           </p>

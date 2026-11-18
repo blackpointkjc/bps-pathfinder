@@ -175,7 +175,7 @@ export default function AccountingW2Generator() {
       </div>
 
       {/* AI W-2 Generator */}
-      <Card className="mb-6 overflow-hidden border-slate-200 shadow-sm bg-gradient-to-br from-white via-slate-50 to-amber-50">
+      <Card className="mb-6 overflow-hidden border-slate-200 shadow-sm bg-gradient-to-br from-white via-slate-50 to-blue-50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-900">
             <Zap className="w-5 h-5" />
@@ -253,7 +253,7 @@ export default function AccountingW2Generator() {
                     <div className="flex items-center gap-3">
                       <Badge className={
                         w2.status === 'finalized' ? 'bg-green-600' :
-                        w2.status === 'issued' ? 'bg-amber-600' : 'bg-amber-600'
+                        w2.status === 'issued' ? 'bg-blue-600' : 'bg-amber-600'
                       }>
                         {w2.status}
                       </Badge>

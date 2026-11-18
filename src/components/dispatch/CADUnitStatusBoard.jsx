@@ -10,9 +10,9 @@ import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficer
 const STATUS_ORDER = ['All','Available','Dispatched','Enroute','On Scene','Busy','Distress','Out of Service'];
 const STATUS_META = {
   Available: { short: 'AVAIL', dot: 'bg-green-400', badge: 'bg-green-900/40 text-green-300 border-green-700/50' },
-  Dispatched: { short: 'DISP', dot: 'bg-amber-400', badge: 'bg-stone-900/40 text-cyan-300 border-cyan-700/50' },
+  Dispatched: { short: 'DISP', dot: 'bg-cyan-400', badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-700/50' },
   Enroute: { short: 'ENRT', dot: 'bg-yellow-400', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-700/50' },
-  'On Scene': { short: 'SCNE', dot: 'bg-amber-400', badge: 'bg-stone-900/40 text-blue-300 border-blue-700/50' },
+  'On Scene': { short: 'SCNE', dot: 'bg-blue-400', badge: 'bg-blue-900/40 text-blue-300 border-blue-700/50' },
   Busy: { short: 'BUSY', dot: 'bg-orange-400', badge: 'bg-orange-900/40 text-orange-300 border-orange-700/50' },
   Distress: { short: 'DSTR', dot: 'bg-red-500', badge: 'bg-red-900/60 text-red-200 border-red-600/60' },
   'Out of Service': { short: 'OOS', dot: 'bg-slate-500', badge: 'bg-slate-800 text-slate-300 border-slate-600' },
@@ -157,22 +157,22 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-[#111316]">
-      <div className="flex items-center gap-2 border-b border-[#635336] bg-gradient-to-r from-[#111316] to-[#111316] px-3 py-2.5">
-        <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(96,165,250,.8)]" />
+    <div className="flex min-h-0 flex-1 flex-col bg-[#08111b]">
+      <div className="flex items-center gap-2 border-b border-[#1e2d4a] bg-gradient-to-r from-[#0e1726] to-[#0a1220] px-3 py-2.5">
+        <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,.8)]" />
         <div className="min-w-0">
           <div className="text-[10px] font-black tracking-[0.18em] text-blue-200">UNIT STATUS</div>
           <div className="text-[8px] text-slate-500">Live CAD roster</div>
         </div>
-        <span className="ml-auto rounded-full border border-blue-700/50 bg-stone-900/50 px-2.5 py-1 text-[9px] font-black text-blue-200">{statusUnits.length}</span>
+        <span className="ml-auto rounded-full border border-blue-700/50 bg-blue-950/50 px-2.5 py-1 text-[9px] font-black text-blue-200">{statusUnits.length}</span>
       </div>
 
-      <div className="flex overflow-x-auto border-b border-[#635336] bg-[#090a0c] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex overflow-x-auto border-b border-[#1e2d4a] bg-[#080d18] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {STATUS_ORDER.slice(1).map(status => {
           const meta = STATUS_META[status];
           return (
             <button key={status} onClick={() => setFilter(filter === status ? 'All' : status)}
-              className={`min-w-[58px] flex-1 border-r border-[#635336] px-1.5 py-2.5 last:border-r-0 ${filter === status ? 'bg-stone-900/40 ring-inset ring-1 ring-blue-700/40' : 'hover:bg-slate-900/70'}`}>
+              className={`min-w-[58px] flex-1 border-r border-[#1e2d4a] px-1.5 py-2.5 last:border-r-0 ${filter === status ? 'bg-blue-950/40 ring-inset ring-1 ring-blue-700/40' : 'hover:bg-slate-900/70'}`}>
               <div className={`text-base font-black ${
                 status === 'Available' ? 'text-green-400' :
                 status === 'Enroute' ? 'text-yellow-400' :
@@ -186,8 +186,8 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
         })}
       </div>
 
-      <div className="flex items-center gap-2 border-b border-[#635336] bg-[#111316] px-2.5 py-2">
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border border-blue-700/50 bg-[#111316] px-2 text-[9px] font-black tracking-wide text-blue-100 outline-none">
+      <div className="flex items-center gap-2 border-b border-[#1e2d4a] bg-[#0b1320] px-2.5 py-2">
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border border-blue-700/50 bg-[#07101c] px-2 text-[9px] font-black tracking-wide text-blue-100 outline-none">
           {STATUS_ORDER.map(status => <option key={status} value={status}>{status.toUpperCase()}</option>)}
         </select>
         <span className="whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[8px] font-bold text-slate-500">{filtered.length}/{statusUnits.length}</span>
@@ -202,7 +202,7 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
           const isDistress = unit.status === 'Distress';
           const busy = pendingId === officerId;
           return (
-            <div key={unit.id || unit.email} className={`mx-2 my-1 flex items-center gap-2.5 rounded-xl border px-2.5 ${compact ? 'py-2' : 'py-2.5'} ${isDistress ? 'border-red-700/50 bg-red-950/30' : 'border-slate-800 bg-[#111316] hover:border-blue-800/50 hover:bg-[#191a1b]'}`}>
+            <div key={unit.id || unit.email} className={`mx-2 my-1 flex items-center gap-2.5 rounded-xl border px-2.5 ${compact ? 'py-2' : 'py-2.5'} ${isDistress ? 'border-red-700/50 bg-red-950/30' : 'border-slate-800 bg-[#0d1623] hover:border-blue-800/50 hover:bg-[#111c2b]'}`}>
               {unit.profile_photo_url ? (
                 <img src={unit.profile_photo_url} alt="" className="h-8 w-8 flex-none rounded-full border border-slate-700 object-cover" />
               ) : (

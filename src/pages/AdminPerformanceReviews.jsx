@@ -208,7 +208,7 @@ export default function AdminPerformanceReviews() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -296,7 +296,7 @@ export default function AdminPerformanceReviews() {
                             )}
                           </div>
                           {review.current_hourly_rate && (
-                            <div className="mt-3 p-3 bg-amber-50 rounded border border-blue-200">
+                            <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
                               <p className="text-xs font-semibold text-blue-900 mb-2">💰 Pay Recommendation:</p>
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
@@ -394,7 +394,7 @@ export default function AdminPerformanceReviews() {
               <DialogTitle>HR Final Approval — {finalizingReview?.officer_name}</DialogTitle>
             </DialogHeader>
             {finalizingReview && <div className="space-y-5 py-3">
-              <div className="rounded-lg border border-blue-200 bg-amber-50 p-4">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <p className="font-semibold text-blue-900">Completed cycle received by HR</p>
                 <p className="mt-1 text-sm text-blue-800">The assigned supervisor submitted ratings, and the officer submitted self-ratings, comments, and an electronic signature. HR may update the final ratings below before approval.</p>
               </div>
@@ -525,11 +525,11 @@ export default function AdminPerformanceReviews() {
                   </div>
 
                   {formData.review_period_start && formData.review_period_end && (
-                    <div className="rounded-lg border border-blue-200 bg-amber-50 p-4">
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-blue-900">Objective Statistics for Selected Dates</p>
                         {previewLoading && <Badge variant="outline">Calculating…</Badge>}
-                        {reviewPreview?.performance_score != null && <Badge className="bg-amber-700 text-white">{reviewPreview.performance_score}% performance score</Badge>}
+                        {reviewPreview?.performance_score != null && <Badge className="bg-blue-700 text-white">{reviewPreview.performance_score}% performance score</Badge>}
                       </div>
                       {previewError ? (
                         <p className="text-sm text-red-700">{previewError.message}</p>

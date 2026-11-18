@@ -16,7 +16,7 @@ export default function AdminOperationsBriefing({ compact = false }) {
   queryFn:async()=>{const response=await base44.functions.invoke('getAdminOperationsBriefing',{});const result=response?.data||response||{};if(!result.success)throw new Error(result.error||'Briefing unavailable');return result;},
   staleTime:120000,refetchInterval:600000,refetchOnWindowFocus:false,retry:1
  });
- return <section className="rounded-2xl border border-cyan-700/40 bg-[#111316] p-4 text-white md:p-5">
+ return <section className="rounded-2xl border border-cyan-700/40 bg-[#0b1624] p-4 text-white md:p-5">
   <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-wider text-cyan-300">Organization-wide operational briefing</div><h2 className="mt-1 text-xl font-black">Outstanding work by department</h2><p className="mt-1 text-xs text-slate-400">Live pending items, assigned owners and unresolved follow-ups. Unknown sources are not reported as zero.</p></div>
    <button type="button" disabled={isFetching} onClick={()=>queryClient.invalidateQueries({queryKey:['adminOperationsBriefing']})} className="rounded-lg border border-cyan-600/40 px-3 py-2 text-xs font-bold text-cyan-200">{isFetching?'UPDATING':'REFRESH BRIEFING'}</button>
   </div>

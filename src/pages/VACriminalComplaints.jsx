@@ -430,7 +430,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
@@ -469,7 +469,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <ActiveCallLinkField formData={formData} setFormData={setFormData} />
-                <div className="bg-amber-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-900 font-medium">
                     This form creates an official criminal complaint for Commonwealth of Virginia prosecution.
                     All fields marked with * are required.
@@ -582,7 +582,7 @@ export default function VACriminalComplaints({ sharedSearch, onSharedSearchChang
                     type="button"
                     onClick={() => setShowIDScanner(!showIDScanner)}
                     variant="outline"
-                    className="w-full bg-amber-50 text-blue-700 border-blue-300 hover:bg-amber-100"
+                    className="w-full bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     {showIDScanner ? 'Close ID Scanner' : 'Scan Accused\'s ID'}

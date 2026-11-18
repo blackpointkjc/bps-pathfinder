@@ -235,12 +235,12 @@ export default function AdminDutyAttendance() {
   }
 
   return (
-    <div className="min-w-0 bg-[#090a0c] p-3 pb-10 text-white sm:p-4">
+    <div className="min-w-0 bg-[#070d17] p-3 pb-10 text-white sm:p-4">
       <div className="mx-auto max-w-[1500px] space-y-4">
-        <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-[#222321] via-[#111316] to-[#111316] p-4 shadow-lg">
+        <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-4 shadow-lg">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-amber-500/10"><Shield className="h-5 w-5 text-cyan-300" /></div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/10"><Shield className="h-5 w-5 text-cyan-300" /></div>
               <div>
                 <h1 className="text-xl font-black leading-tight text-white">Duty &amp; Attendance Review</h1>
                 <p className="mt-0.5 text-xs text-slate-400">Job duty performance and call-out attendance for any period.</p>
@@ -248,12 +248,12 @@ export default function AdminDutyAttendance() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={preset} onValueChange={setPreset}>
-                <SelectTrigger className="h-11 w-[170px] border-slate-700 bg-[#111316] text-slate-100"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 w-[170px] border-slate-700 bg-[#0b1725] text-slate-100"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PERIODS.map(period => <SelectItem key={period.value} value={period.value}>{period.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button onClick={refresh} disabled={core.isFetching || duty.isFetching || calls.isFetching} className="h-11 border border-cyan-400/30 bg-amber-500/10 text-cyan-100 hover:bg-amber-500/20">
+              <Button onClick={refresh} disabled={core.isFetching || duty.isFetching || calls.isFetching} className="h-11 border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20">
                 <RefreshCw className={`mr-2 h-4 w-4 ${core.isFetching || duty.isFetching || calls.isFetching ? 'animate-spin' : ''}`} /> Refresh
               </Button>
             </div>
@@ -271,7 +271,7 @@ export default function AdminDutyAttendance() {
         )}
 
         {isAdmin && segmentsReady && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-500/30 bg-amber-500/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
             <span className="inline-flex min-w-0 items-center gap-2">
               <ClipboardList className="h-4 w-4 shrink-0 text-cyan-300" />
               {followUpSync.status === 'saving' && 'Assigning officer follow-ups to supervisors…'}
@@ -282,7 +282,7 @@ export default function AdminDutyAttendance() {
               {followUpSync.status === 'idle' && 'Supervisor follow-ups are assigned automatically for this period.'}
             </span>
             {followUpSync.open > 0 && (
-              <Link to={createPageUrl('SupervisorTasks')} className="inline-flex min-h-9 items-center rounded-lg border border-cyan-400/40 bg-[#191a1b] px-3 text-xs font-black text-cyan-100 hover:bg-[#222321]">
+              <Link to={createPageUrl('SupervisorTasks')} className="inline-flex min-h-9 items-center rounded-lg border border-cyan-400/40 bg-[#0b2233] px-3 text-xs font-black text-cyan-100 hover:bg-[#0f2c42]">
                 Open Supervisor Action Items
               </Link>
             )}
@@ -301,29 +301,29 @@ export default function AdminDutyAttendance() {
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <Card className="bps-kpi-card border border-blue-500/30 bg-[#191a1b] p-4 text-white">
+          <Card className="bps-kpi-card border border-blue-500/30 bg-[#0d2033] p-4 text-white">
             <div className="bps-kpi-value text-3xl font-black text-white">{summary.officers}</div>
             <div className="bps-kpi-label text-sm font-bold text-white">Officers reviewed</div>
             <p className="bps-kpi-detail text-xs text-blue-200">{summary.flagged} with at least one finding</p>
           </Card>
-          <Card className="bps-kpi-card border border-cyan-500/30 bg-[#191a1b] p-4 text-white">
+          <Card className="bps-kpi-card border border-cyan-500/30 bg-[#0d2033] p-4 text-white">
             <div className="bps-kpi-value text-3xl font-black text-white">{summary.averageDuty == null ? '—' : `${summary.averageDuty}%`}</div>
             <div className="bps-kpi-label text-sm font-bold text-white">Average job duty</div>
             <p className="bps-kpi-detail text-xs text-cyan-200">Required duties vs completed</p>
           </Card>
-          <Card className="bps-kpi-card border border-amber-500/30 bg-[#191a1b] p-4 text-white">
+          <Card className="bps-kpi-card border border-amber-500/30 bg-[#0d2033] p-4 text-white">
             <div className="bps-kpi-value text-3xl font-black text-white">{summary.missedDuties}</div>
             <div className="bps-kpi-label text-sm font-bold text-white">Missed required duties</div>
             <p className="bps-kpi-detail text-xs text-amber-200">DAR, incident reports and QR</p>
           </Card>
-          <Card className="bps-kpi-card border border-purple-500/30 bg-[#191a1b] p-4 text-white">
+          <Card className="bps-kpi-card border border-purple-500/30 bg-[#0d2033] p-4 text-white">
             <div className="bps-kpi-value text-3xl font-black text-white">{summary.callOuts}</div>
             <div className="bps-kpi-label text-sm font-bold text-white">Call-outs recorded</div>
             <p className="bps-kpi-detail text-xs text-purple-200">{summary.averageAttendance == null ? 'Attendance not scorable' : `${summary.averageAttendance}% average attendance`}</p>
           </Card>
         </div>
 
-        <section className="rounded-2xl border border-slate-800 bg-[#111316] p-4 shadow-lg sm:p-5">
+        <section className="rounded-2xl border border-slate-800 bg-[#0a1421] p-4 shadow-lg sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Officer performance</div>
@@ -332,10 +332,10 @@ export default function AdminDutyAttendance() {
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search officer" className="h-11 w-[220px] border-slate-700 bg-[#111316] pl-9 text-slate-100 placeholder:text-slate-500" />
+                <Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search officer" className="h-11 w-[220px] border-slate-700 bg-[#0b1725] pl-9 text-slate-100 placeholder:text-slate-500" />
               </div>
               <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger className="h-11 w-[180px] border-slate-700 bg-[#111316] text-slate-100"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 w-[180px] border-slate-700 bg-[#0b1725] text-slate-100"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SORTS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
                 </SelectContent>

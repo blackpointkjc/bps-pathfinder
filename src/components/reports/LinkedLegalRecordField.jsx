@@ -145,7 +145,7 @@ export default function LinkedLegalRecordField({ formData, setFormData }) {
   }));
 
   return (
-    <div className="space-y-3 rounded-xl border border-violet-500/30 bg-stone-900/15 p-4">
+    <div className="space-y-3 rounded-xl border border-violet-500/30 bg-violet-950/15 p-4">
       <div>
         <div className="flex items-center gap-2 font-bold text-violet-100"><Scale className="h-4 w-4" />Link the legal case</div>
         <p className="mt-1 text-xs text-slate-400">Connect this DC-325 to the criminal complaint or summons that requires the witness. Existing case, charge, subject and CAD details are carried into the request.</p>
@@ -157,7 +157,7 @@ export default function LinkedLegalRecordField({ formData, setFormData }) {
       <select
         value={selectedKey}
         onChange={event => selectRecord(event.target.value)}
-        className="h-10 w-full rounded-md border border-slate-700 bg-[#191a1b] px-3 text-sm text-slate-100"
+        className="h-10 w-full rounded-md border border-slate-700 bg-[#101f2e] px-3 text-sm text-slate-100"
         aria-label="Linked criminal complaint or summons"
       >
         <option value="">{complaintsLoading || summonsLoading ? 'Loading legal records…' : `Select a criminal complaint or summons (${options.length} available)`}</option>

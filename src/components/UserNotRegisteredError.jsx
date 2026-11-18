@@ -25,8 +25,8 @@ const UserNotRegisteredError = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#090a0c] p-4 text-slate-100">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#111316] p-7 shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center bg-[#070d16] p-4 text-slate-100">
+      <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#111827] p-7 shadow-2xl">
         <div className="text-center">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10 text-3xl">🛡️</div>
           <h1 className="text-3xl font-black text-white">{microsoftAttempt ? 'Microsoft Account Not Linked' : 'Access Restricted'}</h1>

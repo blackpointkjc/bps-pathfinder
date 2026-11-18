@@ -787,7 +787,7 @@ export default function MDTrespassNotices() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => printNotice(notice)}
-                                className="bg-amber-50 text-blue-800 border-blue-200"
+                                className="bg-blue-50 text-blue-800 border-blue-200"
                               >
                                 <Printer className="w-4 h-4 mr-2" />
                                 Print

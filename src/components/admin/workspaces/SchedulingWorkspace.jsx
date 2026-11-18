@@ -31,7 +31,7 @@ export default function SchedulingWorkspace(){
   <header className="flex flex-wrap items-center justify-between gap-2"><div><h1 className="text-xl font-bold">Scheduling & Coverage</h1><p className="mt-1 text-xs text-slate-400">Manage shifts, vehicles and duty coverage from this schedule.</p></div><span className="text-xs text-cyan-200">Week of {weekStart}</span></header>
   <ScheduleBoard embedded onWeekChange={setWeekOffset} onSchedulingAction={setAction}/>
   <Dialog open={!!tool} onOpenChange={open=>{if(!open)setAction(null);}}>
-   <DialogContent className="w-[calc(100vw-1rem)] max-w-[1500px] border-slate-700 bg-[#111316] p-3 text-white sm:p-5">
+   <DialogContent className="w-[calc(100vw-1rem)] max-w-[1500px] border-slate-700 bg-[#08111e] p-3 text-white sm:p-5">
     <DialogHeader className="pr-12"><DialogTitle>{tool?.title}</DialogTitle><DialogDescription className="text-slate-400">{tool?.description}</DialogDescription></DialogHeader>
     {Component&&<Component embedded editorOnly weekStart={weekStart}/>}
    </DialogContent>

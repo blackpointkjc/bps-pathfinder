@@ -7,7 +7,7 @@ export default function StatusBadge({ status }) {
     denied: { label: "Denied", className: "bg-red-100 text-red-800 border-red-200" },
     cancelled: { label: "Cancelled", className: "bg-slate-200 text-slate-800 border-slate-300" },
     draft: { label: "Draft", className: "bg-slate-100 text-slate-800 border-slate-200" },
-    submitted: { label: "Submitted", className: "bg-amber-100 text-blue-800 border-blue-200" },
+    submitted: { label: "Submitted", className: "bg-blue-100 text-blue-800 border-blue-200" },
     on_duty: { label: "On Duty", className: "bg-green-100 text-green-800 border-green-200" },
     off_duty: { label: "Off Duty", className: "bg-slate-100 text-slate-800 border-slate-200" },
   };

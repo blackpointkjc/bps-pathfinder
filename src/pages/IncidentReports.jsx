@@ -784,7 +784,7 @@ Provide:
   };
 
   const severityColors = {
-    low: "bg-amber-100 text-blue-800 border-blue-200",
+    low: "bg-blue-100 text-blue-800 border-blue-200",
     medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
     high: "bg-orange-100 text-orange-800 border-orange-200",
     critical: "bg-red-100 text-red-800 border-red-200",
@@ -1206,7 +1206,7 @@ Provide:
   // loading every report belonging to the current officer.
   if(linkedReportId){
     return <div className="mx-auto max-w-4xl space-y-4 p-5">
-      <div className="rounded-xl bg-[#191a1b] p-5 text-white"><h1 className="text-xl font-black">Black Point · Linked Incident Report</h1><p className="text-xs text-slate-300">Direct CAD-linked document view</p></div>
+      <div className="rounded-xl bg-[#0d1b2c] p-5 text-white"><h1 className="text-xl font-black">Black Point · Linked Incident Report</h1><p className="text-xs text-slate-300">Direct CAD-linked document view</p></div>
       {linkedReportLoading&&<div className="rounded-lg border bg-white p-5 text-slate-700">Retrieving linked report record…</div>}
       {linkedReportError&&<div className="rounded-lg border border-red-300 bg-white p-5 text-red-800">Unable to read this linked report: {linkedReportError?.message||'Permission or connection error'} <Button onClick={()=>refetchLinkedReport()} variant="outline">Retry</Button></div>}
       {linkedReport&&<Card><CardContent className="space-y-4 p-6"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-black">Incident Report #{linkedReport.report_number||linkedReport.id}</h2><Badge>{linkedReport.status||'Recorded'}</Badge></div>
@@ -1294,7 +1294,7 @@ Provide:
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard key={editingReportId||"new"} owner={user?.id} id={"IncidentReports-"+(editingReportId||"new")} title="Incident report" data={formData} onRestore={setFormData} />
                 {formData.report_type === 'supplement' && (
-                  <div className="rounded-lg border border-indigo-200 bg-amber-50 p-4 text-sm text-indigo-950">
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950">
                     <div className="font-black">Linked Supplement</div>
                     <div className="mt-1">Original report: <span className="font-mono font-bold">{formData.parent_report_number || formData.parent_report_id}</span></div>
                     {formData.linked_call_number && <div>CAD: <span className="font-mono font-bold">{formData.linked_call_number}</span></div>}
@@ -1337,14 +1337,14 @@ Provide:
                   <div className="space-y-2 md:col-span-2">
                     <Label>CAD Call Number</Label>
                     {formData.report_type === 'supplement' ? (
-                      <div className="rounded-md border border-blue-200 bg-amber-50 p-3 text-sm text-blue-900">
+                      <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
                         <strong>Inherited from original:</strong> {formData.linked_call_number || 'No linked CAD'}
                       </div>
                     ) : (
                       <>
                         <CallLinkCombobox calls={activeDispatchCalls} value={formData.linked_call_id} selectedLabel={formData.linked_call_number} onSelect={selectDispatchCall} /> <Button type="button" variant="ghost" onClick={()=>selectDispatchCall('none')}>Clear CAD Link</Button>
                         {formData.linked_call_id && (
-                          <div className="rounded-md border border-blue-200 bg-amber-50 p-3 text-sm text-blue-900">
+                          <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
                             <strong>Linked CAD:</strong> {formData.linked_call_number || 'Selected call'}
                             {formData.primary_officer_name ? <> · <strong>Primary:</strong> {formData.primary_officer_name}</> : null}
                           </div>
@@ -1485,7 +1485,7 @@ Provide:
                     rows={6}
                   />
                 </div>
-                <div className="space-y-3 rounded-xl border border-cyan-700/50 bg-[#222321] p-3"><h3 className="text-sm font-black text-cyan-100">Link property resident to incident report</h3><p className="text-xs text-slate-300">Select the incident property above. Find a resident by name, apartment or registered vehicle, then attach that person as a structured reporting party, witness, complainant, victim or subject.</p><label className="block text-xs font-semibold text-white">Person’s role in this incident<select value={rentRollPartyRole} onChange={e=>setRentRollPartyRole(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-500 bg-slate-950 px-3 text-white">{['Reporting Party','Witness','Complainant','Victim','Suspect','Other'].map(role=><option key={role} value={role}>{role}</option>)}</select></label><PropertyResidentPicker site={formData.location} label="Search resident and registered vehicle at selected incident property" onSelect={(person,vehicle)=>{
+                <div className="space-y-3 rounded-xl border border-cyan-700/50 bg-[#10233a] p-3"><h3 className="text-sm font-black text-cyan-100">Link property resident to incident report</h3><p className="text-xs text-slate-300">Select the incident property above. Find a resident by name, apartment or registered vehicle, then attach that person as a structured reporting party, witness, complainant, victim or subject.</p><label className="block text-xs font-semibold text-white">Person’s role in this incident<select value={rentRollPartyRole} onChange={e=>setRentRollPartyRole(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-500 bg-slate-950 px-3 text-white">{['Reporting Party','Witness','Complainant','Victim','Suspect','Other'].map(role=><option key={role} value={role}>{role}</option>)}</select></label><PropertyResidentPicker site={formData.location} label="Search resident and registered vehicle at selected incident property" onSelect={(person,vehicle)=>{
                   const parts=String(person.full_name||'').trim().split(/\s+/);const first=parts.shift()||'',last=parts.join(' ');
                   const newParty={role:rentRollPartyRole,first_name:first,last_name:last,resident_id:person.id,resident_site:formData.location,unit_number:person.unit_number||'',building:person.building||'',phone:person.phone||'',lease_status_at_report:person.lease_status||'',description:`Property rent-roll resident · Unit ${person.unit_number||'unknown'}${person.building?' · Building '+person.building:''}`};
                   setFormData(current=>{
@@ -1775,10 +1775,10 @@ Provide:
                               </Badge>
                             )}
                             {report.report_type === 'supplement' && (
-                              <Badge className="bg-amber-600 text-white">SUPPLEMENT {report.supplement_number || ''}</Badge>
+                              <Badge className="bg-blue-600 text-white">SUPPLEMENT {report.supplement_number || ''}</Badge>
                             )}
                             {report.call_number && (
-                              <Badge variant="outline" className="bg-amber-100 text-blue-800 border-blue-300 font-mono">
+                              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 font-mono">
                                 {report.call_number}
                               </Badge>
                             )}
@@ -1791,7 +1791,7 @@ Provide:
                           </div>
                           <div className="flex flex-wrap gap-2 justify-end">
                             {report.police_notified && (
-                              <Badge className="bg-amber-100 text-blue-800 border-blue-200">
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                                 Police Notified {report.police_report_number && `(#${report.police_report_number})`}
                               </Badge>
                             )}
@@ -1845,13 +1845,13 @@ Provide:
                       ].filter((item, index, rows) => rows.findIndex(other => String(other.id) === String(item.id)) === index);
                       if (!linkedSupplements.length) return null;
                       return (
-                        <div className="mt-4 rounded-lg border border-indigo-200 bg-amber-50 p-3">
+                        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
                           <p className="mb-2 text-xs font-black uppercase tracking-wide text-indigo-800">Linked Supplements ({linkedSupplements.length})</p>
                           <div className="space-y-2">
                             {linkedSupplements.map(supplement => (
                               <div key={supplement.id} className="rounded-md border border-indigo-200 bg-white p-3">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <Badge className="bg-amber-600 text-white">Supplement {supplement.supplement_number || ''}</Badge>
+                                  <Badge className="bg-indigo-600 text-white">Supplement {supplement.supplement_number || ''}</Badge>
                                   <span className="font-mono text-xs font-bold text-slate-700">{supplement.report_number || supplement.id}</span>
                                   {supplement.linked_call_number && <Badge variant="outline" className="font-mono">CAD {supplement.linked_call_number}</Badge>}
                                 </div>
@@ -1887,7 +1887,7 @@ Provide:
                             onClick={() => handleAddSupplement(report)}
                             size="sm"
                             variant="outline"
-                            className="text-indigo-700 border-indigo-300 hover:bg-amber-50"
+                            className="text-indigo-700 border-indigo-300 hover:bg-indigo-50"
                           >
                             <Plus className="w-4 h-4 mr-1" />
                             Add Supplement
@@ -1897,7 +1897,7 @@ Provide:
                             onClick={() => printReport(report)}
                             size="sm"
                             variant="outline"
-                            className="text-blue-700 border-blue-300 hover:bg-amber-50"
+                            className="text-blue-700 border-blue-300 hover:bg-blue-50"
                         >
                             <Printer className="w-4 h-4 mr-1" />
                             Print Report

@@ -12,8 +12,8 @@ const PRIORITY_TONE = {
 };
 
 const GROUP_TONE = {
-  duty: 'border-cyan-500/30 bg-amber-500/10 text-cyan-200',
-  reports: 'border-blue-500/30 bg-amber-500/10 text-blue-200',
+  duty: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200',
+  reports: 'border-blue-500/30 bg-blue-500/10 text-blue-200',
   conduct: 'border-red-500/30 bg-red-500/10 text-red-200',
   reviews: 'border-purple-500/30 bg-purple-500/10 text-purple-200',
   live: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
@@ -34,7 +34,7 @@ export default function SupervisorActionItem({ item, groupLabel, showAssignee, o
   const visibleFindings = open ? findings : findings.slice(0, 2);
 
   return (
-    <div className={`rounded-xl border bg-[#111316] ${item.priority === 'critical' ? 'border-red-500/40' : 'border-slate-800'}`}>
+    <div className={`rounded-xl border bg-[#0b1624] ${item.priority === 'critical' ? 'border-red-500/40' : 'border-slate-800'}`}>
       <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start sm:p-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -57,7 +57,7 @@ export default function SupervisorActionItem({ item, groupLabel, showAssignee, o
           {!!findings.length && (
             <div className="mt-2 space-y-1">
               {visibleFindings.map((finding, index) => (
-                <div key={`${item.id}-finding-${index}`} className="flex flex-wrap items-center gap-x-2 rounded-lg border border-slate-800 bg-[#111316] px-2.5 py-1.5 text-[11px] text-slate-300">
+                <div key={`${item.id}-finding-${index}`} className="flex flex-wrap items-center gap-x-2 rounded-lg border border-slate-800 bg-[#081220] px-2.5 py-1.5 text-[11px] text-slate-300">
                   <span className="font-bold text-slate-100">{finding.label}</span>
                   {finding.date && <span className="text-slate-500">{finding.date}</span>}
                   {finding.property && <span className="inline-flex items-center gap-1 text-slate-500"><MapPin className="h-3 w-3" />{finding.property}</span>}
@@ -83,7 +83,7 @@ export default function SupervisorActionItem({ item, groupLabel, showAssignee, o
             <CheckCircle2 className="h-4 w-4" />{completing ? 'Saving…' : item.complete?.kind==='patrol_speeding' ? 'Mark reviewed' : 'Mark contacted'}
           </button>
           {item.tool && (
-            <Link to={createPageUrl(item.tool.page)} className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-700 bg-[#191a1b] px-3 text-[11px] font-bold text-slate-200 transition hover:border-cyan-500/50 hover:text-white">
+            <Link to={createPageUrl(item.tool.page)} className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-700 bg-[#101f31] px-3 text-[11px] font-bold text-slate-200 transition hover:border-cyan-500/50 hover:text-white">
               {item.tool.label}
             </Link>
           )}

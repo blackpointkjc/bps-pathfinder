@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { formatEasternDateTime } from '@/lib/easternTime';
 
 const ROLE_BADGE = {
-  primary: 'bg-stone-900/50 text-blue-200 border-blue-700/50',
+  primary: 'bg-blue-900/50 text-blue-200 border-blue-700/50',
   backup: 'bg-slate-700 text-slate-200 border-slate-600',
 };
 
@@ -12,11 +12,11 @@ export default function DispatchLogEntry({ entry, index, onNotesChange, onRemove
   if (!entry) return null;
   const assigned = Array.isArray(entry.assigned_units) ? entry.assigned_units : [];
   return (
-    <div className="rounded-lg border border-slate-700 bg-[#111316] p-4">
+    <div className="rounded-lg border border-slate-700 bg-[#0d1825] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="rounded bg-stone-900/50 px-2 py-0.5 font-mono text-xs font-bold text-blue-200">
+            <span className="rounded bg-blue-900/50 px-2 py-0.5 font-mono text-xs font-bold text-blue-200">
               {entry.call_number || 'NO CAD #'}
             </span>
             {entry.call_status && (

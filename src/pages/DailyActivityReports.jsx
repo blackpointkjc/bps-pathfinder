@@ -835,7 +835,7 @@ export default function DailyActivityReports() {
                 setShowSignaturePad(false);
               }
             }}
-            className="bg-amber-600 hover:bg-amber-700 w-full md:w-auto"
+            className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Report
@@ -846,7 +846,7 @@ export default function DailyActivityReports() {
 
         {showForm && (
           <Card className="border-none shadow-xl">
-            <CardHeader className={editingReport ? "bg-gradient-to-r from-amber-50 to-purple-50" : "bg-gradient-to-r from-amber-50 to-amber-50"}>
+            <CardHeader className={editingReport ? "bg-gradient-to-r from-blue-50 to-purple-50" : "bg-gradient-to-r from-blue-50 to-indigo-50"}>
               <CardTitle className="flex items-center gap-2">
                 {editingReport ? (
                   <>
@@ -976,7 +976,7 @@ export default function DailyActivityReports() {
 
                 <div className="space-y-2">
                    <Label>Hourly Activity Entries *</Label>
-                   <div className="p-3 bg-[#191a1b] border border-slate-700 rounded-lg mb-3">
+                   <div className="p-3 bg-[#111d2b] border border-slate-700 rounded-lg mb-3">
                      <p className="text-xs text-slate-200 font-semibold mb-2">Add timestamped entries</p>
                      <div className="space-y-3">
                        <div className="space-y-1">
@@ -1028,7 +1028,7 @@ export default function DailyActivityReports() {
                          {formData.hourly_entries_array.map((entry, idx) => {
                            const isSiteCheck = entry.text?.includes('arrived on site to conduct a site check') || entry.text?.includes('departed the site after conducting a site check');
                            return (
-                           <div key={idx} className={`flex items-start justify-between gap-2 p-3 rounded border ${isSiteCheck ? 'bg-emerald-950/25 border-emerald-600/50' : 'bg-[#111316] border-slate-700'}`}>
+                           <div key={idx} className={`flex items-start justify-between gap-2 p-3 rounded border ${isSiteCheck ? 'bg-emerald-950/25 border-emerald-600/50' : 'bg-[#0d1825] border-slate-700'}`}>
                              <div className="flex-1">
                                {isSiteCheck && <p className="text-xs text-emerald-300 font-semibold mb-1">🔒 Supervisor Site Check</p>}
                                <p className="font-mono font-semibold text-slate-100">{entry.time}</p>
@@ -1248,7 +1248,7 @@ export default function DailyActivityReports() {
                   <Button
                     type="submit"
                     disabled={saveReportMutation.isPending || uploading || saving || darReviewing}
-                    className="bg-amber-600 hover:bg-amber-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     {saveReportMutation.isPending ? 'Submitting...' : 'Submit Report'}
                   </Button>
@@ -1409,7 +1409,7 @@ export default function DailyActivityReports() {
                             onClick={() => printReport(report)}
                             size="sm"
                             variant="outline"
-                            className="text-blue-700 border-blue-300 hover:bg-amber-50"
+                            className="text-blue-700 border-blue-300 hover:bg-blue-50"
                           >
                             <Printer className="w-4 h-4 mr-1" />
                             Print
@@ -1479,7 +1479,7 @@ export default function DailyActivityReports() {
                             onClick={() => printReport(report)}
                             size="sm"
                             variant="outline"
-                            className="text-blue-700 border-blue-300 hover:bg-amber-50"
+                            className="text-blue-700 border-blue-300 hover:bg-blue-50"
                           >
                             <Printer className="w-4 h-4 mr-1" />
                             Print

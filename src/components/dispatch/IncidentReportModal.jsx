@@ -169,7 +169,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900 rounded-t-xl">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-amber-700 rounded-lg flex items-center justify-center">
+                        <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center">
                             <Shield className="w-4 h-4 text-white" />
                         </div>
                         <div>
@@ -191,7 +191,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                         <CheckCircle2 className="w-16 h-16 text-green-400" />
                         <p className="text-white font-mono text-xl font-bold">REPORT SUBMITTED</p>
                         <p className="text-slate-400 font-mono text-sm">Report #{form.report_number} has been sent for approval.</p>
-                        <Button onClick={onClose} className="bg-amber-600 hover:bg-amber-700 font-mono mt-4">CLOSE</Button>
+                        <Button onClick={onClose} className="bg-blue-600 hover:bg-blue-700 font-mono mt-4">CLOSE</Button>
                     </div>
                 ) : (
                     <>
@@ -239,7 +239,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                             <div className="p-4 bg-slate-900 border border-slate-700 rounded-lg space-y-4">
                                 <div className="flex items-center justify-between border-b border-slate-700 pb-2 mb-2">
                                     <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest font-mono">② VICTIMS</h3>
-                                    <Button size="sm" onClick={() => addPerson('victims')} className="bg-amber-700 hover:bg-amber-600 h-7 px-2">
+                                    <Button size="sm" onClick={() => addPerson('victims')} className="bg-blue-700 hover:bg-blue-600 h-7 px-2">
                                         <Plus className="w-3 h-3 mr-1" /> ADD VICTIM
                                     </Button>
                                 </div>
@@ -270,7 +270,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                             <div className="p-4 bg-slate-900 border border-slate-700 rounded-lg space-y-4">
                                 <div className="flex items-center justify-between border-b border-slate-700 pb-2 mb-2">
                                     <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest font-mono">③ WITNESSES</h3>
-                                    <Button size="sm" onClick={() => addPerson('witnesses')} className="bg-amber-700 hover:bg-amber-600 h-7 px-2">
+                                    <Button size="sm" onClick={() => addPerson('witnesses')} className="bg-blue-700 hover:bg-blue-600 h-7 px-2">
                                         <Plus className="w-3 h-3 mr-1" /> ADD WITNESS
                                     </Button>
                                 </div>
@@ -301,7 +301,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                             <div className="p-4 bg-slate-900 border border-slate-700 rounded-lg space-y-4">
                                 <div className="flex items-center justify-between border-b border-slate-700 pb-2 mb-2">
                                     <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest font-mono">④ SUSPECTS</h3>
-                                    <Button size="sm" onClick={() => addPerson('suspects')} className="bg-amber-700 hover:bg-amber-600 h-7 px-2">
+                                    <Button size="sm" onClick={() => addPerson('suspects')} className="bg-blue-700 hover:bg-blue-600 h-7 px-2">
                                         <Plus className="w-3 h-3 mr-1" /> ADD SUSPECT
                                     </Button>
                                 </div>
@@ -333,7 +333,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                             <div className="p-4 bg-slate-900 border border-slate-700 rounded-lg space-y-4">
                                 <div className="flex items-center justify-between border-b border-slate-700 pb-2 mb-2">
                                     <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest font-mono">⑤ SUSPECT VEHICLES</h3>
-                                    <Button size="sm" onClick={() => addPerson('suspect_vehicles')} className="bg-amber-700 hover:bg-amber-600 h-7 px-2">
+                                    <Button size="sm" onClick={() => addPerson('suspect_vehicles')} className="bg-blue-700 hover:bg-blue-600 h-7 px-2">
                                         <Plus className="w-3 h-3 mr-1" /> ADD VEHICLE
                                     </Button>
                                 </div>
@@ -398,7 +398,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                             </div>
 
                             {/* Linked Call Info (read-only) */}
-                            <div className="p-3 bg-stone-900/20 border border-blue-500/30 rounded-lg flex items-center gap-3">
+                            <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg flex items-center gap-3">
                                 <FileText className="w-4 h-4 text-blue-400 shrink-0" />
                                 <div className="text-xs font-mono text-blue-300">
                                     <span className="font-bold">LINKED CALL:</span>{' '}
@@ -416,7 +416,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                                 <Button onClick={onClose} variant="outline" className="border-slate-700 text-slate-300 font-mono text-xs">
                                     CANCEL
                                 </Button>
-                                <Button onClick={handleSubmit} disabled={submitting} className="bg-amber-600 hover:bg-amber-700 font-mono text-xs">
+                                <Button onClick={handleSubmit} disabled={submitting} className="bg-blue-600 hover:bg-blue-700 font-mono text-xs">
                                     {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
                                     {submitting ? 'SUBMITTING...' : 'SUBMIT REPORT'}
                                 </Button>

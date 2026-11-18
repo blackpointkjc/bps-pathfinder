@@ -50,7 +50,7 @@ export default function AutoDispatchShadowFeed() {
   if (!evaluations.length) return null;
 
   return (
-    <section className="max-h-64 flex-none overflow-y-auto border-b border-cyan-500/30 bg-[#111316] p-3">
+    <section className="max-h-64 flex-none overflow-y-auto border-b border-cyan-500/30 bg-[#081522] p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Radar className="h-5 w-5 text-cyan-300" />
@@ -70,7 +70,7 @@ export default function AutoDispatchShadowFeed() {
                   <div className="text-xs font-black text-white">CAD {item.cad_number || item.call_id}</div>
                   <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400"><Clock3 className="h-3 w-3" />{formatEasternDateTime(item.evaluated_at)} ET</div>
                 </div>
-                <Badge className={noUnit ? 'bg-red-700 text-white' : partiallyAssigned ? 'bg-amber-700 text-white' : item.decision === 'disabled' ? 'bg-slate-700' : 'bg-stone-800 text-cyan-100'}>{String(item.decision || '').replaceAll('_', ' ').toUpperCase()}</Badge>
+                <Badge className={noUnit ? 'bg-red-700 text-white' : partiallyAssigned ? 'bg-amber-700 text-white' : item.decision === 'disabled' ? 'bg-slate-700' : 'bg-cyan-800 text-cyan-100'}>{String(item.decision || '').replaceAll('_', ' ').toUpperCase()}</Badge>
               </div>
               {noUnit ? (
                 <div className="mt-3 flex items-center gap-2 text-xs font-black text-red-200"><UserX className="h-4 w-4" />NO ELIGIBLE UNIT AVAILABLE</div>

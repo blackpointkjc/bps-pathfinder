@@ -109,7 +109,7 @@ export default function AdminDocuments() {
   }
 
   return (
-    <div className="bps-command-page p-4 md:p-8 min-h-screen bg-[#090a0c] text-white">
+    <div className="bps-command-page p-4 md:p-8 min-h-screen bg-[#080d16] text-white">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export default function AdminDocuments() {
           </div>
           <Button
             onClick={() => setShowForm(!showForm)}
-            className="bg-amber-600 hover:bg-amber-700"
+            className="bg-blue-600 hover:bg-blue-700"
           >
             <Upload className="w-4 h-4 mr-2" />
             Upload Document
@@ -130,7 +130,7 @@ export default function AdminDocuments() {
 
         {showForm && (
           <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-amber-50 to-purple-50">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
               <CardTitle>Upload New Document</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -215,7 +215,7 @@ export default function AdminDocuments() {
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={uploading} className="bg-amber-600 hover:bg-amber-700">
+                  <Button type="submit" disabled={uploading} className="bg-blue-600 hover:bg-blue-700">
                     {uploading ? 'Uploading...' : 'Upload Document'}
                   </Button>
                 </div>

@@ -288,7 +288,7 @@ export default function AdminEquipment({ embedded=false }) {
   const getStatusColor = (status) => {
     switch (status) {
       case 'available': return 'bg-green-600';
-      case 'assigned': return 'bg-amber-600';
+      case 'assigned': return 'bg-blue-600';
       case 'maintenance': return 'bg-amber-600';
       case 'retired': return 'bg-slate-600';
       default: return 'bg-slate-600';
@@ -316,10 +316,10 @@ export default function AdminEquipment({ embedded=false }) {
 
   return (
     <div className={embedded?"text-white":"container mx-auto p-6 max-w-7xl"}>
-      <div className="mb-6 rounded-2xl border border-slate-800 bg-[#111316] p-5 text-white shadow-xl">
+      <div className="mb-6 rounded-2xl border border-slate-800 bg-[#09131f] p-5 text-white shadow-xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-amber-500/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10">
               <Package className="w-6 h-6 text-cyan-300" />
             </div>
             <div>
@@ -339,7 +339,7 @@ export default function AdminEquipment({ embedded=false }) {
                 resetForm();
                 setShowDialog(true);
               }}
-              className="bg-amber-600 hover:bg-amber-500"
+              className="bg-blue-600 hover:bg-blue-500"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Equipment
@@ -454,7 +454,7 @@ export default function AdminEquipment({ embedded=false }) {
                 <p className="text-slate-900">{item.serial_number}</p>
               </div>
               {item.assigned_to && (
-                <div className="flex items-center gap-2 p-2 bg-amber-50 rounded">
+                <div className="flex items-center gap-2 p-2 bg-blue-50 rounded">
                   <User className="w-4 h-4 text-blue-600" />
                   <span className="text-sm text-blue-900">
                     {users.find(u => u.email === item.assigned_to)?.first_name} {users.find(u => u.email === item.assigned_to)?.last_name}
@@ -681,7 +681,7 @@ export default function AdminEquipment({ embedded=false }) {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
                 {editingEquipment ? 'Update' : 'Create'} Equipment
               </Button>
             </div>

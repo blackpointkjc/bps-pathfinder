@@ -702,7 +702,7 @@ export default function AdminPayroll() {
                 )}
 
                 <div className="flex gap-3">
-                  <Button onClick={printPayrollReport} className="bg-amber-600 hover:bg-amber-700">
+                  <Button onClick={printPayrollReport} className="bg-blue-600 hover:bg-blue-700">
                     <Printer className="w-4 h-4 mr-2" />
                     Print Payroll Report
                   </Button>
@@ -793,7 +793,7 @@ export default function AdminPayroll() {
                 )}
 
                 <div className="flex gap-3">
-                  <Button onClick={printPayrollReport} className="bg-amber-600 hover:bg-amber-700" disabled={!selectedLocation}>
+                  <Button onClick={printPayrollReport} className="bg-blue-600 hover:bg-blue-700" disabled={!selectedLocation}>
                     <Printer className="w-4 h-4 mr-2" />
                     Print Client Report
                   </Button>
@@ -829,7 +829,7 @@ export default function AdminPayroll() {
               </div>
             </div>
 
-            <div className="mb-6 bg-amber-50 p-4 rounded-lg">
+            <div className="mb-6 bg-blue-50 p-4 rounded-lg">
               <div className="grid grid-cols-2 gap-4 text-center md:grid-cols-5">
                 <div>
                   <p className="text-sm text-blue-700 font-medium">Total Regular Hours</p>
@@ -885,7 +885,7 @@ export default function AdminPayroll() {
                         <p className="text-sm text-slate-600">{officerEmail}</p>
                       </div>
                       <div className="text-right">
-                        <div className="bg-amber-50 rounded-lg p-3 border border-blue-200">
+                        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                           <p className="text-xs text-blue-700 font-medium mb-1">Total Pay</p>
                           <p className="text-3xl font-bold text-blue-900">${(data.totalPay || 0).toFixed(2)}</p>
                           <div className="mt-2 text-xs space-y-1">
@@ -928,7 +928,7 @@ export default function AdminPayroll() {
 
                     <div className="p-4 border border-slate-200 rounded-lg">
                       {data.ptoHours > 0 && (
-                        <div className="mb-4 rounded-lg border border-violet-200 bg-amber-50 p-3">
+                        <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50 p-3">
                           <h4 className="font-semibold text-violet-800">PTO Pay — {data.ptoHours.toFixed(2)} hours @ ${(data.hourlyRate || 0).toFixed(2)}/hr = ${(data.ptoPay || 0).toFixed(2)}</h4>
                           <p className="mt-1 text-xs text-violet-700">PTO is paid at the base rate and is excluded from the 40-hour worked-time overtime calculation.</p>
                         </div>

@@ -967,8 +967,8 @@ export default function AccountingPayroll() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      {accountingLoading && <div className="mb-4 rounded-lg border border-blue-200 bg-amber-50 px-4 py-3 text-sm text-blue-800">Loading payroll hours and periods…</div>}
-      {payrollCatchup.state !== 'idle' && <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${payrollCatchup.state === 'error' ? 'border-red-300 bg-red-50 text-red-900' : payrollCatchup.state === 'created' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-blue-300 bg-amber-50 text-blue-900'}`}>{payrollCatchup.message}</div>}
+      {accountingLoading && <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Loading payroll hours and periods…</div>}
+      {payrollCatchup.state !== 'idle' && <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${payrollCatchup.state === 'error' ? 'border-red-300 bg-red-50 text-red-900' : payrollCatchup.state === 'created' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-blue-300 bg-blue-50 text-blue-900'}`}>{payrollCatchup.message}</div>}
       {accountingError && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><span>Payroll data could not be loaded: {accountingError?.response?.data?.error || accountingError.message}</span><button type="button" onClick={() => refetchPayroll()} className="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-black hover:bg-red-100">RETRY</button></div>}
       {!!accountingLoadErrors.length && !accountingError && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><span>Partial payroll data: {accountingLoadErrors.join(', ')} could not be loaded. Available payroll information remains visible.</span><button type="button" onClick={() => refetchPayroll()} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-black hover:bg-amber-100">Retry missing data</button></div>}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
@@ -986,7 +986,7 @@ export default function AccountingPayroll() {
         </div>
       </div>
 
-      <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-amber-50">
+      <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-900">
             <Zap className="w-5 h-5" />
@@ -1182,7 +1182,7 @@ export default function AccountingPayroll() {
                                 <Printer className="w-4 h-4 mr-2" />Itemized Sheet
                               </Button>
                               {['ready','draft','exported'].includes(entry.status) && <Button size="sm" className="bg-emerald-700 text-white" disabled={!!approvalBusyId || generating || entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')} title={entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')?'Approval begins on the next calendar day after this pay period ends':''} onClick={()=>setConfirmCheck({entry,action:'approve'})}>{entry.pay_period_end>=format(new Date(),'yyyy-MM-dd')?'Await Period End':'Approve Paycheck'}</Button>}
-                              {entry.status==='approved' && <Button size="sm" className="bg-amber-700 text-white" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'paid'})}>Mark Paycheck Paid</Button>}
+                              {entry.status==='approved' && <Button size="sm" className="bg-blue-700 text-white" disabled={!!approvalBusyId} onClick={()=>setConfirmCheck({entry,action:'paid'})}>Mark Paycheck Paid</Button>}
                               {['approved','paid'].includes(entry.status) && <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-900">{entry.status==='paid'?'Paid':'Approved · Payroll expense posted'}</span>}
 
                             </div>

@@ -105,7 +105,7 @@ export default function PredictiveAnalyticsPanel({ data }) {
                     {hotLocations.map((loc, i) => (
                         <div key={i} className="flex items-center gap-3 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2">
                             <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold font-mono flex-shrink-0 ${
-                                i === 0 ? 'bg-red-500/30 text-red-300' : i === 1 ? 'bg-orange-500/30 text-orange-300' : 'bg-amber-500/30 text-blue-300'
+                                i === 0 ? 'bg-red-500/30 text-red-300' : i === 1 ? 'bg-orange-500/30 text-orange-300' : 'bg-blue-500/30 text-blue-300'
                             }`}>#{i + 1}</div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-white text-xs font-mono font-bold truncate">{loc.location}</div>
@@ -121,7 +121,7 @@ export default function PredictiveAnalyticsPanel({ data }) {
             </div>
 
             {/* Deployment Recommendations */}
-            <div className="bg-stone-900/30 border border-blue-500/30 rounded-lg p-4">
+            <div className="bg-blue-950/30 border border-blue-500/30 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                     <Target className="w-4 h-4 text-blue-400" />
                     <span className="text-blue-300 font-mono font-bold text-sm">AI DEPLOYMENT RECOMMENDATIONS</span>

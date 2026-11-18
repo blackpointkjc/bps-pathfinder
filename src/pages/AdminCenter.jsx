@@ -101,10 +101,10 @@ function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
 
   return (
     <div className="min-w-0">
-      <div className="sticky top-0 z-30 flex flex-wrap gap-1.5 border-b border-slate-800 bg-[#111316]/95 px-2 py-2 backdrop-blur">
+      <div className="sticky top-0 z-30 flex flex-wrap gap-1.5 border-b border-slate-800 bg-[#08111e]/95 px-2 py-2 backdrop-blur">
         {tools.map(item => (
           <button key={item.id} type="button" onClick={() => select(item.id)}
-            className={`rounded-md border px-2.5 py-1.5 text-[10px] font-black transition ${activeId === item.id ? 'border-cyan-500 bg-amber-500/15 text-cyan-100 shadow-sm' : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>
+            className={`rounded-md border px-2.5 py-1.5 text-[10px] font-black transition ${activeId === item.id ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100 shadow-sm' : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>
             {item.label}
           </button>
         ))}
@@ -297,14 +297,14 @@ export default function AdminCenter() {
     if (shadowMode === 'admin' && selectedRoleUser) return <AdminDashboard key={`shadow-admin-${selectedRoleUser}`} />;
     if (shadowMode === 'cad' && selectedRoleUser) return <CADCenter key={`shadow-cad-${selectedRoleUser}`} />;
     if (shadowMode === 'officer' && selectedOfficer) return <OfficerCenter key={`shadow-officer-${selectedOfficer}`} />;
-    if (shadowMode === 'officer') return <div className="flex min-h-[70vh] items-center justify-center bg-[#090a0c] p-6 text-center text-slate-400"><div><Shield className="mx-auto mb-3 h-10 w-10 text-cyan-300"/><div className="text-lg font-black text-white">Select an officer account above</div><div className="mt-1 text-sm">The Officer Center will load that officer's schedule, time, reports, and performance view.</div></div></div>;
+    if (shadowMode === 'officer') return <div className="flex min-h-[70vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Shield className="mx-auto mb-3 h-10 w-10 text-cyan-300"/><div className="text-lg font-black text-white">Select an officer account above</div><div className="mt-1 text-sm">The Officer Center will load that officer's schedule, time, reports, and performance view.</div></div></div>;
     if (shadowMode === 'supervisor' && selectedRoleUser) return <SupervisorCenter key={`shadow-supervisor-${selectedRoleUser}`} />;
     if (shadowMode === 'hr' && selectedRoleUser) return <HRCenter key={`shadow-hr-${selectedRoleUser}`} />;
     if (shadowMode === 'training' && selectedRoleUser) return <TrainerCenter key={`shadow-training-${selectedRoleUser}`} />;
     if (shadowMode === 'student' && selectedRoleUser) return <StudentPortal key={`shadow-student-${selectedRoleUser}`} />;
-    if (['supervisor','hr','training','student'].includes(shadowMode) && !selectedRoleUser) return <div className="flex min-h-[60vh] items-center justify-center bg-[#090a0c] p-6 text-center text-slate-400"><div><Eye className="mx-auto mb-3 h-10 w-10 text-violet-300"/><div className="text-lg font-black text-white">Select a {shadowMode === 'training' ? 'trainer' : shadowMode} account above</div><div className="mt-1 text-sm">Pathfinder will load that user's actual account context inside the selected role workspace.</div></div></div>;
+    if (['supervisor','hr','training','student'].includes(shadowMode) && !selectedRoleUser) return <div className="flex min-h-[60vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Eye className="mx-auto mb-3 h-10 w-10 text-violet-300"/><div className="text-lg font-black text-white">Select a {shadowMode === 'training' ? 'trainer' : shadowMode} account above</div><div className="mt-1 text-sm">Pathfinder will load that user's actual account context inside the selected role workspace.</div></div></div>;
     if (shadowMode === 'client' && selectedClient) return <ClientCenter key={`shadow-client-${selectedClient}`} />;
-    if (shadowMode === 'client') return <div className="flex min-h-[70vh] items-center justify-center bg-[#090a0c] p-6 text-center text-slate-400"><div><Building2 className="mx-auto mb-3 h-10 w-10 text-blue-300"/><div className="text-lg font-black text-white">Select a client account above</div><div className="mt-1 text-sm">The full client portal will replace this workspace for shadow testing.</div></div></div>;
+    if (shadowMode === 'client') return <div className="flex min-h-[70vh] items-center justify-center bg-[#070d17] p-6 text-center text-slate-400"><div><Building2 className="mx-auto mb-3 h-10 w-10 text-blue-300"/><div className="text-lg font-black text-white">Select a client account above</div><div className="mt-1 text-sm">The full client portal will replace this workspace for shadow testing.</div></div></div>;
     return null;
   }, [shadowMode, selectedClient, selectedOfficer, selectedRoleUser]);
 
@@ -334,11 +334,11 @@ export default function AdminCenter() {
     queryClient.invalidateQueries({predicate:query=>/^client/i.test(String(query.queryKey[0]||''))});
   };
   const previewPicker = <AdminUserPreviewPicker users={previewPeople} selectedId={selectedPreviewId} loading={previewLoading} error={previewError} onSelect={choosePreviewUser} onRetry={()=>setPreviewRetry(value=>value+1)} />;
-  if (shadowMode) return <div className="min-h-full bg-[#090a0c]">
-    <div className="sticky top-0 z-[70] flex flex-wrap items-center gap-3 border-b border-cyan-800 bg-[#111316] p-3 text-white">
+  if (shadowMode) return <div className="min-h-full bg-[#070d17]">
+    <div className="sticky top-0 z-[70] flex flex-wrap items-center gap-3 border-b border-cyan-800 bg-[#081522] p-3 text-white">
       <Eye className="h-4 w-4 text-cyan-300"/>
       <div className="min-w-0 flex-1"><div className="text-xs text-cyan-300">Account preview</div><div className="break-words text-sm font-bold">{previewAccountType(currentPreview)} Account — {previewDisplayName(currentPreview)}</div></div>
-      {availablePreviewModes.length > 1 && <label className="flex items-center gap-2 text-xs text-slate-300">Assigned workspace <select aria-label="Preview assigned workspace" value={shadowMode} onChange={event => switchPreviewMode(event.target.value)} className="rounded border border-cyan-700 bg-[#111316] px-2 py-2 text-white">{availablePreviewModes.map(mode => <option key={mode} value={mode}>{mode.toUpperCase()}</option>)}</select></label>}
+      {availablePreviewModes.length > 1 && <label className="flex items-center gap-2 text-xs text-slate-300">Assigned workspace <select aria-label="Preview assigned workspace" value={shadowMode} onChange={event => switchPreviewMode(event.target.value)} className="rounded border border-cyan-700 bg-[#07111f] px-2 py-2 text-white">{availablePreviewModes.map(mode => <option key={mode} value={mode}>{mode.toUpperCase()}</option>)}</select></label>}
       {previewPicker}
       <button type="button" onClick={exitShadow} className="min-h-10 rounded-lg border border-red-700 px-3 text-sm text-red-200">Exit preview</button>
     </div>{shadowContent}</div>;

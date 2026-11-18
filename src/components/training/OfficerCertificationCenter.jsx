@@ -238,7 +238,7 @@ export default function OfficerCertificationCenter() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-cyan-500/20 bg-amber-500/5 p-4 text-sm text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-slate-300">
         <div className="flex items-center gap-2 font-bold text-cyan-200"><ShieldCheck className="h-4 w-4" /> Training-only personnel view</div>
         <p className="mt-1 text-xs text-slate-400">Only name, rank/unit, division, training identifiers and certification records are available here. HR, emergency-contact, pay, SSN, address and other personnel fields are not exposed.</p>
       </div>
@@ -253,7 +253,7 @@ export default function OfficerCertificationCenter() {
                 const expired = certs.filter(c => certStatus(c) === 'expired').length;
                 const expiring = certs.filter(c => certStatus(c) === 'expiring').length;
                 return (
-                  <button key={officer.id} type="button" onClick={() => openOfficer(officer)} className={`w-full rounded-xl border p-3 text-left transition ${selectedId === officer.id ? 'border-cyan-400 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40 hover:border-slate-600'}`}>
+                  <button key={officer.id} type="button" onClick={() => openOfficer(officer)} className={`w-full rounded-xl border p-3 text-left transition ${selectedId === officer.id ? 'border-cyan-400 bg-cyan-500/10' : 'border-slate-800 bg-slate-950/40 hover:border-slate-600'}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0"><div className="truncate font-bold text-white">{[officer.rank, officer.last_name].filter(Boolean).join(' ') || [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.email}</div><div className="mt-0.5 truncate text-xs text-slate-500">{[officer.unit_number && `Unit ${officer.unit_number}`, officer.division].filter(Boolean).join(' · ') || officer.email}</div></div>
                       <Badge variant="outline" className="shrink-0 border-slate-700 text-slate-300">{certs.length}</Badge>
@@ -286,7 +286,7 @@ export default function OfficerCertificationCenter() {
                     {!nonOfficerLinkedRecord && (!Array.isArray(selectedUser.officer_certifications) || selectedUser.officer_certifications.length === 0) && <span className="text-xs text-amber-200">Save at least one certification record before completing this review.</span>}
                   </div>}
                 </div>}
-                <div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-sky-700 bg-stone-900/30 p-3"><div className="text-xs text-sky-300">DCJS Registration Expiration</div><div className="mt-1 font-bold text-white">{selectedUser.dcjs_expiration || 'Not recorded'}</div></div><div className="rounded-lg border border-amber-700 bg-amber-950/30 p-3"><div className="text-xs text-amber-300">Firearm Qualification Expiration</div><div className="mt-1 font-bold text-white">{(editFormData.officer_certifications || []).map(c=>c.firearm_expiration_date).filter(Boolean).sort().at(-1) || selectedUser.firearm_expiration || 'Not recorded'}</div></div></div>
+                <div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-sky-700 bg-sky-950/30 p-3"><div className="text-xs text-sky-300">DCJS Registration Expiration</div><div className="mt-1 font-bold text-white">{selectedUser.dcjs_expiration || 'Not recorded'}</div></div><div className="rounded-lg border border-amber-700 bg-amber-950/30 p-3"><div className="text-xs text-amber-300">Firearm Qualification Expiration</div><div className="mt-1 font-bold text-white">{(editFormData.officer_certifications || []).map(c=>c.firearm_expiration_date).filter(Boolean).sort().at(-1) || selectedUser.firearm_expiration || 'Not recorded'}</div></div></div>
                 <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} onSaveCert={async certs => {
                   const result = await base44.functions.invoke('manageOfficerCertifications', { user_id:selectedUser.id, officer_certifications:certs });
                   const payload = result?.data || result || {};
@@ -309,7 +309,7 @@ export default function OfficerCertificationCenter() {
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"><span className="font-bold">Officer:</span> {[selectedUser?.first_name, selectedUser?.last_name].filter(Boolean).join(' ') || selectedUser?.email}</div>
             <div className="space-y-2"><Label>Available Training *</Label><p className="text-xs text-slate-500">Only training modules that actually exist in the training catalog can be assigned. DCJS credential reference codes are managed separately in the officer certification file.</p>{trainingOptions.length === 0 && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">No training modules have been created yet. Create a module in Trainer Center → Build & Assign Training before assigning coursework.</p>}<Select value={pushTrainingId} onValueChange={value => { setPushTrainingId(value); const option = trainingOptions.find(t => t.key === value); if (option) setPushDueDate(format(addDays(new Date(), option.dueDays || 30), 'yyyy-MM-dd')); }}><SelectTrigger><SelectValue placeholder="Select training…" /></SelectTrigger><SelectContent>{trainingOptions.map(option => <SelectItem key={option.key} value={option.key}>{option.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Due Date</Label><Input type="date" value={pushDueDate} onChange={e => setPushDueDate(e.target.value)} /></div>
-            {selectedTraining && <div className="rounded-lg border border-blue-200 bg-amber-50 p-3 text-xs text-blue-900"><div className="font-bold">{selectedTraining.name}</div><div className="mt-1">{selectedTraining.mandatory ? 'Mandatory' : 'Optional'} · {selectedTraining.category?.replace(/_/g, ' ')}</div></div>}
+            {selectedTraining && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900"><div className="font-bold">{selectedTraining.name}</div><div className="mt-1">{selectedTraining.mandatory ? 'Mandatory' : 'Optional'} · {selectedTraining.category?.replace(/_/g, ' ')}</div></div>}
             <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setPushOpen(false)}>Cancel</Button><Button className="flex-1" disabled={!selectedTraining || pushMutation.isPending} onClick={() => pushMutation.mutate()}><Send className="mr-2 h-4 w-4" />{pushMutation.isPending ? 'Pushing…' : 'Push Training'}</Button></div>
           </div>
         </DialogContent>

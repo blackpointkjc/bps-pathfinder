@@ -38,7 +38,7 @@ export default function AttachedOfficerSelector({ users = [], selectedIds = [], 
                   type="button"
                   key={id}
                   onClick={() => toggle(id)}
-                  className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-xs transition ${checked ? 'border-cyan-400 bg-stone-900/60 text-cyan-50' : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:border-slate-500'}`}
+                  className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-xs transition ${checked ? 'border-cyan-400 bg-cyan-950/60 text-cyan-50' : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:border-slate-500'}`}
                 >
                   <Checkbox checked={checked} tabIndex={-1} className="pointer-events-none" />
                   <span className="min-w-0 flex-1 truncate">{labelFor(officer)}</span>

@@ -103,7 +103,7 @@ export default function ClientSpecialRequests() {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'approved': return 'bg-green-100 text-green-800';
-      case 'scheduled': return 'bg-amber-100 text-blue-800';
+      case 'scheduled': return 'bg-blue-100 text-blue-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-slate-100 text-slate-800';
     }
@@ -131,7 +131,7 @@ export default function ClientSpecialRequests() {
 
         {showForm && (
           <Card className="shadow-lg border-purple-200">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-amber-50">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50">
               <CardTitle>Submit Special Coverage Request</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -304,7 +304,7 @@ export default function ClientSpecialRequests() {
                   </div>
 
                   {req.admin_notes && (
-                    <div className="mt-3 p-2 bg-amber-50 rounded border border-blue-200">
+                    <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
                       <p className="text-xs font-semibold text-blue-900">Admin Notes:</p>
                       <p className="text-sm text-blue-700">{req.admin_notes}</p>
                     </div>

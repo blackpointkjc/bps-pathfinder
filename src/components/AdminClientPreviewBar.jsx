@@ -55,9 +55,9 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
   const clientDisplayName = client => [client?.first_name, client?.last_name].filter(Boolean).join(' ').trim() || client?.email || 'Unnamed Client';
 
   return (
-    <div className="border-b border-blue-500/30 bg-gradient-to-r from-[#111316] via-[#222321] to-[#111316] px-3 py-2.5 text-white shadow-[0_6px_18px_rgba(2,8,23,.24)]">
+    <div className="border-b border-blue-500/30 bg-gradient-to-r from-[#0b1625] via-[#10233a] to-[#0b1625] px-3 py-2.5 text-white shadow-[0_6px_18px_rgba(2,8,23,.24)]">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex min-w-fit items-center gap-2 rounded-lg border border-blue-400/30 bg-amber-500/10 px-3 py-2">
+        <div className="flex min-w-fit items-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2">
           <ShieldCheck className="h-4 w-4 text-blue-300" />
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Administrator Tool</div>
@@ -65,7 +65,7 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
           </div>
         </div>
 
-        <select value={selected} onChange={event => apply(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-[#111316] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400 sm:max-w-xl">
+        <select value={selected} onChange={event => apply(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-[#07111f] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400 sm:max-w-xl">
           <option value="">Select a client to preview</option>
           {clients.map(client => <option key={client.id} value={client.id}>{clientDisplayName(client)} — {(client.assigned_locations || [client.assigned_location]).filter(Boolean).join(', ') || 'No property assigned'}</option>)}
         </select>

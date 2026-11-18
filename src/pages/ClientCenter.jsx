@@ -56,7 +56,7 @@ export default function ClientCenter({ embedded = false }) {
   const [previewRevision,setPreviewRevision]=useState(0);
   useEffect(()=>{const onPreview=()=>setPreviewRevision(value=>value+1);window.addEventListener('bps-client-preview-change',onPreview);return()=>window.removeEventListener('bps-client-preview-change',onPreview);},[]);
   return (
-    <UnifiedCenter key={'preview-'+previewRevision} headerAction={<IAEntryLinks publicOnly/>} eyebrow="Client Services" title="Client Center" description="Your secure portfolio view for site operations, verified reporting, service requests, billing, and communication across every assigned property." sections={SECTIONS} defaultSection="overview" contentClassName="client-portal-shell bg-[#090a0c] text-slate-100" queryParam={embedded ? 'client_section' : 'section'} embedded={embedded}>
+    <UnifiedCenter key={'preview-'+previewRevision} headerAction={<IAEntryLinks publicOnly/>} eyebrow="Client Services" title="Client Center" description="Your secure portfolio view for site operations, verified reporting, service requests, billing, and communication across every assigned property." sections={SECTIONS} defaultSection="overview" contentClassName="client-portal-shell bg-[#070d17] text-slate-100" queryParam={embedded ? 'client_section' : 'section'} embedded={embedded}>
       {section => <CenterToolSection tools={TOOLS[section]} queryParam={embedded ? 'client_tool' : 'tool'} />}
     </UnifiedCenter>
   );

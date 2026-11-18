@@ -727,7 +727,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
   const filteredInactiveNotices = noticesToDisplay.inactive?.filter(noticeMatchesSearch) || [];
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div className="flex-1">
@@ -886,7 +886,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                   type="button"
                   onClick={() => setShowIDScanner(!showIDScanner)}
                   variant="outline"
-                  className="w-full bg-amber-50 text-blue-700 border-blue-300 hover:bg-amber-100"
+                  className="w-full bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
                 >
                   <Camera className="w-4 h-4 mr-2" />
                   {showIDScanner ? 'Close ID Scanner' : 'Scan ID/Driver\'s License'}
@@ -1104,7 +1104,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                               <div className="flex gap-2 flex-wrap items-center">
                                 <Badge className="bg-red-600 text-white">Active</Badge>
                                 {notice.police_notified && (
-                                  <Badge className="bg-amber-100 text-blue-800 border-blue-200">
+                                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                                     Police Notified
                                   </Badge>
                                 )}
@@ -1126,7 +1126,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                                   variant="outline"
                                   size="sm"
                                   onClick={() => printNotice(notice)}
-                                  className="bg-amber-50 text-blue-800 border-blue-200 hover:bg-amber-100"
+                                  className="bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
                                 >
                                   <Printer className="w-4 h-4 mr-2" />
                                   Print
@@ -1215,7 +1215,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                 variant="outline"
                 size="sm"
                 onClick={() => printNotice(selectedNotice)}
-                className="bg-amber-50 text-blue-800 border-blue-200 hover:bg-amber-100"
+                className="bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Print Notice
