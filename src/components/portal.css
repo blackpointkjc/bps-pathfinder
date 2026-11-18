@@ -107,3 +107,28 @@
 @media(max-width:1000px){.bp-login .bp-login-layout{grid-template-columns:1fr;max-width:740px;min-height:auto;gap:16px;padding:20px 18px 28px;}.bp-login-fleet-stage{max-height:none;}.bp-login .bp-login-card{max-width:740px;}.bp-login-hero-copy{padding:14px 2px 0;}.bp-login .bp-login-hero-copy h1{font-size:clamp(24px,4vw,34px);}}
 @media(max-width:520px){.bp-login .bp-login-header{padding:12px 14px;gap:8px;}.bp-login-header nav a:last-child{font-size:10px;padding:8px 10px;}.bp-login .bp-login-layout{padding:12px 12px 24px;gap:14px;}.bp-login-fleet-stage{border-radius:12px;}.bp-login-fleet-tag{font-size:8px;left:8px;bottom:8px;padding:4px 7px;}.bp-login-hero-copy{padding:10px 2px 0;}.bp-login .bp-login-hero-copy h1{font-size:23px;margin:8px 0 4px;}.bp-login .bp-login-hero-copy>p{font-size:12px;}.bp-login-badge{font-size:9px;padding:6px 9px;}.bp-login .bp-login-card{padding:18px 16px;border-radius:14px;}.bp-login .bp-login-card .portal-actions{grid-template-columns:1fr;}.bp-login .bp-login-card .portal-actions button:last-child:nth-child(odd){grid-column:auto;}.bp-login-footer{padding:16px;}}
 @media(prefers-reduced-motion:reduce){.bp-login-fleet-video{display:none;}.bp-login-fleet-stage{background:#08090b url("https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg") center/contain no-repeat;}}
+
+/* 2026 brand refresh: photo showcase and recognition remain visible, not buried
+   behind an oversized login form or cut off on folding/mobile screens. */
+.bp-login{background:#08090b;color:#f8f6ee;}
+.bp-login .bp-login-layout{grid-template-columns:minmax(0,1.45fr) minmax(350px,.75fr);max-width:1560px;}
+.bp-login .bp-login-card{border-radius:18px;border-color:#c5a64a55;background:linear-gradient(160deg,#16181bee,#0d0f11f8);box-shadow:0 28px 75px #0008;}
+.bp-login .bp-login-card .portal-eyebrow{letter-spacing:.19em;}
+.bp-login .bp-login-card input:focus-visible,.bp-login .bp-login-card select:focus-visible,.bp-login .bp-login-card button:focus-visible{outline:2px solid #e9c45f;outline-offset:3px;}
+.bp-login-fleet-stage{border-radius:20px;background:#050505;}
+.bp-showcase-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;background:#050505;}
+.bp-showcase-bottom{position:absolute;inset:auto 0 0;z-index:2;display:flex;gap:12px;align-items:end;justify-content:space-between;padding:24px 16px 12px;background:linear-gradient(transparent,#000b);}
+.bp-login .bp-login-fleet-tag{position:static;display:inline-block;max-width:100%;line-height:1.3;}
+.bp-showcase-caption{font-size:11px;color:#f5f1e5;margin:5px 0 0;line-height:1.35;}
+.bp-showcase-controls{display:flex;flex-shrink:0;align-items:center;gap:7px;font-size:11px;font-weight:800;color:white;background:#0a0b0dbb;border-radius:20px;padding:3px 7px;}
+.bp-login .bp-showcase-controls button{min-height:32px;min-width:32px;padding:0 7px;color:#f6d478;background:#26221a;border:1px solid #b7a05b66;box-shadow:none;font-size:22px;line-height:1;}
+.bp-showcase-honors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px;}
+.bp-showcase-honor{display:flex;align-items:center;gap:12px;min-width:0;padding:12px;border:1px solid #a98a3c50;border-radius:13px;background:#121417e8;box-shadow:0 10px 22px #0003;}
+.bp-showcase-honor-image{flex:0 0 55px;width:55px;height:64px;border-radius:9px;overflow:hidden;background:linear-gradient(135deg,#272318,#121212);border:1px solid #9e874c55;display:grid;place-items:center;color:#f4d675;font-size:28px;}
+.bp-showcase-honor-image img{width:100%;height:100%;object-fit:cover;}
+.bp-showcase-honor>div:last-child{min-width:0;}
+.bp-showcase-honor p{color:#e9ca75;letter-spacing:.07em;font-size:9px;font-weight:900;line-height:1.4;margin:0 0 3px;}
+.bp-showcase-honor strong{display:block;font-size:13px;color:#fff;overflow-wrap:anywhere;}
+.bp-showcase-honor small{display:block;font-size:11px;line-height:1.35;color:#bcb6a7;margin-top:4px;}
+@media(max-width:1050px){.bp-login .bp-login-layout{grid-template-columns:1fr;max-width:760px;}.bp-login-fleet-stage{max-height:none;}.bp-showcase-honors{margin-top:14px;}}
+@media(max-width:560px){.bp-showcase-honors{grid-template-columns:1fr;gap:8px;}.bp-showcase-honor{padding:9px;}.bp-showcase-honor-image{width:48px;height:55px;flex-basis:48px;}.bp-showcase-bottom{padding:24px 7px 7px;}.bp-showcase-caption{font-size:10px;}.bp-login .bp-login-fleet-tag{font-size:8px;}.bp-showcase-controls{gap:2px;font-size:10px;}.bp-login .bp-showcase-controls button{min-height:30px;min-width:30px;}.bp-login .bp-login-card{padding:18px 16px;}}

@@ -1816,3 +1816,51 @@ option,
 .pf-current-speed-warning{animation:pf-speed-warning-flash .85s steps(1,end) infinite!important;}
 .pf-current-speed-critical{animation:pf-speed-critical-flash .55s steps(1,end) infinite!important;}
 @media(prefers-reduced-motion:reduce){.pf-current-speed-warning{animation:none!important;background:#ffe537!important;color:#000!important;}.pf-current-speed-critical{animation:none!important;background:#f3232e!important;color:#fff!important;}}
+
+/* BlackPoint official brand palette across workspaces. Only decorative/nav
+   accents are remapped; semantic red/amber/green safety statuses remain intact. */
+:root{
+ --bps-brand-black:#08090b;--bps-brand-charcoal:#15181c;
+ --bps-brand-gold:#dfbe64;--bps-brand-gold-strong:#f0d680;
+ --bps-brand-brass:#a88841;--bps-brand-cream:#f8f5ec;
+ --bps-command-950:#08090b;--bps-command-900:#0b0e12;
+ --bps-command-850:#11151a;--bps-command-800:#171c22;
+ --bps-command-750:#22262b;--bps-command-border:#504735;
+ --bps-command-blue:#b99a4d;--bps-command-blue-hover:#d7b966;
+ --sidebar-background:220 12% 6%;--sidebar-foreground:42 18% 94%;
+ --sidebar-primary:43 60% 64%;--sidebar-primary-foreground:220 12% 6%;
+ --sidebar-accent:42 15% 16%;--sidebar-accent-foreground:42 18% 94%;
+ --sidebar-border:42 17% 24%;--sidebar-ring:43 60% 64%;
+ --primary:42 59% 53%;--primary-foreground:220 12% 6%;--ring:43 60% 64%;
+}
+html.bps-night-mode{
+ --background:220 12% 7%;--foreground:45 20% 95%;
+ --card:220 11% 11%;--card-foreground:45 20% 95%;
+ --popover:220 11% 10%;--popover-foreground:45 20% 95%;
+ --primary:42 59% 53%;--primary-foreground:220 12% 6%;
+ --secondary:220 9% 17%;--secondary-foreground:45 16% 94%;
+ --muted:220 8% 17%;--muted-foreground:42 8% 70%;
+ --accent:42 20% 20%;--accent-foreground:45 20% 96%;
+ --border:41 14% 29%;--input:41 14% 29%;--ring:43 60% 64%;
+}
+.cad-app{background:var(--bps-brand-black);}
+.cad-app :is(button,a,[role="tab"],[role="menuitem"]):focus-visible{outline:2px solid var(--bps-brand-gold-strong);outline-offset:2px;}
+.cad-app main :is(.text-cyan-200,.text-cyan-300,.text-sky-200):not([role="alert"]){color:#e9cd88;}
+.cad-app main :is(button[class*="bg-cyan-"],button[class*="bg-blue-600"],button[class*="bg-blue-700"]):not(:disabled){background:#b5964d;color:#0b0b0b;border-color:#cfad5c;}
+.cad-app main :is(button[class*="bg-cyan-"],button[class*="bg-blue-600"],button[class*="bg-blue-700"]):hover:not(:disabled){background:#edcf7c;}
+.cad-app :is(.bps-command-page,.bps-command-content) :is([role="tab"][data-state="active"],button[aria-pressed="true"]):not([data-priority]){border-color:#c4a454;background:#a98c4824;color:#f7e3ae;}
+/* Live command: legible high-density CAD with the same black/gold branding. */
+.live-command-workspace{background:#090b0e!important;color:#f5f2e9;border-top:1px solid #66552e;}
+.live-command-workspace header{border-bottom:1px solid #5b4d33;}
+.live-command-workspace :is(section,[role="dialog"]){border-radius:13px;}
+.live-command-workspace .cad-incident-scroll{border:1px solid #4e4534;border-radius:10px;max-height:73dvh;}
+.live-command-workspace .cad-incident-table{min-width:760px;font-size:12px;}
+.live-command-workspace .cad-incident-table th{background:#29271f;color:#f5d98f;border-bottom:1px solid #8b733f;}
+.live-command-workspace .cad-incident-table tbody tr{background:#121519;}
+.live-command-workspace .cad-incident-table tbody tr:nth-child(even){background:#191c20;}
+.live-command-workspace .cad-incident-table tbody tr:hover,.live-command-workspace .cad-incident-table tr[aria-selected=true]{background:#302b20;}
+.live-command-workspace .cad-incident-table td{border-bottom-color:#3a3730;}
+.live-command-workspace .cad-row-action{background:#29271f;color:#ffe0a0;border-color:#76633b;border-radius:7px;min-height:34px;}
+.live-command-workspace .cad-row-action:hover{background:#403620;}
+.live-command-workspace :is(input,select){border-color:#6b5a35;}
+@media(max-width:650px){.live-command-workspace .cad-incident-scroll{max-height:68dvh;}.live-command-workspace .cad-incident-table{min-width:735px;}}
