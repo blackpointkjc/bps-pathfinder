@@ -1,12 +1,40 @@
 import IncidentPrioritySelect from './IncidentPrioritySelect';
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from '@/components/ui/dialog';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { lookupDistrict } from '@/utils/districtLookup';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { Radio, RefreshCw, Search, Users } from 'lucide-react';
 
 export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,isExternal,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
  const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
  const [utilityPanel,setUtilityPanel]=useState(null);
+ const [districts,setDistricts]=useState({});
+ const districtCache=useRef(new Map());
+ useEffect(()=>{
+  let cancelled=false;
+  const candidates=allCalls.filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude))&&
+    !(Number(c.latitude)===0&&Number(c.longitude)===0));
+  const pending=[...new Map(candidates.map(c=>[`${Number(c.latitude).toFixed(5)},${Number(c.longitude).toFixed(5)}`,c])).entries()]
+    .filter(([key])=>!districtCache.current.has(key)).slice(0,80);
+  // Bound network work on an incident-heavy dispatch screen; never geocode during render.
+  (async()=>{
+   for(let i=0;i<pending.length && !cancelled;i+=4){
+    await Promise.all(pending.slice(i,i+4).map(async([key,c])=>{
+     districtCache.current.set(key,'Checking district…');
+     const value=await lookupDistrict(Number(c.latitude),Number(c.longitude)).catch(()=> '—');
+     if(!cancelled){districtCache.current.set(key,value);setDistricts(old=>({...old,[key]:value}));}
+    }));
+   }
+  })();
+  return()=>{cancelled=true;};
+ },[allCalls]);
+ const callDistrict=call=>{
+  const lat=Number(call.latitude),lng=Number(call.longitude);
+  const key=`${lat.toFixed(5)},${lng.toFixed(5)}`;
+  return Number.isFinite(lat)&&Number.isFinite(lng)&&!(lat===0&&lng===0)
+   ? districts[key]||districtCache.current.get(key)||'Checking district…'
+   : call.district||call.beat||call.zone||'District unavailable';
+ };
  const needsDispatch=call=>!(call.assigned_units||[]).length;
  const critical=allCalls.filter(c=>['critical','high'].includes(priorityOf(c)));
  const available=units.filter(u=>u.status==='Available'&&!u.connection_stale&&(u.presence_online===true||u.session_active===true));
@@ -44,12 +72,12 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
      <div className="flex flex-wrap gap-2"><label className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3"><Search className="h-4 w-4 text-slate-500"/><input aria-label="Search live incidents" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search incident, address or reference" className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-white outline-none"/></label><select aria-label="Filter live command by agency" value={agency} onChange={e=>setAgency(e.target.value)} className="min-h-11 rounded-lg border border-slate-600 bg-slate-950 px-3 text-sm"><option value="all">All agencies</option>{[...new Set(allCalls.map(c=>c.agency).filter(Boolean))].sort().map(a=><option key={a}>{a}</option>)}{allCalls.some(isExternal)&&<option value="external">PulsePoint</option>}</select></div>
     </div>
     <div className="px-4 py-2 text-xs text-slate-400">Sorted by elapsed time: shortest first → oldest last. Priority remains visible but does not affect row order.</div>
-    <div className="cad-incident-scroll"><table role="table" aria-label="Active calls for service" className="cad-incident-table"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">PRI</th><th role="columnheader" scope="col">CAD / received</th><th role="columnheader" scope="col">Incident / location</th><th role="columnheader" scope="col">Status / units</th><th role="columnheader" scope="col">Elapsed</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">
+    <div className="cad-incident-scroll"><table role="table" aria-label="Active calls for service" className="cad-incident-table"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">PRI</th><th role="columnheader" scope="col">CAD / received</th><th role="columnheader" scope="col">Incident / location</th><th role="columnheader" scope="col">District / beat</th><th role="columnheader" scope="col">Elapsed</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">
     {visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;return <tr role="row" key={call.id} data-priority={priorityOf(call)} aria-selected={detail?.id===call.id}>
      <td role="cell" data-label="Priority"><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span></td>
      <td role="cell" data-label="CAD / received"><button type="button" onClick={()=>onOpen(call)} className="font-bold text-cyan-200">{identifierOf(call).value}</button><small>{timeOf(call.time_received||call.created_date)} ET · {call.agency||'BPS'}</small></td>
      <td role="cell" data-label="Incident / location"><button type="button" onClick={()=>onOpen(call)} className="text-left font-bold uppercase text-white">{incidentOf(call)}</button><small>{call.location||'Location pending'}{call.cross_street?' / '+call.cross_street:''}</small>{isExternal(call)&&<small className="text-red-300">PulsePoint</small>}</td>
-     <td role="cell" data-label="Status / units"><strong className={needsDispatch(call)?'text-amber-300':'text-emerald-200'}>{needsDispatch(call)?'UNASSIGNED':call.status||'ACTIVE'}</strong><small>{(call.assigned_units||[]).length} units assigned</small></td>
+     <td role="cell" data-label="District / beat"><strong className="text-cyan-200">{callDistrict(call)}</strong></td>
      <td role="cell" data-label="Elapsed" className="whitespace-nowrap text-amber-200">{elapsedOf(call)}</td>
      <td role="cell" data-label="Actions"><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>onDispatch?.(call)} className="cad-row-action">Dispatch / assign</button><button type="button" onClick={()=>onMap(call)} className="cad-row-action">Map</button><button type="button" onClick={()=>onOpen(call)} className="cad-row-action">Detail</button>{canChangePriority&&<IncidentPrioritySelect call={call} priority={priorityOf(call)} onSave={onPriority} disabled={!!working}/>}</div></td>
     </tr>;})}</tbody></table>{!visible.length&&<p role="status" className="p-10 text-center text-slate-400">{loading?'Loading incidents…':allCalls.length?'No incidents match these filters':'No active incidents'}</p>}</div>
@@ -66,7 +94,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
   </Dialog>
   <Dialog open={!!detail} onOpenChange={open=>{if(!open)onClose?.();}}><DialogContent className="max-w-3xl border-slate-700 bg-slate-900 text-white"><DialogHeader><DialogTitle className="pr-10 text-xl">{detail?incidentOf(detail):'Incident details'}</DialogTitle><DialogDescription className="text-slate-400">{detail?identifierOf(detail).value:''}</DialogDescription></DialogHeader>{detail&&<div className="space-y-5">
    {error&&<p role="alert" className="rounded-lg border border-red-700 bg-red-950 p-3 text-sm text-red-100">{error}</p>}
-   <dl className="grid gap-4 rounded-xl border border-slate-700 bg-slate-950 p-4 sm:grid-cols-2">{[['Location',detail.location||'Pending'],['Status',detail.status||'Active'],['Priority',(priorities[priorityOf(detail)]||priorities.medium).label],['Received',timeOf(detail.time_received)+' ET'],['Agency',detail.agency||'Pending'],['Cross street',detail.cross_street||'None recorded']].map(([label,value])=><div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-sm text-white">{value}</dd></div>)}</dl>
+   <dl className="grid gap-4 rounded-xl border border-slate-700 bg-slate-950 p-4 sm:grid-cols-2">{[['Location',detail.location||'Pending'],['Status',detail.status||'Active'],['Priority',(priorities[priorityOf(detail)]||priorities.medium).label],['Received',timeOf(detail.time_received)+' ET'],['Agency',detail.agency||'Pending'],['Cross street',detail.cross_street||'None recorded'],['District / beat',callDistrict(detail)]].map(([label,value])=><div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-sm text-white">{value}</dd></div>)}</dl>
    {detail.source==='public_helpme'&&<section className="rounded-xl border border-cyan-700/50 bg-cyan-950/20 p-3"><h3 className="text-sm font-semibold text-cyan-200">Website Help Me request</h3><p className="mt-1 text-xs text-slate-300">This is a regular CAD call. Open the dispatch console to assign units, change status, add notes or review its response record.</p><div className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-slate-400">Caller:</span> {detail.caller_name||'Not provided'}</p><p><span className="text-slate-400">Callback:</span> {detail.caller_phone||'Not provided'}</p><p><span className="text-slate-400">Landmark:</span> {detail.landmark||'Not provided'}</p><p><span className="text-slate-400">Safety hazards:</span> {detail.hazards||'None reported'}</p></div></section>}
    {detail.description&&<section><h3 className="mb-2 text-sm font-semibold text-slate-300">Incident narrative</h3><p className="whitespace-pre-wrap rounded-xl border border-slate-700 p-4 text-sm leading-7 text-slate-200">{detail.description}</p></section>}
    <section><h3 className="mb-2 text-sm font-semibold text-slate-300">Assigned units</h3><div className="flex flex-wrap gap-2">{(detail.assigned_units||[]).map(id=>{const person=units.find(unit=>[unit.id,unit.user_id,unit.officer_id,unit.email].some(value=>String(value)===String(id)));return <span key={id} className="rounded-lg border border-slate-600 px-3 py-2 text-sm">{person?[person.rank,person.last_name,'· Unit',person.unit_number||'—'].filter(Boolean).join(' '):'Unit '+id}</span>;})}{!(detail.assigned_units||[]).length&&<p className="text-sm text-amber-300">No unit has been assigned.</p>}</div></section>
