@@ -1,9 +1,9 @@
 {
   "name":"PortalShowcase", "type":"object",
   "properties":{
-    "kind":{"type":"string","enum":["photo","officer","supervisor"]},
+    "kind":{"type":"string","enum":["video","photo","officer","supervisor"]},
     "title":{"type":"string"},"caption":{"type":"string"},
-    "image_url":{"type":"string"},"month":{"type":"string"},
+    "image_url":{"type":"string"},"video_url":{"type":"string"},"month":{"type":"string"},
     "active":{"type":"boolean","default":true},
     "sort_order":{"type":"number","default":0},
     "updated_by":{"type":"string"}
