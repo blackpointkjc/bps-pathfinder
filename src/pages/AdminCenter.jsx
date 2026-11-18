@@ -37,6 +37,7 @@ const AdminClientReports = lazy(() => import('./AdminClientReports'));
 const AdminClientFeedback = lazy(() => import('./AdminClientFeedback'));
 const AdminAnnouncements = lazy(() => import('./AdminAnnouncements'));
 const AdminPortalSettings = lazy(() => import('./AdminPortalSettings'));
+const LoginShowcaseManager = lazy(() => import('@/components/admin/LoginShowcaseManager'));
 const PathfinderReports = lazy(() => import('./Reports'));
 const CADCenter = lazy(() => import('./CADCenter'));
 const OfficerCenter = lazy(() => import('./OfficerCenter'));
@@ -180,7 +181,7 @@ function AdministrationToolsOnly({ headerAction = null }) {
         if (section === 'supporttime') return <AdminSupportStaffClock/>;
         if (section === 'schedule') return <AdminSchedulingCoverageHub />;
         if (section === 'assets') return <AssetsWorkspace/>;
-        if (section === 'system') return <AdminPortalSettings/>;
+        if (section === 'system') return <AdminInlineFunctions queryParam="admin_system_tool" tools={[{id:'preferences',label:'Portal preferences',component:AdminPortalSettings},{id:'branding',label:'Login gallery & monthly honors',component:LoginShowcaseManager}]}/>;
         if (section === 'sites') return <AdminSiteOperationsHub />;
         if (section === 'reports') return <AdminReportsQualityHub />;
         if (section === 'communications') return <AdminCommunicationsHub />;
