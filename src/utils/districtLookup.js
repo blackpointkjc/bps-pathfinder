@@ -4,17 +4,25 @@
  */
 
 const cache = {};
+const inFlight = new Map();
 
 async function fetchGeoJSON(url) {
     if (cache[url]) return cache[url];
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data?.features?.length > 0) cache[url] = data;
-        return data;
-    } catch {
-        return null;
-    }
+    if (inFlight.has(url)) return inFlight.get(url);
+    // One request per boundary layer regardless of how many CAD calls arrive.
+    // A stalled municipal ArcGIS endpoint must not indefinitely delay dispatch.
+    const request = (async () => {
+        try {
+            const res = await fetch(url, {signal: AbortSignal.timeout(6500)});
+            if (!res.ok) return null;
+            const data = await res.json();
+            if (data?.features?.length > 0) { cache[url] = data; return data; }
+            return null;
+        } catch { return null; }
+        finally { inFlight.delete(url); }
+    })();
+    inFlight.set(url, request);
+    return request;
 }
 
 // Ray casting algorithm - returns true if [lng, lat] is inside the polygon ring
