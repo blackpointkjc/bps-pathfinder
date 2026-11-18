@@ -147,7 +147,7 @@ export default function CallsForService() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'responding': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'on_scene': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'on_scene': return 'bg-amber-100 text-blue-800 border-blue-300';
       case 'call_cleared': return 'bg-green-100 text-green-800 border-green-300';
       case 'unfounded': return 'bg-slate-100 text-slate-800 border-slate-300';
       case 'off_property': return 'bg-red-100 text-red-800 border-red-300';
@@ -161,7 +161,7 @@ export default function CallsForService() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="p-4 md:p-8 min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="p-4 md:p-8 min-h-screen bg-gradient-to-br from-slate-50 to-amber-50">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200">
           <div className="flex items-center justify-between">
@@ -195,13 +195,13 @@ export default function CallsForService() {
         {myAttachedCalls.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <Badge className="bg-blue-600 text-white">My Active Calls ({myAttachedCalls.length})</Badge>
+              <Badge className="bg-amber-600 text-white">My Active Calls ({myAttachedCalls.length})</Badge>
             </h2>
             <div className="grid gap-4">
               {myAttachedCalls.map((call) => {
                 const myStatus = call.attached_officers?.find(a => a.officer_email === user?.email);
                 return (
-                  <Card key={call.id} className="border-blue-300 bg-blue-50 shadow-lg">
+                  <Card key={call.id} className="border-blue-300 bg-amber-50 shadow-lg">
                     <CardHeader className="pb-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -325,7 +325,7 @@ export default function CallsForService() {
                       {activeEntry && (
                         <Button
                           onClick={() => attachToCallMutation.mutate({ callId: call.id, status: 'responding' })}
-                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          className="w-full bg-amber-600 hover:bg-amber-700"
                           disabled={attachToCallMutation.isPending}
                         >
                           <Radio className="w-4 h-4 mr-2" />

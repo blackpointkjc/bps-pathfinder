@@ -127,7 +127,7 @@ export default function MandatoryReadGate({ user }) {
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-5">
       <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-amber-500/50 bg-[#111316] text-white shadow-2xl">
         <div className="flex items-center gap-3 border-b border-slate-800 bg-[#111316] p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-blue-300">
             <MessageCircle className="h-5 w-5"/>
           </div>
           <div className="min-w-0 flex-1">

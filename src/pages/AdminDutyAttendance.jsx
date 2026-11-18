@@ -240,7 +240,7 @@ export default function AdminDutyAttendance() {
         <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-[#222321] via-[#111316] to-[#111316] p-4 shadow-lg">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-500/10"><Shield className="h-5 w-5 text-cyan-300" /></div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-amber-500/10"><Shield className="h-5 w-5 text-cyan-300" /></div>
               <div>
                 <h1 className="text-xl font-black leading-tight text-white">Duty &amp; Attendance Review</h1>
                 <p className="mt-0.5 text-xs text-slate-400">Job duty performance and call-out attendance for any period.</p>
@@ -253,7 +253,7 @@ export default function AdminDutyAttendance() {
                   {PERIODS.map(period => <SelectItem key={period.value} value={period.value}>{period.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button onClick={refresh} disabled={core.isFetching || duty.isFetching || calls.isFetching} className="h-11 border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20">
+              <Button onClick={refresh} disabled={core.isFetching || duty.isFetching || calls.isFetching} className="h-11 border border-cyan-400/30 bg-amber-500/10 text-cyan-100 hover:bg-amber-500/20">
                 <RefreshCw className={`mr-2 h-4 w-4 ${core.isFetching || duty.isFetching || calls.isFetching ? 'animate-spin' : ''}`} /> Refresh
               </Button>
             </div>
@@ -271,7 +271,7 @@ export default function AdminDutyAttendance() {
         )}
 
         {isAdmin && segmentsReady && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-500/30 bg-amber-500/10 px-4 py-3 text-sm text-cyan-100">
             <span className="inline-flex min-w-0 items-center gap-2">
               <ClipboardList className="h-4 w-4 shrink-0 text-cyan-300" />
               {followUpSync.status === 'saving' && 'Assigning officer follow-ups to supervisors…'}

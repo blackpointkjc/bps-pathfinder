@@ -244,7 +244,7 @@ Review in Admin > Shift Bids.`
 
         {myBids && myBids.filter(b => b.status === 'pending').length > 0 && (
           <Card className="border border-slate-700 border-l-4 border-l-blue-500 bg-slate-900 text-white shadow-lg">
-            <CardHeader className="border-b border-slate-700 bg-blue-950/40">
+            <CardHeader className="border-b border-slate-700 bg-stone-900/40">
               <CardTitle className="text-blue-200">My Pending Bids</CardTitle>
             </CardHeader>
             <CardContent className="bg-slate-900 p-4">
@@ -257,7 +257,7 @@ Review in Admin > Shift Bids.`
                         <p className="font-medium">{shift ? format(parseISO(shift.shift_date), 'MMM d, yyyy') : 'Unknown'}</p>
                         <p className="text-sm text-slate-400">{shift?.location?.split(':')[0]}</p>
                       </div>
-                      <Badge className="bg-blue-600">Priority {bid.bid_priority}</Badge>
+                      <Badge className="bg-amber-600">Priority {bid.bid_priority}</Badge>
                     </div>
                   );
                 })}
@@ -286,14 +286,14 @@ Review in Admin > Shift Bids.`
 
               return (
                 <Card key={shift.id} className={`overflow-hidden border border-slate-700 bg-slate-900 text-slate-100 shadow-xl ${isToday ? 'ring-2 ring-orange-400/80' : ''}`}>
-                  <CardHeader className={`${isToday ? 'bg-gradient-to-r from-orange-950/70 to-red-950/40' : 'bg-gradient-to-r from-emerald-950/60 to-blue-950/50'} border-b border-slate-700`}>
+                  <CardHeader className={`${isToday ? 'bg-gradient-to-r from-orange-950/70 to-red-950/40' : 'bg-gradient-to-r from-emerald-950/60 to-stone-900/50'} border-b border-slate-700`}>
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <CardTitle className="flex items-center gap-3">
                         <Calendar className="w-5 h-5 text-green-600" />
                         <div>
                           <span className="text-white">{format(shiftDate, 'EEEE, MMM d, yyyy')}</span>
                           {isToday && <Badge className="ml-2 bg-orange-600 text-white">TODAY</Badge>}
-                          {isTomorrow && <Badge className="ml-2 bg-blue-600 text-white">TOMORROW</Badge>}
+                          {isTomorrow && <Badge className="ml-2 bg-amber-600 text-white">TOMORROW</Badge>}
                         </div>
                       </CardTitle>
                       <div className="flex items-center gap-2">
@@ -356,7 +356,7 @@ Review in Admin > Shift Bids.`
                       </div>
 
                       {shift.site_details && (
-                        <div className="rounded-lg border border-blue-800 bg-blue-950/40 p-3">
+                        <div className="rounded-lg border border-blue-800 bg-stone-900/40 p-3">
                           <p className="mb-1 flex items-center gap-1 text-xs font-medium text-blue-300">
                             <AlertCircle className="w-3 h-3" />
                             Site Details
@@ -377,7 +377,7 @@ Review in Admin > Shift Bids.`
 
                       <div className="flex justify-end gap-2">
                         {alreadyBid ? (
-                          <Badge className="bg-blue-600 text-white py-2 px-4">Bid Submitted</Badge>
+                          <Badge className="bg-amber-600 text-white py-2 px-4">Bid Submitted</Badge>
                         ) : (
                           <Button
                             onClick={() => openBidDialog(shift)}

@@ -13,8 +13,8 @@ export default function AdaptiveSelector({
   const active = useMemo(() => options.find(item => item.id === value) || options[0], [options, value]);
   const ActiveIcon = active?.icon;
   const accentClasses = accent === 'blue'
-    ? 'border-blue-400/50 bg-blue-500/15 text-blue-100'
-    : 'border-cyan-400/50 bg-cyan-500/15 text-cyan-100';
+    ? 'border-blue-400/50 bg-amber-500/15 text-blue-100'
+    : 'border-cyan-400/50 bg-amber-500/15 text-cyan-100';
 
   useEffect(() => {
     if (!open) return undefined;

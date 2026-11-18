@@ -8,7 +8,7 @@ export default function EmployeeDirectory({employees=[],onEdit,onPhoto}){
     <td className="p-4 text-slate-300"><span className="block">{person.division||'No division assigned'}</span><span className="mt-1 block text-xs text-slate-400">{person.platoon?'Platoon '+person.platoon:'No platoon'}{person.unit_number?' · Unit '+person.unit_number:''}</span></td>
     <td className="p-4"><a className="block break-all text-cyan-200" href={'mailto:'+person.email}>{person.email}</a>{person.mobile_phone&&<a className="mt-1 block text-xs text-slate-400" href={'tel:'+person.mobile_phone}>{person.mobile_phone}</a>}</td>
     <td className="p-4 text-xs text-slate-300"><span className={'rounded-full border px-2 py-1 '+(person.termination_date?'border-red-800 text-red-200':'border-emerald-800 text-emerald-200')}>{person.termination_date?'Former employee':'Active employee'}</span>{person.hire_date&&<span className="mt-2 block text-slate-400">Hired {person.hire_date}</span>}</td>
-    <td className="p-4 text-right"><button type="button" onClick={()=>onEdit(person)} className="whitespace-nowrap rounded-lg border border-cyan-800 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-950">Manage employee</button></td>
+    <td className="p-4 text-right"><button type="button" onClick={()=>onEdit(person)} className="whitespace-nowrap rounded-lg border border-cyan-800 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-stone-900">Manage employee</button></td>
    </tr>)}</tbody>
   </table>{!employees.length&&<p className="p-8 text-center text-sm text-slate-400">No employees match these filters.</p>}
  </div>;

@@ -762,14 +762,14 @@ export default function DispatchCenter({embedded=false}) {
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
                     <button onClick={() => setShowCreateDialog(true)}
-                        className="flex items-center gap-1 rounded-lg border border-blue-700 bg-[#302c25] text-white hover:bg-blue-900">
+                        className="flex items-center gap-1 rounded-lg border border-blue-700 bg-[#302c25] text-white hover:bg-stone-900">
                         <Plus className="w-3 h-3" /> NEW CALL
                     </button>
 
                     <button onClick={() => {
                         setShowMap(true);
                     }}
-                        className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMap || mobileView === 'map' ? 'border-blue-500/40 bg-blue-900/20 text-blue-400' : 'border-slate-600 text-slate-500'}`}>
+                        className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMap || mobileView === 'map' ? 'border-blue-500/40 bg-stone-900/20 text-blue-400' : 'border-slate-600 text-slate-500'}`}>
                         <MapIcon className="w-2.5 h-2.5" /> MAP
                     </button>
                     <button onClick={() => setShowPriorCalls(!showPriorCalls)}
@@ -778,7 +778,7 @@ export default function DispatchCenter({embedded=false}) {
                         }`}>
                         {showPriorCalls ? 'BACK TO ACTIVE' : 'CALL / PROPERTY HISTORY'}
                     </button>
-                    <button onClick={() => setShowDispatchLog(true)} className="flex items-center gap-1 rounded border border-blue-600/60 px-2 py-1 text-[10px] text-blue-300 hover:bg-blue-950/40 hover:text-white"><ClipboardList className="h-2.5 w-2.5" /> DISPATCH LOG</button>
+                    <button onClick={() => setShowDispatchLog(true)} className="flex items-center gap-1 rounded border border-blue-600/60 px-2 py-1 text-[10px] text-blue-300 hover:bg-stone-900/40 hover:text-white"><ClipboardList className="h-2.5 w-2.5" /> DISPATCH LOG</button>
                     <button onClick={() => {
                         const params = new URLSearchParams({ new: '1' });
                         if (selectedCall?.id) {
@@ -789,7 +789,7 @@ export default function DispatchCenter({embedded=false}) {
                     }} className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> NEW BOLO</button>
                     <CadVoiceBroadcastButton user={currentUser} />
                     <button onClick={() => setShowMessaging(!showMessaging)}
-                        className={`relative flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMessaging ? 'border-cyan-500/60 bg-cyan-950/40 text-cyan-200' : 'border-slate-600 text-slate-400 hover:text-white'}`}>
+                        className={`relative flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMessaging ? 'border-cyan-500/60 bg-stone-900/40 text-cyan-200' : 'border-slate-600 text-slate-400 hover:text-white'}`}>
                         <MessageSquarePlus className="w-2.5 h-2.5" /> MSG
                         {unreadDispatchMessages > 0 && (
                             <span className="absolute -right-2 -top-2 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black leading-none text-white shadow-lg ring-2 ring-[#08111d]">
@@ -851,7 +851,7 @@ export default function DispatchCenter({embedded=false}) {
                     {[
                         ['calls','CALLS'], ['detail','DETAIL'], ['assignment','ASSIGN'], ['units','UNITS'], ['map','MAP']
                     ].map(([value,label]) => (
-                        <button type="button" key={value} aria-pressed={value==='map'?showMap:mobileView===value} onClick={() => value==='map'?setShowMap(true):setMobileView(value)} className={`min-h-11 min-w-[76px] flex-1 shrink-0 rounded-lg border px-2 text-[10px] font-black tracking-wide ${(value==='map'?showMap:mobileView===value) ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#111316] text-slate-300'}`}>{label}</button>
+                        <button type="button" key={value} aria-pressed={value==='map'?showMap:mobileView===value} onClick={() => value==='map'?setShowMap(true):setMobileView(value)} className={`min-h-11 min-w-[76px] flex-1 shrink-0 rounded-lg border px-2 text-[10px] font-black tracking-wide ${(value==='map'?showMap:mobileView===value) ? 'border-blue-500 bg-amber-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#111316] text-slate-300'}`}>{label}</button>
                     ))}
                 </div>
             </div>
@@ -867,7 +867,7 @@ export default function DispatchCenter({embedded=false}) {
                     {[
                         ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED'], ['priority','PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','EN ROUTE'], ['On Scene','ON SCENE'], ['agency','ALL ACTIVE CALLS']
                     ].map(([value,label]) => (
-                        <button type="button" key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`shrink-0 whitespace-nowrap rounded border px-2.5 py-2 text-[10px] ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-300 hover:text-white'}`}>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
+                        <button type="button" key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`shrink-0 whitespace-nowrap rounded border px-2.5 py-2 text-[10px] ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-amber-500/10' : 'border-slate-700 text-slate-300 hover:text-white'}`}>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
                     ))}
                 </div>
                 <div className="flex-1" />
@@ -996,7 +996,7 @@ export default function DispatchCenter({embedded=false}) {
                                         <span className="text-[9px] text-slate-500 mr-1">Call status</span>
                                         {['New','Dispatched','Enroute','On Scene','Cleared'].map(status => (
                                             <button key={status} onClick={() => updateCallStatus(status)} disabled={statusWorking || selectedCall.status === status}
-                                                className={`px-2 py-1 rounded border text-[9px] ${selectedCall.status === status ? 'border-blue-400 bg-blue-500/20 text-blue-200' : 'border-slate-600 text-slate-400 hover:border-slate-400 hover:text-white'}`}>
+                                                className={`px-2 py-1 rounded border text-[9px] ${selectedCall.status === status ? 'border-blue-400 bg-amber-500/20 text-blue-200' : 'border-slate-600 text-slate-400 hover:border-slate-400 hover:text-white'}`}>
                                                 {status.toUpperCase()}
                                             </button>
                                         ))}
@@ -1047,7 +1047,7 @@ export default function DispatchCenter({embedded=false}) {
                                             <div className="text-[9px] text-slate-500 mb-1">Add dispatch note</div>
                                             <AIRewriteField value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addCallNote(); } }}
                                                 placeholder="Type update, then Enter..." className="w-full h-16 resize-none bg-[#111316] border border-[#635336] rounded p-2 text-[10px] text-white outline-none focus:border-blue-500" />
-                                            <button onClick={addCallNote} disabled={savingNote || !noteText.trim()} className="w-full mt-1 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 rounded text-[9px] font-bold">
+                                            <button onClick={addCallNote} disabled={savingNote || !noteText.trim()} className="w-full mt-1 py-1 bg-amber-700 hover:bg-amber-600 disabled:opacity-40 rounded text-[9px] font-bold">
                                                 {savingNote ? 'SAVING...' : 'POST TO CAD LOG'}
                                             </button>
                                         </div>
@@ -1068,9 +1068,9 @@ export default function DispatchCenter({embedded=false}) {
                         {selectedCall && mobileView !== 'units' ? (
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#635336] bg-[#111316] px-3 py-2">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                                     <span className="text-[10px] font-black tracking-[.16em] text-blue-300">Unit assignment</span>
-                                    <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">Call selected</span>
+                                    <span className="ml-auto rounded-md border border-blue-800/60 bg-stone-900/40 px-2 py-1 text-[8px] font-black text-blue-200">Call selected</span>
                                 </div>
                                 <div className="min-h-0 flex-1 p-3">
                                     <UnitAssignmentPanel call={selectedCall} calls={activeCalls} units={units} allAssignments={cadAssignmentRows} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
@@ -1079,7 +1079,7 @@ export default function DispatchCenter({embedded=false}) {
                         ) : mobileView === 'assignment' ? (
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#635336] bg-[#111316] px-3 py-2">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                                     <span className="text-[10px] font-black tracking-[.16em] text-blue-300">Unit assignment</span>
                                 </div>
                                 <div className="flex min-h-0 flex-1 items-center justify-center p-4">

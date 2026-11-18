@@ -216,7 +216,7 @@ export default function AdminClientFeedback() {
           </Card>
 
           <Card className="shadow-lg border-blue-200">
-            <CardHeader className="bg-blue-50">
+            <CardHeader className="bg-amber-50">
               <CardTitle className="text-blue-700 flex items-center gap-2">
                 <Star className="w-5 h-5" />Total Reviews
               </CardTitle>
@@ -342,7 +342,7 @@ export default function AdminClientFeedback() {
                   <button
                     type="button"
                     onClick={() => setAssignAction("regular")}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${assignAction === 'regular' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-blue-300'}`}
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${assignAction === 'regular' ? 'border-blue-500 bg-amber-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-blue-300'}`}
                   >
                     <Star className="w-4 h-4 mx-auto mb-1 text-blue-600" />
                     Regular
@@ -361,7 +361,7 @@ export default function AdminClientFeedback() {
                 </p>
               )}
               {assignAction === 'regular' && (
-                <p className="text-xs text-blue-700 bg-blue-50 p-2 rounded">
+                <p className="text-xs text-blue-700 bg-amber-50 p-2 rounded">
                   ℹ️ This will be saved as regular feedback only.
                 </p>
               )}

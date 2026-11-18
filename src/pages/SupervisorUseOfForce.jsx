@@ -140,7 +140,7 @@ export default function SupervisorUseOfForce() {
   const getStatusColor = (status) => {
     const colors = {
       draft: "bg-slate-100 text-slate-800",
-      submitted: "bg-blue-100 text-blue-800",
+      submitted: "bg-amber-100 text-blue-800",
       approved: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
     };
@@ -228,7 +228,7 @@ export default function SupervisorUseOfForce() {
                       </Badge>
                     )}
                     {report.police_notified && (
-                      <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-50">
+                      <Badge variant="outline" className="border-blue-300 text-blue-700 bg-amber-50">
                         Police Notified
                       </Badge>
                     )}

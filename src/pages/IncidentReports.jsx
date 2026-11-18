@@ -784,7 +784,7 @@ Provide:
   };
 
   const severityColors = {
-    low: "bg-blue-100 text-blue-800 border-blue-200",
+    low: "bg-amber-100 text-blue-800 border-blue-200",
     medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
     high: "bg-orange-100 text-orange-800 border-orange-200",
     critical: "bg-red-100 text-red-800 border-red-200",
@@ -1294,7 +1294,7 @@ Provide:
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4"><OfflineDraftGuard key={editingReportId||"new"} owner={user?.id} id={"IncidentReports-"+(editingReportId||"new")} title="Incident report" data={formData} onRestore={setFormData} />
                 {formData.report_type === 'supplement' && (
-                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-950">
+                  <div className="rounded-lg border border-indigo-200 bg-amber-50 p-4 text-sm text-indigo-950">
                     <div className="font-black">Linked Supplement</div>
                     <div className="mt-1">Original report: <span className="font-mono font-bold">{formData.parent_report_number || formData.parent_report_id}</span></div>
                     {formData.linked_call_number && <div>CAD: <span className="font-mono font-bold">{formData.linked_call_number}</span></div>}
@@ -1337,14 +1337,14 @@ Provide:
                   <div className="space-y-2 md:col-span-2">
                     <Label>CAD Call Number</Label>
                     {formData.report_type === 'supplement' ? (
-                      <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                      <div className="rounded-md border border-blue-200 bg-amber-50 p-3 text-sm text-blue-900">
                         <strong>Inherited from original:</strong> {formData.linked_call_number || 'No linked CAD'}
                       </div>
                     ) : (
                       <>
                         <CallLinkCombobox calls={activeDispatchCalls} value={formData.linked_call_id} selectedLabel={formData.linked_call_number} onSelect={selectDispatchCall} /> <Button type="button" variant="ghost" onClick={()=>selectDispatchCall('none')}>Clear CAD Link</Button>
                         {formData.linked_call_id && (
-                          <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                          <div className="rounded-md border border-blue-200 bg-amber-50 p-3 text-sm text-blue-900">
                             <strong>Linked CAD:</strong> {formData.linked_call_number || 'Selected call'}
                             {formData.primary_officer_name ? <> · <strong>Primary:</strong> {formData.primary_officer_name}</> : null}
                           </div>
@@ -1775,10 +1775,10 @@ Provide:
                               </Badge>
                             )}
                             {report.report_type === 'supplement' && (
-                              <Badge className="bg-blue-600 text-white">SUPPLEMENT {report.supplement_number || ''}</Badge>
+                              <Badge className="bg-amber-600 text-white">SUPPLEMENT {report.supplement_number || ''}</Badge>
                             )}
                             {report.call_number && (
-                              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 font-mono">
+                              <Badge variant="outline" className="bg-amber-100 text-blue-800 border-blue-300 font-mono">
                                 {report.call_number}
                               </Badge>
                             )}
@@ -1791,7 +1791,7 @@ Provide:
                           </div>
                           <div className="flex flex-wrap gap-2 justify-end">
                             {report.police_notified && (
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                              <Badge className="bg-amber-100 text-blue-800 border-blue-200">
                                 Police Notified {report.police_report_number && `(#${report.police_report_number})`}
                               </Badge>
                             )}
@@ -1845,13 +1845,13 @@ Provide:
                       ].filter((item, index, rows) => rows.findIndex(other => String(other.id) === String(item.id)) === index);
                       if (!linkedSupplements.length) return null;
                       return (
-                        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+                        <div className="mt-4 rounded-lg border border-indigo-200 bg-amber-50 p-3">
                           <p className="mb-2 text-xs font-black uppercase tracking-wide text-indigo-800">Linked Supplements ({linkedSupplements.length})</p>
                           <div className="space-y-2">
                             {linkedSupplements.map(supplement => (
                               <div key={supplement.id} className="rounded-md border border-indigo-200 bg-white p-3">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <Badge className="bg-indigo-600 text-white">Supplement {supplement.supplement_number || ''}</Badge>
+                                  <Badge className="bg-amber-600 text-white">Supplement {supplement.supplement_number || ''}</Badge>
                                   <span className="font-mono text-xs font-bold text-slate-700">{supplement.report_number || supplement.id}</span>
                                   {supplement.linked_call_number && <Badge variant="outline" className="font-mono">CAD {supplement.linked_call_number}</Badge>}
                                 </div>
@@ -1887,7 +1887,7 @@ Provide:
                             onClick={() => handleAddSupplement(report)}
                             size="sm"
                             variant="outline"
-                            className="text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+                            className="text-indigo-700 border-indigo-300 hover:bg-amber-50"
                           >
                             <Plus className="w-4 h-4 mr-1" />
                             Add Supplement
@@ -1897,7 +1897,7 @@ Provide:
                             onClick={() => printReport(report)}
                             size="sm"
                             variant="outline"
-                            className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                            className="text-blue-700 border-blue-300 hover:bg-amber-50"
                         >
                             <Printer className="w-4 h-4 mr-1" />
                             Print Report

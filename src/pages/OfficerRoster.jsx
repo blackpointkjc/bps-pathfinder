@@ -111,7 +111,7 @@ export default function OfficerRoster() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {entries.map((entry) => (
                 <Card key={entry.id} className="border-none shadow-lg">
-                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
                     <CardTitle className="text-lg">
                       {entry.first_name} {entry.last_name}
                     </CardTitle>
@@ -119,7 +119,7 @@ export default function OfficerRoster() {
                   <CardContent className="p-4 space-y-2">
                     {entry.rank && (
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-blue-600">{entry.rank}</Badge>
+                        <Badge className="bg-amber-600">{entry.rank}</Badge>
                         {entry.unit_number && <Badge variant="outline">Unit #{entry.unit_number}</Badge>}
                       </div>
                     )}

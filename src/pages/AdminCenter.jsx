@@ -104,7 +104,7 @@ function AdminInlineFunctions({ tools, queryParam, defaultTool }) {
       <div className="sticky top-0 z-30 flex flex-wrap gap-1.5 border-b border-slate-800 bg-[#111316]/95 px-2 py-2 backdrop-blur">
         {tools.map(item => (
           <button key={item.id} type="button" onClick={() => select(item.id)}
-            className={`rounded-md border px-2.5 py-1.5 text-[10px] font-black transition ${activeId === item.id ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100 shadow-sm' : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>
+            className={`rounded-md border px-2.5 py-1.5 text-[10px] font-black transition ${activeId === item.id ? 'border-cyan-500 bg-amber-500/15 text-cyan-100 shadow-sm' : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500 hover:text-white'}`}>
             {item.label}
           </button>
         ))}

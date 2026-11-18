@@ -243,7 +243,7 @@ export default function AdminOfficerRoster() {
               <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
               {syncing ? 'Syncing...' : 'Auto-Sync from Manage Officers'}
             </Button>
-            <Button onClick={() => { resetForm(); setShowDialog(true); }} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => { resetForm(); setShowDialog(true); }} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" />
               Add Officer
             </Button>
@@ -285,7 +285,7 @@ export default function AdminOfficerRoster() {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {entries.map((entry) => (
                   <Card key={entry.id} className="border-none shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-blue-600" />
@@ -337,7 +337,7 @@ export default function AdminOfficerRoster() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!editingEntry && (
-              <div className="space-y-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="space-y-2 p-4 bg-amber-50 border border-blue-200 rounded-lg">
                 <Label>Copy from Manage Officers</Label>
                 <div className="flex gap-2">
                   <Select value={selectedUserToCopy} onValueChange={setSelectedUserToCopy}>

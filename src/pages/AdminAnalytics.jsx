@@ -739,7 +739,7 @@ export default function AdminAnalytics() {
               type="button"
               onClick={refreshCompanyAnalytics}
               disabled={analyticsRefreshing}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-950/40 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-900/50 disabled:opacity-50 sm:flex-none"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-stone-900/40 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-stone-900/50 disabled:opacity-50 sm:flex-none"
             >
               <RefreshCw className={`h-4 w-4 ${analyticsRefreshing ? 'animate-spin' : ''}`} />
               {analyticsRefreshing ? 'Updating' : 'Refresh Analytics'}
@@ -777,7 +777,7 @@ export default function AdminAnalytics() {
         </div>
 
         {analyticsData.is_updating && (
-          <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-100">
+          <div className="rounded-xl border border-cyan-500/30 bg-stone-900/20 px-4 py-3 text-sm text-cyan-100">
             Updating all five analytics data groups. Officer percentages stay on the last coherent verified generation until the current generation is complete.
           </div>
         )}
@@ -890,7 +890,7 @@ export default function AdminAnalytics() {
           <CardContent>
             <div className="space-y-3">
               {!performanceCardsReady && (
-                <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-cyan-100">
+                <div className="rounded-lg border border-cyan-500/30 bg-stone-900/20 p-4 text-sm text-cyan-100">
                   {officerPerformanceSnapshots.error ? 'Officer Performance Could Not Be Loaded.' : 'Loading Officer Performance For This Period…'}
                   {officerPerformanceSnapshots.error && <button className="ml-3 underline" onClick={()=>officerPerformanceSnapshots.refetch()}>Retry Officer Performance</button>}
                   {Object.keys(performanceCriticalErrors).length > 0 && (

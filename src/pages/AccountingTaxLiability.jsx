@@ -430,7 +430,7 @@ export default function AccountingTaxLiability() {
           <p className="text-slate-600">Track tax obligations and payment requirements</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={printReport} className="bg-blue-600">
+          <Button onClick={printReport} className="bg-amber-600">
             <Download className="w-4 h-4 mr-2" />
             Print Report
           </Button>

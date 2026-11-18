@@ -648,16 +648,16 @@ export default function AdminLocations({ embedded = false }) {
               resetForm();
               setShowDialog(true);
             }}
-            className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto"
+            className="w-full bg-amber-600 hover:bg-amber-700 sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Location
           </Button></div>
         </div>
-        {siteBalanceMessage && <p role="status" className="rounded-lg border border-cyan-800 bg-cyan-950/30 px-3 py-2 text-xs text-cyan-100">{siteBalanceMessage}</p>}
+        {siteBalanceMessage && <p role="status" className="rounded-lg border border-cyan-800 bg-stone-900/30 px-3 py-2 text-xs text-cyan-100">{siteBalanceMessage}</p>}
 
         {locationsLoading && (
-          <Card className="border border-blue-200 bg-blue-50">
+          <Card className="border border-blue-200 bg-amber-50">
             <CardContent className="p-4 text-sm text-blue-900">Loading locations...</CardContent>
           </Card>
         )}
@@ -708,7 +708,7 @@ export default function AdminLocations({ embedded = false }) {
                               Active
                             </Badge>
                             {(location.division || location.subdivision || location.substation) && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              <Badge variant="outline" className="bg-amber-50 text-blue-700 border-blue-200">
                                 {[location.division, location.subdivision, location.substation].filter(Boolean).join(' › ')}
                               </Badge>
                             )}
@@ -724,7 +724,7 @@ export default function AdminLocations({ embedded = false }) {
                               );
                             })()}
                             {location.assigned_supervisors && location.assigned_supervisors.length > 0 && (
-                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                                <Badge variant="outline" className="bg-amber-50 text-indigo-700 border-indigo-200">
                                   {location.assigned_supervisors.length} Supervisor{location.assigned_supervisors.length > 1 ? 's' : ''}
                                 </Badge>
                             )}
@@ -837,7 +837,7 @@ export default function AdminLocations({ embedded = false }) {
                               Inactive
                             </Badge>
                             {(location.division || location.subdivision || location.substation) && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              <Badge variant="outline" className="bg-amber-50 text-blue-700 border-blue-200">
                                 {[location.division, location.subdivision, location.substation].filter(Boolean).join(' › ')}
                               </Badge>
                             )}
@@ -853,7 +853,7 @@ export default function AdminLocations({ embedded = false }) {
                               );
                             })()}
                             {location.assigned_supervisors && location.assigned_supervisors.length > 0 && (
-                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                                <Badge variant="outline" className="bg-amber-50 text-indigo-700 border-indigo-200">
                                   {location.assigned_supervisors.length} Supervisor{location.assigned_supervisors.length > 1 ? 's' : ''}
                                 </Badge>
                             )}
@@ -922,7 +922,7 @@ export default function AdminLocations({ embedded = false }) {
           </TabsContent>
         </Tabs>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-amber-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
             <strong>Note:</strong> Active locations appear in dropdowns throughout the system. Set a contract end date to automatically deactivate a location at 12pm on that date. Inactive locations are hidden from dropdowns but can be reactivated anytime.
           </p>
@@ -1173,7 +1173,7 @@ export default function AdminLocations({ embedded = false }) {
                     <p className="mt-1 text-xs text-slate-400">Click around the outside edge of the property. The same custom boundary is used for officer geofencing and CAD property alerts.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" size="sm" onClick={() => setDrawingBoundary(value => !value)} className={drawingBoundary ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-blue-600 text-white hover:bg-blue-500'}>
+                    <Button type="button" size="sm" onClick={() => setDrawingBoundary(value => !value)} className={drawingBoundary ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-amber-600 text-white hover:bg-amber-500'}>
                       {drawingBoundary ? 'STOP DRAWING' : 'START DRAWING'}
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={undoBoundaryPoint} disabled={!formData.geofence_polygon?.length}>UNDO POINT</Button>
@@ -1196,7 +1196,7 @@ export default function AdminLocations({ embedded = false }) {
                   <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Canonical Geofence:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Custom property polygon' : `${formData.geofence_radius_meters || 100}m shared radius fallback`}</div>
                 </div>
                 <p className="text-xs text-slate-400">Gold boundary = the single location boundary used for clock-in eligibility, live geofence alerts, property/CAD monitoring, and location enforcement.</p>
-                {editingLocation && <Button type="submit" disabled={updateLocationMutation.isPending} className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto">{updateLocationMutation.isPending ? 'Saving...' : 'Save Geofence'}</Button>}
+                {editingLocation && <Button type="submit" disabled={updateLocationMutation.isPending} className="w-full bg-amber-600 hover:bg-amber-700 sm:w-auto">{updateLocationMutation.isPending ? 'Saving...' : 'Save Geofence'}</Button>}
               </div>
             )}
 
@@ -1462,7 +1462,7 @@ export default function AdminLocations({ embedded = false }) {
               </div>
             </div>
 
-            <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200 space-y-4">
+            <div className="p-4 bg-amber-50 rounded-lg border border-indigo-200 space-y-4">
               <Label className="text-indigo-900 font-semibold block">AI Auto-Schedule Settings</Label>
               
               <div className="grid md:grid-cols-2 gap-4">
@@ -1740,7 +1740,7 @@ export default function AdminLocations({ embedded = false }) {
               <Button
                 type="submit"
                 disabled={createLocationMutation.isPending || updateLocationMutation.isPending}
-                className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto"
+                className="w-full bg-amber-600 hover:bg-amber-700 sm:w-auto"
               >
                 {createLocationMutation.isPending || updateLocationMutation.isPending
                   ? 'Saving...'

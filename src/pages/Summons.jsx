@@ -386,7 +386,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
               resetForm();
               setShowForm(true);
             }}
-            className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto"
+            className="bg-amber-600 hover:bg-amber-700 w-full md:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Summons
@@ -395,7 +395,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
 
         {showForm && canSubmit && (
           <Card className="border-none shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
                 New Virginia Uniform Summons
@@ -404,7 +404,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <ActiveCallLinkField formData={formData} setFormData={setFormData} />
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-amber-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-900 font-medium">
                     Complete all required fields. This form creates an official Virginia Uniform Summons.
                   </p>
@@ -1139,7 +1139,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
                   <Button
                     type="submit"
                     disabled={createSummonsMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-amber-600 hover:bg-amber-700"
                   >
                     {createSummonsMutation.isPending ? (editingSummons ? 'Updating...' : 'Issuing...') : (editingSummons ? 'Update Summons' : 'Issue Summons')}
                   </Button>
@@ -1176,7 +1176,7 @@ export default function Summons({ sharedSearch, onSharedSearchChange }) {
                           </Badge>
                         )}
                         {summons.summons_number && (
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800 font-mono">
+                          <Badge variant="outline" className="bg-amber-100 text-blue-800 font-mono">
                             {summons.summons_number}
                           </Badge>
                         )}

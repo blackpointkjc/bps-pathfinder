@@ -172,11 +172,11 @@ Be specific and actionable. Reference actual data points.`,
   const activeOfficers = allUsers?.filter(u => !u.termination_date && u.role !== 'admin' && !u.additional_roles?.includes('support_staff')) || [];
 
   return (
-    <Card className="border-2 border-blue-300 shadow-xl bg-gradient-to-br from-blue-50 to-cyan-50">
+    <Card className="border-2 border-blue-300 shadow-xl bg-gradient-to-br from-amber-50 to-amber-50">
       <CardHeader className="border-b border-blue-200">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-blue-900">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-500 flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
             AI Performance Analyzer
@@ -211,7 +211,7 @@ Be specific and actionable. Reference actual data points.`,
           {!analysis && !loading && selectedOfficer && (
             <Button
               onClick={analyzeOfficer}
-              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              className="w-full bg-gradient-to-r from-amber-600 to-amber-600 hover:from-amber-700 hover:to-amber-700"
             >
               <Sparkles className="w-4 h-4 mr-2" />
               Analyze Performance
@@ -321,12 +321,12 @@ Be specific and actionable. Reference actual data points.`,
                   <ScrollArea className="h-64 bg-white rounded-lg border border-indigo-200">
                     <div className="p-4 space-y-3">
                       {analysis.recommendations.map((rec, idx) => (
-                        <div key={idx} className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                        <div key={idx} className="p-4 bg-gradient-to-r from-amber-50 to-purple-50 rounded-lg border border-indigo-200">
                           <div className="flex items-start gap-2 mb-2">
                             <Badge className={
                               rec.priority === 'high' ? 'bg-red-600' :
                               rec.priority === 'medium' ? 'bg-amber-600' :
-                              'bg-blue-600'
+                              'bg-amber-600'
                             }>
                               {rec.priority} priority
                             </Badge>

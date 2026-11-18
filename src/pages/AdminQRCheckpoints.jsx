@@ -195,7 +195,7 @@ export default function AdminQRCheckpoints() {
     <div className="mx-auto min-h-0 max-w-7xl space-y-3 p-3 text-slate-100 md:p-4">
       <div className="flex flex-col gap-3 rounded-xl border border-slate-700 bg-[#111316] p-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-500/30 bg-amber-500/10">
             <QrCode className="h-4 w-4 text-blue-300" />
           </div>
           <div>
@@ -210,7 +210,7 @@ export default function AdminQRCheckpoints() {
               <Printer className="w-4 h-4 mr-2" /> Print Manager
             </Link>
           </Button>
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={() => { resetForm(); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
             <Plus className="w-4 h-4 mr-2" /> New Checkpoint
           </Button>
         </div>
@@ -349,7 +349,7 @@ export default function AdminQRCheckpoints() {
             )}
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={saveMutation.isPending}>
+              <Button type="submit" className="bg-amber-600 hover:bg-amber-700" disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? "Saving..." : editingItem ? "Update" : "Create Checkpoint"}
               </Button>
             </div>

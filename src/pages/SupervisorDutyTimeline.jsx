@@ -105,7 +105,7 @@ export default function SupervisorDutyTimeline() {
               <Button variant="outline" onClick={() => moveDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
               <Button variant="outline" onClick={() => setSelectedDate(format(new Date(), 'yyyy-MM-dd'))}>TODAY</Button>
               <Button variant="outline" onClick={() => moveDay(1)}><ChevronRight className="h-4 w-4" /></Button>
-              <Button onClick={printTimeline} className="bg-cyan-700 hover:bg-cyan-600"><Printer className="mr-2 h-4 w-4" />PRINT</Button>
+              <Button onClick={printTimeline} className="bg-amber-700 hover:bg-amber-600"><Printer className="mr-2 h-4 w-4" />PRINT</Button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -134,7 +134,7 @@ export default function SupervisorDutyTimeline() {
                 ))}
                 <div className="absolute bottom-0 left-20 right-3 top-0 border-x border-slate-800 bg-[#111316]/60">
                   {groups.map((group, index) => (
-                    <div key={`${group.supervisor_email}-${group.visibleStart}-${group.visibleEnd}`} style={positionFor(group)} className="absolute left-3 right-3 overflow-hidden rounded-xl border border-cyan-700/60 bg-cyan-950/90 px-3 py-2 shadow-lg">
+                    <div key={`${group.supervisor_email}-${group.visibleStart}-${group.visibleEnd}`} style={positionFor(group)} className="absolute left-3 right-3 overflow-hidden rounded-xl border border-cyan-700/60 bg-stone-900/90 px-3 py-2 shadow-lg">
                       <div className="flex items-start gap-2">
                         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
                         <div className="min-w-0 flex-1">

@@ -32,9 +32,9 @@ function stageOf(review) {
 function stagePresentation(stage) {
   if (stage === 'higher_reviewer_required') return { label: 'Higher-Ranking Reviewer Required', className: 'bg-red-800' };
   if (stage === 'officer_pending') return { label: 'Your Response Required', className: 'bg-amber-600' };
-  if (stage === 'hr_approval_pending') return { label: 'Waiting for HR Approval', className: 'bg-sky-700' };
+  if (stage === 'hr_approval_pending') return { label: 'Waiting for HR Approval', className: 'bg-amber-700' };
   if (stage === 'approved') return { label: 'HR Approved', className: 'bg-emerald-700' };
-  return { label: 'With Assigned Supervisor', className: 'bg-violet-700' };
+  return { label: 'With Assigned Supervisor', className: 'bg-amber-700' };
 }
 
 function Stars({ value = 0, onChange, label, large = false }) {
@@ -200,7 +200,7 @@ export default function OfficerPerformanceReviews() {
 
             {stage === 'officer_pending' && <Button onClick={() => openResponse(review)} className="bg-amber-500 text-slate-950 hover:bg-amber-400"><PenLine className="mr-2 h-4 w-4"/>Add Self-Rating, Comment & Sign</Button>}
             {stage === 'higher_reviewer_required' && <p className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-sm text-red-200">{review.assignment_issue || 'No active reviewer currently ranks above you.'} This review has not been sent downward. Administration must add or assign a higher-ranking reviewer before it can continue.</p>}
-            {stage === 'supervisor_pending' && <p className="rounded-lg border border-violet-800 bg-violet-950/30 p-4 text-sm text-violet-200">The assigned higher-ranking supervisor is preparing this review. You will be notified when it is ready for your response.</p>}
+            {stage === 'supervisor_pending' && <p className="rounded-lg border border-violet-800 bg-stone-900/30 p-4 text-sm text-violet-200">The assigned higher-ranking supervisor is preparing this review. You will be notified when it is ready for your response.</p>}
           </CardContent>
         </Card>;
       })}

@@ -259,7 +259,7 @@ export default function OfficerChat() {
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)]">
         <Card className="border-none shadow-xl h-full flex flex-col">
-          <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
+          <CardHeader className="border-b bg-gradient-to-r from-amber-50 to-purple-50 flex-shrink-0">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <MessageCircle className="w-6 h-6 text-blue-600" />
@@ -276,7 +276,7 @@ export default function OfficerChat() {
           {liveTeamsError && (
             <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
               <span>{/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') ? 'Pathfinder chat remains available. Connect Microsoft 365 only if you also want these messages mirrored to Teams.' : 'Teams mirror could not refresh. Pathfinder chat is still available.'}</span>
-              {/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-blue-600 px-2.5 py-1.5 font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}
+              {/connection required|authorization expired|reconnect/i.test(liveTeamsError.message || '') && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-amber-600 px-2.5 py-1.5 font-black text-white hover:bg-amber-500">CONNECT MICROSOFT 365</button>}
             </div>
           )}
 
@@ -295,7 +295,7 @@ export default function OfficerChat() {
                     className={`flex gap-3 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}
                   >
                     {showName && (
-                      <Avatar className={`w-10 h-10 flex-shrink-0 ${isOwnMessage ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'}`}>
+                      <Avatar className={`w-10 h-10 flex-shrink-0 ${isOwnMessage ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'}`}>
                         <AvatarImage src={getUserPhoto(msg)} alt={getSenderName(msg)} />
                         <AvatarFallback className="text-white font-semibold">
                           {getUserInitial(senderEmail, getSenderName(msg))}
@@ -324,7 +324,7 @@ export default function OfficerChat() {
                       <div
                         className={`rounded-2xl px-4 py-2.5 ${
                           isOwnMessage
-                            ? '!bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-tr-sm'
+                            ? '!bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-tr-sm'
                             : 'bg-slate-100 text-slate-900 rounded-tl-sm'
                         } ${!showName ? 'mt-1' : ''}`}
                       >
@@ -375,7 +375,7 @@ export default function OfficerChat() {
               <Button
                 type="submit"
                 disabled={!message.trim() || sendMessageMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 px-6"
+                className="bg-amber-600 hover:bg-amber-700 px-6"
               >
                 <Send className="w-4 h-4" />
               </Button>

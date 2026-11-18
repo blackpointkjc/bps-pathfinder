@@ -200,11 +200,11 @@ Consider:
   const openShifts = schedules?.filter(s => s.is_open) || [];
 
   return (
-    <Card className="border-2 border-cyan-300 shadow-xl bg-gradient-to-br from-cyan-50 to-blue-50">
+    <Card className="border-2 border-cyan-300 shadow-xl bg-gradient-to-br from-amber-50 to-amber-50">
       <CardHeader className="border-b border-cyan-200">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-cyan-900">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-500 flex items-center justify-center">
               <Users className="w-5 h-5 text-white" />
             </div>
             AI Open Shift Manager
@@ -229,7 +229,7 @@ Consider:
             <Button
               onClick={analyzeOpenShifts}
               disabled={openShifts.length === 0}
-              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+              className="bg-gradient-to-r from-amber-600 to-amber-600 hover:from-amber-700 hover:to-amber-700"
             >
               <Sparkles className="w-4 h-4 mr-2" />
               Find Best Matches
@@ -279,7 +279,7 @@ Consider:
                         onClick={() => notifyOfficers(shiftRec)}
                         disabled={notifying}
                         size="sm"
-                        className="bg-cyan-600 hover:bg-cyan-700"
+                        className="bg-amber-600 hover:bg-amber-700"
                       >
                         <Bell className="w-4 h-4 mr-2" />
                         Notify Top Matches
@@ -289,7 +289,7 @@ Consider:
                     <div className="space-y-2 mt-4">
                       <p className="text-xs font-semibold text-slate-700 mb-2">Recommended Officers:</p>
                       {shiftRec.top_matches?.map((match, matchIdx) => (
-                        <div key={matchIdx} className="p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded border border-cyan-200">
+                        <div key={matchIdx} className="p-3 bg-gradient-to-r from-amber-50 to-amber-50 rounded border border-cyan-200">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <p className="font-semibold text-slate-900">{match.officer_name}</p>

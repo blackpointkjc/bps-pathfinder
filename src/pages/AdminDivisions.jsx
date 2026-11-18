@@ -327,10 +327,10 @@ export default function AdminDivisions() {
             </div>
           </div>
           <div className="grid w-full shrink-0 grid-cols-1 gap-2 sm:grid-cols-3 xl:w-auto">
-            <Button onClick={() => openAdd('region')} className="w-full justify-center bg-blue-600 hover:bg-blue-700 xl:w-auto">
+            <Button onClick={() => openAdd('region')} className="w-full justify-center bg-amber-600 hover:bg-amber-700 xl:w-auto">
               <Plus className="mr-2 h-4 w-4 shrink-0" /><span>Region</span>
             </Button>
-            <Button onClick={() => openAdd('division')} variant="outline" className="w-full justify-center whitespace-normal border-cyan-800 bg-cyan-950/40 text-cyan-200 hover:bg-cyan-900/50 xl:w-auto">
+            <Button onClick={() => openAdd('division')} variant="outline" className="w-full justify-center whitespace-normal border-cyan-800 bg-stone-900/40 text-cyan-200 hover:bg-stone-900/50 xl:w-auto">
               <Plus className="mr-2 h-4 w-4 shrink-0" /><span>Division</span>
             </Button>
             <Button onClick={() => openAdd('substation')} variant="outline" className="w-full justify-center whitespace-normal border-amber-800 bg-amber-950/30 text-amber-200 hover:bg-amber-900/40 xl:w-auto">
@@ -397,7 +397,7 @@ export default function AdminDivisions() {
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, division_level: level, parent_division: level === 'division' ? prev.parent_division : '' }))}
                     className={`rounded-md px-2 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
-                      formData.division_level === level ? 'bg-cyan-700 text-white' : 'text-slate-400 hover:text-white'
+                      formData.division_level === level ? 'bg-amber-700 text-white' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     {LEVEL_LABEL[level]}
@@ -479,7 +479,7 @@ export default function AdminDivisions() {
               <Button
                 type="submit"
                 disabled={createDivisionMutation.isPending || updateDivisionMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-amber-600 hover:bg-amber-700"
               >
                 {createDivisionMutation.isPending || updateDivisionMutation.isPending
                   ? 'Saving…'

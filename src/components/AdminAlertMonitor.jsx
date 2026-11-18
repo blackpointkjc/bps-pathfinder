@@ -101,13 +101,13 @@ export default function AdminAlertMonitor({ user }) {
         title: "📋 New Reports Pending Approval",
         description: `${newCount} new ${newCount === 1 ? 'report' : 'reports'} submitted by officers awaiting your review`,
         duration: 12000,
-        className: "bg-blue-50 border-blue-200",
+        className: "bg-amber-50 border-blue-200",
         action: (
           <Button
             size="sm"
             variant="ghost"
             onClick={() => window.location.href = createPageUrl("AdminReports")}
-            className="hover:bg-blue-100"
+            className="hover:bg-amber-100"
           >
             Review
           </Button>

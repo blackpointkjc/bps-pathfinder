@@ -207,7 +207,7 @@ export default function ClientCallHistory() {
               <div><div className={`text-xs font-black ${official ? 'text-blue-300' : 'text-gold'}`}>{ref || 'REFERENCE PENDING'}</div><div className="text-[10px] text-slate-500">{fmt(row.time_received || row.created_date)}</div></div>
               <div><div className="font-black text-sm">{row.incident || 'CALL FOR SERVICE'}</div><div className="text-xs text-slate-400 flex items-start gap-1 mt-1"><MapPin className="w-3 h-3 mt-0.5 shrink-0" />{row.location}</div></div>
               <div className="text-xs"><div className="text-slate-500">Property</div><div className="font-bold text-slate-200">{row.matchedSite?.site_name}</div>{row.propertyVerified && <div className="text-[9px] font-bold text-green-400 mt-1">✓ VERIFIED BY MONITORING QUEUE</div>}</div>
-              <div className="text-xs"><span className="px-2 py-1 rounded border border-blue-700/50 bg-blue-900/30 text-blue-300">{row.agency || 'N/A'}</span></div>
+              <div className="text-xs"><span className="px-2 py-1 rounded border border-blue-700/50 bg-stone-900/30 text-blue-300">{row.agency || 'N/A'}</span></div>
               <div className="flex gap-2"><span title="Call notes" className="flex items-center gap-1 text-[10px] text-slate-300"><MessageSquare className="w-3 h-3" />{row.linkedNotes.length}</span><span title="Incident reports" className="flex items-center gap-1 text-[10px] text-slate-300"><FileText className="w-3 h-3" />{row.linkedReports.length}</span></div>
               {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>

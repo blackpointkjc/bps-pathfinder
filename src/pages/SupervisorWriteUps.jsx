@@ -155,7 +155,7 @@ export default function SupervisorWriteUps() {
 
   const getSeverityColor = (severity) => {
     switch (severity) {
-      case 'verbal_warning': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'verbal_warning': return 'bg-amber-100 text-blue-800 border-blue-200';
       case 'written_warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'final_warning': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'suspension_recommended': return 'bg-red-100 text-red-800 border-red-200';
@@ -520,7 +520,7 @@ export default function SupervisorWriteUps() {
               <AlertCircle className="w-4 h-4 mr-2" />
               Draft / Action Required ({filteredDraftWriteUps.length})
             </TabsTrigger>
-            <TabsTrigger value="pending" className="min-h-11 rounded-lg border border-transparent px-3 font-bold text-slate-500 transition data-[state=active]:border-blue-500 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-950 data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-blue-300">
+            <TabsTrigger value="pending" className="min-h-11 rounded-lg border border-transparent px-3 font-bold text-slate-500 transition data-[state=active]:border-blue-500 data-[state=active]:bg-amber-100 data-[state=active]:text-blue-950 data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-blue-300">
               <Send className="w-4 h-4 mr-2" />
               Pending Admin Approval ({filteredPendingWriteUps.length})
             </TabsTrigger>
@@ -601,7 +601,7 @@ export default function SupervisorWriteUps() {
                           <Button
                             size="sm"
                             onClick={() => handleSubmitForApproval(writeUp)}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-amber-600 hover:bg-amber-700"
                           >
                             <Send className="w-4 h-4 mr-1" />
                             Submit for Approval
@@ -626,7 +626,7 @@ export default function SupervisorWriteUps() {
               <CardContent>
                 <div className="space-y-4">
                   {filteredPendingWriteUps.map((writeUp) => (
-                    <div key={writeUp.id} className="p-5 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                    <div key={writeUp.id} className="p-5 bg-amber-50 rounded-lg border-l-4 border-blue-500">
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <p className="font-bold text-slate-900 text-lg">{writeUp.officer_name}</p>

@@ -88,7 +88,7 @@ export default function AdminPortalSettings() {
           {label:'Available workspaces',value:portals.length},
           {label:'Visible',value:portals.filter(p=>!hiddenPortals.includes(p.id)).length}
         ]}>
-          <Button onClick={handleSave} disabled={updateSettingsMutation.isPending} className="bg-cyan-700 hover:bg-cyan-600">{updateSettingsMutation.isPending?'Saving…':'Save preferences'}</Button>
+          <Button onClick={handleSave} disabled={updateSettingsMutation.isPending} className="bg-amber-700 hover:bg-amber-600">{updateSettingsMutation.isPending?'Saving…':'Save preferences'}</Button>
         </WorkspaceHeader>
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)]">
           <section className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900">

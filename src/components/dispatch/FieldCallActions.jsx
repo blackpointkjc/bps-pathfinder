@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { getTeamsSyncConfig, sendTeamChannelMessage } from '@/lib/teamsGraph';
 
 const STATUS_BTNS = [
-  { value: 'Enroute', label: 'EN ROUTE', cls: 'bg-blue-900/50 border-blue-600 text-blue-300 hover:bg-blue-900' },
+  { value: 'Enroute', label: 'EN ROUTE', cls: 'bg-stone-900/50 border-blue-600 text-blue-300 hover:bg-stone-900' },
   { value: 'On Scene', label: 'ON SCENE', cls: 'bg-yellow-900/50 border-yellow-600 text-yellow-300 hover:bg-yellow-900' },
   { value: 'Cleared', label: 'CLEARED', cls: 'bg-green-900/50 border-green-600 text-green-300 hover:bg-green-900' },
 ];

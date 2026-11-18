@@ -6,7 +6,7 @@ export default function BrowserHeader({ policy, engine, loading }) {
     <header className="rounded-2xl border border-slate-700 bg-slate-900 p-4 text-white md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-700 bg-cyan-500/10">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-700 bg-amber-500/10">
             <Globe2 className="h-5 w-5 text-cyan-300" />
           </div>
           <div>

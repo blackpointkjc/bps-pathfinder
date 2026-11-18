@@ -119,10 +119,10 @@ export default function EnforcementLegalWorkspace({ tools, queryParam = 'tool', 
             </div>
             {debouncedSearch.length >= 2 && (
               <div className="flex flex-wrap gap-1.5 text-[9px] font-black uppercase">
-                <span className="rounded-full border border-blue-800 bg-blue-950/40 px-2 py-1 text-blue-200">Law {counts.law || 0}</span>
+                <span className="rounded-full border border-blue-800 bg-stone-900/40 px-2 py-1 text-blue-200">Law {counts.law || 0}</span>
                 <span className="rounded-full border border-amber-800 bg-amber-950/40 px-2 py-1 text-amber-200">Trespass {counts.trespass || 0}</span>
                 <span className="rounded-full border border-red-800 bg-red-950/40 px-2 py-1 text-red-200">Complaints {counts.complaint || 0}</span>
-                <span className="rounded-full border border-violet-800 bg-violet-950/40 px-2 py-1 text-violet-200">Summons {counts.summons || 0}</span>
+                <span className="rounded-full border border-violet-800 bg-stone-900/40 px-2 py-1 text-violet-200">Summons {counts.summons || 0}</span>
               </div>
             )}
           </div>

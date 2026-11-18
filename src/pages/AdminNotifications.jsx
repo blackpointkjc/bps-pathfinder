@@ -132,7 +132,7 @@ export default function AdminNotifications() {
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <Bell className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -140,7 +140,7 @@ export default function AdminNotifications() {
                 <p className="text-slate-600 mt-1">Broadcast alerts to officers</p>
               </div>
             </div>
-            <Button onClick={() => setShowDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => setShowDialog(true)} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" />
               New Notification
             </Button>
@@ -148,7 +148,7 @@ export default function AdminNotifications() {
         </div>
 
         <Card className="border-none shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-950/50 to-purple-950/50 border-b border-white/10">
+          <CardHeader className="bg-gradient-to-r from-stone-900/50 to-purple-950/50 border-b border-white/10">
             <CardTitle>Quick Templates</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -354,7 +354,7 @@ export default function AdminNotifications() {
               </div>
             )}
 
-            <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2 p-4 bg-amber-50 rounded-lg border border-blue-200">
               <Checkbox
                 checked={formData.send_email}
                 onCheckedChange={(checked) => setFormData({...formData, send_email: checked})}

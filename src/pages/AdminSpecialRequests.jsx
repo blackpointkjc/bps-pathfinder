@@ -158,7 +158,7 @@ export default function AdminSpecialRequests({embedded=false}) {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'approved': return 'bg-green-100 text-green-800';
-      case 'scheduled': return 'bg-blue-100 text-blue-800';
+      case 'scheduled': return 'bg-amber-100 text-blue-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-slate-100 text-slate-800';
     }
@@ -218,7 +218,7 @@ export default function AdminSpecialRequests({embedded=false}) {
       </div>
 
       {req.admin_notes && (
-        <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
+        <div className="mb-3 p-2 bg-amber-50 rounded border border-blue-200">
           <p className="text-xs font-semibold text-blue-900">Admin Notes:</p>
           <p className="text-sm text-blue-700">{req.admin_notes}</p>
         </div>
@@ -274,7 +274,7 @@ export default function AdminSpecialRequests({embedded=false}) {
                 </div>
                 <Button
                   onClick={() => handleScheduled(req)}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full bg-amber-600 hover:bg-amber-700"
                   size="sm"
                   disabled={!selectedOfficerEmail}
                 >

@@ -195,7 +195,7 @@ export default function ManageStudents({ embedded = false }) {
     <div className={embedded ? "w-full px-4 py-5 md:px-6 md:py-6" : "p-4 md:p-8"}>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-purple-700 rounded-xl flex items-center justify-center">
             <Users className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -203,7 +203,7 @@ export default function ManageStudents({ embedded = false }) {
             <p className="text-slate-500 text-sm">{students.length} student{students.length !== 1 ? 's' : ''} registered</p>
           </div>
         </div>
-        <Button onClick={() => setShowInvite(true)} className="bg-violet-700 text-white hover:bg-violet-600">Create Student Account</Button>
+        <Button onClick={() => setShowInvite(true)} className="bg-amber-700 text-white hover:bg-amber-600">Create Student Account</Button>
       </div>
 
       <Dialog open={showInvite} onOpenChange={setShowInvite}>
@@ -250,7 +250,7 @@ export default function ManageStudents({ embedded = false }) {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-lg">
                       {student.first_name?.charAt(0) || student.email.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -275,7 +275,7 @@ export default function ManageStudents({ embedded = false }) {
                       <div className="mt-2 flex items-center gap-3">
                         <div className="flex-1 bg-slate-200 rounded-full h-2 w-40">
                           <div
-                            className="bg-violet-600 h-2 rounded-full transition-all"
+                            className="bg-amber-600 h-2 rounded-full transition-all"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -367,7 +367,7 @@ export default function ManageStudents({ embedded = false }) {
               <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingStudent(null)}>
                 <X className="w-4 h-4 mr-2" />Cancel
               </Button>
-              <Button type="submit" className="flex-1 bg-violet-600 hover:bg-violet-700" disabled={updateStudentMutation.isPending}>
+              <Button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700" disabled={updateStudentMutation.isPending}>
                 <Save className="w-4 h-4 mr-2" />
                 {updateStudentMutation.isPending ? "Saving..." : "Save Changes"}
               </Button>

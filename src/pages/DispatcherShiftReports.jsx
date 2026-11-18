@@ -253,7 +253,7 @@ export default function DispatcherShiftReports({ embedded = false }) {
               <div className="text-sm font-black text-white">Dispatcher Shift Log</div>
               <div className="mt-1 text-xs text-slate-400">Start a new dispatch log, attach CAD calls as you handle them, save a draft, then submit it for review.</div>
             </div>
-            <Button onClick={startNew} className="w-full bg-blue-600 hover:bg-blue-500 sm:w-auto">
+            <Button onClick={startNew} className="w-full bg-amber-600 hover:bg-amber-500 sm:w-auto">
               <Plus className="mr-2 h-4 w-4" /> Start New Dispatch Log
             </Button>
           </div>
@@ -336,7 +336,7 @@ export default function DispatcherShiftReports({ embedded = false }) {
                   <Button type="button" variant="outline" onClick={handleDraft} disabled={saving || saveMutation.isPending} className="border-slate-600 bg-slate-900 text-slate-200 hover:bg-slate-800">
                     {saving && saveMutation.isPending ? 'Saving…' : 'Save Draft'}
                   </Button>
-                  <Button type="submit" disabled={saving || saveMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" disabled={saving || saveMutation.isPending} className="bg-amber-600 hover:bg-amber-700">
                     {saving && saveMutation.isPending ? 'Submitting…' : 'Submit Shift Log'}
                   </Button>
                   </div>

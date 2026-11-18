@@ -269,7 +269,7 @@ export default function SupervisorChat() {
           {allAccess && (teamsSyncError || liveTeamsError) && (
             <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-[#111316] px-4 py-2 text-[10px] text-slate-500">
               <span>{needsMicrosoftConnection ? 'Connect Microsoft 365 to load and mirror the Supervisors Chat channel.' : 'Microsoft Teams mirror could not refresh. Pathfinder chat continues normally.'}</span>
-              {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-blue-600 px-2.5 py-1.5 font-black text-white hover:bg-blue-500">CONNECT MICROSOFT 365</button>}
+              {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(user.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="rounded-md bg-amber-600 px-2.5 py-1.5 font-black text-white hover:bg-amber-500">CONNECT MICROSOFT 365</button>}
             </div>
           )}
 

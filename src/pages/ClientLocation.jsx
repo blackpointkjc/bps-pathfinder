@@ -106,7 +106,7 @@ export default function ClientLocation() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {portfolioLocations.map(loc => {
               const active = siteKey(loc.site_name) === siteKey(effectiveLocation);
-              return <button key={loc.id} type="button" onClick={() => { setSelectedLocation(loc.site_name); setIsEditing(false); }} className={`rounded-xl border p-4 text-left transition ${active ? 'border-cyan-400 bg-cyan-950/30' : 'border-slate-700 bg-slate-800 hover:border-slate-500'}`}><div className="flex items-center gap-2 font-bold text-white"><MapPin className="h-4 w-4 text-cyan-400" />{loc.site_name}</div><p className="mt-1 text-xs text-slate-400">{loc.address || 'Address not listed'}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">{active ? 'Viewing details' : 'View details'}</p></button>;
+              return <button key={loc.id} type="button" onClick={() => { setSelectedLocation(loc.site_name); setIsEditing(false); }} className={`rounded-xl border p-4 text-left transition ${active ? 'border-cyan-400 bg-stone-900/30' : 'border-slate-700 bg-slate-800 hover:border-slate-500'}`}><div className="flex items-center gap-2 font-bold text-white"><MapPin className="h-4 w-4 text-cyan-400" />{loc.site_name}</div><p className="mt-1 text-xs text-slate-400">{loc.address || 'Address not listed'}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">{active ? 'Viewing details' : 'View details'}</p></button>;
             })}
           </div>
         </div>

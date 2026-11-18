@@ -41,7 +41,7 @@ export default function RecordViewer() {
   return <div className="min-h-screen bg-[#090a0c] p-4 text-slate-100 md:p-8">
     <div className="mx-auto max-w-5xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3"><div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3"><FileText className="h-6 w-6 text-blue-300" /></div><div><p className="text-xs font-bold tracking-widest text-blue-300">SOURCE RECORD</p><h1 className="text-2xl font-black">{data.source}</h1></div></div>
+        <div className="flex items-center gap-3"><div className="rounded-lg border border-blue-500/30 bg-amber-500/10 p-3"><FileText className="h-6 w-6 text-blue-300" /></div><div><p className="text-xs font-bold tracking-widest text-blue-300">SOURCE RECORD</p><h1 className="text-2xl font-black">{data.source}</h1></div></div>
         <Button asChild variant="outline"><Link to={createPageUrl('RecordsAssistant')}><ArrowLeft className="mr-2 h-4 w-4" />Back to Search</Link></Button>
       </div>
       <Card className="border-slate-700 bg-[#191a1b]">

@@ -228,7 +228,7 @@ Generate complete week schedule with rotating weekend coverage and 40-hour workw
 
         {!generatedSchedule ? (
           <Card className="border-none shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-amber-50">
               <CardTitle>Schedule Parameters</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
@@ -303,7 +303,7 @@ Generate complete week schedule with rotating weekend coverage and 40-hour workw
               <Button
                 onClick={generateSchedule}
                 disabled={generating}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                className="w-full bg-gradient-to-r from-purple-600 to-amber-600 hover:from-purple-700 hover:to-amber-700"
               >
                 {generating ? (
                   <>

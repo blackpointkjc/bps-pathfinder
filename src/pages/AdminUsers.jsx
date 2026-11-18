@@ -669,9 +669,9 @@ export default function AdminUsers({ embedded = false }) {
       case "Lieutenant": return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "First Sergeant": return "bg-lime-100 text-lime-800 border-lime-300";
       case "Sergeant": return "bg-green-100 text-green-800 border-green-300";
-      case "Corporal": return "bg-blue-100 text-blue-800 border-blue-300";
+      case "Corporal": return "bg-amber-100 text-blue-800 border-blue-300";
       case "Senior officer": return "bg-purple-100 text-purple-800 border-purple-300";
-      case "Officer": return "bg-indigo-100 text-indigo-800 border-indigo-300";
+      case "Officer": return "bg-amber-100 text-indigo-800 border-indigo-300";
       case "Unarmed Officer": return "bg-slate-100 text-slate-800 border-slate-300";
       default: return "bg-slate-100 text-slate-800 border-slate-300";
     }
@@ -836,7 +836,7 @@ export default function AdminUsers({ embedded = false }) {
                     className="w-20 h-20 rounded-full object-cover border-2 border-slate-300"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-2xl">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-2xl">
                     {editFormData.first_name?.charAt(0)}{editFormData.last_name?.charAt(0)}
                   </div>
                 )}
@@ -1063,7 +1063,7 @@ export default function AdminUsers({ embedded = false }) {
                   </p>
                 )}
                 {editFormData.hourly_rate > 0 && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                  <div className="mt-2 p-2 bg-amber-50 rounded border border-blue-200">
                     <p className="text-xs font-semibold text-blue-900 mb-1">Rate Breakdown:</p>
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
@@ -1119,7 +1119,7 @@ export default function AdminUsers({ embedded = false }) {
             </TabsContent>
 
             {user?.role === 'admin' && <TabsContent value="company-mail" className="space-y-4 mt-4">
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <div className="rounded-lg border border-blue-200 bg-amber-50 p-4">
                 <div className="flex items-center gap-2 font-semibold text-blue-900"><Mail className="h-4 w-4" /> Company IMAP Mailbox</div>
                 <p className="mt-1 text-xs text-blue-700">Assign an approved company mailbox to this Pathfinder user. The mailbox password is not shown to the assigned user and is only used by the backend mail service.</p>
               </div>
@@ -1319,7 +1319,7 @@ export default function AdminUsers({ embedded = false }) {
               </div>)}
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-amber-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
                 <strong>Note:</strong> An invitation email lets the person securely set their own password. Their account remains pending until an authorized manager approves access.
               </p>

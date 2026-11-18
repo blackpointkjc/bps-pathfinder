@@ -56,7 +56,7 @@ export default function Announcements() {
   const priorityConfig = {
     urgent: { color: "bg-red-100 text-red-800 border-red-300", icon: "🚨" },
     important: { color: "bg-amber-100 text-amber-800 border-amber-300", icon: "⚠️" },
-    normal: { color: "bg-blue-100 text-blue-800 border-blue-300", icon: "ℹ️" },
+    normal: { color: "bg-amber-100 text-blue-800 border-blue-300", icon: "ℹ️" },
   };
 
   const filteredAnnouncements = announcements?.filter(announcement => {
@@ -150,7 +150,7 @@ export default function Announcements() {
                       config.color.includes('red') ? 'border-l-red-500' :
                       config.color.includes('amber') ? 'border-l-amber-500' :
                       'border-l-blue-500'
-                    } shadow-lg ${isPinged ? 'ring-2 ring-blue-400 bg-blue-50' : ''} ${!isRead ? 'ring-2 ring-amber-300' : ''}`}
+                    } shadow-lg ${isPinged ? 'ring-2 ring-blue-400 bg-amber-50' : ''} ${!isRead ? 'ring-2 ring-amber-300' : ''}`}
                   >
                     <CardHeader>
                       <div className="flex items-start justify-between">
@@ -165,7 +165,7 @@ export default function Announcements() {
                                 </Badge>
                               )}
                               {isPinged && (
-                                <Badge className="bg-blue-600 text-white">
+                                <Badge className="bg-amber-600 text-white">
                                   <AtSign className="w-3 h-3 mr-1" />
                                   You're mentioned
                                 </Badge>
@@ -196,7 +196,7 @@ export default function Announcements() {
                             href={announcement.attachment_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-blue-700 rounded-lg hover:bg-amber-100 transition-colors border border-blue-200"
                           >
                             <Eye className="w-4 h-4" />
                             <span className="text-sm font-medium">View Document</span>

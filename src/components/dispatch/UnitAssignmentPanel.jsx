@@ -157,12 +157,12 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto pr-1">
-            <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-blue-950/35 to-[#111316] p-3">
-                <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-black tracking-[.14em] text-blue-300">ASSIGNING CALL</span><span className="rounded-md bg-blue-500/15 px-2 py-1 text-[9px] font-black text-blue-200">{callNumber}</span></div>
+            <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-stone-900/35 to-[#111316] p-3">
+                <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-black tracking-[.14em] text-blue-300">ASSIGNING CALL</span><span className="rounded-md bg-amber-500/15 px-2 py-1 text-[9px] font-black text-blue-200">{callNumber}</span></div>
                 <div title={call.incident || 'Call For Service'} className="mt-1 truncate text-xs font-black text-white">{call.incident || 'Call for Service'}</div>
                 <div title={call.location || ''} className="mt-1 truncate text-[10px] text-slate-400">{call.location || 'Location unavailable'}</div>
             </div>
-            {feedback && <p role="status" className="shrink-0 rounded border border-cyan-800 bg-cyan-950/30 p-2 text-xs text-cyan-100">{feedback}</p>}
+            {feedback && <p role="status" className="shrink-0 rounded border border-cyan-800 bg-stone-900/30 p-2 text-xs text-cyan-100">{feedback}</p>}
             {/* Assigned Units */}
             <div>
                 <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned Units ({assignedUnitIds.length})</p>
@@ -254,7 +254,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                                     <Button
                                         size="sm"
                                         onClick={() => handleAssignUnit(unit)}
-                                        disabled={!!working} className="h-9 rounded-lg bg-blue-600 px-2 text-[10px] hover:bg-blue-500"
+                                        disabled={!!working} className="h-9 rounded-lg bg-amber-600 px-2 text-[10px] hover:bg-amber-500"
                                     >
                                         {working===unit.id?'Saving…':'Assign To Call'}
                                     </Button>

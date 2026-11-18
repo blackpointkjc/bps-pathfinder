@@ -68,11 +68,11 @@ export function BoloAttachmentsEditor({ attachments = [], onChange }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-slate-300"><Paperclip className="h-3 w-3" />FILES / DOCUMENTS</div>
         <input ref={inputRef} type="file" multiple className="sr-only" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.doc,.docx,.txt" onChange={upload} disabled={uploading} />
-        <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading || attachments.length >= MAX_FILES} className="rounded border border-blue-700 bg-blue-950/40 px-3 py-1.5 text-[9px] font-bold text-blue-300 disabled:opacity-50">
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading || attachments.length >= MAX_FILES} className="rounded border border-blue-700 bg-stone-900/40 px-3 py-1.5 text-[9px] font-bold text-blue-300 disabled:opacity-50">
           <Upload className="mr-1 inline h-3 w-3" />{uploading ? `UPLOADING ${progress}%` : 'ADD FILES'}
         </button>
       </div>
-      {uploading && <div className="mb-3 h-2 overflow-hidden rounded bg-slate-800"><div className="h-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} /></div>}
+      {uploading && <div className="mb-3 h-2 overflow-hidden rounded bg-slate-800"><div className="h-full bg-amber-500 transition-all" style={{ width: `${progress}%` }} /></div>}
       {error && <div role="alert" className="mb-3 rounded border border-red-700/60 bg-red-950/30 px-3 py-2 text-[10px] font-bold text-red-300">{error}</div>}
       {!attachments.length ? <p className="text-[10px] text-slate-600">Add photographs, PDFs, Word documents, or text files. Existing BOLO photos remain separate.</p> : (
         <div className="space-y-2">

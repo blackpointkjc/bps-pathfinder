@@ -143,7 +143,7 @@ export default function BrowserSiteRulesPanel() {
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-cyan-700 bg-cyan-600/20 px-3 text-xs font-semibold text-cyan-100 disabled:opacity-60"
+            className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-cyan-700 bg-amber-600/20 px-3 text-xs font-semibold text-cyan-100 disabled:opacity-60"
           >
             <Plus className="h-4 w-4" /> Add rule
           </button>

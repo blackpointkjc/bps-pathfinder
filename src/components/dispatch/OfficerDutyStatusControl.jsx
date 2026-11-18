@@ -11,10 +11,10 @@ export function officerDutyStatuses(user) {
 const badges = {
     Available:'bg-green-900/40 text-green-300 border-green-600/50',
     Enroute:'bg-yellow-900/40 text-yellow-300 border-yellow-600/50',
-    'On Scene':'bg-blue-900/40 text-blue-300 border-blue-600/50',
+    'On Scene':'bg-stone-900/40 text-blue-300 border-blue-600/50',
     Busy:'bg-orange-900/40 text-orange-300 border-orange-600/50',
     'Out of Service':'bg-gray-900/40 text-gray-300 border-gray-600/50',
-    Dispatch:'bg-cyan-900/40 text-cyan-300 border-cyan-600/50',
+    Dispatch:'bg-stone-900/40 text-cyan-300 border-cyan-600/50',
 };
 
 export default function OfficerDutyStatusControl({ user, status, onChange, saving = false, statuses, inline = false, compact = false }) {

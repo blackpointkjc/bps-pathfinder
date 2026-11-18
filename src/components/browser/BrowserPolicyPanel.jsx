@@ -47,7 +47,7 @@ export default function BrowserPolicyPanel() {
         <button
           type="button"
           onClick={() => { setEditing(null); setOpen(true); }}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-cyan-700 bg-cyan-600/20 px-3 text-xs font-semibold text-cyan-100 hover:bg-cyan-600/30"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-cyan-700 bg-amber-600/20 px-3 text-xs font-semibold text-cyan-100 hover:bg-amber-600/30"
         >
           <Plus className="h-4 w-4" /> New profile
         </button>

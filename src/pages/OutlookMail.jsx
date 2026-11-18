@@ -632,7 +632,7 @@ export default function OutlookMail() {
       <div className="border-b border-[#635336] bg-[#111316] px-4 py-3 md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-500/40 bg-blue-950/40"><Mail className="h-5 w-5 text-blue-300" /></div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-500/40 bg-stone-900/40"><Mail className="h-5 w-5 text-blue-300" /></div>
             <div className="min-w-0">
               <h1 className="text-lg font-black">MAIL CENTER</h1>
               <p className="truncate text-xs text-slate-400">{activeMailbox ? `${activeMailbox.display_name || (isCompanyImap ? 'Company Mailbox' : 'Shared Mailbox')} · ${activeMailbox.mailbox_email}` : (connection?.email || connection?.profile?.displayName || 'Company mail')}</p>
@@ -640,14 +640,14 @@ export default function OutlookMail() {
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => isCompanyImap ? loadCompanyMailbox(activeMailbox, folderId || 'INBOX') : loadMailbox(folderId)} className="flex h-10 items-center gap-2 rounded-lg border border-[#635336] bg-[#191a1b] px-3 text-xs font-bold hover:bg-[#222321]"><RefreshCw className="h-4 w-4" /> Refresh</button>
-            <button type="button" onClick={() => setComposeOpen(true)} className="flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-500"><PenLine className="h-4 w-4" /> New Email</button>
+            <button type="button" onClick={() => setComposeOpen(true)} className="flex h-10 items-center gap-2 rounded-lg bg-amber-600 px-4 text-xs font-black text-white hover:bg-amber-500"><PenLine className="h-4 w-4" /> New Email</button>
           </div>
         </div>
       </div>
 
       <div className="grid min-h-[calc(100vh-7.5rem)] md:grid-cols-[220px_360px_minmax(0,1fr)]">
         <aside className="border-b border-[#635336] bg-[#111316] p-3 md:border-b-0 md:border-r">
-          <button type="button" onClick={() => setComposeOpen(true)} className="mb-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-black text-white hover:bg-blue-500"><PenLine className="h-4 w-4" /> COMPOSE</button>
+          <button type="button" onClick={() => setComposeOpen(true)} className="mb-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-amber-600 text-sm font-black text-white hover:bg-amber-500"><PenLine className="h-4 w-4" /> COMPOSE</button>
 
           <div className="mb-4 rounded-xl border border-[#635336] bg-[#111316] p-2">
             <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Mailboxes</div>
@@ -665,7 +665,7 @@ export default function OutlookMail() {
                 <Building2 className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1"><span className="block truncate font-bold">{mailbox.display_name || 'Shared Mailbox'}</span><span className="block truncate text-[10px] text-slate-500">{mailbox.mailbox_email}</span>{mailbox.connection_status === 'needs_attention' && <span className="mt-0.5 block text-[9px] font-bold text-amber-400">Needs Microsoft access verification</span>}</span>
                 {mailbox.connection_status === 'needs_attention' && <span role="button" tabIndex={0} onClick={event => retrySharedMailbox(event, mailbox)} className="rounded p-1 text-amber-400 hover:bg-amber-950/40 hover:text-amber-200" aria-label={`Retry ${mailbox.mailbox_email}`} title="Retry Microsoft verification"><RefreshCw className="h-3.5 w-3.5" /></span>}
-                <span role="button" tabIndex={0} onClick={event => renameMailbox(event, mailbox)} className="rounded p-1 text-blue-400 hover:bg-blue-950/50 hover:text-blue-200" aria-label={`Rename ${mailbox.mailbox_email}`} title="Rename mailbox"><PenLine className="h-3.5 w-3.5" /></span>
+                <span role="button" tabIndex={0} onClick={event => renameMailbox(event, mailbox)} className="rounded p-1 text-blue-400 hover:bg-stone-900/50 hover:text-blue-200" aria-label={`Rename ${mailbox.mailbox_email}`} title="Rename mailbox"><PenLine className="h-3.5 w-3.5" /></span>
                 <span role="button" tabIndex={0} onClick={event => unlinkSharedMailbox(event, mailbox)} className="rounded p-1 text-red-400 hover:bg-red-950/50 hover:text-red-200" aria-label={`Remove ${mailbox.mailbox_email}`} title="Remove mailbox"><X className="h-3.5 w-3.5" /></span>
               </button>
             ))}
@@ -685,7 +685,7 @@ export default function OutlookMail() {
                 <button key={folder.id} type="button" onClick={() => chooseFolder(folder)} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${active ? 'bg-[#302c25] text-white' : 'text-slate-300 hover:bg-[#191a1b]'}`}>
                   {String(folder.displayName).toLowerCase().includes('inbox') ? <Inbox className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                   <span className="min-w-0 flex-1 truncate">{folder.displayName}</span>
-                  {!!folder.unreadItemCount && <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">{folder.unreadItemCount}</span>}
+                  {!!folder.unreadItemCount && <span className="rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-black text-white">{folder.unreadItemCount}</span>}
                 </button>
               );
             })}
@@ -693,7 +693,7 @@ export default function OutlookMail() {
           {connection?.connected ? (
             <button type="button" onClick={disconnect} className="mt-6 w-full rounded-lg border border-red-900/60 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-950/30">Disconnect Microsoft 365</button>
           ) : (
-            <button type="button" onClick={() => beginOutlookConnection(user.id)} className="mt-6 w-full rounded-lg border border-blue-700/60 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-950/30">Connect Microsoft 365 (Optional)</button>
+            <button type="button" onClick={() => beginOutlookConnection(user.id)} className="mt-6 w-full rounded-lg border border-blue-700/60 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-stone-900/30">Connect Microsoft 365 (Optional)</button>
           )}
         </aside>
 
@@ -708,7 +708,7 @@ export default function OutlookMail() {
             {loading ? <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-blue-300" /></div> : filteredMessages.length ? filteredMessages.map(message => (
               <button key={message.id} type="button" onClick={() => openMessage(message)} className={`block w-full border-b border-[#635336] px-4 py-3 text-left hover:bg-[#222321] ${selected?.id === message.id ? 'bg-[#222321]' : ''}`}>
                 <div className="flex items-start gap-2">
-                  <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${message.isRead ? 'bg-transparent' : 'bg-blue-400'}`} />
+                  <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${message.isRead ? 'bg-transparent' : 'bg-amber-400'}`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2"><span className={`truncate text-sm ${message.isRead ? 'font-medium text-slate-300' : 'font-black text-white'}`}>{senderOf(message)}</span><span className="shrink-0 text-[10px] text-slate-500">{formatDate(message.receivedDateTime)}</span></div>
                     <div className={`mt-0.5 truncate text-sm ${message.isRead ? 'text-slate-400' : 'font-bold text-slate-100'}`}>{message.subject || '(No subject)'}</div>
@@ -750,7 +750,7 @@ export default function OutlookMail() {
                 <div className="mt-7 border-t border-[#635336] pt-5">
                   <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400"><Reply className="h-4 w-4" /> Reply</div>
                   <AIRewriteField value={replyText} onChange={event => setReplyText(event.target.value)} rows={5} placeholder="Write a reply…" className="w-full rounded-xl border border-[#635336] bg-[#111316] p-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                  <button type="button" disabled={replying || !replyText.trim()} onClick={submitReply} className="mt-3 flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-500 disabled:opacity-50"><Send className="h-4 w-4" />{replying ? 'Sending…' : 'Send Reply'}</button>
+                  <button type="button" disabled={replying || !replyText.trim()} onClick={submitReply} className="mt-3 flex h-10 items-center gap-2 rounded-lg bg-amber-600 px-4 text-xs font-black text-white hover:bg-amber-500 disabled:opacity-50"><Send className="h-4 w-4" />{replying ? 'Sending…' : 'Send Reply'}</button>
                 </div>
               </div>
             </>
@@ -790,11 +790,11 @@ export default function OutlookMail() {
             <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Message</span><AIRewriteField value={compose.body} onChange={event => setCompose(current => ({ ...current, body: event.target.value }))} rows={9} className="w-full rounded-lg border border-[#635336] bg-[#111316] p-3 text-sm text-white outline-none focus:border-blue-500" /></label>
             <label className="block rounded-lg border border-dashed border-[#635336] bg-[#111316] p-3 text-xs text-slate-400"><span className="flex items-center gap-2 font-bold text-slate-300"><Paperclip className="h-4 w-4" /> Attach files (up to 3 MB each)</span><input type="file" multiple className="mt-2 block w-full text-xs" onChange={event => setCompose(current => ({ ...current, attachments: Array.from(event.target.files || []) }))} />{compose.attachments.length > 0 && <div className="mt-2">{compose.attachments.map(file => file.name).join(', ')}</div>}</label>
           </div>
-          <div className="flex justify-end gap-2 border-t border-[#635336] p-4"><button type="button" onClick={() => setComposeOpen(false)} className="rounded-lg border border-[#635336] px-4 py-2 text-xs font-bold">Cancel</button><button type="button" disabled={sending} onClick={sendMessage} className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-xs font-black text-white hover:bg-blue-500 disabled:opacity-50"><Send className="h-4 w-4" />{sending ? 'Sending…' : 'Send'}</button></div>
+          <div className="flex justify-end gap-2 border-t border-[#635336] p-4"><button type="button" onClick={() => setComposeOpen(false)} className="rounded-lg border border-[#635336] px-4 py-2 text-xs font-bold">Cancel</button><button type="button" disabled={sending} onClick={sendMessage} className="flex items-center gap-2 rounded-lg bg-amber-600 px-5 py-2 text-xs font-black text-white hover:bg-amber-500 disabled:opacity-50"><Send className="h-4 w-4" />{sending ? 'Sending…' : 'Send'}</button></div>
         </div>
       </div>}
 
-      {forwardOpen && selected && <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/65 p-4"><div className="w-full max-w-lg rounded-2xl border border-[#635336] bg-[#111316] p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="font-black">FORWARD EMAIL</h3><button onClick={() => setForwardOpen(false)}><X className="h-4 w-4" /></button></div><label className="mt-4 block"><span className="mb-1 block text-xs font-bold text-slate-400">To</span><input value={forwardTo} onChange={event => setForwardTo(event.target.value)} className="w-full rounded-lg border border-[#635336] bg-[#111316] px-3 py-2 text-sm text-white" /></label><label className="mt-3 block"><span className="mb-1 block text-xs font-bold text-slate-400">Comment</span><AIRewriteField rows={4} value={forwardComment} onChange={event => setForwardComment(event.target.value)} className="w-full rounded-lg border border-[#635336] bg-[#111316] p-3 text-sm text-white" /></label><button type="button" disabled={replying} onClick={submitForward} className="mt-4 flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-black text-white"><Forward className="h-4 w-4" />Forward</button></div></div>}
+      {forwardOpen && selected && <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/65 p-4"><div className="w-full max-w-lg rounded-2xl border border-[#635336] bg-[#111316] p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="font-black">FORWARD EMAIL</h3><button onClick={() => setForwardOpen(false)}><X className="h-4 w-4" /></button></div><label className="mt-4 block"><span className="mb-1 block text-xs font-bold text-slate-400">To</span><input value={forwardTo} onChange={event => setForwardTo(event.target.value)} className="w-full rounded-lg border border-[#635336] bg-[#111316] px-3 py-2 text-sm text-white" /></label><label className="mt-3 block"><span className="mb-1 block text-xs font-bold text-slate-400">Comment</span><AIRewriteField rows={4} value={forwardComment} onChange={event => setForwardComment(event.target.value)} className="w-full rounded-lg border border-[#635336] bg-[#111316] p-3 text-sm text-white" /></label><button type="button" disabled={replying} onClick={submitForward} className="mt-4 flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-xs font-black text-white"><Forward className="h-4 w-4" />Forward</button></div></div>}
     </div>
   );
 }

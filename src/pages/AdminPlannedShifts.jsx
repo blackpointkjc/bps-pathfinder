@@ -262,7 +262,7 @@ export default function AdminPlannedShifts({ embedded=false }) {
               setEditingShift(null);
               setShowDialog(true);
             }}
-            className="bg-indigo-600 hover:bg-indigo-700"
+            className="bg-amber-600 hover:bg-amber-700"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Planned Shift
@@ -273,7 +273,7 @@ export default function AdminPlannedShifts({ embedded=false }) {
 
         <Tabs defaultValue="recurring" className="space-y-6">
           <TabsList className="bg-slate-900 border border-slate-200 p-1">
-            <TabsTrigger value="recurring" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-900">
+            <TabsTrigger value="recurring" className="data-[state=active]:bg-amber-50 data-[state=active]:text-indigo-900">
               <Calendar className="w-4 h-4 mr-2" />
               Recurring Weekly ({recurringShifts.length})
             </TabsTrigger>
@@ -288,7 +288,7 @@ export default function AdminPlannedShifts({ embedded=false }) {
 
           <TabsContent value="recurring">
             <Card className="border-none shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
                 <CardTitle>Recurring Weekly Shifts</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -303,14 +303,14 @@ export default function AdminPlannedShifts({ embedded=false }) {
                         return dayOrder.indexOf(a.day_of_week) - dayOrder.indexOf(b.day_of_week);
                       })
                       .map((shift) => (
-                        <div key={shift.id} className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-indigo-200">
+                        <div key={shift.id} className="p-4 bg-gradient-to-r from-amber-50 to-amber-50 rounded-lg border-2 border-indigo-200">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                <Badge className="bg-indigo-600 text-white">{shift.priority === 1 ? "High Priority" : `Priority ${shift.priority}`}</Badge>
+                                <Badge className="bg-amber-600 text-white">{shift.priority === 1 ? "High Priority" : `Priority ${shift.priority}`}</Badge>
                                 {shift.is_required && <Badge className="bg-green-600 text-white">Required</Badge>}
                                 {(shift.num_officers || 1) > 1 && (
-                                  <Badge className="bg-blue-600 text-white">
+                                  <Badge className="bg-amber-600 text-white">
                                     <Users className="w-3 h-3 mr-1" />
                                     {shift.num_officers} Officers
                                   </Badge>
@@ -373,10 +373,10 @@ export default function AdminPlannedShifts({ embedded=false }) {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge className="bg-purple-600 text-white">Event</Badge>
-                                <Badge className="bg-indigo-600 text-white">{shift.priority === 1 ? "High Priority" : `Priority ${shift.priority}`}</Badge>
+                                <Badge className="bg-amber-600 text-white">{shift.priority === 1 ? "High Priority" : `Priority ${shift.priority}`}</Badge>
                                 {shift.is_required && <Badge className="bg-green-600 text-white">Required</Badge>}
                                 {(shift.num_officers || 1) > 1 && (
-                                  <Badge className="bg-blue-600 text-white">
+                                  <Badge className="bg-amber-600 text-white">
                                     <Users className="w-3 h-3 mr-1" />
                                     {shift.num_officers} Officers
                                   </Badge>
@@ -664,7 +664,7 @@ export default function AdminPlannedShifts({ embedded=false }) {
               <Button
                 onClick={handleSubmit}
                 disabled={createMutation.isPending || updateMutation.isPending}
-                className="bg-indigo-600 hover:bg-indigo-700"
+                className="bg-amber-600 hover:bg-amber-700"
               >
                 {editingShift ? 'Update' : 'Create'} Planned Shift
               </Button>
@@ -681,7 +681,7 @@ export default function AdminPlannedShifts({ embedded=false }) {
           </DialogHeader>
           {postingShift && (
             <div className="space-y-4 py-4">
-              <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="p-4 bg-amber-50 rounded-lg border border-indigo-200">
                 <p className="font-bold text-indigo-900">{postingShift.location}</p>
                 <p className="text-sm text-indigo-700">{postingShift.start_time} - {postingShift.end_time}</p>
                 <p className="text-sm text-indigo-700">{postingShift.num_officers || 1} officer(s)</p>

@@ -138,9 +138,9 @@ function FormView({ data, onChange }) {
     <Field label="TITLE / HEADLINE *"><Input value={data.title} onChange={v => set('title', v)} normalize={titleCase} placeholder="Wanted Person, Stolen Vehicle, Officer Safety Alert..." /></Field>
     <div className="grid gap-3 md:grid-cols-2"><Field label="CASE NUMBER"><Input value={data.case_number} onChange={v => set('case_number', v)} normalize={upper} /></Field><Field label="JURISDICTION"><Input value={data.jurisdiction} onChange={v => set('jurisdiction', v)} normalize={titleCase} /></Field></div>
 
-    <div className="rounded border border-cyan-900/60 bg-cyan-950/10 p-3">
+    <div className="rounded border border-cyan-900/60 bg-stone-900/10 p-3">
       <div className="mb-3 flex items-center gap-2 text-[10px] font-black tracking-widest text-cyan-300"><LinkIcon className="h-3 w-3" />Link to CAD / report</div>
-      {linkLoading && <div className="mb-3 rounded border border-cyan-900 bg-cyan-950/30 px-3 py-2 text-[10px] text-cyan-200">Loading CAD calls and incident reports…</div>}
+      {linkLoading && <div className="mb-3 rounded border border-cyan-900 bg-stone-900/30 px-3 py-2 text-[10px] text-cyan-200">Loading CAD calls and incident reports…</div>}
       {linkError && <div className="mb-3 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-[10px] text-red-300">{linkError}</div>}
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="DISPATCH CALL"><CallLinkCombobox calls={calls} value={data.linked_call_id} selectedLabel={data.linked_call_number} isLoading={linkLoading} onSelect={(id,call)=>onChange(prev=>({...prev,linked_call_id:id,linked_call_number:callLabel(call)}))} /><button type="button" className="mt-1 text-xs text-slate-400" onClick={()=>onChange(prev=>({...prev,linked_call_id:'',linked_call_number:''}))}>Clear CAD Link</button></Field>
@@ -153,7 +153,7 @@ function FormView({ data, onChange }) {
         <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-slate-300"><ImageIcon className="h-3 w-3" />Photos / images</div>
         <div>
           <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="sr-only" onChange={uploadPhotos} disabled={uploading} />
-          <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploading || (data.photo_urls || []).length >= 8} className="rounded border border-blue-700 bg-blue-950/40 px-3 py-1.5 text-[9px] font-bold text-blue-300 hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-50"><Upload className="mr-1 inline h-3 w-3" />{uploading ? 'UPLOADING...' : 'ADD PHOTOS'}</button>
+          <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploading || (data.photo_urls || []).length >= 8} className="rounded border border-blue-700 bg-stone-900/40 px-3 py-1.5 text-[9px] font-bold text-blue-300 hover:bg-stone-900/50 disabled:cursor-not-allowed disabled:opacity-50"><Upload className="mr-1 inline h-3 w-3" />{uploading ? 'UPLOADING...' : 'ADD PHOTOS'}</button>
         </div>
       </div>
       {uploadError && <div className="mb-3 rounded border border-red-700/60 bg-red-950/30 px-3 py-2 text-[10px] font-bold text-red-300">{uploadError}</div>}
@@ -162,7 +162,7 @@ function FormView({ data, onChange }) {
 
     <BoloAttachmentsEditor attachments={data.attachments || []} onChange={value => set('attachments', value)} />
 
-    <div className="rounded border border-blue-900/70 bg-blue-950/10 p-3">
+    <div className="rounded border border-blue-900/70 bg-stone-900/10 p-3">
       <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-blue-300"><User className="h-3 w-3" />Parties / persons</div><button type="button" onClick={addParty} className="rounded border border-blue-700 px-2 py-1 text-[9px] font-bold text-blue-300"><Plus className="mr-1 inline h-3 w-3" />Add party</button></div>
       {parties.length === 0 && <div className="text-[10px] text-slate-600">Add each subject, missing person, victim, witness, or other party separately.</div>}
       <div className="space-y-3">{parties.map((p,i) => <div key={i} className="rounded border border-slate-700 bg-slate-900/60 p-3"><div className="mb-2 flex items-center gap-2"><span className="text-[9px] font-black text-blue-400">PARTY {i+1}</span><button type="button" onClick={() => removeParty(i)} className="ml-auto text-red-400"><Trash2 className="h-3.5 w-3.5" /></button></div><div className="grid gap-2 md:grid-cols-3"><Input value={p.role} onChange={v => updateParty(i,'role',v)} normalize={titleCase} placeholder="Role: Subject" /><Input value={p.name} onChange={v => updateParty(i,'name',v)} normalize={titleCase} placeholder="Full Name" /><Input value={p.dob} onChange={v => updateParty(i,'dob',v)} placeholder="DOB MM/DD/YYYY" /><Input value={p.race} onChange={v => updateParty(i,'race',v)} normalize={titleCase} placeholder="Race" /><Input value={p.sex} onChange={v => updateParty(i,'sex',v)} normalize={titleCase} placeholder="Sex" /><div className="grid grid-cols-2 gap-2"><Input value={p.height} onChange={v => updateParty(i,'height',v)} placeholder="Height" /><Input value={p.weight} onChange={v => updateParty(i,'weight',v)} placeholder="Weight" /></div></div><div className="mt-2"><Textarea value={p.description} onChange={v => updateParty(i,'description',v)} normalize={sentenceCase} rows={2} /></div></div>)}</div>

@@ -192,7 +192,7 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
     <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-auto bg-[#090a0c] p-4 text-white">
       <div className="w-full max-w-xl rounded-2xl border border-[#635336] bg-[#111316] p-6 shadow-2xl sm:p-8">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-blue-500/50 bg-blue-950/40">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-blue-500/50 bg-stone-900/40">
             <Mail className="h-7 w-7 text-blue-300" />
           </div>
           <div>
@@ -228,7 +228,7 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
         <button
           type="button"
           onClick={connect}
-          className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-black text-white hover:bg-blue-500"
+          className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 text-sm font-black text-white hover:bg-amber-500"
         >
           <ExternalLink className="h-4 w-4" /> SIGN IN WITH MICROSOFT & CONNECT OUTLOOK
         </button>

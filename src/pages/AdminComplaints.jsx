@@ -248,7 +248,7 @@ This is a formal notification and will be part of your personnel file pending in
                           <Button
                             size="sm"
                             onClick={() => setEditingComplaint(comp)}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-amber-600 hover:bg-amber-700"
                           >
                             <FileText className="w-4 h-4 mr-1" />
                             Update Investigation
@@ -490,7 +490,7 @@ This is a formal notification and will be part of your personnel file pending in
                       editingComplaint.investigation_notes
                     )}
                     disabled={updateComplaintMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-amber-600 hover:bg-amber-700"
                   >
                     {updateComplaintMutation.isPending ? 'Updating...' : 'Update Investigation'}
                   </Button>

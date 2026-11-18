@@ -462,7 +462,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
   };
 
   const statusColors = {
-    new: "bg-blue-100 text-blue-800 border-blue-200",
+    new: "bg-amber-100 text-blue-800 border-blue-200",
     reviewed: "bg-yellow-100 text-yellow-800 border-yellow-200",
     investigating: "bg-orange-100 text-orange-800 border-orange-200",
     resolved: "bg-green-100 text-green-800 border-green-200"
@@ -497,7 +497,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
-            <CardHeader className="border-b border-blue-900/50 bg-blue-950/25">
+            <CardHeader className="border-b border-blue-900/50 bg-stone-900/25">
               <CardTitle className="text-blue-300 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 New Reports
@@ -646,14 +646,14 @@ export default function AdminConfidentialReports({ embedded = false }) {
                     <div
                       key={report.id}
                       className={`p-5 rounded-lg border-l-4 ${
-                        !report.viewed ? 'bg-blue-50 border-l-blue-500' : 'bg-slate-950/50 border-l-slate-300'
+                        !report.viewed ? 'bg-amber-50 border-l-blue-500' : 'bg-slate-950/50 border-l-slate-300'
                       }`}
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             {!report.viewed && (
-                              <Badge className="bg-blue-600 text-white">NEW</Badge>
+                              <Badge className="bg-amber-600 text-white">NEW</Badge>
                             )}
                             <Badge variant="outline" className={statusColors[report.status]}>
                               {report.status.toUpperCase()}
@@ -684,7 +684,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
                           <Button
                             size="sm"
                             onClick={() => handleViewReport(report)}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-amber-600 hover:bg-amber-700"
                           >
                             <Eye className="w-4 h-4 mr-2" />
                             View
@@ -863,7 +863,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
               </div>
 
               {selectedReport.reviewed_by && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-3 bg-amber-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-700">
                     Previously reviewed by {getAdminName(selectedReport.reviewed_by)} on{' '}
                     {format(new Date(selectedReport.reviewed_date), 'MMM d, yyyy h:mm a')}
@@ -891,7 +891,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
                     <Button
                       onClick={handleMarkViewed}
                       disabled={markViewedMutation.isPending}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-amber-600 hover:bg-amber-700"
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       {markViewedMutation.isPending ? 'Saving...' : 'Mark as Reviewed'}

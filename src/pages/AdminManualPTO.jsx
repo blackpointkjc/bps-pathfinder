@@ -87,12 +87,12 @@ export default function AdminManualPTO() {
       <div className="mx-auto max-w-5xl space-y-5">
         <div className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-[#111316] p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10"><WalletCards className="h-5 w-5 text-blue-300"/></div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-500/30 bg-amber-500/10"><WalletCards className="h-5 w-5 text-blue-300"/></div>
             <div><div className="text-[10px] font-black uppercase tracking-[.18em] text-blue-300">Human Resources</div><h1 className="text-2xl font-black text-white">PTO Adjustments</h1></div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => openAdjustment('bonus')} className="bg-violet-600 hover:bg-violet-500"><Gift className="mr-2 h-4 w-4"/>Add PTO Bonus</Button>
-            <Button onClick={() => openAdjustment('manual')} className="bg-blue-600 hover:bg-blue-500"><Plus className="mr-2 h-4 w-4"/>Add PTO Hours</Button>
+            <Button onClick={() => openAdjustment('bonus')} className="bg-amber-600 hover:bg-amber-500"><Gift className="mr-2 h-4 w-4"/>Add PTO Bonus</Button>
+            <Button onClick={() => openAdjustment('manual')} className="bg-amber-600 hover:bg-amber-500"><Plus className="mr-2 h-4 w-4"/>Add PTO Hours</Button>
           </div>
         </div>
 
@@ -131,7 +131,7 @@ export default function AdminManualPTO() {
                 </div>}
               </div>}
               <div className="space-y-2"><Label>Reason</Label><Input value={formData.reason} onChange={e => setFormData(current => ({ ...current, reason: e.target.value }))} className="border-slate-700 bg-[#111316]" placeholder={entryMode === 'bonus' ? 'Officer of the Day, recognition, etc.' : 'Balance correction or approved adjustment'}/></div>
-              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button><Button type="submit" disabled={addPTOMutation.isPending} className="bg-blue-600 hover:bg-blue-500">{addPTOMutation.isPending ? 'Saving…' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO Hours'}</Button></div>
+              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button><Button type="submit" disabled={addPTOMutation.isPending} className="bg-amber-600 hover:bg-amber-500">{addPTOMutation.isPending ? 'Saving…' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO Hours'}</Button></div>
             </form>
           </DialogContent>
         </Dialog>

@@ -807,7 +807,7 @@ export default function TimeClock() {
         <Card className="overflow-hidden border border-[#635336] bg-[#111316] text-slate-100 shadow-2xl">
           <CardHeader className={`border-b border-[#635336] ${activeEntry ? 'bg-[#0f2a22]' : 'bg-[#222321]'}`}>
             <CardTitle className="flex items-center gap-3 text-xl font-black text-white sm:text-2xl">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${activeEntry ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-blue-500/40 bg-blue-500/10'}`}>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${activeEntry ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-blue-500/40 bg-amber-500/10'}`}>
                 <Clock className={`h-5 w-5 ${activeEntry ? 'text-emerald-300' : 'text-blue-300'}`} />
               </div>
               {shiftStatePending ? 'Checking Current Shift' : activeEntry ? 'Currently On Duty' : 'Ready to Clock In'}
@@ -854,7 +854,7 @@ export default function TimeClock() {
                   </div>
                   {!isAdmin && (
                     <>
-                      <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-3">
+                      <div className="mt-4 rounded-xl border border-blue-500/25 bg-amber-500/10 p-3">
                         <p className="flex items-start gap-2 text-xs leading-5 text-blue-200">
                           <Navigation className="mt-0.5 h-4 w-4 shrink-0 animate-pulse" />
                           Pathfinder is receiving your live device location through the shared location service. Keep location permission enabled for accurate status, geofence, and history updates.
@@ -872,7 +872,7 @@ export default function TimeClock() {
 
                 {currentLocationCoords && !isAdmin && (
                   <Card className="border-none shadow-lg overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+                    <CardHeader className="bg-gradient-to-r from-amber-50 to-purple-50 border-b">
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <MapPin className="w-5 h-5 text-blue-600" />
                         Your Current Location
@@ -912,7 +912,7 @@ export default function TimeClock() {
                         </MapContainer>}
                         {tomTomClockFailed&&useTomTomClockMap&&<button type="button" className="absolute bottom-2 left-2 z-[600] rounded border border-amber-500 bg-slate-950 p-2 text-xs text-amber-200" onClick={()=>setTomTomClockFailed(false)}>TomTom unavailable · Retry map</button>}
                       </div>
-                      <div className="p-3 bg-blue-50 border-t border-blue-200">
+                      <div className="p-3 bg-amber-50 border-t border-blue-200">
                         <p className="text-xs text-blue-900">
                           <MapPin className="w-3 h-3 inline mr-1" />
                           GPS: {currentLocationCoords.lat.toFixed(6)}, {currentLocationCoords.lng.toFixed(6)}
@@ -995,7 +995,7 @@ export default function TimeClock() {
                 </div>
 
                 {selectedLocation && !isAdmin && (
-                  <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                  <div className="bg-amber-50 border-2 border-blue-300 rounded-lg p-4">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div>
@@ -1011,7 +1011,7 @@ export default function TimeClock() {
                 <Button
                   onClick={handleClockIn}
                   disabled={clockInMutation.isPending || verifyingLocation || !selectedLocation}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-6 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-stone-800 text-white py-6 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {verifyingLocation ? (
                     <>
@@ -1078,7 +1078,7 @@ export default function TimeClock() {
                   <Button
                     onClick={handleSwitchSite}
                     disabled={switchSiteMutation.isPending || !selectedNewSite || switchingSite}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-amber-600 hover:bg-amber-700"
                   >
                     {switchSiteMutation.isPending || switchingSite ? 'Switching Sites...' : 'Switch Site'}
                   </Button>
@@ -1199,7 +1199,7 @@ export default function TimeClock() {
         </Card>
 
         {!isAdmin && (
-          <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4">
+          <div className="rounded-xl border border-blue-500/25 bg-amber-500/10 p-4">
             <p className="text-sm leading-6 text-blue-200">
               <strong>Duty Tracking:</strong> Pathfinder begins live GPS and one-minute history only after you clock in and stops tracking when you clock out. Location permission must remain available during the shift.
             </p>

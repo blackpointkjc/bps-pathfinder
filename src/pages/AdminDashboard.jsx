@@ -191,10 +191,10 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-[#090a0c] p-3 pb-24 text-white sm:p-4 md:p-6">
       <div className="mx-auto max-w-[1500px] space-y-5 sm:space-y-6">
         <div className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#222321] via-[#111316] to-[#111316] p-5 shadow-2xl sm:p-6 md:p-8">
-          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
+          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl" />
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10"><Shield className="h-6 w-6 text-cyan-300" /></div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/30 bg-amber-500/10"><Shield className="h-6 w-6 text-cyan-300" /></div>
             <div>
               <div className="text-[10px] font-black uppercase tracking-[.22em] text-cyan-300">Master Administration</div>
               <h1 className="mt-1 text-3xl font-black leading-tight text-white md:text-4xl">Admin Command Dashboard</h1>
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="w-full justify-center border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 sm:w-auto">
+              <Button className="w-full justify-center border border-cyan-400/30 bg-amber-500/10 text-cyan-100 hover:bg-amber-500/20 sm:w-auto">
                 <LayoutDashboard className="w-4 h-4 mr-2" />
                 All Admin Tools
               </Button>
@@ -268,7 +268,7 @@ export default function AdminDashboard() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
           <Card className="bps-kpi-card border border-blue-500/30 bg-[#191a1b] p-5 text-white shadow-lg">
-            <div className="bps-kpi-icon bg-blue-500/10 text-blue-300"><Users className="h-5 w-5" /></div>
+            <div className="bps-kpi-icon bg-amber-500/10 text-blue-300"><Users className="h-5 w-5" /></div>
             <div className="bps-kpi-value text-3xl font-black text-white sm:text-4xl">{workforce.counts?.active_employees ?? allUsers.length}</div>
             <div className="bps-kpi-label text-sm font-bold text-white">Total Officers</div>
             <p className="bps-kpi-detail text-sm font-medium text-blue-200">{workforce.counts?.admins ?? allUsers.filter(u => u.role === 'admin').length} admins</p>
@@ -326,7 +326,7 @@ export default function AdminDashboard() {
           <section className="rounded-2xl border border-slate-800 bg-[#111316] p-5 shadow-lg">
             <div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Command Shortcuts</div><h2 className="mt-1 text-xl font-black text-white">Most-used administration tools</h2>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-              {adminTools.filter(tool => ['analytics','scheduling','tracker','all_reports','announcements'].includes(tool.id)).map(tool => <Link key={tool.id} to={tool.url} className="group flex items-center gap-3 rounded-xl border border-slate-800 bg-[#191a1b] px-4 py-3 transition hover:border-cyan-500/40 hover:bg-[#222321]"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-300"><tool.icon className="h-4 w-4"/></div><span className="min-w-0 flex-1 text-sm font-bold text-white">{tool.title}</span><span className="text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan-300">→</span></Link>)}
+              {adminTools.filter(tool => ['analytics','scheduling','tracker','all_reports','announcements'].includes(tool.id)).map(tool => <Link key={tool.id} to={tool.url} className="group flex items-center gap-3 rounded-xl border border-slate-800 bg-[#191a1b] px-4 py-3 transition hover:border-cyan-500/40 hover:bg-[#222321]"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-cyan-300"><tool.icon className="h-4 w-4"/></div><span className="min-w-0 flex-1 text-sm font-bold text-white">{tool.title}</span><span className="text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan-300">→</span></Link>)}
             </div>
           </section>
         </div>

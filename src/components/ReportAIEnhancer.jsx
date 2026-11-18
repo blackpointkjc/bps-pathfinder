@@ -51,7 +51,7 @@ export default function ReportAIEnhancer({ text, onEnhanced, fieldName = "report
       size="sm"
       onClick={handleEnhance}
       disabled={enhancing || !text || text.trim().length < 10}
-      className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 hover:from-purple-100 hover:to-blue-100"
+      className="bg-gradient-to-r from-purple-50 to-amber-50 border-purple-200 hover:from-purple-100 hover:to-amber-100"
     >
       {enhancing ? (
         <>

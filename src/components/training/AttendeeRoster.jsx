@@ -16,7 +16,7 @@ const STATUS_COLORS = {
   present: "bg-green-100 text-green-800",
   absent: "bg-red-100 text-red-800",
   late: "bg-yellow-100 text-yellow-800",
-  excused: "bg-blue-100 text-blue-800",
+  excused: "bg-amber-100 text-blue-800",
 };
 
 const PASS_FAIL_COLORS = {
@@ -121,7 +121,7 @@ export default function AttendeeRoster({ trainingClass, onGenerateCertificate, s
       </div>
 
       {showForm && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 bg-amber-50">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base">{editingId ? "Edit Attendee" : "Add Attendee"}</CardTitle>
             <Button variant="ghost" size="icon" onClick={handleCancel}><X className="w-4 h-4" /></Button>

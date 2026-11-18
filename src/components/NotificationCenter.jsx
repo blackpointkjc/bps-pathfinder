@@ -67,7 +67,7 @@ export default function NotificationCenter({ user }) {
     switch (priority) {
       case 'urgent': return 'border-l-4 border-red-500 bg-red-50';
       case 'high': return 'border-l-4 border-amber-500 bg-amber-50';
-      case 'normal': return 'border-l-4 border-blue-500 bg-blue-50';
+      case 'normal': return 'border-l-4 border-blue-500 bg-amber-50';
       default: return 'border-l-4 border-slate-300 bg-slate-50';
     }
   };

@@ -28,7 +28,7 @@ function CaseRow({ row }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className={isComplaint ? 'bg-red-950 text-red-200' : isSummons ? 'bg-blue-950 text-blue-200' : 'bg-violet-950 text-violet-200'}>{row.kind}</Badge>
+            <Badge className={isComplaint ? 'bg-red-950 text-red-200' : isSummons ? 'bg-stone-900 text-blue-200' : 'bg-stone-900 text-violet-200'}>{row.kind}</Badge>
             <strong className="text-white">{row.number || 'Unnumbered record'}</strong>
             <Badge variant="outline" className="border-slate-600 text-slate-300">{text(row.status).replaceAll('_', ' ').toUpperCase() || 'DRAFT'}</Badge>
             {outcome && <Badge className={outcome === 'granted' ? 'bg-emerald-700' : outcome === 'denied' ? 'bg-red-700' : 'bg-amber-700'}><Gavel className="mr-1 h-3 w-3" />{outcome.replaceAll('_', ' ').toUpperCase()}</Badge>}

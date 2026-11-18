@@ -180,10 +180,10 @@ export default function SupervisorFieldOversight() {
       <div className="mx-auto max-w-[1700px]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div><div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Supervisor Operations</div><h1 className="mt-1 flex items-center gap-2 text-2xl font-black md:text-3xl"><ShieldCheck className="h-7 w-7 text-cyan-300"/>Supervisor Operations Overview</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See where officers are, what calls are active, who is assigned, unit status, GPS freshness, acknowledgement timing, and welfare conditions from one supervisor-only page.</p></div>
-          <div className="flex flex-wrap gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme}/><Button variant="outline" onClick={refreshAll} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching?'animate-spin':''}`}/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-blue-700 hover:bg-blue-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div>
+          <div className="flex flex-wrap gap-2"><MapThemeToggle theme={mapTheme} onChange={setMapTheme}/><Button variant="outline" onClick={refreshAll} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching?'animate-spin':''}`}/>Refresh</Button><Button onClick={()=>openCad({})} className="bg-amber-700 hover:bg-amber-600"><ExternalLink className="mr-2 h-4 w-4"/>Open CAD Center</Button></div>
         </div>
         <nav aria-label="Supervisor operations tabs" className="mt-5 flex flex-wrap gap-2 border-t border-slate-800 pt-4">
-          <button type="button" aria-current="page" className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-black text-slate-950">Live Field Oversight</button>
+          <button type="button" aria-current="page" className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-black text-slate-950">Live Field Oversight</button>
           <button type="button" onClick={()=>navigate(`${createPageUrl('SupervisorCenter')}?section=dutytimeline`)} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-bold text-slate-100 hover:border-cyan-400 hover:text-cyan-300">Daily Duty Timeline</button>
         </nav>
       </div>

@@ -57,7 +57,7 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
   return (
     <div className="border-b border-blue-500/30 bg-gradient-to-r from-[#111316] via-[#222321] to-[#111316] px-3 py-2.5 text-white shadow-[0_6px_18px_rgba(2,8,23,.24)]">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex min-w-fit items-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2">
+        <div className="flex min-w-fit items-center gap-2 rounded-lg border border-blue-400/30 bg-amber-500/10 px-3 py-2">
           <ShieldCheck className="h-4 w-4 text-blue-300" />
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Administrator Tool</div>

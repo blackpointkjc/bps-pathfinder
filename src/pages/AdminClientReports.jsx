@@ -460,7 +460,7 @@ export default function AdminClientReports() {
             <div className="flex gap-3 mt-4 flex-wrap">
               <Button 
                 onClick={handlePrint} 
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-amber-600 hover:bg-amber-700"
                 disabled={!selectedLocation}
               >
                 <Printer className="w-4 h-4 mr-2" />
@@ -513,7 +513,7 @@ export default function AdminClientReports() {
                 </div>
               </div>
 
-              <div className="mb-6 bg-blue-50 p-4 rounded-lg">
+              <div className="mb-6 bg-amber-50 p-4 rounded-lg">
                 <div className="text-center">
                   <p className="text-sm text-blue-700 font-medium">Total Hours for Period</p>
                   <p className="text-3xl font-bold text-blue-900">{grandTotal.toFixed(2)} hours</p>

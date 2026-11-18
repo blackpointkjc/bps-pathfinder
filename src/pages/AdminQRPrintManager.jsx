@@ -148,13 +148,13 @@ export default function AdminQRPrintManager({ siteName }) {
     <div className="p-4 md:p-8 min-h-screen bg-white max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-xl"><Printer className="w-6 h-6 text-white" /></div>
+          <div className="bg-amber-600 p-2 rounded-xl"><Printer className="w-6 h-6 text-white" /></div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">QR Print Manager</h1>
             <p className="text-sm text-slate-500">1.5" × 1.5" labels • 4 across × 6 down • 24 per sheet</p>
           </div>
         </div>
-        <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700" disabled={selected.size === 0}>
+        <Button onClick={handlePrint} className="bg-amber-600 hover:bg-amber-700" disabled={selected.size === 0}>
           <Printer className="w-4 h-4 mr-2" /> Print {selected.size > 0 ? `${selected.size} Label${selected.size > 1 ? 's' : ''}` : 'Labels'}
         </Button>
       </div>
@@ -181,7 +181,7 @@ export default function AdminQRPrintManager({ siteName }) {
       </div>
 
       {selected.size > 0 && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+        <div className="p-3 bg-amber-50 border border-blue-200 rounded-lg text-sm text-blue-800">
           {selected.size} checkpoint{selected.size > 1 ? 's' : ''} selected → {Math.ceil(selected.size / 24)} sheet{Math.ceil(selected.size / 24) > 1 ? 's' : ''} needed
         </div>
       )}
@@ -204,7 +204,7 @@ export default function AdminQRPrintManager({ siteName }) {
               </thead>
               <tbody className="divide-y">
                 {filtered.map(cp => (
-                  <tr key={cp.id} className={`hover:bg-slate-50 ${selected.has(cp.id) ? 'bg-blue-50' : ''}`}>
+                  <tr key={cp.id} className={`hover:bg-slate-50 ${selected.has(cp.id) ? 'bg-amber-50' : ''}`}>
                     <td className="p-3">
                       <Checkbox checked={selected.has(cp.id)} onCheckedChange={() => toggleSelect(cp.id)} />
                     </td>

@@ -77,7 +77,7 @@ export default function PayrollDates({ readOnly = false }) {
   return <div className="min-h-screen p-4 md:p-8">
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3"><div className="rounded-lg border border-blue-500/40 bg-blue-950/30 p-3"><CalendarClock className="h-7 w-7 text-blue-400" /></div><div><h1 className="text-3xl font-bold">Payroll Dates</h1><p className="text-slate-400">Enter the first three periods once, then repeat the pattern on a rolling two-year schedule.</p></div></div>
+        <div className="flex items-center gap-3"><div className="rounded-lg border border-blue-500/40 bg-stone-900/30 p-3"><CalendarClock className="h-7 w-7 text-blue-400" /></div><div><h1 className="text-3xl font-bold">Payroll Dates</h1><p className="text-slate-400">Enter the first three periods once, then repeat the pattern on a rolling two-year schedule.</p></div></div>
         {canManage && <div className="flex gap-2"><Button variant="outline" onClick={() => rollingMutation.mutate()} disabled={rollingMutation.isPending || sorted.length < 3}>{rollingMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Repeat2 className="mr-2 h-4 w-4" />}Generate Rolling 2 Years</Button><Button onClick={() => openForm(null)}><Plus className="mr-2 h-4 w-4" />Add Payroll Period</Button></div>}
       </div>
 

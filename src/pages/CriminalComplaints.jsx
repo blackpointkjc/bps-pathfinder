@@ -622,7 +622,7 @@ export default function CriminalComplaints() {
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <ActiveCallLinkField formData={formData} setFormData={setFormData} />
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-amber-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-900 font-medium">
                     This form creates an official criminal complaint for Commonwealth of Virginia prosecution.
                     All fields marked with * are required.

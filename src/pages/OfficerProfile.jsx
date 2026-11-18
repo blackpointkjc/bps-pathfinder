@@ -295,15 +295,15 @@ export default function OfficerProfile() {
       <div className="mx-auto max-w-5xl space-y-5">
         <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-[#222321] via-[#111316] to-[#111316] p-5 shadow-2xl md:p-7">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10"><User className="h-6 w-6 text-blue-300" /></div><div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-blue-300">Officer Account</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">My Profile</h1><p className="mt-1 text-sm text-slate-400">View your company identity, contact information, credentials, and certifications.</p></div></div>
-            <Button type="button" variant="outline" onClick={() => document.getElementById('home-navigation-address')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="border-cyan-600/60 bg-cyan-950/30 text-cyan-100 hover:bg-cyan-900/40">
+            <div className="flex items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-amber-500/10"><User className="h-6 w-6 text-blue-300" /></div><div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-blue-300">Officer Account</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">My Profile</h1><p className="mt-1 text-sm text-slate-400">View your company identity, contact information, credentials, and certifications.</p></div></div>
+            <Button type="button" variant="outline" onClick={() => document.getElementById('home-navigation-address')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="border-cyan-600/60 bg-stone-900/30 text-cyan-100 hover:bg-stone-900/40">
               <MapPin className="mr-2 h-4 w-4" />{user?.address ? 'Edit Home Address' : 'Add Home Address'}
             </Button>
           </div>
         </div>
 
         <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
-          <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-blue-950/35 to-violet-950/25">
+          <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-stone-900/35 to-stone-900/25">
             <CardTitle className="flex items-center gap-2 text-white">
               <User className="w-5 h-5 text-blue-600" />
               Profile Photo
@@ -319,13 +319,13 @@ export default function OfficerProfile() {
                     className="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
                   /></button>
                 ) : (
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-4xl font-bold border-4 border-blue-200">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-4xl font-bold border-4 border-blue-200">
                     {user?.first_name?.charAt(0) || user?.full_name?.charAt(0) || 'U'}
                   </div>
                 )}
                 <label
                   htmlFor="photo-upload"
-                  className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors"
+                  className="absolute bottom-0 right-0 bg-amber-600 text-white p-2 rounded-full cursor-pointer hover:bg-amber-700 transition-colors"
                 >
                   <Camera className="w-5 h-5" />
                 </label>
@@ -347,7 +347,7 @@ export default function OfficerProfile() {
                 <p className="text-slate-400">{user?.email}</p>
                 <div className="flex gap-2 mt-3 justify-center md:justify-start flex-wrap">
                   {user?.rank && (
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                    <Badge variant="outline" className="bg-amber-100 text-blue-800 border-blue-200">
                       {user.rank}
                     </Badge>
                   )}
@@ -378,7 +378,7 @@ export default function OfficerProfile() {
 
         {myCompanyMailbox && (
           <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
-            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-blue-50">
+            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-amber-50">
               <CardTitle className="flex items-center gap-2 text-white"><Mail className="h-5 w-5 text-emerald-600" /> Company Email</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -445,7 +445,7 @@ export default function OfficerProfile() {
         </Card>
 
         <Card id="home-navigation-address" className="scroll-mt-6 overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#111316] text-slate-100 shadow-xl">
-          <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-cyan-950/35 to-blue-950/25">
+          <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-stone-900/35 to-stone-900/25">
             <CardTitle className="flex items-center gap-2 text-white">
               <MapPin className="h-5 w-5 text-cyan-300" />
               Home Navigation Address
@@ -476,7 +476,7 @@ export default function OfficerProfile() {
               </div>
             </div>
             {homeSaveStatus && <div role="status" className={`mt-4 rounded-lg border px-3 py-2 text-sm font-semibold ${homeSaveStatus.ok ? 'border-emerald-600 bg-emerald-950/50 text-emerald-200' : 'border-red-600 bg-red-950/50 text-red-200'}`}>{homeSaveStatus.message}</div>}
-            <Button type="button" onClick={saveHomeNavigationAddress} disabled={savingHomeAddress || !homeAddressForm.address.trim()} className="mt-5 bg-cyan-700 hover:bg-cyan-600">
+            <Button type="button" onClick={saveHomeNavigationAddress} disabled={savingHomeAddress || !homeAddressForm.address.trim()} className="mt-5 bg-amber-700 hover:bg-amber-600">
               <MapPin className="mr-2 h-4 w-4" />{savingHomeAddress ? 'Saving…' : 'Save Home Navigation Address'}
             </Button>
           </CardContent>
@@ -508,7 +508,7 @@ export default function OfficerProfile() {
         </Card>
 
         <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <Shield className="w-5 h-5 text-blue-600" />
               Certifications & Licenses
@@ -541,7 +541,7 @@ export default function OfficerProfile() {
                 {certificationRows.map((cert) => {
                   const status = certificationStatus(cert);
                   return (
-                    <div key={cert._key} className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <div key={cert._key} className="rounded-lg border border-blue-200 bg-amber-50 p-3">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -604,7 +604,7 @@ export default function OfficerProfile() {
                       <div className="text-right">
                         <Badge className={
                           equip.condition === 'new' ? 'bg-purple-600' :
-                          equip.condition === 'good' ? 'bg-blue-600' :
+                          equip.condition === 'good' ? 'bg-amber-600' :
                           equip.condition === 'fair' ? 'bg-yellow-600' :
                           equip.condition === 'poor' ? 'bg-orange-600' :
                           'bg-red-600'
@@ -642,7 +642,7 @@ export default function OfficerProfile() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
+          <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-amber-100">
             <CardContent className="p-6 text-center">
               <ClipboardCheck className="w-10 h-10 text-purple-600 mx-auto mb-2" />
               <p className="text-4xl font-bold text-purple-600">{performanceReviews?.length || 0}</p>
@@ -753,7 +753,7 @@ export default function OfficerProfile() {
         </Card>
 
         <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b">
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-amber-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <ClipboardCheck className="w-5 h-5 text-purple-600" />
               Performance Review History ({performanceReviews?.length || 0})

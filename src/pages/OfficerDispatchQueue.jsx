@@ -160,7 +160,7 @@ export default function OfficerDispatchQueue() {
 
       {!queue.length ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-400"/><h2 className="text-lg font-black">Queue clear</h2><p className="text-sm text-slate-400">No active calls are assigned to you.</p></div> : <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
         <aside className="space-y-3"><Input aria-label="Find an assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Find reference, incident or location" className="border-slate-600 bg-slate-900"/>{!visibleQueue.length&&<p className="p-4 text-sm text-slate-400">No matching assigned calls.</p>}
-          {visibleQueue.map((call)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#111316] hover:border-slate-500'}`}>
+          {visibleQueue.map((call)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-stone-900/40':'border-slate-700 bg-[#111316] hover:border-slate-500'}`}>
             <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-black text-slate-400">#{queue.indexOf(call)+1} IN QUEUE</div><Badge className={priorityClass(call.priority)}>{String(call.priority||'medium').toUpperCase()}</Badge></div>
             <div className="mt-2 font-black">{call.agency_cad_number || call.bps_reference || call.call_id || call.id}</div><div className="text-sm text-slate-200">{call.incident || 'Call for service'}</div><div className="mt-1 text-xs text-slate-400">{call.location || 'Location pending'}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">YOUR STATUS: {statusLabel(call.assignment?.status)} · {call.assigned_officers?.find(u=>u.role==='primary')?.officer_name||'Primary pending'} (PRIMARY)</div>
           </button>)}
@@ -176,8 +176,8 @@ export default function OfficerDispatchQueue() {
           <section className="rounded-2xl border border-cyan-500/30 bg-[#111316] p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-black text-cyan-200">Officer welfare status</div><p className="mt-1 text-xs text-slate-400">Transmit a verified welfare OK to dispatch at any time while assigned.</p></div><Button disabled={working} onClick={()=>respondWelfare('ok')} className="bg-emerald-700 hover:bg-emerald-600"><HeartPulse className="mr-2 h-4 w-4"/>Send welfare OK</Button></div></section>
 
           <section className="grid gap-2 sm:grid-cols-4">
-            <Button disabled={working || selected.assignment?.status==='accepted'} onClick={()=>changeStatus('Acknowledged')} className="bg-indigo-700 hover:bg-indigo-600">Acknowledge</Button>
-            <Button disabled={working} onClick={()=>changeStatus('Enroute')} className="bg-blue-700 hover:bg-blue-600"><Navigation className="mr-2 h-4 w-4"/>En route</Button>
+            <Button disabled={working || selected.assignment?.status==='accepted'} onClick={()=>changeStatus('Acknowledged')} className="bg-amber-700 hover:bg-amber-600">Acknowledge</Button>
+            <Button disabled={working} onClick={()=>changeStatus('Enroute')} className="bg-amber-700 hover:bg-amber-600"><Navigation className="mr-2 h-4 w-4"/>En route</Button>
             <Button disabled={working} onClick={()=>changeStatus('On Scene')} className="bg-amber-700 hover:bg-amber-600">On scene</Button>
             <Button disabled={working} onClick={directions} variant="outline" className="border-cyan-500 text-cyan-300"><MapPinned className="mr-2 h-4 w-4"/>Directions</Button>
           </section>

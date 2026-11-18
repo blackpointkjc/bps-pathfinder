@@ -173,7 +173,7 @@ export default function ClientDashboard() {
 
         <section className="rounded-2xl border border-amber-500/20 bg-[#111316] p-5 shadow-lg">
           <div className="flex items-center justify-between gap-3"><div><div className="text-xs font-black uppercase tracking-[.16em] text-amber-300">Pending Actions</div><h2 className="mt-1 text-xl font-black text-white">Service requests in progress</h2><p className="mt-1 text-xs text-slate-500">Requests you submitted that are still pending or under review.</p></div><AlertTriangle className="h-5 w-5 text-amber-300"/></div>
-          <div className="mt-4 space-y-2">{pendingClientRequests.slice(0,6).map(row => <div key={row.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#191a1b] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">Special Coverage Request</div><div className="text-xs font-bold text-cyan-200">{row.location || 'Assigned property'}</div><div className="mt-1 text-xs text-slate-500">{row.reason || row.special_requirements || 'Coverage request'} · {String(row.status || 'pending').replace(/_/g,' ')}</div></div><Link to={createPageUrl('ClientSpecialRequests')} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">VIEW TASK</Link></div>)}{!pendingClientRequests.length && <div className="rounded-xl border border-dashed border-emerald-800/60 p-6 text-center text-sm text-emerald-300">No client requests are waiting for action.</div>}</div>
+          <div className="mt-4 space-y-2">{pendingClientRequests.slice(0,6).map(row => <div key={row.id} className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-[#191a1b] px-4 py-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="text-sm font-black text-white">Special Coverage Request</div><div className="text-xs font-bold text-cyan-200">{row.location || 'Assigned property'}</div><div className="mt-1 text-xs text-slate-500">{row.reason || row.special_requirements || 'Coverage request'} · {String(row.status || 'pending').replace(/_/g,' ')}</div></div><Link to={createPageUrl('ClientSpecialRequests')} className="shrink-0 rounded-lg border border-cyan-500/30 bg-amber-500/10 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-amber-500/20">VIEW TASK</Link></div>)}{!pendingClientRequests.length && <div className="rounded-xl border border-dashed border-emerald-800/60 p-6 text-center text-sm text-emerald-300">No client requests are waiting for action.</div>}</div>
         </section>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
@@ -184,13 +184,13 @@ export default function ClientDashboard() {
               {!((reports?.incident?.length||0)+(reports?.shift?.length||0)+(reports?.trespass?.length||0)) && <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No recent verified activity is available.</div>}
             </div>
           </section>
-          <section className="rounded-2xl border border-slate-800 bg-[#111316] p-5 shadow-lg"><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Service Access</div><h2 className="mt-1 text-xl font-black text-white">Common client actions</h2><div className="mt-4 space-y-2">{[["Calls for Service","ClientCallHistory",Radio],["All Reports","ClientReports",FileText],["Trespass Management","ClientTrespass",UserX],["Property Information","ClientLocation",MapPin]].map(([label,page,Icon])=><Link key={label} to={createPageUrl(page)} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#191a1b] px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-500/40 hover:bg-[#222321]"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-300"><Icon className="h-4 w-4"/></div><span className="flex-1">{label}</span><span className="text-slate-600">→</span></Link>)}</div></section>
+          <section className="rounded-2xl border border-slate-800 bg-[#111316] p-5 shadow-lg"><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Service Access</div><h2 className="mt-1 text-xl font-black text-white">Common client actions</h2><div className="mt-4 space-y-2">{[["Calls for Service","ClientCallHistory",Radio],["All Reports","ClientReports",FileText],["Trespass Management","ClientTrespass",UserX],["Property Information","ClientLocation",MapPin]].map(([label,page,Icon])=><Link key={label} to={createPageUrl(page)} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#191a1b] px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-500/40 hover:bg-[#222321]"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-cyan-300"><Icon className="h-4 w-4"/></div><span className="flex-1">{label}</span><span className="text-slate-600">→</span></Link>)}</div></section>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link to={createPageUrl("ClientCallHistory")}>
             <Card className="border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-              <CardHeader className="bg-gradient-to-r from-slate-900 to-blue-950 text-white">
+              <CardHeader className="bg-gradient-to-r from-slate-900 to-stone-900 text-white">
                 <CardTitle className="flex items-center gap-2">
                   <Radio className="w-5 h-5 text-amber-400" />
                   Calls for Service
@@ -204,7 +204,7 @@ export default function ClientDashboard() {
 
           <Link to={createPageUrl("ClientReports")}>
             <Card className="border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5 text-blue-600" />
                   View All Reports

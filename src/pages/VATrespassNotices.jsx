@@ -886,7 +886,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                   type="button"
                   onClick={() => setShowIDScanner(!showIDScanner)}
                   variant="outline"
-                  className="w-full bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                  className="w-full bg-amber-50 text-blue-700 border-blue-300 hover:bg-amber-100"
                 >
                   <Camera className="w-4 h-4 mr-2" />
                   {showIDScanner ? 'Close ID Scanner' : 'Scan ID/Driver\'s License'}
@@ -1104,7 +1104,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                               <div className="flex gap-2 flex-wrap items-center">
                                 <Badge className="bg-red-600 text-white">Active</Badge>
                                 {notice.police_notified && (
-                                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                                  <Badge className="bg-amber-100 text-blue-800 border-blue-200">
                                     Police Notified
                                   </Badge>
                                 )}
@@ -1126,7 +1126,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                                   variant="outline"
                                   size="sm"
                                   onClick={() => printNotice(notice)}
-                                  className="bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
+                                  className="bg-amber-50 text-blue-800 border-blue-200 hover:bg-amber-100"
                                 >
                                   <Printer className="w-4 h-4 mr-2" />
                                   Print
@@ -1215,7 +1215,7 @@ export default function VATrespassNotices({ sharedSearch, onSharedSearchChange }
                 variant="outline"
                 size="sm"
                 onClick={() => printNotice(selectedNotice)}
-                className="bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
+                className="bg-amber-50 text-blue-800 border-blue-200 hover:bg-amber-100"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Print Notice

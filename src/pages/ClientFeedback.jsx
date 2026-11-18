@@ -131,7 +131,7 @@ export default function ClientFeedback() {
 
         {showForm && (
           <Card className="shadow-lg border-purple-200">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-amber-50">
               <CardTitle>Submit Feedback</CardTitle>
             </CardHeader>
             <CardContent className="p-6">

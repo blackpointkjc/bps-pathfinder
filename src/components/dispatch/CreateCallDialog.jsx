@@ -157,7 +157,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                             className="bg-slate-800 border-slate-700 text-white"
                                         />
                                         {suggestedCallType && (
-                                            <div className="mt-2 p-2 bg-blue-900/40 border border-blue-600/50 rounded text-blue-300 text-xs">
+                                            <div className="mt-2 p-2 bg-stone-900/40 border border-blue-600/50 rounded text-blue-300 text-xs">
                                                 <strong>Suggestion:</strong> {suggestedCallType.code} - {suggestedCallType.label}
                                                 <Button
                                                     size="xs"
@@ -192,7 +192,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                                             setFormData({...formData, incident: ct.label, priority: ct.priority || formData.priority});
                                                             setSuggestedCallType(null);
                                                         }}
-                                                        className={`rounded border px-2.5 py-2 text-left text-xs transition-colors ${formData.incident === ct.label ? 'border-blue-500 bg-blue-950/50 text-white' : 'border-slate-800 bg-slate-800/60 text-slate-300 hover:border-slate-600 hover:bg-slate-700/70 hover:text-white'}`}
+                                                        className={`rounded border px-2.5 py-2 text-left text-xs transition-colors ${formData.incident === ct.label ? 'border-blue-500 bg-stone-900/50 text-white' : 'border-slate-800 bg-slate-800/60 text-slate-300 hover:border-slate-600 hover:bg-slate-700/70 hover:text-white'}`}
                                                     >
                                                         <div className="flex items-center gap-2"><strong className="text-blue-300">{ct.code}</strong><span className="font-semibold">{ct.label}</span></div>
                                                         <div className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-500">{ct.category || 'General'} · {(ct.priority || 'medium').toUpperCase()}</div>

@@ -280,7 +280,7 @@ export default function Reports() {
                                     <label className="text-xs text-slate-400 font-mono mb-2 block">Date to</label>
                                     <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-slate-800 border-slate-700 text-white font-mono" />
                                 </div>
-                                <Button onClick={generateReport} disabled={generating} className="w-full bg-blue-600 hover:bg-blue-700 font-mono">
+                                <Button onClick={generateReport} disabled={generating} className="w-full bg-amber-600 hover:bg-amber-700 font-mono">
                                     {generating ? 'GENERATING...' : 'GENERATE REPORT'}
                                 </Button>
                             </div>
@@ -316,7 +316,7 @@ export default function Reports() {
 
                                         {reportData.type === 'call_volume' && (
                                             <div className="space-y-4">
-                                                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                                                <div className="bg-amber-500/10 border border-blue-500/30 rounded-lg p-4">
                                                     <p className="text-xs text-slate-400 font-mono mb-1">Total calls</p>
                                                     <p className="text-4xl font-bold text-blue-400 font-mono">{reportData.total}</p>
                                                     <p className="text-xs text-slate-400 font-mono mt-2">{reportData.dateRange.from} to {reportData.dateRange.to}</p>

@@ -191,7 +191,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
                                         {(alert.status === 'active' || alert.status === 'acknowledged') && (
                                             <button
                                                 onClick={() => handleResponders(alert)}
-                                                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white font-mono font-bold text-xs rounded-lg border border-blue-500"
+                                                className="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white font-mono font-bold text-xs rounded-lg border border-blue-500"
                                             >
                                                 RESPONDERS EN ROUTE
                                             </button>

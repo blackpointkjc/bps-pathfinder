@@ -536,7 +536,7 @@ export default function MDCriminalComplaints() {
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <ActiveCallLinkField formData={formData} setFormData={setFormData} />
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-amber-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-900 font-medium">
                     This form creates an official Maryland criminal complaint. All fields marked with * are required.
                   </p>
@@ -885,7 +885,7 @@ export default function MDCriminalComplaints() {
                           </Badge>
                         )}
                         {complaint.cc_number && (
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800 font-mono">
+                          <Badge variant="outline" className="bg-amber-100 text-blue-800 font-mono">
                             CC# {complaint.cc_number}
                           </Badge>
                         )}

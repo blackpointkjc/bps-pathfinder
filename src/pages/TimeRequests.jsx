@@ -145,15 +145,15 @@ export default function TimeRequests() {
             <div className="text-[10px] font-black uppercase tracking-[.16em] text-blue-300">Leave Management</div>
             <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Time Off</h1>
           </div>
-          <Button onClick={() => setShowForm(!showForm)} className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 sm:w-auto">
+          <Button onClick={() => setShowForm(!showForm)} className="w-full rounded-xl bg-amber-600 hover:bg-amber-500 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />New Request
           </Button>
         </div>
 
         <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="min-w-0 overflow-hidden rounded-2xl border border-emerald-800/60 bg-gradient-to-br from-emerald-950/35 to-[#111316] text-white shadow-xl"><CardContent className="flex h-full min-w-0 flex-col p-4"><CheckCircle2 className="h-5 w-5 text-emerald-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Available PTO</div><div className="mt-1 text-3xl font-black text-emerald-300">{ptoBalance.toFixed(1)}h</div><div className="mt-2 text-[11px] leading-5 text-slate-400">{ptoYearToDate.toFixed(1)} earned + {bonusHours.toFixed(1)} bonus/grant − {usedYtd.toFixed(1)} used</div></CardContent></Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-blue-800/60 bg-gradient-to-br from-blue-950/35 to-[#111316] text-white shadow-xl"><CardContent className="flex h-full min-w-0 flex-col p-4"><Clock3 className="h-5 w-5 text-blue-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Earned YTD</div><div className="mt-1 text-3xl font-black text-blue-300">{ptoYearToDate.toFixed(1)}h</div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-blue-500" style={{ width: `${accruedPercent}%` }} /></div><div className="mt-2 text-[10px] text-slate-500">Annual earned-PTO target: {annualEntitlement}h</div></CardContent></Card>
-          <Card className="min-w-0 overflow-hidden rounded-2xl border border-violet-800/60 bg-gradient-to-br from-violet-950/35 to-[#111316] text-white shadow-xl"><CardContent className="flex h-full min-w-0 flex-col p-4"><CalendarClock className="h-5 w-5 text-violet-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Bonus / Grants</div><div className="mt-1 text-3xl font-black text-violet-300">{bonusHours.toFixed(1)}h</div><div className="mt-2 text-[10px] leading-5 text-slate-500">Separate from earned accrual and included in Available PTO.</div></CardContent></Card>
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-blue-800/60 bg-gradient-to-br from-stone-900/35 to-[#111316] text-white shadow-xl"><CardContent className="flex h-full min-w-0 flex-col p-4"><Clock3 className="h-5 w-5 text-blue-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Earned YTD</div><div className="mt-1 text-3xl font-black text-blue-300">{ptoYearToDate.toFixed(1)}h</div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-amber-500" style={{ width: `${accruedPercent}%` }} /></div><div className="mt-2 text-[10px] text-slate-500">Annual earned-PTO target: {annualEntitlement}h</div></CardContent></Card>
+          <Card className="min-w-0 overflow-hidden rounded-2xl border border-violet-800/60 bg-gradient-to-br from-stone-900/35 to-[#111316] text-white shadow-xl"><CardContent className="flex h-full min-w-0 flex-col p-4"><CalendarClock className="h-5 w-5 text-violet-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Bonus / Grants</div><div className="mt-1 text-3xl font-black text-violet-300">{bonusHours.toFixed(1)}h</div><div className="mt-2 text-[10px] leading-5 text-slate-500">Separate from earned accrual and included in Available PTO.</div></CardContent></Card>
           <Card className="min-w-0 overflow-hidden rounded-2xl border border-amber-800/60 bg-gradient-to-br from-amber-950/35 to-[#111316] text-white shadow-xl"><CardContent className="flex h-full min-w-0 flex-col p-4"><History className="h-5 w-5 text-amber-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Used YTD</div><div className="mt-1 text-3xl font-black text-amber-300">{usedYtd.toFixed(1)}h</div><div className="mt-2 text-[10px] text-slate-500">Approved paid leave deducted from available balance.</div></CardContent></Card>
         </div>
 
@@ -195,7 +195,7 @@ export default function TimeRequests() {
                 <p className="text-xs text-slate-400">Use the exact departure and return times, including overnight leave. Work hours are the scheduled hours you need off. Approval updates schedule coverage, Out of Office, duty status and temporary command assignments.</p>
                 {createRequestMutation.error&&<p role="alert" className="text-red-300">{createRequestMutation.error.response?.data?.error||createRequestMutation.error.message}</p>}
                 {startDate && endDate && (
-                  <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 p-3 text-sm text-blue-100">
+                  <div className="rounded-xl border border-blue-900/50 bg-stone-900/20 p-3 text-sm text-blue-100">
                     {calculateRequestedHours()} requested work hours · Eastern time
                     {requestType === 'paid' && <span className="ml-2 text-blue-300">· {(ptoBalance - calculateRequestedHours()).toFixed(1)}h remaining</span>}
                   </div>
@@ -236,7 +236,7 @@ export default function TimeRequests() {
                   <Button
                     type="submit"
                     disabled={createRequestMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-amber-600 hover:bg-amber-700"
                   >
                     {createRequestMutation.isPending ? 'Submitting...' : 'Submit Request'}
                   </Button>

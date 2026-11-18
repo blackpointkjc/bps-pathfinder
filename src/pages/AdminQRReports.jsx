@@ -134,7 +134,7 @@ export default function AdminQRReports() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-6xl space-y-4 bg-white p-3 pb-24 sm:space-y-6 sm:p-4 md:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="bg-blue-600 p-2 rounded-xl"><QrCode className="w-6 h-6 text-white" /></div>
+        <div className="bg-amber-600 p-2 rounded-xl"><QrCode className="w-6 h-6 text-white" /></div>
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-slate-900">QR Patrol Reports</h1>
           <p className="text-sm text-slate-500">
@@ -191,7 +191,7 @@ export default function AdminQRReports() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-semibold text-slate-900">{getOfficerDisplay(g.officer_email, g.officer_name)}</span>
-                    <Badge className="bg-blue-100 text-blue-800 text-xs">{g.property_site}</Badge>
+                    <Badge className="bg-amber-100 text-blue-800 text-xs">{g.property_site}</Badge>
                     {g.totalRequired > 0 ? (
                       g.missedCheckpoints.length === 0
                         ? <Badge className="bg-green-100 text-green-800 text-xs">✓ All checkpoints scanned</Badge>

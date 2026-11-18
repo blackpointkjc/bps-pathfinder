@@ -151,7 +151,7 @@ export default function AdminSupportStaffClock() {
               <div className="flex flex-wrap gap-2">
                 {!activeEntry && <Button onClick={() => clockIn.mutate()} disabled={clockIn.isPending} className="bg-emerald-600 hover:bg-emerald-700"><LogIn className="mr-2 h-4 w-4" />Clock In</Button>}
                 {activeEntry && !activeEntry.on_break && <Button onClick={() => startBreak.mutate()} disabled={startBreak.isPending} className="bg-amber-600 hover:bg-amber-700"><Coffee className="mr-2 h-4 w-4" />Start Break</Button>}
-                {activeEntry?.on_break && <Button onClick={() => endBreak.mutate()} disabled={endBreak.isPending} className="bg-blue-600 hover:bg-blue-700"><Coffee className="mr-2 h-4 w-4" />End Break</Button>}
+                {activeEntry?.on_break && <Button onClick={() => endBreak.mutate()} disabled={endBreak.isPending} className="bg-amber-600 hover:bg-amber-700"><Coffee className="mr-2 h-4 w-4" />End Break</Button>}
                 {activeEntry && <Button onClick={() => clockOut.mutate()} disabled={clockOut.isPending} variant="outline" className="border-red-600 text-red-300 hover:bg-red-950"><LogOut className="mr-2 h-4 w-4" />Clock Out</Button>}
               </div>
             </div>

@@ -84,7 +84,7 @@ export default function PriorCallsView({ currentUser: _currentUser, units }) {
             case 'critical': return 'bg-red-600';
             case 'high': return 'bg-orange-500';
             case 'medium': return 'bg-yellow-500';
-            default: return 'bg-blue-500';
+            default: return 'bg-amber-500';
         }
     };
 
@@ -173,7 +173,7 @@ export default function PriorCallsView({ currentUser: _currentUser, units }) {
                                             onClick={() => setSelectedCall(call)}
                                             className={`p-3 rounded-lg cursor-pointer transition-all ${
                                                 selectedCall?.id === call.id
-                                                    ? 'bg-blue-600 border-2 border-blue-400'
+                                                    ? 'bg-amber-600 border-2 border-blue-400'
                                                     : 'bg-slate-800 hover:bg-slate-700 border-2 border-transparent'
                                             }`}
                                         >
@@ -233,7 +233,7 @@ export default function PriorCallsView({ currentUser: _currentUser, units }) {
                                     </div>
                                     <Badge className={
                                         selectedCall.status === 'Cleared' ? 'bg-green-600' :
-                                        selectedCall.status === 'Closed' ? 'bg-blue-600' : 'bg-slate-600'
+                                        selectedCall.status === 'Closed' ? 'bg-amber-600' : 'bg-slate-600'
                                     }>
                                         {selectedCall.status}
                                     </Badge>

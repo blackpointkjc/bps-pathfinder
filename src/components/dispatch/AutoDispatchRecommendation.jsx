@@ -102,12 +102,12 @@ export default function AutoDispatchRecommendation({ alert }) {
   };
 
   if (running && !result) {
-    return <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-950/30 px-3 py-2 text-[11px] text-blue-200"><Loader2 className="h-3.5 w-3.5 animate-spin" />Evaluating eligible units…</div>;
+    return <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-500/30 bg-stone-900/30 px-3 py-2 text-[11px] text-blue-200"><Loader2 className="h-3.5 w-3.5 animate-spin" />Evaluating eligible units…</div>;
   }
 
   if (error && !result) {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-md border border-cyan-500/30 bg-cyan-950/20 p-2 text-[10px] text-cyan-100">
+      <div className="mt-3 flex items-center gap-2 rounded-md border border-cyan-500/30 bg-stone-900/20 p-2 text-[10px] text-cyan-100">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />Automatic dispatch is reconnecting…
       </div>
     );
@@ -137,7 +137,7 @@ export default function AutoDispatchRecommendation({ alert }) {
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-4 w-4 text-cyan-300" />
           <span className="text-[11px] font-black uppercase tracking-wider text-cyan-100">Automatic Dispatch</span>
-          <Badge className={`border text-[9px] ${partiallyAssigned ? 'border-amber-500/50 bg-amber-950 text-amber-200' : result.mode === 'live' ? 'border-emerald-500/50 bg-emerald-950 text-emerald-200' : 'border-cyan-500/40 bg-cyan-950 text-cyan-200'}`}>{result.mode === 'live' ? (result.decision === 'assigned' ? 'LIVE — FULLY ASSIGNED' : partiallyAssigned ? 'LIVE — BACKUP NEEDED' : 'LIVE') : 'SHADOW — NO STATUS CHANGE'}</Badge>
+          <Badge className={`border text-[9px] ${partiallyAssigned ? 'border-amber-500/50 bg-amber-950 text-amber-200' : result.mode === 'live' ? 'border-emerald-500/50 bg-emerald-950 text-emerald-200' : 'border-cyan-500/40 bg-stone-900 text-cyan-200'}`}>{result.mode === 'live' ? (result.decision === 'assigned' ? 'LIVE — FULLY ASSIGNED' : partiallyAssigned ? 'LIVE — BACKUP NEEDED' : 'LIVE') : 'SHADOW — NO STATUS CHANGE'}</Badge>
         </div>
         <Button size="sm" variant="ghost" disabled={running} onClick={() => evaluate(true)} className="h-7 text-[10px] text-cyan-200">
           {running ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />}RECHECK

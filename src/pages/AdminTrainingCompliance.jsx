@@ -47,7 +47,7 @@ const PRESET_TRAININGS = [
 ];
 
 const STATUS_COLORS = {
-  assigned: "bg-blue-100 text-blue-800",
+  assigned: "bg-amber-100 text-blue-800",
   in_progress: "bg-yellow-100 text-yellow-800",
   pending_review: "bg-orange-100 text-orange-800",
   approved: "bg-green-100 text-green-800",
@@ -770,7 +770,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
         <div className={embedded ? "flex items-center justify-between flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" : "flex items-center justify-between flex-wrap gap-4"}>
           {!embedded && (
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-700 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-amber-700 rounded-xl flex items-center justify-center">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -790,7 +790,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
             <Button variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => setShowRecordDialog(true)}>
               <CheckCircle className="w-4 h-4 mr-2" />Add Historical Record
             </Button>
-            <Button className="bg-blue-700 hover:bg-blue-800" onClick={() => { setAssignForm(emptyAssignment); setShowAssignDialog(true); }}>
+            <Button className="bg-amber-700 hover:bg-stone-800" onClick={() => { setAssignForm(emptyAssignment); setShowAssignDialog(true); }}>
               <Users className="w-4 h-4 mr-2" />Assign Training
             </Button>
           </div>
@@ -853,7 +853,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                                               </div>
                                               {assignment?.renewal_period_months > 0 && <span className="text-xs text-blue-600 mt-1 block">Renewal: {assignment?.renewal_training_name || 'Not set'}</span>}
                       </div>
-                      <Button className="bg-blue-600 hover:bg-blue-700" size="sm" onClick={() => {
+                      <Button className="bg-amber-600 hover:bg-amber-700" size="sm" onClick={() => {
                         const assignment = assignments.find(a => a.id === sub.assignment_id);
                         const req = requirements.find(r => r.id === assignment?.requirement_id);
                         // Auto-calculate renewal_due_date from expiration + renewal_period_months
@@ -946,13 +946,13 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Compliance Rules</p>
                 {requirements.map(req => (
                   <Card key={req.id} className={`border shadow-sm mb-2 overflow-hidden ${req.active ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
-                    <div className={`h-1.5 ${req.is_mandatory ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`} />
+                    <div className={`h-1.5 ${req.is_mandatory ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-amber-500 to-amber-600'}`} />
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <h3 className="font-semibold text-slate-900">{req.training_name}</h3>
-                            <Badge className="bg-blue-100 text-blue-800 text-xs capitalize">{req.category?.replace(/_/g, ' ')}</Badge>
+                            <Badge className="bg-amber-100 text-blue-800 text-xs capitalize">{req.category?.replace(/_/g, ' ')}</Badge>
                             {req.is_mandatory && <Badge className="bg-red-100 text-red-800 text-xs">Mandatory</Badge>}
                             {!req.active && <Badge variant="outline" className="text-xs">Inactive</Badge>}
                             {req.renewal_period_months > 0 && <Badge className="bg-purple-100 text-purple-800 text-xs">Renews every {req.renewal_period_months}mo</Badge>}
@@ -989,14 +989,14 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 mt-4">Training Modules (Created in Training Creation)</p>
                 {trainingModules.map(m => (
                   <Card key={m.id} className={`border shadow-sm mb-2 overflow-hidden ${m.active !== false ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
-                    <div className={`h-1.5 ${m.required ? 'bg-gradient-to-r from-red-500 to-pink-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`} />
+                    <div className={`h-1.5 ${m.required ? 'bg-gradient-to-r from-red-500 to-pink-600' : 'bg-gradient-to-r from-amber-500 to-purple-600'}`} />
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             {m.course_id && <Badge className="bg-slate-100 text-slate-700 text-xs font-mono">{m.course_id}</Badge>}
                             <h3 className="font-semibold text-slate-900">{m.title}</h3>
-                            {m.training_category === 'dcjs' ? <Badge className="bg-blue-600 text-white text-xs">DCJS</Badge> : <Badge className="bg-purple-100 text-purple-800 text-xs">Company</Badge>}
+                            {m.training_category === 'dcjs' ? <Badge className="bg-amber-600 text-white text-xs">DCJS</Badge> : <Badge className="bg-purple-100 text-purple-800 text-xs">Company</Badge>}
                             {m.required && <Badge className="bg-red-100 text-red-800 text-xs">Required</Badge>}
                             {m.active === false && <Badge variant="outline" className="text-xs">Inactive</Badge>}
                             {m.renewal_period_months > 0 && <Badge className="bg-purple-100 text-purple-800 text-xs">Renews every {m.renewal_period_months}mo</Badge>}
@@ -1101,7 +1101,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowRequirementDialog(false)}>Cancel</Button>
-              <Button className="flex-1 bg-blue-700" disabled={!requirementForm.training_name || saveRequirementMutation.isPending} onClick={() => saveRequirementMutation.mutate(requirementForm)}>
+              <Button className="flex-1 bg-amber-700" disabled={!requirementForm.training_name || saveRequirementMutation.isPending} onClick={() => saveRequirementMutation.mutate(requirementForm)}>
                 {saveRequirementMutation.isPending ? 'Saving...' : editingRequirement ? 'Update' : 'Create'}
               </Button>
             </div>
@@ -1139,7 +1139,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
               </Select>
               <p className="text-xs text-slate-500">Assignments must come from Training Setup or a saved Compliance Rule so officer records, student training, compliance checks, and certification alerts stay linked to the same source.</p>
               {assignForm.trainings.length > 0 && (
-                <div className="space-y-1 mt-1 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="space-y-1 mt-1 p-3 bg-amber-50 rounded-lg border border-blue-200">
                   <p className="text-xs font-semibold text-blue-800 mb-2">{assignForm.trainings.length} training{assignForm.trainings.length !== 1 ? 's' : ''} selected:</p>
                   {assignForm.trainings.map((t, idx) => {
                     const renewalReq = t.renewal_requirement_id ? requirements.find(r => r.id === t.renewal_requirement_id) : null;
@@ -1231,7 +1231,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                     {assignForm.officer_emails.map(email => {
                       const officer = assignmentUsers.find(u => u.email === email);
                       return (
-                        <Badge key={email} className="bg-blue-100 text-blue-800 flex items-center gap-1">
+                        <Badge key={email} className="bg-amber-100 text-blue-800 flex items-center gap-1">
                           {officer ? `${officer.first_name} ${officer.last_name}` : email}
                           <X className="w-3 h-3 cursor-pointer" onClick={() => setAssignForm(p => ({ ...p, officer_emails: p.officer_emails.filter(e => e !== email) }))} />
                         </Badge>
@@ -1244,7 +1244,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowAssignDialog(false)}>Cancel</Button>
               <Button
-                className="flex-1 bg-blue-700"
+                className="flex-1 bg-amber-700"
                 disabled={assignForm.trainings.length === 0 || (!assignForm.assign_to_all && assignForm.officer_emails.length === 0) || assignMutation.isPending}
                 onClick={() => assignMutation.mutate(assignForm)}
               >
@@ -1464,7 +1464,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowUpdateDialog(false)}>Cancel</Button>
               <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="flex-1 bg-amber-600 hover:bg-amber-700"
                 disabled={updateRecordMutation.isPending}
                 onClick={() => updateRecordMutation.mutate({ assignment: updatingAssignment, form: updateForm })}
               >
@@ -1513,7 +1513,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setShowPrintDialog(false)}>Cancel</Button>
-              <Button className="flex-1 bg-blue-700 hover:bg-blue-800" onClick={executePrintReport}>
+              <Button className="flex-1 bg-amber-700 hover:bg-stone-800" onClick={executePrintReport}>
                 <Printer className="w-4 h-4 mr-2" />Generate Report
               </Button>
             </div>
@@ -1566,7 +1566,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
               {reviewingSubmission.document_url && (
                 <div>
                   <Label className="mb-2 block">Document</Label>
-                  <a href={reviewingSubmission.document_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">
+                  <a href={reviewingSubmission.document_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-3 bg-amber-50 border border-blue-200 rounded hover:bg-amber-100">
                     <FileText className="w-5 h-5 text-blue-600" />
                     <span className="text-sm text-blue-700">{reviewingSubmission.document_name || 'View Document'}</span>
                     <Download className="w-4 h-4 text-blue-500 ml-auto" />

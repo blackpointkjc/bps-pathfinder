@@ -215,11 +215,11 @@ Return structured JSON with actionable insights.`,
   };
 
   return (
-    <Card className="border-2 border-purple-300 shadow-xl bg-gradient-to-br from-purple-50 to-indigo-50">
+    <Card className="border-2 border-purple-300 shadow-xl bg-gradient-to-br from-purple-50 to-amber-50">
       <CardHeader className="border-b border-purple-200">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-purple-900">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-amber-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             AI Scheduling Assistant
@@ -240,7 +240,7 @@ Return structured JSON with actionable insights.`,
             </p>
             <Button
               onClick={analyzeSchedule}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              className="bg-gradient-to-r from-purple-600 to-amber-600 hover:from-purple-700 hover:to-amber-700"
             >
               <Sparkles className="w-4 h-4 mr-2" />
               Analyze Schedule
@@ -333,7 +333,7 @@ Return structured JSON with actionable insights.`,
                 <ScrollArea className="h-80 bg-white rounded-lg border border-indigo-200">
                   <div className="p-4 space-y-3">
                     {analysis.recommendations.map((rec, idx) => (
-                      <div key={idx} className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                      <div key={idx} className="p-4 bg-gradient-to-r from-amber-50 to-purple-50 rounded-lg border border-indigo-200">
                         <div className="flex items-start gap-2 mb-2">
                           <Sparkles className="w-4 h-4 text-indigo-600 mt-1" />
                           <div className="flex-1">

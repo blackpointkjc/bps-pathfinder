@@ -183,7 +183,7 @@ export default function ClientSchedule() {
             <Button
               variant="outline"
               onClick={() => setCurrentWeekOffset(0)}
-              className="bg-blue-50 text-blue-700"
+              className="bg-amber-50 text-blue-700"
             >
               Return to Current Week
             </Button>
@@ -209,7 +209,7 @@ export default function ClientSchedule() {
                     return (
                       <div key={`${site}-${dateStr}`} className="min-h-[118px] bg-slate-900 p-3">
                         <div className="mb-3 border-b border-slate-800 pb-2"><div className="text-[10px] font-black uppercase tracking-widest text-violet-300">{format(day, 'EEE')}</div><div className="text-sm font-bold text-white">{format(day, 'MMM d')}</div></div>
-                        {daySchedules.length ? <div className="space-y-2">{daySchedules.map(schedule => <div key={schedule.id} className="rounded-lg border border-violet-800/60 bg-violet-950/40 p-2.5"><div className="text-sm font-black text-violet-100">{schedule.start_time} – {schedule.end_time}</div><div className="mt-1 text-xs font-medium text-slate-300">{getOfficerFullDisplay(schedule.officer_email)}</div>{getOfficerUnitNumber(schedule.officer_email) && <div className="mt-0.5 text-[10px] text-slate-500">Unit #{getOfficerUnitNumber(schedule.officer_email)}</div>}</div>)}</div> : <div className="py-4 text-center text-xs text-slate-600">No scheduled coverage</div>}
+                        {daySchedules.length ? <div className="space-y-2">{daySchedules.map(schedule => <div key={schedule.id} className="rounded-lg border border-violet-800/60 bg-stone-900/40 p-2.5"><div className="text-sm font-black text-violet-100">{schedule.start_time} – {schedule.end_time}</div><div className="mt-1 text-xs font-medium text-slate-300">{getOfficerFullDisplay(schedule.officer_email)}</div>{getOfficerUnitNumber(schedule.officer_email) && <div className="mt-0.5 text-[10px] text-slate-500">Unit #{getOfficerUnitNumber(schedule.officer_email)}</div>}</div>)}</div> : <div className="py-4 text-center text-xs text-slate-600">No scheduled coverage</div>}
                       </div>
                     );
                   })}
@@ -267,7 +267,7 @@ export default function ClientSchedule() {
                           {daySchedules.length > 0 ? (
                             <div className="space-y-1">
                               {daySchedules.map((schedule) => (
-                                <div key={schedule.id} className="min-w-0 rounded border border-violet-700/60 bg-violet-950/70 p-2 text-center text-[10px] font-bold leading-4 text-violet-100">
+                                <div key={schedule.id} className="min-w-0 rounded border border-violet-700/60 bg-stone-900/70 p-2 text-center text-[10px] font-bold leading-4 text-violet-100">
                                   <div>{schedule.start_time}-{schedule.end_time}</div>
                                   {clientLocations.length > 1 && <div className="mt-1 text-[9px] font-medium text-violet-300">{String(schedule.location || '').split(' - ')[0].split(':')[0]}</div>}
                                 </div>
@@ -286,7 +286,7 @@ export default function ClientSchedule() {
           </table>
         </div>
 
-        <div className="rounded-lg border border-blue-800 bg-blue-950/40 p-4">
+        <div className="rounded-lg border border-blue-800 bg-stone-900/40 p-4">
           <p className="text-sm text-blue-100">
             <strong>Note:</strong> This schedule is read-only. You can view shifts assigned to your location but cannot make changes. Contact Black Point Protection for scheduling updates.
           </p>

@@ -24,7 +24,7 @@ import TrainingModuleViewer from "../components/training/TrainingModuleViewer";
 import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const STATUS_CONFIG = {
-  assigned: { label: "Assigned", color: "bg-blue-100 text-blue-800", icon: Clock },
+  assigned: { label: "Assigned", color: "bg-amber-100 text-blue-800", icon: Clock },
   in_progress: { label: "In Progress", color: "bg-yellow-100 text-yellow-800", icon: RefreshCw },
   pending_review: { label: "Pending Review", color: "bg-orange-100 text-orange-800", icon: Eye },
   approved: { label: "Approved", color: "bg-green-100 text-green-800", icon: CheckCircle },
@@ -273,7 +273,7 @@ export default function OfficerTraining() {
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 sm:h-11 sm:w-11">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-600 to-purple-600 sm:h-11 sm:w-11">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -283,7 +283,7 @@ export default function OfficerTraining() {
           </div>
           <Link
             to={createPageUrl("MyPerformanceAnalytics")}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-amber-50 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 sm:w-auto"
           >
             <BarChart3 className="w-4 h-4" />
             View My Performance <ChevronRight className="w-4 h-4" />
@@ -304,7 +304,7 @@ export default function OfficerTraining() {
               <p className="text-xs text-slate-600 mt-1">Modules Completed</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm bg-blue-50">
+          <Card className="border-none shadow-sm bg-amber-50">
             <CardContent className="p-3 text-center sm:p-4">
               <p className="text-3xl font-bold text-blue-600">{completedAssignments.length}</p>
               <p className="text-xs text-slate-600 mt-1">Certifications Approved</p>
@@ -334,7 +334,7 @@ export default function OfficerTraining() {
             </TabsTrigger>
             <TabsTrigger value="compliance" className="min-w-0 gap-2 whitespace-normal py-2 text-left">
               <CheckCircle className="w-4 h-4" />
-              Certifications & Compliance {activeAssignments.length > 0 && <Badge className="bg-blue-500 text-white text-xs ml-1">{activeAssignments.length}</Badge>}
+              Certifications & Compliance {activeAssignments.length > 0 && <Badge className="bg-amber-500 text-white text-xs ml-1">{activeAssignments.length}</Badge>}
             </TabsTrigger>
           </TabsList>
 
@@ -352,7 +352,7 @@ export default function OfficerTraining() {
                       <div className={`h-1.5 ${module.required ? 'bg-red-500' : 'bg-amber-400'}`} />
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                             <GraduationCap className="w-5 h-5 text-white" />
                           </div>
                           <div className="flex-1">
@@ -364,12 +364,12 @@ export default function OfficerTraining() {
                         <p className="text-sm text-slate-600 line-clamp-2">{module.description}</p>
                         <div className="flex gap-2 flex-wrap">
                           {module.duration_minutes && <Badge variant="outline" className="text-xs"><Clock className="w-3 h-3 mr-1" />{module.duration_minutes} min</Badge>}
-                          {(module.material_types?.includes('document') || module.material_type === 'document' || module.material_type === 'both' || module.document_url) && <Badge className="bg-blue-100 text-blue-800 text-xs">📄 Document</Badge>}
+                          {(module.material_types?.includes('document') || module.material_type === 'document' || module.material_type === 'both' || module.document_url) && <Badge className="bg-amber-100 text-blue-800 text-xs">📄 Document</Badge>}
                           {(module.material_types?.includes('video') || module.material_type === 'video' || module.material_type === 'both' || (module.video_urls && module.video_urls.length > 0) || module.video_url) && <Badge className="bg-purple-100 text-purple-800 text-xs">🎬 Video</Badge>}
                           {(module.material_types?.includes('quiz') || module.material_type === 'quiz' || (module.quiz_questions && module.quiz_questions.length > 0)) && <Badge className="bg-green-100 text-green-800 text-xs">📝 Quiz</Badge>}
-                          {(module.material_types?.includes('slideshow') || module.material_type === 'slideshow' || (module.slideshow_urls && module.slideshow_urls.length > 0)) && <Badge className="bg-blue-600 text-white text-xs">🖼️ Slideshow</Badge>}
+                          {(module.material_types?.includes('slideshow') || module.material_type === 'slideshow' || (module.slideshow_urls && module.slideshow_urls.length > 0)) && <Badge className="bg-amber-600 text-white text-xs">🖼️ Slideshow</Badge>}
                         </div>
-                        <Button onClick={() => setViewingModule(module)} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white" size="sm">
+                        <Button onClick={() => setViewingModule(module)} className="w-full bg-gradient-to-r from-amber-600 to-purple-600 text-white" size="sm">
                           Start Training →
                         </Button>
                       </CardContent>
@@ -468,7 +468,7 @@ export default function OfficerTraining() {
                                )}
                             </div>
                             {assignment.admin_notes && (
-                              <div className="mt-2 bg-blue-50 border border-blue-100 rounded p-2 text-xs text-blue-800">
+                              <div className="mt-2 bg-amber-50 border border-blue-100 rounded p-2 text-xs text-blue-800">
                                 <Info className="w-3 h-3 inline mr-1" /><strong>Admin Note:</strong> {assignment.admin_notes}
                               </div>
                             )}
@@ -485,7 +485,7 @@ export default function OfficerTraining() {
                               </Button>
                             )}
                             {canSubmit && (
-                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => openSubmitDialog(assignment)}>
+                              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => openSubmitDialog(assignment)}>
                                 <Upload className="w-4 h-4 mr-1" />
                                 {isRejected ? 'Resubmit' : latestSub ? 'Update' : 'Submit'}
                               </Button>
@@ -552,7 +552,7 @@ export default function OfficerTraining() {
         <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-5xl flex-col overflow-hidden sm:max-h-[92vh] sm:w-auto">
           <DialogHeader className="border-b pb-3 flex-shrink-0">
             <DialogTitle className="text-lg flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <GraduationCap className="w-4 h-4 text-white" />
               </div>
               <span className="truncate">{viewingModule?.title}</span>
@@ -592,7 +592,7 @@ export default function OfficerTraining() {
           {submittingAssignment && (
             <div className="space-y-4">
               {submittingAssignment.required_proof_type && (
-                <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
+                <div className="bg-amber-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
                   <strong>Required proof:</strong> {submittingAssignment.required_proof_type}
                 </div>
               )}
@@ -650,7 +650,7 @@ export default function OfficerTraining() {
               </div>
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setSubmittingAssignment(null)}>Cancel</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={submitMutation.isPending}
+                <Button className="flex-1 bg-amber-600 hover:bg-amber-700" disabled={submitMutation.isPending}
                   onClick={() => submitMutation.mutate({ assignment: submittingAssignment, form: submissionForm })}>
                   <CheckCircle className="w-4 h-4 mr-2" />{submitMutation.isPending ? 'Submitting...' : 'Submit for Review'}
                 </Button>

@@ -249,10 +249,10 @@ export default function StudentPortal({ onboardingOnly = false }) {
   const pendingModules = assignedModules.filter(m => !myCompletions.some(c => c.training_module_id === m.id && c.completed));
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-violet-50 via-slate-50 to-white p-4 md:p-8">
+    <div className="min-h-full bg-gradient-to-b from-amber-50 via-slate-50 to-white p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-7">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 bg-gradient-to-br from-violet-700 to-indigo-800 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="w-14 h-14 bg-gradient-to-br from-amber-700 to-stone-800 rounded-2xl flex items-center justify-center shadow-lg">
             <GraduationCap className="w-7 h-7 text-white" />
           </div>
           <div>
@@ -297,7 +297,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
                   <div className={`h-1.5 ${module.required ? 'bg-red-500' : 'bg-amber-400'}`} />
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                         <GraduationCap className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
@@ -310,7 +310,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
                     {module.training_category === 'dcjs' && (
                       <Badge className="bg-[#eee2c4] text-[#5c451c] text-xs">DCJS Training</Badge>
                     )}
-                    <Button onClick={() => setViewingModule(module)} className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white" size="sm">
+                    <Button onClick={() => setViewingModule(module)} className="w-full bg-gradient-to-r from-amber-600 to-purple-600 text-white" size="sm">
                       Start Training →
                     </Button>
                   </CardContent>
@@ -366,7 +366,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader className="border-b pb-3 flex-shrink-0">
             <DialogTitle className="text-lg flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <GraduationCap className="w-4 h-4 text-white" />
               </div>
               <span className="truncate">{viewingModule?.title}</span>

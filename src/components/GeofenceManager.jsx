@@ -136,7 +136,7 @@ export default function GeofenceManager({ location, onSave }) {
                   </div>
                 </div>
                 {isDrawingPolygon && (
-                  <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  <p className="text-sm text-blue-600 bg-amber-50 p-2 rounded">
                     Click on the map to add boundary points. Need at least 3 points.
                   </p>
                 )}

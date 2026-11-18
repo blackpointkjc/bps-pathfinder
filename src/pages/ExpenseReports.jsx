@@ -176,7 +176,7 @@ export default function ExpenseReports() {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'approved': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
-      case 'reimbursed': return 'bg-blue-100 text-blue-800';
+      case 'reimbursed': return 'bg-amber-100 text-blue-800';
       default: return 'bg-slate-100 text-slate-800';
     }
   };
@@ -233,7 +233,7 @@ export default function ExpenseReports() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border border-blue-700/50 bg-gradient-to-br from-blue-950/55 to-[#111316] text-white shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-blue-700/50 bg-gradient-to-br from-stone-900/55 to-[#111316] text-white shadow-xl">
             <CardContent className="p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -370,7 +370,7 @@ export default function ExpenseReports() {
             </div>
 
             {formData.category === 'travel' && (
-              <div className="rounded-lg border border-blue-700 bg-blue-950/20 p-4 space-y-4">
+              <div className="rounded-lg border border-blue-700 bg-stone-900/20 p-4 space-y-4">
                 <div>
                   <p className="font-semibold text-slate-100">Travel Mileage Verification</p>
                   <p className="text-xs text-slate-400">Starting and ending odometer readings and both photos are required.</p>

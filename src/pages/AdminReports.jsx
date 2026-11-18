@@ -1186,7 +1186,7 @@ function ReportReviewQueue() {
         {user?.role === 'admin' && <AcceptableUseReport />}
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-700/70 bg-[#111316] px-3 py-2 shadow-lg">
           <div className="mr-auto flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-amber-500/10">
               <ClipboardList className="h-4 w-4 text-cyan-300" />
             </div>
             <div>
@@ -1197,7 +1197,7 @@ function ReportReviewQueue() {
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-amber-300">{pendingTotal}</span><span className="ml-1.5 text-[8px] font-black uppercase text-amber-100/60">Pending</span></div>
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-emerald-300">{Object.values(archiveData).reduce((sum, rows) => sum + rows.length, 0)}</span><span className="ml-1.5 text-[8px] font-black uppercase text-emerald-100/60">Reviewed</span></div>
-            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-blue-300">{reviewTypes.filter(type => type.rows.length).length}</span><span className="ml-1.5 text-[8px] font-black uppercase text-blue-100/60">Queues</span></div>
+            <div className="rounded-lg border border-blue-500/30 bg-amber-500/10 px-2.5 py-1.5"><span className="text-sm font-black text-blue-300">{reviewTypes.filter(type => type.rows.length).length}</span><span className="ml-1.5 text-[8px] font-black uppercase text-blue-100/60">Queues</span></div>
           </div>
         </div>
 
@@ -1215,8 +1215,8 @@ function ReportReviewQueue() {
           <aside className="h-fit rounded-xl border border-slate-700/70 bg-[#111316] p-2">
             <div className="px-2 pb-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-500">Review Queues</div>
             <div className="space-y-1">
-              <button onClick={() => setSelectedReviewType('all')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-black ${selectedReviewType === 'all' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span>All Pending</span><span>{pendingTotal}</span></button>
-              {reviewTypes.map(type => { const Icon = type.icon; return <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-blue-500/15 text-blue-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0"/><span className="truncate">{type.label}</span></span><span>{type.rows.length}</span></button>; })}
+              <button onClick={() => setSelectedReviewType('all')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-black ${selectedReviewType === 'all' ? 'border-cyan-500 bg-amber-500/15 text-cyan-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span>All Pending</span><span>{pendingTotal}</span></button>
+              {reviewTypes.map(type => { const Icon = type.icon; return <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-amber-500/15 text-blue-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0"/><span className="truncate">{type.label}</span></span><span>{type.rows.length}</span></button>; })}
               <button onClick={() => setSelectedReviewType('qr_patrol')} className={`flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[10px] font-bold ${selectedReviewType === 'qr_patrol' ? 'border-emerald-500 bg-emerald-500/15 text-emerald-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}><span className="flex items-center gap-2"><QrCode className="h-3.5 w-3.5"/>QR Patrol</span></button>
             </div>
           </aside>
@@ -1388,7 +1388,7 @@ function ReportReviewQueue() {
                       <Badge className={
                         viewingReport.severity === 'critical' ? 'bg-red-600' :
                         viewingReport.severity === 'high' ? 'bg-orange-600' :
-                        viewingReport.severity === 'medium' ? 'bg-yellow-600' : 'bg-blue-600'
+                        viewingReport.severity === 'medium' ? 'bg-yellow-600' : 'bg-amber-600'
                       }>
                         {viewingReport.severity?.toUpperCase()}
                       </Badge>

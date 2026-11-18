@@ -12,8 +12,8 @@ const PRIORITY_TONE = {
 };
 
 const GROUP_TONE = {
-  duty: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200',
-  reports: 'border-blue-500/30 bg-blue-500/10 text-blue-200',
+  duty: 'border-cyan-500/30 bg-amber-500/10 text-cyan-200',
+  reports: 'border-blue-500/30 bg-amber-500/10 text-blue-200',
   conduct: 'border-red-500/30 bg-red-500/10 text-red-200',
   reviews: 'border-purple-500/30 bg-purple-500/10 text-purple-200',
   live: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',

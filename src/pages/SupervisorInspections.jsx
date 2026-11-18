@@ -118,7 +118,7 @@ export default function SupervisorInspections() {
   const getRatingColor = (rating) => {
     switch (normalizeRating(rating)) {
       case 'excellent': return 'bg-green-100 text-green-800 border-green-200';
-      case 'satisfactory': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'satisfactory': return 'bg-amber-100 text-blue-800 border-blue-200';
       case 'needs_improvement': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'unsatisfactory': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-slate-800 text-slate-200 border-slate-600';
@@ -430,7 +430,7 @@ export default function SupervisorInspections() {
                       ) : (
                         <>
                           <Badge className="border border-amber-600 bg-amber-950/40 text-amber-300">DRAFT — NEEDS COMPLETION</Badge>
-                          <Button type="button" size="sm" onClick={() => startEditingDraft(inspection)} className="bg-blue-700 text-white hover:bg-blue-600">
+                          <Button type="button" size="sm" onClick={() => startEditingDraft(inspection)} className="bg-amber-700 text-white hover:bg-amber-600">
                             <Pencil className="mr-1 h-3.5 w-3.5" /> EDIT DRAFT
                           </Button>
                         </>

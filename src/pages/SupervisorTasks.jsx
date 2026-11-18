@@ -119,7 +119,7 @@ export default function SupervisorTasks() {
                 </p>
               </div>
             </div>
-            <Button onClick={() => refetch()} disabled={isFetching} className="h-11 border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20">
+            <Button onClick={() => refetch()} disabled={isFetching} className="h-11 border border-cyan-400/30 bg-amber-500/10 text-cyan-100 hover:bg-amber-500/20">
               <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
             </Button>
           </div>
@@ -167,7 +167,7 @@ export default function SupervisorTasks() {
               <button
                 type="button"
                 onClick={() => setGroup('all')}
-                className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === 'all' ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#111316] text-slate-300 hover:text-white'}`}
+                className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === 'all' ? 'border-cyan-400/60 bg-amber-500/15 text-cyan-100' : 'border-slate-700 bg-[#111316] text-slate-300 hover:text-white'}`}
               >
                 All ({summary.total})
               </button>
@@ -176,7 +176,7 @@ export default function SupervisorTasks() {
                   key={option.id}
                   type="button"
                   onClick={() => setGroup(option.id)}
-                  className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === option.id ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#111316] text-slate-300 hover:text-white'}`}
+                  className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === option.id ? 'border-cyan-400/60 bg-amber-500/15 text-cyan-100' : 'border-slate-700 bg-[#111316] text-slate-300 hover:text-white'}`}
                 >
                   {option.label} ({summary.byGroup[option.id] || 0})
                 </button>

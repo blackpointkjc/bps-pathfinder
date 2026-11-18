@@ -338,7 +338,7 @@ export default function ClientTrespass() {
                     <Mail className="w-4 h-4 mr-2" />
                     Request via Email
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleEditExpiration(notice)} className="text-blue-600 hover:bg-blue-50">
+                  <Button size="sm" variant="outline" onClick={() => handleEditExpiration(notice)} className="text-blue-600 hover:bg-amber-50">
                     <Calendar className="w-4 h-4 mr-2" />
                     Update Date
                   </Button>

@@ -18,7 +18,7 @@ import { withRequestTimeout } from '@/lib/requestTimeout';
 const STATUS_CFG = {
     Available:        { dot: 'bg-green-400',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
     Enroute:          { dot: 'bg-yellow-400', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-600/50' },
-    'On Scene':       { dot: 'bg-blue-400',   badge: 'bg-blue-900/40 text-blue-300 border-blue-600/50' },
+    'On Scene':       { dot: 'bg-amber-400',   badge: 'bg-stone-900/40 text-blue-300 border-blue-600/50' },
     Busy:             { dot: 'bg-orange-400', badge: 'bg-orange-900/40 text-orange-300 border-orange-600/50' },
     Supervisor:       { dot: 'bg-purple-400', badge: 'bg-purple-900/40 text-purple-300 border-purple-600/50' },
     'Out of Service': { dot: 'bg-gray-500',   badge: 'bg-gray-800 text-gray-500 border-gray-600/50' },

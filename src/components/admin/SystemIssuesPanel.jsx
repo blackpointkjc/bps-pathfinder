@@ -7,7 +7,7 @@ import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 const severityConfig = {
   outage: { label: 'Outage', color: 'text-red-300', bg: 'bg-red-950/35 border-red-700', icon: ServerCrash },
   degraded: { label: 'Degraded', color: 'text-amber-300', bg: 'bg-amber-950/30 border-amber-700', icon: AlertTriangle },
-  maintenance: { label: 'Maintenance', color: 'text-blue-300', bg: 'bg-blue-950/30 border-blue-700', icon: Wrench },
+  maintenance: { label: 'Maintenance', color: 'text-blue-300', bg: 'bg-stone-900/30 border-blue-700', icon: Wrench },
 };
 
 const formatESTTime = (isoString) => {
@@ -148,7 +148,7 @@ export default function SystemIssuesPanel({ currentUser }) {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-xl border border-cyan-700/60 bg-cyan-950/20 p-4">
+      <section className="rounded-xl border border-cyan-700/60 bg-stone-900/20 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm font-black tracking-wider text-white">
@@ -163,7 +163,7 @@ export default function SystemIssuesPanel({ currentUser }) {
           <button
             onClick={runFullAudit}
             disabled={scanning}
-            className="flex min-w-52 items-center justify-center gap-2 rounded-lg border border-cyan-500 bg-cyan-700/30 px-5 py-3 text-xs font-black tracking-wider text-cyan-100 transition hover:bg-cyan-700/50 disabled:cursor-wait disabled:opacity-60"
+            className="flex min-w-52 items-center justify-center gap-2 rounded-lg border border-cyan-500 bg-amber-700/30 px-5 py-3 text-xs font-black tracking-wider text-cyan-100 transition hover:bg-amber-700/50 disabled:cursor-wait disabled:opacity-60"
           >
             <ScanSearch className={`h-4 w-4 ${scanning ? 'animate-pulse' : ''}`} />
             {scanning ? 'SCANNING ENTIRE APP...' : 'RUN FULL APP SCAN'}

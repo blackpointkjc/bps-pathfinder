@@ -150,7 +150,7 @@ export default function ProfilePhotoCropper({ open, imageFile, onClose, onSave, 
             <Button type="button" variant="outline" onClick={reset} disabled={saving} className="border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"><RotateCcw className="mr-2 h-4 w-4" />Reset</Button>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="border-slate-600 bg-transparent text-slate-200">Cancel</Button>
-              <Button type="button" onClick={saveCrop} disabled={saving || !source} className="bg-blue-700 hover:bg-blue-600">
+              <Button type="button" onClick={saveCrop} disabled={saving || !source} className="bg-amber-700 hover:bg-amber-600">
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crop className="mr-2 h-4 w-4" />}
                 {saving ? "Saving..." : "Crop & Save"}
               </Button>

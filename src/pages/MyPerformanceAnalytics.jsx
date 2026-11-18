@@ -457,22 +457,22 @@ export default function MyPerformanceAnalytics() {
               My Performance Analytics
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge className="bg-blue-900/60 text-blue-100">
+              <Badge className="bg-stone-900/60 text-blue-100">
                 <Calendar className="w-3 h-3 mr-1" />
                 {currentMonthName}
               </Badge>
               {performanceData.generated_at && <span className="text-[10px] font-bold text-slate-500">Updated {new Date(performanceData.generated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>}
             </div>
           </div>
-          <button type="button" onClick={handleRefreshScore} disabled={performanceFetching || !performanceIdentity} className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-600/50 bg-cyan-950/30 px-4 text-xs font-black text-cyan-100 transition hover:bg-cyan-900/40 disabled:opacity-50">
+          <button type="button" onClick={handleRefreshScore} disabled={performanceFetching || !performanceIdentity} className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-600/50 bg-stone-900/30 px-4 text-xs font-black text-cyan-100 transition hover:bg-stone-900/40 disabled:opacity-50">
             <RefreshCw className={`h-4 w-4 ${performanceFetching ? 'animate-spin' : ''}`} />
             {performanceFetching ? 'REFRESHING' : 'REFRESH SCORE'}
           </button>
         </div>
 
-        {manualRefreshMessage && <div aria-live="polite" className="rounded-lg border border-cyan-700/40 bg-cyan-950/20 px-3 py-2 text-xs font-semibold text-cyan-100">{manualRefreshMessage}</div>}
+        {manualRefreshMessage && <div aria-live="polite" className="rounded-lg border border-cyan-700/40 bg-stone-900/20 px-3 py-2 text-xs font-semibold text-cyan-100">{manualRefreshMessage}</div>}
         {(isLoadingAuth || performanceLoading) && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">Loading your performance records…</div>
+          <div className="rounded-lg border border-blue-200 bg-amber-50 px-3 py-2 text-sm text-blue-800">Loading your performance records…</div>
         )}
         {performanceError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">Performance data could not be loaded: {performanceError.message}</div>
@@ -489,7 +489,7 @@ export default function MyPerformanceAnalytics() {
         )}
 
         <Card className="overflow-hidden border border-blue-200 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white">
+          <CardHeader className="bg-gradient-to-r from-amber-700 to-amber-700 text-white">
             <CardTitle className="flex flex-wrap items-center justify-between gap-3">
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
@@ -510,7 +510,7 @@ export default function MyPerformanceAnalytics() {
             <h2 className="text-lg font-bold text-slate-900">Performance Category Ratings</h2>
             <p className="text-sm text-slate-600">Only weighted performance categories are shown here. DAR, Incident Report, and QR compliance feed the single Job Duty score and are not weighted a second time. A dash means there is no scoreable record.</p>
           </div>
-          <Card className="w-full border border-blue-200 bg-blue-50 shadow-sm">
+          <Card className="w-full border border-blue-200 bg-amber-50 shadow-sm">
             <CardContent className="p-3">
               <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-blue-600" /><span className="text-xs font-semibold text-slate-700">Hours This Month</span></div>
               <p className="mt-1 text-2xl font-black text-blue-700">{hoursData.total}h</p>
@@ -588,7 +588,7 @@ export default function MyPerformanceAnalytics() {
                 <AlertTriangle className="h-5 w-5 text-amber-400" />
                 What’s Affecting My Performance?
               </span>
-              <Badge className="bg-blue-600 text-white">Exact reasons</Badge>
+              <Badge className="bg-amber-600 text-white">Exact reasons</Badge>
             </CardTitle>
             <p className="text-xs text-slate-300">These are the records that explain each performance metric. New shift notices, messages, announcements, and routine alerts do not lower your performance numbers.</p>
           </CardHeader>
@@ -614,7 +614,7 @@ export default function MyPerformanceAnalytics() {
 
         <div>
           <Card className="border-none shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-blue-600" />
@@ -641,7 +641,7 @@ export default function MyPerformanceAnalytics() {
                         <div 
                           key={idx} 
                           className={`p-3 rounded-lg border ${
-                            isShiftToday ? 'bg-blue-100 border-blue-300' : 
+                            isShiftToday ? 'bg-amber-100 border-blue-300' : 
                             isShiftTomorrow ? 'bg-amber-50 border-amber-200' :
                             'bg-white border-slate-200'
                           }`}
@@ -650,7 +650,7 @@ export default function MyPerformanceAnalytics() {
                             <div>
                               <p className="font-semibold text-sm flex items-center gap-2">
                                 {format(shiftDate, 'EEE, MMM d')}
-                                {isShiftToday && <Badge className="bg-blue-600 text-white text-xs">TODAY</Badge>}
+                                {isShiftToday && <Badge className="bg-amber-600 text-white text-xs">TODAY</Badge>}
                                 {isShiftTomorrow && <Badge className="bg-amber-600 text-white text-xs">TOMORROW</Badge>}
                               </p>
                               <p className="text-xs text-slate-600">{shift.start_time} - {shift.end_time}</p>
@@ -797,7 +797,7 @@ export default function MyPerformanceAnalytics() {
 
         {/* Training Summary */}
         <Card className="border-none shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50">
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-amber-50">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-purple-600" />
@@ -818,7 +818,7 @@ export default function MyPerformanceAnalytics() {
                 <p className="text-2xl font-bold text-amber-600">{trainingStats.pending}</p>
                 <p className="text-xs text-slate-600">Modules Pending</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
+              <div className="p-3 bg-amber-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">{trainingStats.complianceApproved}</p>
                 <p className="text-xs text-slate-600">Certs Approved</p>
               </div>

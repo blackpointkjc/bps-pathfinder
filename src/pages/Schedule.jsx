@@ -386,7 +386,7 @@ export default function Schedule() {
             <Button
               variant="outline"
               onClick={() => setCurrentWeekOffset(0)}
-              className="bg-blue-50 text-blue-700"
+              className="bg-amber-50 text-blue-700"
             >
               Return to Today
             </Button>
@@ -396,7 +396,7 @@ export default function Schedule() {
 
         {/* Open Shifts Section */}
         {publishedOpenShifts.length > 0 && (
-          <Card className="border-none shadow-lg bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300">
+          <Card className="border-none shadow-lg bg-gradient-to-r from-green-50 to-amber-50 border-2 border-green-300">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="w-6 h-6 text-green-600" />
@@ -428,7 +428,7 @@ export default function Schedule() {
                           {shift.location}
                         </p>
                         {shift.special_instructions && (
-                          <p className="text-sm text-blue-700 mt-2 bg-blue-50 p-2 rounded">
+                          <p className="text-sm text-blue-700 mt-2 bg-amber-50 p-2 rounded">
                             ℹ️ {shift.special_instructions}
                           </p>
                         )}
@@ -468,13 +468,13 @@ export default function Schedule() {
 
             return (
               <Card key={day.toString()} className={`w-[calc(100vw-2.5rem)] max-w-[430px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl sm:w-[82vw] md:w-auto md:max-w-none md:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
-                <CardHeader className={`${isToday ? 'bg-blue-950/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-4 py-3`}>
+                <CardHeader className={`${isToday ? 'bg-stone-900/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-4 py-3`}>
                   <CardTitle className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <Calendar className={`h-4 w-4 ${isToday ? 'text-blue-400' : 'text-slate-500'}`} />
                         <span className="truncate text-sm font-black text-white">{format(day, 'EEE')}</span>
-                        {isToday && <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TODAY</span>}
+                        {isToday && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TODAY</span>}
                       </div>
                       <div className="mt-1 text-[11px] font-medium text-slate-400">{format(day, 'MMM d, yyyy')}</div>
                     </div>
@@ -496,7 +496,7 @@ export default function Schedule() {
                         const isSplitShift = schedule.is_split_shift === true;
                         
                         return (
-                          <div key={schedule.id} className={`rounded-xl border p-2.5 ${isSplitShift ? 'border-purple-700/60 bg-purple-950/20' : 'border-blue-700/50 bg-blue-950/20'}`}>
+                          <div key={schedule.id} className={`rounded-xl border p-2.5 ${isSplitShift ? 'border-purple-700/60 bg-purple-950/20' : 'border-blue-700/50 bg-stone-900/20'}`}>
                             <div className="space-y-3">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
@@ -537,7 +537,7 @@ export default function Schedule() {
                               const dedicated = duties.length === 0 ? dedicatedSupervisorForShift(schedule) : null;
                               if (duties.length === 0 && !dedicated?.name) return null;
                               return (
-                                <div className="mt-2 flex items-start gap-2 rounded-xl border border-cyan-700/50 bg-cyan-950/20 px-3 py-3">
+                                <div className="mt-2 flex items-start gap-2 rounded-xl border border-cyan-700/50 bg-stone-900/20 px-3 py-3">
                                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
                                   <div className="min-w-0 flex-1 break-words">
                                     <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-400">

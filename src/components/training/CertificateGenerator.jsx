@@ -11,7 +11,7 @@ const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-700",
   ready_for_review: "bg-yellow-100 text-yellow-800",
   approved: "bg-green-100 text-green-800",
-  issued: "bg-blue-100 text-blue-800",
+  issued: "bg-amber-100 text-blue-800",
   rejected: "bg-red-100 text-red-800",
 };
 
@@ -199,7 +199,7 @@ export default function CertificateGenerator({ certificate, isAdmin, onStatusCha
                   </>
                 )}
                 {certificate.status === "approved" && (
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => handleStatusChange("issued")} disabled={updating}>
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => handleStatusChange("issued")} disabled={updating}>
                     <Award className="w-3 h-3 mr-1" />Mark Issued
                   </Button>
                 )}

@@ -121,7 +121,7 @@ export default function AdminDocuments() {
           </div>
           <Button
             onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-amber-600 hover:bg-amber-700"
           >
             <Upload className="w-4 h-4 mr-2" />
             Upload Document
@@ -130,7 +130,7 @@ export default function AdminDocuments() {
 
         {showForm && (
           <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-purple-50">
               <CardTitle>Upload New Document</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -215,7 +215,7 @@ export default function AdminDocuments() {
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={uploading} className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" disabled={uploading} className="bg-amber-600 hover:bg-amber-700">
                     {uploading ? 'Uploading...' : 'Upload Document'}
                   </Button>
                 </div>

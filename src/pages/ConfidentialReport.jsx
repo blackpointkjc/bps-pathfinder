@@ -132,7 +132,7 @@ export default function ConfidentialReport() {
         statusText = "Pending Review";
         break;
       case 'in_progress':
-        colorClass = "bg-blue-100 text-blue-800";
+        colorClass = "bg-amber-100 text-blue-800";
         statusText = "In Progress";
         break;
       case 'resolved':
@@ -170,7 +170,7 @@ export default function ConfidentialReport() {
           <p className="text-slate-600">Submit concerns privately and securely to management</p>
         </div>
 
-        <Alert className="bg-blue-50 border-blue-200">
+        <Alert className="bg-amber-50 border-blue-200">
           <Lock className="h-5 w-5 text-blue-600" />
           <AlertDescription className="text-blue-900">
             <p className="font-semibold mb-2">This report is completely confidential</p>
@@ -185,7 +185,7 @@ export default function ConfidentialReport() {
         </Alert>
 
         <Card className="border-none shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50">
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-blue-600" />
               Submit Your Concern
@@ -297,7 +297,7 @@ export default function ConfidentialReport() {
                 <Button
                   type="submit"
                   disabled={submitReportMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-amber-600 hover:bg-amber-700"
                 >
                   {submitReportMutation.isPending ? 'Submitting...' : 'Submit Confidential Report'}
                 </Button>

@@ -50,7 +50,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
           {!embedded && (
             <div className="bps-center-heading flex shrink-0 items-center gap-2 pr-1">
               <h1 className="text-[15px] font-black tracking-tight text-white md:text-base">{title}</h1>
-              {eyebrow && <span className="hidden rounded-md border border-cyan-900/60 bg-cyan-950/20 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-400 lg:inline">{eyebrow}</span>}
+              {eyebrow && <span className="hidden rounded-md border border-cyan-900/60 bg-stone-900/20 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-400 lg:inline">{eyebrow}</span>}
             </div>
           )}
           {!collapsed && (

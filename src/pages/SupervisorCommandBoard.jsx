@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { createPageUrl } from '../utils';
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 
-const statusTone = status => ({ pending:'bg-amber-600', accepted:'bg-indigo-600', enroute:'bg-blue-600', on_scene:'bg-emerald-700' }[String(status||'').toLowerCase()] || 'bg-slate-600');
+const statusTone = status => ({ pending:'bg-amber-600', accepted:'bg-amber-600', enroute:'bg-amber-600', on_scene:'bg-emerald-700' }[String(status||'').toLowerCase()] || 'bg-slate-600');
 const fmtElapsed = seconds => {
   const value = Math.max(0, Number(seconds) || 0);
   const m = Math.floor(value / 60);

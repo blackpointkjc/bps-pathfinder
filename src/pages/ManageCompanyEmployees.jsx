@@ -448,9 +448,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       'Lieutenant': "bg-yellow-100 text-yellow-800 border-yellow-300",
       'First Sergeant': "bg-lime-100 text-lime-800 border-lime-300",
       'Sergeant': "bg-green-100 text-green-800 border-green-300",
-      'Corporal': "bg-blue-100 text-blue-800 border-blue-300",
+      'Corporal': "bg-amber-100 text-blue-800 border-blue-300",
       'Senior officer': "bg-purple-100 text-purple-800 border-purple-300",
-      'Officer': "bg-indigo-100 text-indigo-800 border-indigo-300",
+      'Officer': "bg-amber-100 text-indigo-800 border-indigo-300",
       'Unarmed Officer': "bg-slate-100 text-slate-800 border-slate-300",
     };
     return colors[rank] || "bg-slate-100 text-slate-800 border-slate-300";
@@ -474,7 +474,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             {userData.profile_photo_url ? (
               <button type="button" onClick={() => setFullPhoto({url:userData.profile_photo_url,fallback:userData.profile_photo_url,name:`${userData.first_name || ''} ${userData.last_name || ''}`})} aria-label="View full officer photo"><img src={userData.profile_photo_url} alt={`${userData.first_name} ${userData.last_name}`} className={`w-14 h-14 rounded-full object-cover ${isTerminated ? 'grayscale' : ''}`} /></button>
             ) : (
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md ${isTerminated ? 'bg-gradient-to-br from-slate-400 to-slate-600' : 'bg-gradient-to-br from-blue-400 to-blue-600'}`}>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md ${isTerminated ? 'bg-gradient-to-br from-slate-400 to-slate-600' : 'bg-gradient-to-br from-amber-400 to-amber-600'}`}>
                 {userData.first_name?.charAt(0)}{userData.last_name?.charAt(0)}
               </div>
             )}
@@ -484,7 +484,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
               </CardTitle>
               <div className="flex flex-wrap gap-2 mt-1">
                 {userData.role === 'admin' && <Badge className="bg-amber-100 text-amber-800 border-amber-300">Admin</Badge>}
-                {(userData.additional_roles || []).map(role => String(role).toLowerCase()).includes('officer') && <Badge className="border-blue-300 bg-blue-100 text-blue-900">Officer</Badge>}
+                {(userData.additional_roles || []).map(role => String(role).toLowerCase()).includes('officer') && <Badge className="border-blue-300 bg-amber-100 text-blue-900">Officer</Badge>}
                 {isTerminated && <Badge variant="destructive">Terminated</Badge>}
                 {userData.rank && <Badge className={getRankColor(userData.rank)}>{userData.rank}</Badge>}
                 {userData.unit_number && <Badge variant="outline">Unit #{userData.unit_number}</Badge>}
@@ -580,7 +580,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
         const leadership=group.filter(person=>['Captain','Lieutenant'].includes(person.rank));
         const fieldStaff=group.filter(person=>!['Captain','Lieutenant'].includes(person.rank));
         const stations=[...new Set(fieldStaff.map(person=>person.substation||'Field posting not assigned'))].sort();
-        return <section key={division} className="space-y-3 rounded-2xl border border-slate-700 bg-[#191a1b] p-4"><div className="rounded-lg border border-cyan-900 bg-cyan-950/20 px-4 py-3 text-center"><div className="text-xs font-black uppercase text-cyan-300">Division / Operations Area</div><div className="mt-1 text-xl font-black text-white">{division}</div></div>
+        return <section key={division} className="space-y-3 rounded-2xl border border-slate-700 bg-[#191a1b] p-4"><div className="rounded-lg border border-cyan-900 bg-stone-900/20 px-4 py-3 text-center"><div className="text-xs font-black uppercase text-cyan-300">Division / Operations Area</div><div className="mt-1 text-xl font-black text-white">{division}</div></div>
           {!!leadership.length&&renderHierarchySection('Platoon / Division Leadership',leadership)}
           <div className="grid items-start gap-3 xl:grid-cols-2">{stations.map(station=><div key={station}>{renderHierarchySection(`Substation · ${station}`,fieldStaff.filter(person=>(person.substation||'Field posting not assigned')===station))}</div>)}</div>
           {!leadership.length&&!stations.length&&<p className="p-4 text-center text-sm text-slate-400">No personnel assigned in this Division.</p>}
@@ -663,7 +663,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 {(photoPreview || editFormData.profile_photo_url) ? (
                   <button type="button" onClick={() => setFullPhoto({url:photoPreview || editFormData.profile_photo_url,fallback:photoPreview || editFormData.profile_photo_url,name:`${editFormData.first_name || ''} ${editFormData.last_name || ''}`})} aria-label="View full officer photo"><img src={photoPreview || editFormData.profile_photo_url} alt="photo" className="w-20 h-20 rounded-full object-cover border-2 border-slate-300" /></button>
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-2xl">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-2xl">
                     {editFormData.first_name?.charAt(0)}{editFormData.last_name?.charAt(0)}
                   </div>
                 )}
@@ -695,7 +695,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   <div><Label className="text-xs text-slate-500">Last Name</Label><Input value={editFormData.last_name || ""} onChange={(e) => setEditFormData({...editFormData, last_name: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">SSN</Label><Input value={editFormData.ssn || ""} onChange={(e) => setEditFormData({...editFormData, ssn: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Date of Birth</Label><Input type="date" value={editFormData.date_of_birth || ""} onChange={(e) => setEditFormData({...editFormData, date_of_birth: e.target.value})} /></div>
-                  <div className="md:col-span-2 rounded-lg border border-cyan-200 bg-cyan-50/60 p-3">
+                  <div className="md:col-span-2 rounded-lg border border-cyan-200 bg-amber-50/60 p-3">
                     <div className="mb-3">
                       <Label className="text-xs font-bold text-cyan-900">Home / Navigation Address</Label>
                       <p className="mt-1 text-[11px] text-cyan-800">This is the same address shown in the officer's My Profile and used by the GPS Home button.</p>
@@ -813,14 +813,14 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                       : `This Pathfinder account currently signs in as ${selectedUser?.email || 'a non-Black Point address'}. Microsoft sign-in will not attach to it until the Pathfinder login email matches the employee's approved @blackpointkjc.com Microsoft 365 address. Do not create a duplicate employee account.`}
                   </p>
                 </div>
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <div className="rounded-lg border border-blue-200 bg-amber-50 p-4">
                   <div className="flex items-center gap-2 font-semibold text-blue-900"><Mail className="h-4 w-4" /> Company IMAP Mailbox</div>
                   <p className="mt-1 text-xs text-blue-700">Assign an approved company mailbox to this existing employee. The employee can later change only the mailbox password from My Profile.</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><Label className="text-xs text-slate-500">Company Email</Label><Input type="email" placeholder="officer@company.com" value={imapForm.mailbox_email} onChange={e => setImapForm({...imapForm, mailbox_email:e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Display Name</Label><Input placeholder="Officer Mailbox" value={imapForm.display_name} onChange={e => setImapForm({...imapForm, display_name:e.target.value})} /></div>
-                  <div className="col-span-full rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">Company server settings are preconfigured from the existing Sergeant Robinson mailbox: secure IMAP port 993 and secure SMTP port 465. Only provide the officer mailbox address and its password; the mailbox must already exist at the mail provider.</div>
+                  <div className="col-span-full rounded-lg border border-blue-200 bg-amber-50 p-3 text-xs text-blue-800">Company server settings are preconfigured from the existing Sergeant Robinson mailbox: secure IMAP port 993 and secure SMTP port 465. Only provide the officer mailbox address and its password; the mailbox must already exist at the mail provider.</div>
                   <div><Label className="text-xs text-slate-500">Mailbox Password</Label><Input type="password" placeholder={imapMailboxId ? 'Leave blank to keep current password' : 'Enter mailbox password'} value={imapForm.password} onChange={e => setImapForm({...imapForm, password:e.target.value})} /></div>
                   {imapMailboxId && isSystemAdmin && <div className="col-span-full rounded-lg border border-slate-200 bg-slate-50 p-3">
                     <Label className="text-xs text-slate-700">Current Officer Mailbox Password — Admin Only</Label>

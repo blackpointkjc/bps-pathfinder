@@ -35,7 +35,7 @@ function StatusBadge({ cert }) {
   const status = getCertStatus(cert);
   if (status === "expired") return <Badge className="bg-red-600 text-white text-xs">Expired</Badge>;
   if (status === "expiring_soon") return <Badge className="bg-amber-500 text-white text-xs">Expiring Soon</Badge>;
-  if (status === "pending") return <Badge className="bg-blue-500 text-white text-xs">Pending</Badge>;
+  if (status === "pending") return <Badge className="bg-amber-500 text-white text-xs">Pending</Badge>;
   return <Badge className="bg-green-600 text-white text-xs">Active</Badge>;
 }
 
@@ -145,7 +145,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
 
     return (
       <div className="space-y-6">
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+        <div className="rounded-lg border border-blue-200 bg-amber-50 p-3 text-sm text-blue-900">
           Certification records are view-only for HR. Training staff manage additions, renewals, files, and verification.
         </div>
         <section className="space-y-3">
@@ -303,7 +303,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
   return (
     <div className="space-y-6">
       {/* DCJS Number */}
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="p-4 bg-amber-50 rounded-lg border border-blue-200">
         <Label className="text-xs font-bold text-blue-900 uppercase tracking-wide">DCJS License Number</Label>
         <Input
           className="mt-2"
@@ -318,7 +318,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="font-bold text-slate-900 flex items-center gap-2">
-            <span className="w-2 h-5 bg-blue-600 rounded-full inline-block"></span>
+            <span className="w-2 h-5 bg-amber-600 rounded-full inline-block"></span>
             DCJS Certifications ({dcjsCerts.length})
           </h4>
           {addMode !== "dcjs" && (
@@ -337,7 +337,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
 
         {/* Add/Edit DCJS form */}
         {addMode === "dcjs" && (
-          <div className="p-4 bg-blue-50 border border-blue-300 rounded-lg space-y-3">
+          <div className="p-4 bg-amber-50 border border-blue-300 rounded-lg space-y-3">
             <h5 className="font-semibold text-blue-900 text-sm">{editingIdx !== null ? "Edit DCJS Certification" : "Add DCJS Certification"}</h5>
 
             <div>
@@ -429,7 +429,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
             </div>
 
             <div className="flex gap-2">
-              <Button type="button" size="sm" onClick={saveCert} disabled={!newCert.course_id} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button type="button" size="sm" onClick={saveCert} disabled={!newCert.course_id} className="bg-amber-600 hover:bg-amber-700 text-white">
                 {editingIdx !== null ? "Update" : "Add Certification"}
               </Button>
               <Button size="sm" variant="outline" onClick={() => { setAddMode(null); setEditingIdx(null); setNewCert(BLANK_CERT); }}>Cancel</Button>

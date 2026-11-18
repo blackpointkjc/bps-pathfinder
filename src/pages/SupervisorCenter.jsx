@@ -110,7 +110,7 @@ export default function SupervisorCenter({ embedded = false }) {
     headerAction={<span className="hidden max-w-[360px] truncate text-[10px] font-semibold text-cyan-200 lg:inline" title={scopeLabel}>{scopeLabel}</span>}
   >
     {section => <SupervisorSectionBoundary key={section} section={section}>
-      <div className={`mx-3 mt-2 rounded-lg border px-3 py-2 text-xs font-semibold ${scopeMissing?'border-amber-600/50 bg-amber-950/20 text-amber-200':'border-cyan-800/50 bg-cyan-950/15 text-cyan-200'}`} role="status">
+      <div className={`mx-3 mt-2 rounded-lg border px-3 py-2 text-xs font-semibold ${scopeMissing?'border-amber-600/50 bg-amber-950/20 text-amber-200':'border-cyan-800/50 bg-stone-900/15 text-cyan-200'}`} role="status">
         {scopeLabel}{scopeMissing?' · Complete your platoon and organization assignments in Manage Officers to enable supervisor personnel access.':''}
       </div>
       <SupervisorSectionContent section={section} embedded={embedded} />

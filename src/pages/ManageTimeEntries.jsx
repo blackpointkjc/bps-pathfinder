@@ -405,7 +405,7 @@ export default function ManageTimeEntries() {
       <div className="max-w-7xl mx-auto space-y-8">
         <WorkspaceHeader eyebrow="Administration / Employee time" title="Manage Time Entries" description="Review attendance, correct punches and document changes. Open an entry to edit its full record." metrics={[
           {label:'Entries shown',value:timeEntries.length},{label:'Active shifts',value:timeEntries.filter(e=>!e.clock_out).length},{label:'Completed paid hours',value:timeEntries.filter(e=>e.clock_out).reduce((sum,e)=>sum+calculatePaidHours(e),0).toFixed(2)+' h'}
-        ]}><Button variant="outline" onClick={()=>retryTimeEntries()}>Refresh</Button><Button onClick={()=>setShowAddForm(true)} className="bg-cyan-700 hover:bg-cyan-600"><Plus className="mr-2 h-4 w-4"/>Add entry</Button></WorkspaceHeader>
+        ]}><Button variant="outline" onClick={()=>retryTimeEntries()}>Refresh</Button><Button onClick={()=>setShowAddForm(true)} className="bg-amber-700 hover:bg-amber-600"><Plus className="mr-2 h-4 w-4"/>Add entry</Button></WorkspaceHeader>
         <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900 p-4 sm:grid-cols-2 xl:grid-cols-5">
           <label className="text-xs text-slate-400">Find officer or site<Input aria-label="Search time entries" value={entrySearch} onChange={e=>setEntrySearch(e.target.value)} placeholder="Rank, name, unit or property" className="mt-1 bg-slate-950"/></label>
           <label className="text-xs text-slate-400">Officer<select value={selectedOfficer} onChange={e=>setSelectedOfficer(e.target.value)} className="mt-1 h-10 w-full rounded border border-slate-600 bg-slate-950 px-2 text-sm"><option value="all">All officers</option>{activeOfficers.map(person=><option key={person.id} value={person.email}>{[person.rank,person.last_name].filter(Boolean).join(' ')}</option>)}</select></label>
@@ -511,7 +511,7 @@ export default function ManageTimeEntries() {
                   <Button
                     type="submit"
                     disabled={createEntryMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-amber-600 hover:bg-amber-700"
                   >
                     {createEntryMutation.isPending ? 'Adding...' : 'Add Entry'}
                   </Button>
@@ -528,7 +528,7 @@ export default function ManageTimeEntries() {
               <CardHeader className="border-b border-slate-700 bg-slate-800">
                 <CardTitle className="flex items-center justify-between">
                   <span>{getOfficerName(officer)}</span>
-                  <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">
+                  <Badge className="bg-amber-100 text-indigo-800 border-indigo-200">
                     {entries.length} entries
                   </Badge>
                 </CardTitle>
@@ -538,7 +538,7 @@ export default function ManageTimeEntries() {
                   {entries.map((entry) => (
                     <details key={entry.id} id={`time-entry-${entry.id}`}  open={editingEntry===entry.id||payrollEntryId===entry.id||String(entry.id)===String(requestedEntryId)} className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950"><summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4 hover:bg-slate-800"><div><strong className="text-sm text-white">{entry.location||"Location unavailable"}</strong><p className="mt-1 text-xs text-slate-400">{format(parseISO(entry.clock_in),"MMM d, yyyy h:mm a")} · {entry.clock_out?format(parseISO(entry.clock_out),"h:mm a"):"Still clocked in"}</p></div><div className="text-right"><strong className="text-sm text-cyan-200">{entry.clock_out?calculatePaidHours(entry).toFixed(2)+" paid h":"Active shift"}</strong><p className="mt-1 text-xs text-slate-400">Open record / edit</p></div></summary><div className="border-t border-slate-700 p-3">
                       {editingEntry === entry.id ? (
-                        <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-400">
+                        <div className="p-4 bg-amber-50 rounded-lg border-2 border-blue-400">
                           <div className="space-y-3">
                             <div className="grid md:grid-cols-2 gap-3">
                               <div className="space-y-1">

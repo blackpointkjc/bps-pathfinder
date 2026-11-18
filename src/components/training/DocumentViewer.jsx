@@ -59,7 +59,7 @@ export default function DocumentViewer({ documentUrl, onComplete, requiredMinute
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden border-2 border-slate-200">
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b flex items-center justify-between">
+        <div className="bg-gradient-to-r from-amber-50 to-purple-50 p-4 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-600" />
             <span className="font-semibold text-slate-900">
@@ -94,7 +94,7 @@ export default function DocumentViewer({ documentUrl, onComplete, requiredMinute
           )}
         </div>
         {isPPT && (
-          <div className="p-3 bg-blue-50 border-t border-blue-200">
+          <div className="p-3 bg-amber-50 border-t border-blue-200">
             <p className="text-xs text-blue-900">
               💡 <strong>Tip:</strong> Use the navigation arrows in the viewer to go through all slides. 
               For better performance, admins can export PowerPoint as individual images and upload as a slideshow.
@@ -125,7 +125,7 @@ export default function DocumentViewer({ documentUrl, onComplete, requiredMinute
       )}
 
       {requiredMinutes > 0 && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="p-4 bg-amber-50 border border-blue-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-blue-600" />
@@ -142,7 +142,7 @@ export default function DocumentViewer({ documentUrl, onComplete, requiredMinute
         </div>
       )}
 
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="p-4 bg-amber-50 border border-blue-200 rounded-lg">
         <p className="text-sm text-blue-900">
           📖 <strong>Note:</strong> Please review the entire document before marking as complete. 
           You can download it for offline reference using the button above.

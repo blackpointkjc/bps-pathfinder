@@ -11,7 +11,7 @@ import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 const severityConfig = {
   outage: { label: 'System Outage', icon: ServerCrash, border: 'border-red-600/60', bg: 'bg-red-950/35', text: 'text-red-300' },
   degraded: { label: 'Degraded Service', icon: AlertTriangle, border: 'border-amber-600/60', bg: 'bg-amber-950/30', text: 'text-amber-300' },
-  maintenance: { label: 'Maintenance', icon: Wrench, border: 'border-blue-600/60', bg: 'bg-blue-950/30', text: 'text-blue-300' },
+  maintenance: { label: 'Maintenance', icon: Wrench, border: 'border-blue-600/60', bg: 'bg-stone-900/30', text: 'text-blue-300' },
 };
 
 const formatTime = value => {
