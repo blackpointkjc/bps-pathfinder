@@ -107,7 +107,7 @@ Deno.serve(async req => {
       // Traffic and incidents change constantly; never cache operational
       // traffic feeds behind the static basemap optimization.
       const liveTraffic = /(?:traffic|flow|incident|routing|search)/i.test(suffix);
-      out.set('Cache-Control', response.ok && mapAsset && !liveTraffic ? 'private, max-age=300' : 'private, no-store');
+      out.set('Cache-Control', response.ok && mapAsset && !liveTraffic ? 'private, max-age=3600, stale-while-revalidate=86400' : 'private, no-store');
       const isText = contentType.includes('json') || contentType.startsWith('text/') || contentType.includes('javascript');
       if (isText) {
         let body = await response.text();

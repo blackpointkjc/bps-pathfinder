@@ -300,7 +300,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:[]},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
             ? [Number(currentLocation[1]),Number(currentLocation[0])] : coords(initialCenter)
-              ? [Number(initialCenter[1]),Number(initialCenter[0])] : [-77.436,37.541],zoom:fitMarkers?12:coords(currentLocation)?15:11.5,pitch:embedded?0:40},
+              ? [Number(initialCenter[1]),Number(initialCenter[0])] : [-77.436,37.541],zoom:fitMarkers?12:coords(currentLocation)?15:11.5,pitch:embedded?0:30},
           // MapLibre's transformRequest MUST be synchronous; an async callback
           // returns a Promise instead of RequestParameters and breaks tiles.
           transformRequest:request=>{
@@ -435,7 +435,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
             perspectiveInitRef.current=true;
             // The live tracker fits ALL officer pings; forcing 15.5 zoom after
             // fitBounds hid every other officer outside the first pin's block.
-            if(!fitMarkers)map.easeTo({zoom:Math.max(15.5,map.getZoom()),pitch:50,duration:300,essential:true});
+            // Keep the initial camera unchanged: a second forced zoom/pitch causes
+            // another wave of vector tile downloads on every GPS screen entry.
           }
           if(!mapReadyRef.current)onMapReadyRef.current?.();
           mapReadyRef.current=true;

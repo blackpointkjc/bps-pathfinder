@@ -20,14 +20,13 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
   (async()=>{
    for(let i=0;i<pending.length && !cancelled;i+=4){
     await Promise.all(pending.slice(i,i+4).map(async([key,c])=>{
-     districtCache.current.set(key,'Checking district…');
      const value=await lookupDistrict(Number(c.latitude),Number(c.longitude)).catch(()=> '—');
      if(!cancelled){districtCache.current.set(key,value);setDistricts(old=>({...old,[key]:value}));}
     }));
    }
   })();
   return()=>{cancelled=true;};
- },[allCalls]);
+ },[allCalls.map(c=>`${c.id}:${c.latitude}:${c.longitude}`).join('|')]);
  const callDistrict=call=>{
   const lat=Number(call.latitude),lng=Number(call.longitude);
   const key=`${lat.toFixed(5)},${lng.toFixed(5)}`;
