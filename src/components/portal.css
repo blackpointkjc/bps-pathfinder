@@ -83,3 +83,27 @@
 .bp-ia input,.bp-ia select,.bp-ia textarea{color-scheme:dark}.bp-ia .bp-wordmark{min-width:0}.bp-ia .bp-wordmark>div{min-width:0}@media(max-width:650px){.bp-ia .bp-wordmark{gap:10px}.bp-ia .bp-wordmark small{max-width:170px;white-space:normal;line-height:1.5}.bp-ia .ia-header nav{flex-shrink:0;white-space:nowrap}}
 
 @media(min-width:900px){.bp-helpme .portal-grid{grid-template-columns:minmax(0,1.8fr) minmax(260px,.8fr)}.bp-helpme aside.portal-card{position:sticky;top:24px;align-self:start}}
+
+
+/* Fleet-first responsive login: show the ENTIRE vehicle film instead of
+   cropping it behind forms, while keeping all account options reachable. */
+.bp-login{position:fixed;inset:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;}
+.bp-login-backdrop{position:fixed;inset:0;background:#08090b url("https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg") center/cover no-repeat;filter:brightness(.24) blur(12px);transform:scale(1.05);}
+.bp-login .bp-login-header{position:relative;z-index:1;background:#090b0de8;border-bottom:1px solid #b99a4850;padding-top:14px;padding-bottom:14px;}
+.bp-login .bp-login-layout{position:relative;z-index:1;max-width:1500px;min-height:calc(100dvh - 168px);grid-template-columns:minmax(0,1.4fr) minmax(340px,.75fr);align-items:center;gap:clamp(18px,3vw,48px);padding:24px clamp(16px,3vw,44px);}
+.bp-login .bp-login-hero{min-width:0;align-self:center;}
+.bp-login-fleet-stage{position:relative;width:100%;aspect-ratio:16/9;max-height:60dvh;background:#050607;border:1px solid #dec36955;border-radius:18px;overflow:hidden;box-shadow:0 22px 65px #000a;display:flex;align-items:center;justify-content:center;}
+.bp-login-fleet-video{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#050607;}
+.bp-login-fleet-tag{position:absolute;left:14px;bottom:12px;border:1px solid #ffe39155;background:#08090bce;padding:7px 11px;border-radius:7px;color:#f5da85;font-size:10px;font-weight:800;letter-spacing:.12em;pointer-events:none;}
+.bp-login-hero-copy{padding:20px 4px 0;}
+.bp-login .bp-login-hero-copy h1{font-size:clamp(26px,2.5vw,42px);line-height:1.15;margin:12px 0 8px;letter-spacing:-.035em;}
+.bp-login .bp-login-hero-copy>p{font-size:13px;color:#e2dfd8;margin:0;max-width:700px;line-height:1.55;}
+.bp-login .bp-login-card{width:100%;max-width:510px;justify-self:center;padding:clamp(18px,2.2vw,30px);background:#0c0e11f5;backdrop-filter:blur(14px);}
+.bp-login .bp-login-card h2{margin-bottom:16px;}
+.bp-login .bp-login-card .portal-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:15px;}
+.bp-login .bp-login-card .portal-actions button{width:100%;min-width:0;white-space:normal;text-align:center;padding:10px 8px;min-height:45px;}
+.bp-login .bp-login-card .portal-actions button:last-child:nth-child(odd){grid-column:1/-1;}
+.bp-login-footer{position:relative;z-index:1;margin-top:0;padding-top:13px;padding-bottom:16px;}
+@media(max-width:1000px){.bp-login .bp-login-layout{grid-template-columns:1fr;max-width:740px;min-height:auto;gap:16px;padding:20px 18px 28px;}.bp-login-fleet-stage{max-height:none;}.bp-login .bp-login-card{max-width:740px;}.bp-login-hero-copy{padding:14px 2px 0;}.bp-login .bp-login-hero-copy h1{font-size:clamp(24px,4vw,34px);}}
+@media(max-width:520px){.bp-login .bp-login-header{padding:12px 14px;gap:8px;}.bp-login-header nav a:last-child{font-size:10px;padding:8px 10px;}.bp-login .bp-login-layout{padding:12px 12px 24px;gap:14px;}.bp-login-fleet-stage{border-radius:12px;}.bp-login-fleet-tag{font-size:8px;left:8px;bottom:8px;padding:4px 7px;}.bp-login-hero-copy{padding:10px 2px 0;}.bp-login .bp-login-hero-copy h1{font-size:23px;margin:8px 0 4px;}.bp-login .bp-login-hero-copy>p{font-size:12px;}.bp-login-badge{font-size:9px;padding:6px 9px;}.bp-login .bp-login-card{padding:18px 16px;border-radius:14px;}.bp-login .bp-login-card .portal-actions{grid-template-columns:1fr;}.bp-login .bp-login-card .portal-actions button:last-child:nth-child(odd){grid-column:auto;}.bp-login-footer{padding:16px;}}
+@media(prefers-reduced-motion:reduce){.bp-login-fleet-video{display:none;}.bp-login-fleet-stage{background:#08090b url("https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg") center/contain no-repeat;}}
