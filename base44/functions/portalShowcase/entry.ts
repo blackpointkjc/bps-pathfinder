@@ -28,6 +28,7 @@ export default async function(req:Request){
    const image=text(record.image_url,700000);
    if(image && !(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)||/^https:\/\//.test(image)))return json({error:'Invalid photo format'},400);
    if(image.length>650000)return json({error:'Image is too large; choose a smaller photo'},413);
+   if(record.kind==='photo'&&!image)return json({error:'Upload an image for each gallery slide'},400);
    const month=text(record.month,7);
    if(record.kind!=='photo'&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return json({error:'Choose a valid recognition month'},400);
    const value={kind:record.kind,title:text(record.title,110),caption:text(record.caption,240),image_url:image,month:record.kind==='photo'?'':month,active:record.active!==false,sort_order:Math.max(0,Math.min(9999,Number(record.sort_order)||0)),updated_by:me.email||me.id};
