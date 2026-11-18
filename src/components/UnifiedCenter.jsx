@@ -15,7 +15,7 @@ export function useDesktopViewport() {
   return desktop;
 }
 
-export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#070d17] text-slate-100', queryParam = 'section', embedded = false, headerAction = null }) {
+export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-[#090a0c] text-slate-100', queryParam = 'section', embedded = false, headerAction = null }) {
   const location = useLocation();
   const navigate = useNavigate();
   const collapseKey = `bps:center-nav-collapsed:${title || 'center'}`;
@@ -44,8 +44,8 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
   const actionNode = typeof headerAction === 'function' ? headerAction(section) : headerAction;
 
   return (
-    <div className="bps-command-theme min-h-full w-full min-w-0 overflow-visible bg-[#080d16] text-slate-100">
-      <header className="shrink-0 border-b border-slate-800/80 bg-[#09121f] px-2 py-1.5 md:px-3">
+    <div className="bps-command-theme min-h-full w-full min-w-0 overflow-visible bg-[#090a0c] text-slate-100">
+      <header className="shrink-0 border-b border-slate-800/80 bg-[#111316] px-2 py-1.5 md:px-3">
         <div className="bps-center-header-row flex min-w-0 items-center gap-2">
           {!embedded && (
             <div className="bps-center-heading flex shrink-0 items-center gap-2 pr-1">

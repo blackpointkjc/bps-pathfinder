@@ -193,7 +193,7 @@ export default function AdminQRCheckpoints() {
 
   return (
     <div className="mx-auto min-h-0 max-w-7xl space-y-3 p-3 text-slate-100 md:p-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-700 bg-[#0a1623] p-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-700 bg-[#111316] p-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/10">
             <QrCode className="h-4 w-4 text-blue-300" />
@@ -217,7 +217,7 @@ export default function AdminQRCheckpoints() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-[#08131f] p-2 md:flex-row">
+      <div className="flex flex-col gap-2 rounded-xl border border-slate-800 bg-[#111316] p-2 md:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
           <Input placeholder="Search checkpoints..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
@@ -234,7 +234,7 @@ export default function AdminQRCheckpoints() {
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden border border-slate-700 bg-[#0b1725] text-white shadow-lg">
+      <Card className="overflow-hidden border border-slate-700 bg-[#111316] text-white shadow-lg">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

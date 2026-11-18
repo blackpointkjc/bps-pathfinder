@@ -73,8 +73,8 @@ export default function RateLimitDiagnostics({ open, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[2147483100] flex items-center justify-center bg-black/80 p-2 backdrop-blur-sm sm:p-4" onClick={onClose}>
-      <section className="flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-600 bg-[#07111d] text-white shadow-[0_30px_100px_rgba(0,0,0,.75)]" onClick={event => event.stopPropagation()}>
-        <header className="flex items-center gap-3 border-b border-slate-700 bg-[#0b1725] px-4 py-3">
+      <section className="flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-600 bg-[#111316] text-white shadow-[0_30px_100px_rgba(0,0,0,.75)]" onClick={event => event.stopPropagation()}>
+        <header className="flex items-center gap-3 border-b border-slate-700 bg-[#111316] px-4 py-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/40 bg-red-950/40"><Activity className="h-4 w-4 text-red-300" /></div>
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-black tracking-wide">BASE44 API TRACE</h2>
@@ -100,7 +100,7 @@ export default function RateLimitDiagnostics({ open, onClose }) {
         )}
 
         <div className="grid min-h-0 flex-1 gap-3 overflow-hidden p-3 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="min-h-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
+          <div className="min-h-0 overflow-hidden rounded-xl border border-slate-700 bg-[#111316]">
             <div className="border-b border-slate-800 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-slate-400">Top Request Sources · Last 15 Minutes</div>
             <div className="max-h-full overflow-y-auto">
               {summary.slice(0, 50).map(item => (
@@ -119,7 +119,7 @@ export default function RateLimitDiagnostics({ open, onClose }) {
             </div>
           </div>
 
-          <div className="min-h-0 overflow-hidden rounded-xl border border-slate-700 bg-[#08111d]">
+          <div className="min-h-0 overflow-hidden rounded-xl border border-slate-700 bg-[#111316]">
             <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
               <span className="text-[9px] font-black uppercase tracking-[.14em] text-slate-400">Recent Request Trace</span>
               <span className="text-[8px] font-bold text-slate-600">Newest first</span>

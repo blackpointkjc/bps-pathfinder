@@ -688,7 +688,7 @@ export default function AdminUsers({ embedded = false }) {
   }
 
   return (
-    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8"}>
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#090a0c] p-2 text-white md:p-3" : "bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8"}>
       <ProfilePhotoCropper
         open={!!photoToCrop}
         imageFile={photoToCrop}

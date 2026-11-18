@@ -49,7 +49,7 @@ export default function CADCenter({ embedded = false }) {
  },[active.id]);
  const select=(section,tool)=>{const next=new URLSearchParams(location.search);next.set(embedded?'cad_section':'section',section);next.set(toolKey,tool);['new','open','call_id','call_number','callId','lat','lng'].forEach(key=>next.delete(key));navigate({pathname:location.pathname,search:'?'+next.toString()},{replace:true});};
  return <main ref={hostRef} className={'cad-console-shell'+(active.id==='dispatch'?' cad-shell-dispatch':active.id==='map'?' cad-shell-map':'')}>
-  <div className="cad-mobile-workstation-picker min-w-0 border-b border-[#34516c] bg-[#0c1929] p-2 xl:hidden">
+  <div className="cad-mobile-workstation-picker min-w-0 border-b border-[#635336] bg-[#191a1b] p-2 xl:hidden">
    <label htmlFor="cad-mobile-workstation-select" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-cyan-200">CAD Workstation</label>
    <select
      id="cad-mobile-workstation-select"
@@ -59,7 +59,7 @@ export default function CADCenter({ embedded = false }) {
        const [nextSection,nextTool]=event.target.value.split(':');
        if(TOOLS[nextSection]?.some(item=>item.id===nextTool))select(nextSection,nextTool);
      }}
-     className="block min-h-11 w-full min-w-0 rounded-lg border border-[#3a607d] bg-[#12283c] px-3 py-2 text-base font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+     className="block min-h-11 w-full min-w-0 rounded-lg border border-[#967a47] bg-[#222321] px-3 py-2 text-base font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
    >
      {Object.entries(TOOLS).map(([group,items])=><optgroup key={group} label={group==='live'?'Live CAD':group==='alerts'?'Alerts':'History & Records'}>
        {items.map(item=><option key={item.id} value={`${group}:${item.id}`}>{item.label}</option>)}

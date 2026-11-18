@@ -527,7 +527,7 @@ function TrainingComplianceTrackerContent({ embedded = false }) {
 
   return (
     <>
-    <div className={embedded ? "w-full overflow-x-hidden bg-transparent text-slate-100" : "min-h-screen w-full overflow-x-hidden bg-[#080f1a] p-3 text-slate-100 md:p-5"}>
+    <div className={embedded ? "w-full overflow-x-hidden bg-transparent text-slate-100" : "min-h-screen w-full overflow-x-hidden bg-[#090a0c] p-3 text-slate-100 md:p-5"}>
       <div className={embedded ? "w-full min-w-0 space-y-5" : "mx-auto w-full max-w-[1600px] min-w-0 space-y-5"}>
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">

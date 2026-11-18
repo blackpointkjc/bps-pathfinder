@@ -518,7 +518,7 @@ export default function AdminPTOLossReport() {
   }
 
   return (
-    <div className="bps-command-page pto-loss-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className="bps-command-page pto-loss-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-3">

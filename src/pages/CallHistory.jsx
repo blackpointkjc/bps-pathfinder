@@ -591,10 +591,10 @@ export default function CallHistory() {
     );
 
     return (
-        <div className="min-h-full bg-[#07111d] p-2 font-mono text-white md:p-3">
+        <div className="min-h-full bg-[#111316] p-2 font-mono text-white md:p-3">
             <form onSubmit={event=>{event.preventDefault();handleRefresh();}} className="mb-3 flex flex-wrap gap-2"><input aria-label="Search all CAD history" value={search} onChange={e=>setSearch(e.target.value)} placeholder="CAD / BPS number, incident or address" className="min-h-10 min-w-48 flex-1 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/><label className="text-xs text-slate-300">From <input type="date" aria-label="History start date" value={fromDate} onChange={event=>setFromDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><label className="text-xs text-slate-300">Through <input type="date" aria-label="History end date" value={throughDate} onChange={event=>setThroughDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><button type="submit" disabled={refreshing} className="rounded bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">{refreshing?'Searching…':'Search active & archived calls'}</button></form>
             {/* Header */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-[#2b4258] bg-[#0a1623] p-3 shadow-xl lg:flex-row lg:items-center">
+            <div className="flex flex-col gap-3 rounded-2xl border border-[#635336] bg-[#111316] p-3 shadow-xl lg:flex-row lg:items-center">
                 <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><History className="h-5 w-5 text-cyan-300" /></div>
                     <div className="min-w-0">
@@ -624,7 +624,7 @@ export default function CallHistory() {
 
 
             {/* Filter Bar */}
-            <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[#293f55] bg-[#091522] px-3 py-2 sm:px-4 md:flex-row md:flex-wrap md:items-center">
+            <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[#635336] bg-[#111316] px-3 py-2 sm:px-4 md:flex-row md:flex-wrap md:items-center">
                 {/* Agency filter */}
                 <span className="text-[9px] text-slate-500 tracking-widest">AGENCY:</span>
                 <div className="flex max-w-full gap-1 overflow-x-auto pb-1 md:overflow-visible md:pb-0">
@@ -657,7 +657,7 @@ export default function CallHistory() {
               {historyWarning && <span role="status" className="text-amber-300">{historyWarning}</span>}
             </div>
             {/* Table */}
-            <div className="mt-2 max-h-[calc(100dvh-265px)] overflow-auto rounded-t-xl border border-[#293f55] bg-[#08131f]">
+            <div className="mt-2 max-h-[calc(100dvh-265px)] overflow-auto rounded-t-xl border border-[#635336] bg-[#111316]">
                 {/* Column Headers */}
                 <div className="sticky top-0 z-10 hidden items-center border-b-2 border-slate-700 bg-slate-800 px-3 py-1.5 text-[9px] tracking-widest text-slate-500 select-none md:flex">
                     <div className="w-8 flex-shrink-0">#</div>
@@ -740,7 +740,7 @@ export default function CallHistory() {
                                             <span className="text-slate-300">{row.ai_summary}</span>
                                         </div>
                                     )}
-                                    <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-700 bg-[#0a1320] p-3">
+                                    <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-700 bg-[#111316] p-3">
                                       <PropertyCallLinkControl call={row} onLinked={link=>setRows(current=>current.map(item=>item.id===row.id?{...item,_propertyCall:true,_propertyId:link.property_id,_propertyName:link.property_name,_propertyLinks:[...(item._propertyLinks||[]),link]}:item))}/>
                                       <p className="text-[11px] font-bold text-cyan-200">Reports linked to this call ({row._linkedReports?.length||0})</p>
                                       {detailsLoading===String(row.id)&&<p className="text-xs text-cyan-300">Loading linked reports and recorded assignments…</p>}
@@ -773,7 +773,7 @@ export default function CallHistory() {
             </div>
 
             {/* Status Bar */}
-            <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 rounded-b-xl border border-t-0 border-[#293f55] bg-[#091522] px-3 py-1.5 text-[9px] text-slate-500 sm:px-4">
+            <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 rounded-b-xl border border-t-0 border-[#635336] bg-[#111316] px-3 py-1.5 text-[9px] text-slate-500 sm:px-4">
                 <span>LOADED: <span className="text-white">{sorted.length}</span></span>
                 <span>ACTIVE: <span className="text-cyan-300">{activeCount}</span></span>
                 <span>ARCHIVED: <span className="text-slate-300">{archivedCount}</span></span>

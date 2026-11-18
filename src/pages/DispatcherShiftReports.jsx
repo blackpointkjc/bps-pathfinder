@@ -230,7 +230,7 @@ export default function DispatcherShiftReports({ embedded = false }) {
   if (!isDispatcher) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center p-6">
-        <Card className="max-w-md border-slate-700 bg-[#0d1825]">
+        <Card className="max-w-md border-slate-700 bg-[#111316]">
           <CardContent className="p-6 text-center">
             <ClipboardList className="mx-auto mb-3 h-10 w-10 text-slate-500" />
             <h2 className="text-lg font-bold text-slate-100">Dispatcher access required</h2>
@@ -248,7 +248,7 @@ export default function DispatcherShiftReports({ embedded = false }) {
     <div className={`min-h-full ${embedded ? '' : 'p-4 md:p-8'}`}>
       <div className="mx-auto max-w-5xl space-y-6">
         {embedded && !showForm && (
-          <div className="flex flex-col gap-3 rounded-xl border border-blue-900/60 bg-[#0a1625] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-blue-900/60 bg-[#111316] p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-sm font-black text-white">Dispatcher Shift Log</div>
               <div className="mt-1 text-xs text-slate-400">Start a new dispatch log, attach CAD calls as you handle them, save a draft, then submit it for review.</div>
@@ -276,8 +276,8 @@ export default function DispatcherShiftReports({ embedded = false }) {
         )}
 
         {showForm ? (
-          <Card className="border-slate-700 bg-[#0b1420]">
-            <CardHeader className="bg-[#0d1825]">
+          <Card className="border-slate-700 bg-[#111316]">
+            <CardHeader className="bg-[#111316]">
               <CardTitle className="flex items-center gap-2 text-slate-100">
                 {editing ? <Edit className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                 {editing ? 'Edit Dispatcher Shift Log' : 'New Dispatcher Shift Log'}
@@ -316,7 +316,7 @@ export default function DispatcherShiftReports({ embedded = false }) {
                     <Label className="text-slate-300">Dispatch Log ({formData.dispatch_log.length} calls)</Label>
                   </div>
                   {formData.dispatch_log.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-slate-700 bg-[#0d1825] p-6 text-center text-sm text-slate-500">
+                    <div className="rounded-lg border border-dashed border-slate-700 bg-[#111316] p-6 text-center text-sm text-slate-500">
                       No calls added yet. Use the search above to attach calls you dispatched this shift.
                     </div>
                   ) : (
@@ -356,13 +356,13 @@ export default function DispatcherShiftReports({ embedded = false }) {
             </TabsList>
 
             <TabsContent value="active">
-              <Card className="border-slate-700 bg-[#0b1420]">
+              <Card className="border-slate-700 bg-[#111316]">
                 <CardHeader><CardTitle className="text-slate-100">Submitted Shift Logs</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {activeReports.length === 0 && <p className="py-8 text-center text-slate-500">No submitted logs.</p>}
                     {activeReports.map((r) => (
-                      <div key={r.id} className="rounded-lg border border-slate-700 bg-[#0d1825] p-4">
+                      <div key={r.id} className="rounded-lg border border-slate-700 bg-[#111316] p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="flex items-center gap-2">
@@ -400,7 +400,7 @@ export default function DispatcherShiftReports({ embedded = false }) {
             </TabsContent>
 
             <TabsContent value="drafts">
-              <Card className="border-slate-700 bg-[#0b1420]">
+              <Card className="border-slate-700 bg-[#111316]">
                 <CardHeader><CardTitle className="text-slate-100">Draft Shift Logs</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-3">

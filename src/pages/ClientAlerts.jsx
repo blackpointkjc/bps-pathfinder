@@ -23,7 +23,7 @@ export default function ClientAlerts(){
  const alerts=data?.alerts||[],sites=data?.locations||[],incomplete=!!error||!!data?.source_errors?.length;
  const rows=alerts.filter(a=>(property==='all'||a.location===property)&&(view==='all'||a.status===view));
  const stamp=(value,site)=>{const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString('en-US',{timeZone:sites.find(s=>s.site_name===site)?.time_zone||'America/New_York',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}):'Time unavailable';};
- return <div className="min-h-full bg-[#080f1b] p-4 text-white md:p-6"><div className="mx-auto max-w-6xl space-y-4">
+ return <div className="min-h-full bg-[#111316] p-4 text-white md:p-6"><div className="mx-auto max-w-6xl space-y-4">
   <WorkspaceHeader eyebrow="Client services / Security" title="Security Alerts" description="Security notices and CAD property alerts for your assigned portfolio." metrics={[
    {label:'Active alerts',value:incomplete||isPending?'—':alerts.filter(a=>a.status==='active').length},
    {label:'Properties',value:sites.length},

@@ -559,15 +559,15 @@ export default function WelcomeBriefing({ user }) {
 
   return createPortal(
     <>
-    {browsingBriefing && !open && <div role="status" className="fixed bottom-3 left-3 right-3 z-[2147481000] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400 bg-[#111d2b] p-3 text-xs font-semibold text-amber-100 shadow-2xl">
+    {browsingBriefing && !open && <div role="status" className="fixed bottom-3 left-3 right-3 z-[2147481000] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400 bg-[#191a1b] p-3 text-xs font-semibold text-amber-100 shadow-2xl">
       <span>Shift briefing not acknowledged. Return to finish your session briefing.</span>
       <button type="button" onClick={() => { setBrowsingBriefing(false); setOpen(true); }} className="min-h-10 rounded-lg border border-amber-400 px-3 py-2 font-black">Return to briefing</button>
     </div>}
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pf-session-briefing-overlay fixed inset-0 z-[2147482000] flex items-center justify-center overflow-hidden bg-black/75 p-2 backdrop-blur-md sm:p-4">
-          <motion.div initial={{ opacity: 0, scale: .96, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 12 }} transition={{ type: 'spring', damping: 24, stiffness: 260 }} role="dialog" aria-modal="true" aria-labelledby="pf-session-briefing-title" className="pf-session-briefing-dialog flex h-[min(92dvh,900px)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-[#274764] bg-gradient-to-br from-[#0b1725] via-[#09131f] to-[#060c14] text-white shadow-[0_40px_120px_rgba(0,0,0,.65)]">
-            <div className="relative flex-none overflow-hidden border-b border-[#21384f] px-4 py-3 sm:px-6 sm:py-4">
+          <motion.div initial={{ opacity: 0, scale: .96, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 12 }} transition={{ type: 'spring', damping: 24, stiffness: 260 }} role="dialog" aria-modal="true" aria-labelledby="pf-session-briefing-title" className="pf-session-briefing-dialog flex h-[min(92dvh,900px)] min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-[#635336] bg-gradient-to-br from-[#111316] via-[#111316] to-[#090a0c] text-white shadow-[0_40px_120px_rgba(0,0,0,.65)]">
+            <div className="relative flex-none overflow-hidden border-b border-[#635336] px-4 py-3 sm:px-6 sm:py-4">
               <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-36 w-36 rounded-full bg-amber-400/5 blur-3xl" />
               <div className="relative flex items-start gap-3 sm:gap-4">
@@ -690,7 +690,7 @@ export default function WelcomeBriefing({ user }) {
               )}
             </div>
 
-            <div className="pf-session-briefing-footer min-w-0 flex-none border-t border-[#21384f] bg-[#07111c]/95 px-3 py-2.5 sm:px-5">
+            <div className="pf-session-briefing-footer min-w-0 flex-none border-t border-[#635336] bg-[#111316]/95 px-3 py-2.5 sm:px-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500"><CheckCircle2 className="h-3.5 w-3.5"/><span>Review your briefing, then acknowledge it to start your session.</span></div>
                 <div className="pf-session-briefing-actions flex min-w-0 gap-2 sm:ml-auto">

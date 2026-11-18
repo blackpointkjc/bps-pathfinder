@@ -285,7 +285,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
           </div>
         )}
         {syncError && microsoftConnected && (
-          <div className="border-b border-slate-800 bg-[#101725] p-3">
+          <div className="border-b border-slate-800 bg-[#111316] p-3">
             <div className="text-xs font-bold text-slate-300">{needsMicrosoftConnection ? 'Your Teams session has expired. Sign in to Teams again.' : `Teams could not refresh: ${syncError}`}</div>
             {needsMicrosoftConnection && <button onClick={() => beginOutlookConnection(currentUser.id).catch(error => toast.error(error?.message || 'Unable to start Microsoft sign-in'))} className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-500">SIGN IN TO TEAMS</button>}
           </div>

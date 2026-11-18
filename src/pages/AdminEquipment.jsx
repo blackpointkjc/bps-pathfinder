@@ -316,7 +316,7 @@ export default function AdminEquipment({ embedded=false }) {
 
   return (
     <div className={embedded?"text-white":"container mx-auto p-6 max-w-7xl"}>
-      <div className="mb-6 rounded-2xl border border-slate-800 bg-[#09131f] p-5 text-white shadow-xl">
+      <div className="mb-6 rounded-2xl border border-slate-800 bg-[#111316] p-5 text-white shadow-xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10">

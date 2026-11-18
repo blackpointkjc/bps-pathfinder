@@ -24,7 +24,7 @@ function CaseRow({ row }) {
   const isSummons = row.kind === 'Summons';
   const outcome = row.magistrate_disposition;
   return (
-    <div className="rounded-xl border border-slate-700/80 bg-[#101b29] p-4 text-slate-200">
+    <div className="rounded-xl border border-slate-700/80 bg-[#191a1b] p-4 text-slate-200">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -98,8 +98,8 @@ export default function LegalCaseHistoryPanel({ audience = 'officer', clientLoca
   }, [audience, clientLocations, data, limit, user]);
 
   return (
-    <Card className="border-slate-700/80 bg-[#0c1725] text-slate-100 shadow-xl">
-      <CardHeader className="border-b border-slate-800 bg-[#111d2b]">
+    <Card className="border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
+      <CardHeader className="border-b border-slate-800 bg-[#191a1b]">
         <CardTitle className="flex items-center gap-2 text-white"><Scale className="h-5 w-5 text-violet-300" />{title}</CardTitle>
         <p className="text-xs text-slate-400">Review complaints, summonses and witness subpoenas together, including their CAD link and magistrate result.</p>
       </CardHeader>

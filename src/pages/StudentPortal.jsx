@@ -149,7 +149,7 @@ export default function StudentPortal({ onboardingOnly = false }) {
 
   if (!profileComplete && isPreview) {
     return (
-      <div className="min-h-full bg-[#080d16] p-4 text-white md:p-6">
+      <div className="min-h-full bg-[#090a0c] p-4 text-white md:p-6">
         <div className="mx-auto max-w-3xl rounded-2xl border border-amber-500/40 bg-amber-950/20 p-6">
           <div className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Student Account Preview</div>
           <h2 className="mt-2 text-2xl font-black">{user?.first_name || ''} {user?.last_name || ''}</h2>

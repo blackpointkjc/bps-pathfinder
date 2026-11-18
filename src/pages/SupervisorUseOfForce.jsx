@@ -162,14 +162,14 @@ export default function SupervisorUseOfForce() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#351d08_0,_#07101c_42%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
       <div className="mx-auto max-w-[1500px] space-y-5">
-        <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-br from-[#33210e] via-[#111925] to-[#07101c] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-br from-[#33210e] via-[#111316] to-[#111316] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
           <div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-amber-300">Supervisor Oversight</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">Use-of-Force Reports</h1><p className="mt-1 text-sm text-slate-400">Document, review, and manage use-of-force incidents.</p></div>
           <Button onClick={() => setShowDialog(true)} className="w-full shrink-0 rounded-xl bg-amber-600 hover:bg-amber-500 sm:w-auto"><Plus className="mr-2 h-4 w-4" />New Report</Button>
         </div>
 
         <div className="grid gap-4">
           {filteredReports.length === 0 ? (
-            <Card className="rounded-2xl border border-slate-700 bg-[#0d1725] text-slate-100 shadow-xl">
+            <Card className="rounded-2xl border border-slate-700 bg-[#111316] text-slate-100 shadow-xl">
               <CardContent className="rounded-xl border border-dashed border-slate-700 py-10 text-center text-slate-400">
                 No use-of-force reports found.
               </CardContent>
@@ -178,7 +178,7 @@ export default function SupervisorUseOfForce() {
             filteredReports.map((report) => (
               <Card
                 key={report.id}
-                className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0d1725] text-slate-100 shadow-xl transition hover:border-amber-600/50 hover:shadow-2xl"
+                className="overflow-hidden rounded-2xl border border-slate-700 bg-[#111316] text-slate-100 shadow-xl transition hover:border-amber-600/50 hover:shadow-2xl"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">

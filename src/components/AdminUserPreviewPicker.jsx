@@ -11,12 +11,12 @@ export default function AdminUserPreviewPicker({ users, selectedId, loading, err
 
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger asChild><button type="button" className="flex min-h-10 items-center gap-2 rounded-lg border border-cyan-700 bg-cyan-950/40 px-3 text-sm font-bold text-cyan-100"><Eye className="h-4 w-4"/>Preview as user</button></PopoverTrigger>
-    <PopoverContent align="end" className="w-[min(440px,calc(100vw-24px))] bg-[#0b1725] text-white" aria-label="Choose a user to preview">
+    <PopoverContent align="end" className="w-[min(440px,calc(100vw-24px))] bg-[#111316] text-white" aria-label="Choose a user to preview">
       <h2 className="mb-3 font-bold">Choose a user</h2>
       <label className="flex items-center gap-2 rounded-lg border border-slate-600 px-3"><Search className="h-4 w-4"/><input aria-label="Search users by name, email, rank or unit" placeholder="Search name, email, rank or unit" value={search} onChange={e=>setSearch(e.target.value)} className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none"/></label>
       <div className="mt-3 flex items-center gap-2">
         <label htmlFor="preview-role-filter" className="shrink-0 text-sm text-slate-300">Role</label>
-        <select id="preview-role-filter" value={role} onChange={event => setRole(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-600 bg-[#0b1725] px-2 text-sm text-white">
+        <select id="preview-role-filter" value={role} onChange={event => setRole(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-600 bg-[#111316] px-2 text-sm text-white">
           {PREVIEW_ROLE_FILTERS.map(([value,label]) => <option key={value} value={value}>{label} ({filterPreviewUsers(users,value).length})</option>)}
         </select>
         {(role !== 'all' || search) && <button type="button" onClick={() => { setRole('all'); setSearch(''); }} className="min-h-11 px-2 text-sm text-cyan-300 hover:underline">Clear</button>}

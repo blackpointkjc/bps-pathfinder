@@ -82,7 +82,7 @@ export default function AdminPortalSettings() {
   }
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
       <div className="mx-auto max-w-6xl">
         <WorkspaceHeader eyebrow="Administration / Preferences" title="Portal Visibility Settings" description="Choose the workspaces shown in your navigation. These preferences apply to your account." metrics={[
           {label:'Available workspaces',value:portals.length},

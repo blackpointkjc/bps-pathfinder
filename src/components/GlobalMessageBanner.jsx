@@ -1195,7 +1195,7 @@ export default function GlobalMessageBanner({ user }) {
               await dismiss(banner.id);
               navigate(createPageUrl(banner.page));
             }}
-            className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
+            className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111316]/95'}`}
           >
             <div className="flex items-start gap-3 p-4">
               <div className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'bg-red-600/30 ring-red-300/40' : banner.kind === 'announcement' ? 'bg-amber-500/25 ring-amber-200/30' : 'bg-blue-600/30 ring-blue-300/30'}`}>

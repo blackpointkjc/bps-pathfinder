@@ -10,7 +10,7 @@ import {toast} from 'sonner';
 import {uploadInternalFile} from '@/lib/internalUpload';
 
 const field='h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-sm text-white';
-const block='rounded-xl border border-slate-700 bg-[#0c1b2c] p-4';
+const block='rounded-xl border border-slate-700 bg-[#191a1b] p-4';
 const stamp=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=t=>parts.find(p=>p.type===t)?.value||'01';const date=new Date(`${v('year')}-${v('month')}-${v('day')}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+1);return date.toISOString().slice(0,10)};
 const starting=()=>({officer_id:'',new_rank:'',platoon:'A',oversight_platoon:'A',supervisor_id:'',transfer_platoon:false,delay_promotion:false,effective_date:stamp(),reason:'',system_role:'user',additional_roles:['officer'],profile_photo_url:''});
 const ROLE_OPTIONS=[['officer','Officer'],['supervisor','Supervisor'],['dispatch','Dispatch'],['cad_access','CAD Access'],['support','Support Staff'],['hr','Human Resources'],['trainer','Training'],['ia','Internal Affairs'],['full_access','Full Access — Colonel Hiers only']];
@@ -111,7 +111,7 @@ export default function AdminPromotions(){
   }catch(err){setError(err.message||'Command update failed');setComplete(err.result||null);setPreview(null);}
   finally{setBusy(false)}
  };
- return <div className="min-h-full bg-[#07111f] p-3 text-slate-100 sm:p-5"><div className="mx-auto max-w-6xl space-y-4">
+ return <div className="min-h-full bg-[#111316] p-3 text-slate-100 sm:p-5"><div className="mx-auto max-w-6xl space-y-4">
   <header className={`${block} flex flex-wrap items-start justify-between gap-3`}><div><h1 className="flex items-center gap-2 text-xl font-black"><Award className="h-6 w-6 text-amber-300"/>Promotions & Change of Command</h1><p className="mt-1 text-sm text-slate-300">Administrator approval updates Manage Users, rank unit number, platoon command, and notifications.</p></div><button type="button" onClick={reload} disabled={loading||busy} className="flex items-center gap-2 rounded border border-cyan-600 px-3 py-2 text-xs font-bold"><RefreshCw size={15}/>{loading?'Loading…':'Refresh roster'}</button></header>
   <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
   <form onSubmit={showPreview} className={`${block} space-y-3`}>

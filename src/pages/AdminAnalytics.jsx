@@ -726,7 +726,7 @@ export default function AdminAnalytics() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#10233a_0,_#07101c_42%,_#050a12_100%)] p-3 text-white sm:p-4 md:p-6">
       <div className="mx-auto max-w-[1600px] space-y-5">
-        <div className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
+        <div className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-[#222321] via-[#111316] to-[#111316] p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between md:p-7">
           <div>
             <h1 className="flex min-w-0 items-center gap-3 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">
               <BarChart3 className="w-8 h-8 text-blue-600" />
@@ -795,35 +795,35 @@ export default function AdminAnalytics() {
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-9">
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyAttendanceStats.rate != null ? `${companyAttendanceStats.rate}%` : '—'}</p>
               <p className="text-xs text-slate-400">Average Officer Attendance</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <BarChart3 className="w-6 h-6 text-cyan-500 mb-2" />
               <p className="text-2xl font-bold text-cyan-400">{companyOverallScore != null ? `${companyOverallScore}%` : '—'}</p>
               <p className="text-xs text-slate-400">Overall Operational Performance</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Users className="w-6 h-6 text-blue-600 mb-2" />
               <p className="text-2xl font-bold text-blue-600">{filteredUsers.length}</p>
               <p className="text-xs text-slate-400">Active Officers</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Clock className="mb-2 h-6 w-6 text-blue-400" />
               <p className="text-2xl font-bold text-blue-300">{hoursBreakdown.reduce((sum, officer) => sum + Number(officer.regular || 0) + Number(officer.overtime || 0), 0).toFixed(1)}h</p>
               <p className="text-xs text-slate-400">Hours in Range</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
               <p className="text-2xl font-bold text-purple-600">
@@ -832,7 +832,7 @@ export default function AdminAnalytics() {
               <p className="text-xs text-slate-400">Need Training</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Clock className="w-6 h-6 text-amber-600 mb-2" />
               <p className="text-2xl font-bold text-amber-600">{responseTimeStats.avg != null ? `${responseTimeStats.avg}m` : '—'}</p>
@@ -840,7 +840,7 @@ export default function AdminAnalytics() {
               <p className="mt-1 text-[10px] text-slate-500">{responseTimeStats.total} resolved call{responseTimeStats.total === 1 ? '' : 's'}</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <AlertTriangle className="w-6 h-6 text-red-600 mb-2" />
               <p className="text-2xl font-bold text-red-600">
@@ -849,14 +849,14 @@ export default function AdminAnalytics() {
               <p className="text-xs text-slate-400">Total OT</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <Award className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{commendationStats.total || 0}</p>
               <p className="text-xs text-slate-400">Commendations</p>
             </CardContent>
           </Card>
-          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#111d2e] to-[#0a1320] p-4 text-white shadow-xl">
+          <Card className="bps-kpi-card min-w-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-[#191a1b] to-[#111316] p-4 text-white shadow-xl">
             <CardContent className="flex w-full flex-col items-center justify-center p-0 text-center">
               <AlertTriangle className="w-6 h-6 text-rose-600 mb-2" />
               <p className="text-2xl font-bold text-rose-600">{complaintStats.total || 0}</p>
@@ -1138,8 +1138,8 @@ export default function AdminAnalytics() {
 
       {showSummaryDialog && (
         <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center sm:p-6" onClick={() => !summarySending && setShowSummaryDialog(false)}>
-          <div role="dialog" aria-modal="true" aria-labelledby="company-summary-dialog-title" className="w-full max-w-lg overflow-hidden rounded-2xl border border-amber-500/40 bg-[#0b1522] shadow-2xl" onClick={event => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-gradient-to-r from-[#111d2d] to-[#0b1522] p-5">
+          <div role="dialog" aria-modal="true" aria-labelledby="company-summary-dialog-title" className="w-full max-w-lg overflow-hidden rounded-2xl border border-amber-500/40 bg-[#111316] shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-gradient-to-r from-[#191a1b] to-[#111316] p-5">
               <div className="flex gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/10 text-amber-300"><MailCheck className="h-5 w-5" /></div>
                 <div>
@@ -1162,7 +1162,7 @@ export default function AdminAnalytics() {
                       <li>• Email is sent from management@blackpointkjc.com through the shared Outlook connection</li>
                     </ul>
                   </div>
-                  <section className="space-y-3 rounded-xl border border-cyan-700/50 bg-[#09263a]/60 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-black text-cyan-200">Check the real summary data</h3><p className="text-xs text-slate-400">Required administrator verification before sending. Scores measure monthly operational performance, not whether an officer has valid DCJS or firearm certifications.</p></div><button type="button" disabled={summaryPreviewBusy||summarySending} onClick={previewCompanySummary} className="rounded-md border border-cyan-600 px-3 py-2 text-xs font-bold text-cyan-100">{summaryPreviewBusy?'Verifying source records…':'Preview officer score breakdown'}</button></div>
+                  <section className="space-y-3 rounded-xl border border-cyan-700/50 bg-[#222321]/60 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-black text-cyan-200">Check the real summary data</h3><p className="text-xs text-slate-400">Required administrator verification before sending. Scores measure monthly operational performance, not whether an officer has valid DCJS or firearm certifications.</p></div><button type="button" disabled={summaryPreviewBusy||summarySending} onClick={previewCompanySummary} className="rounded-md border border-cyan-600 px-3 py-2 text-xs font-bold text-cyan-100">{summaryPreviewBusy?'Verifying source records…':'Preview officer score breakdown'}</button></div>
                     {summaryPreviewError&&<p role="alert" className="rounded border border-amber-700 bg-amber-950/30 p-2 text-xs text-amber-200">{summaryPreviewError}</p>}
                     {summaryPreview&&<><p className="text-xs text-emerald-200">Verified company operational performance average: {summaryPreview.company_overall==null?'Not scored':`${summaryPreview.company_overall}%`} · {summaryPreview.recipient_count||0} active recipients. No emails have been sent by this preview.</p><p className="text-xs text-emerald-200">Average officer attendance: {summaryPreview.attendance_precise_average==null?'Not scored':`${summaryPreview.attendance_precise_average}%`}</p><p className="text-xs text-slate-400">Review period: {summaryPreview.score_window?.from||'Current month'} – {summaryPreview.score_window?.to||'today'} · Eastern Time</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{(summaryPreview.company_category_cohorts||[]).map(category=><div key={category.label} className="rounded border border-slate-700 bg-slate-950 p-2 text-xs"><p className="font-bold text-slate-100">{category.label}</p><p className="text-cyan-300">{category.rate==null?'Not scored':`${category.preciseRate}%`}</p></div>)}</div><input className="h-9 w-full rounded border border-slate-600 bg-slate-950 px-3 text-xs text-white" value={summaryPreviewSearch} onChange={event=>setSummaryPreviewSearch(event.target.value)} placeholder="Find an officer by name (for example, Hiers)…" aria-label="Search summary preview officers"/><div className="max-h-48 space-y-2 overflow-y-auto">{(summaryPreview.rankings||[]).filter(item=>String(item.name||'').toLowerCase().includes(summaryPreviewSearch.toLowerCase())).slice(0,30).map(item=><div key={item.name} className="rounded border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200"><div className="font-black text-white">{item.name} · {item.overall_score==null?'Not scored':`${item.overall_score}% overall performance`}</div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-400"><span>Attendance: {item.attendance_coverage==null?'N/A':`${item.attendance_coverage}%`}</span><span>Job duty: {item.job_duty_score==null?'N/A':`${item.job_duty_score}%`}</span><span>Training: {item.training_percentage==null?'N/A':`${item.training_percentage}%`}</span></div><div className="mt-1 text-slate-500">{(item.categories||[]).map(category=>`${category.label}: ${category.score == null ? "—" : `${category.score}%`}`).join(' · ')||'No scoreable operating categories'}</div><div className="mt-1 text-xs text-slate-400">Attendance evidence: {item.scheduled_shifts==null?'No elapsed shifts':`${item.attended_shifts||0} of ${item.scheduled_shifts} elapsed shifts`} · DAR: {item.job_duty_evidence?.dar?`${item.job_duty_evidence.dar.completed}/${item.job_duty_evidence.dar.required}`:'N/A'} · Incident: {item.job_duty_evidence?.incident?`${item.job_duty_evidence.incident.completed}/${item.job_duty_evidence.incident.required}`:'N/A'} · QR: {item.job_duty_evidence?.qr?`${item.job_duty_evidence.qr.completed}/${item.job_duty_evidence.qr.required}`:'N/A'}</div><div className="mt-1 text-xs text-cyan-200">Officer credential file: DCJS {item.certification_file?.dcjs_expiration||'Not recorded'} · Firearm {item.certification_file?.firearm_expiration||'Not recorded'} · {item.certification_file?.verified_on_file||0} verified saved credentials</div>{item.outstanding_training?.length>0&&<div className="mt-1 text-xs text-amber-200">Unresolved training/course records: {item.outstanding_training.join(' · ')}</div>}</div>)}</div><label className="flex items-start gap-2 rounded-lg border border-amber-700/60 bg-amber-950/20 p-3 text-xs text-amber-100"><input type="checkbox" checked={summaryDataReviewed} onChange={event=>setSummaryDataReviewed(event.target.checked)}/><span>I reviewed the current reporting period and officer evidence. Company operational scores are separate from personnel-file certification status; I understand that sending will deliver the verified current snapshot and each recipient's own outstanding items.</span></label></>}
                   </section>

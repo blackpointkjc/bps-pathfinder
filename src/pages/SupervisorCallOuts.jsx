@@ -151,7 +151,7 @@ export default function SupervisorCallOuts() {
   const recentCallOuts = callOuts.filter(row=>(callType==='all'||row.call_out_type===callType)&&(!callStart||row.call_out_date>=callStart)&&(!callEnd||row.call_out_date<=callEnd)&&[calloutName(row.officer_email,row.officer_name),row.location,row.original_location,row.destination_location,row.reason].join(' ').toLowerCase().includes(callSearch.toLowerCase()));
 
   return (
-    <div className="p-4 md:p-6 min-h-full bg-[#080f1b] text-white">
+    <div className="p-4 md:p-6 min-h-full bg-[#111316] text-white">
       <div className="max-w-7xl mx-auto space-y-8">
         <WorkspaceHeader eyebrow="Command / Attendance" title="Call-Out Management" description="Record missed shifts, early dismissals and reassignments against the officer’s scheduled post." metrics={[
           {label:'Records shown',value:recentCallOuts.length},{label:'Called out',value:recentCallOuts.filter(c=>c.call_out_type==='called_out').length},{label:'Reassignments',value:recentCallOuts.filter(c=>c.call_out_type==='reassigned').length}

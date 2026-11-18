@@ -92,9 +92,9 @@ export default function SupervisorDutyTimeline() {
   });
 
   return (
-    <div className="bps-command-page min-h-full bg-[#080d16] p-4 text-white md:p-6">
+    <div className="bps-command-page min-h-full bg-[#090a0c] p-4 text-white md:p-6">
       <div className="mx-auto max-w-6xl space-y-5">
-        <section className="rounded-[26px] border border-slate-700/80 bg-[#0d1420] p-5 shadow-xl">
+        <section className="rounded-[26px] border border-slate-700/80 bg-[#111316] p-5 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-[11px] font-black uppercase tracking-[.24em] text-cyan-300">Supervisor Command</div>
@@ -109,7 +109,7 @@ export default function SupervisorDutyTimeline() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-[#09111d] px-3 py-2">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-[#111316] px-3 py-2">
               <CalendarDays className="h-4 w-4 text-cyan-300" />
               <input type="date" value={selectedDate} onChange={event => setSelectedDate(event.target.value)} className="bg-transparent text-sm font-bold text-white outline-none" />
             </div>
@@ -119,7 +119,7 @@ export default function SupervisorDutyTimeline() {
 
         {error && <div className="rounded-xl border border-red-700/60 bg-red-950/25 p-4 text-sm text-red-200">Duty coverage could not load: {error.message}</div>}
 
-        <section className="overflow-hidden rounded-[26px] border border-slate-700/80 bg-[#0d1420] shadow-xl">
+        <section className="overflow-hidden rounded-[26px] border border-slate-700/80 bg-[#111316] shadow-xl">
           <div className="border-b border-slate-700 px-5 py-4">
             <div className="font-black">{format(new Date(`${selectedDate}T12:00:00`), 'EEEE, MMMM d, yyyy')}</div>
             <div className="mt-1 text-xs text-slate-500">Times are shown in 24-hour format. Overnight coverage from the prior date carries into this timeline.</div>
@@ -129,10 +129,10 @@ export default function SupervisorDutyTimeline() {
               <div className="relative min-w-[680px]" style={{ height: timelineHeight }}>
                 {Array.from({ length: 25 }, (_, hour) => (
                   <div key={hour} className="absolute left-0 right-0 border-t border-slate-800" style={{ top: hour * 60 }}>
-                    <span className="-translate-y-1/2 inline-block w-16 bg-[#0d1420] pr-3 text-right font-mono text-[10px] font-bold text-slate-500">{String(hour).padStart(2, '0')}:00</span>
+                    <span className="-translate-y-1/2 inline-block w-16 bg-[#111316] pr-3 text-right font-mono text-[10px] font-bold text-slate-500">{String(hour).padStart(2, '0')}:00</span>
                   </div>
                 ))}
-                <div className="absolute bottom-0 left-20 right-3 top-0 border-x border-slate-800 bg-[#09111d]/60">
+                <div className="absolute bottom-0 left-20 right-3 top-0 border-x border-slate-800 bg-[#111316]/60">
                   {groups.map((group, index) => (
                     <div key={`${group.supervisor_email}-${group.visibleStart}-${group.visibleEnd}`} style={positionFor(group)} className="absolute left-3 right-3 overflow-hidden rounded-xl border border-cyan-700/60 bg-cyan-950/90 px-3 py-2 shadow-lg">
                       <div className="flex items-start gap-2">

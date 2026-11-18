@@ -17,7 +17,7 @@ export default function DutyAttendanceRow({ row, expanded, onToggle, onExempt, o
   const exempted = row.exemptions?.length || 0;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0d1a2a]">
+    <div className="rounded-xl border border-slate-800 bg-[#191a1b]">
       <button type="button" onClick={onToggle} className="flex w-full flex-col gap-3 px-4 py-3 text-left sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {expanded ? <ChevronDown className="h-4 w-4 shrink-0 text-cyan-300" /> : <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />}
@@ -48,13 +48,13 @@ export default function DutyAttendanceRow({ row, expanded, onToggle, onExempt, o
       {expanded && (
         <div className="space-y-3 border-t border-slate-800 px-4 py-3">
           <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg border border-slate-800 bg-[#0a1421] px-3 py-2 text-xs text-slate-300">
+            <div className="rounded-lg border border-slate-800 bg-[#111316] px-3 py-2 text-xs text-slate-300">
               DAR <span className="font-black text-white">{jobDuty?.dailyActivity.completed || 0}/{jobDuty?.dailyActivity.required || 0}</span>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-[#0a1421] px-3 py-2 text-xs text-slate-300">
+            <div className="rounded-lg border border-slate-800 bg-[#111316] px-3 py-2 text-xs text-slate-300">
               Incident <span className="font-black text-white">{jobDuty?.incidentReports.completed || 0}/{jobDuty?.incidentReports.required || 0}</span>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-[#0a1421] px-3 py-2 text-xs text-slate-300">
+            <div className="rounded-lg border border-slate-800 bg-[#111316] px-3 py-2 text-xs text-slate-300">
               QR <span className="font-black text-white">{jobDuty?.qrCompliance.completed || 0}/{jobDuty?.qrCompliance.required || 0}</span>
             </div>
           </div>

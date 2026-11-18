@@ -117,7 +117,7 @@ export default function AdminOperationsWorkbench() {
  const checkpoints=(checkpointsQuery.data||[]).filter(row=>row.property_site===site?.site_name);
  const general=generalQuery.data||[];
 
- return <div className="min-h-full bg-[#07101c] p-3 text-slate-100 md:p-5">
+ return <div className="min-h-full bg-[#111316] p-3 text-slate-100 md:p-5">
   <div className="mx-auto max-w-[1700px] space-y-4">
    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700 pb-4"><div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-300"><Shield className="h-4 w-4"/>Administration</div><h1 className="mt-2 text-2xl font-black">Site Operations</h1><p className="mt-1 text-sm text-slate-400">One property. Its patrol standards and checkpoints.</p></div><div className="text-sm text-slate-400">{locations.length} properties</div></header>
    {scope==='site'&&

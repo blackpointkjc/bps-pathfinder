@@ -145,7 +145,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
     };
 
     if (!call) {
-        return <div className="space-y-3 rounded-xl border border-slate-700 bg-[#09121e] p-3">
+        return <div className="space-y-3 rounded-xl border border-slate-700 bg-[#111316] p-3">
           <div className="text-xs font-black text-white">Dispatch · New-Call Availability</div>
           <p className="text-xs text-slate-400">Dispatch can place or remove a Hold on any signed-in officer. Holds block only NEW calls, not assignments already in progress. Select a CAD call to assign units.</p>
           {units.filter(isOperationalUnit).map(unit=><div key={unit.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs"><div className="min-w-0"><p className="font-black text-slate-100">{displayUnitName(unit)}</p><p className="text-slate-400">Unit {unit.unit_number||'—'} · {unit.status||'Status pending'}</p><p className={holdOf(unit)?'text-amber-300':'text-emerald-300'}>{holdOf(unit)?'HOLD: No new calls':'New calls permitted'}</p></div><Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,!holdOf(unit))} className={holdOf(unit)?'border-emerald-600 text-emerald-300':'border-amber-700 text-amber-300'}>{holding===unit.id?'Saving…':holdOf(unit)?'Remove Hold':'Hold New Calls'}</Button></div>)}
@@ -157,7 +157,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto pr-1">
-            <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-blue-950/35 to-[#0b1522] p-3">
+            <div className="rounded-xl border border-blue-800/50 bg-gradient-to-br from-blue-950/35 to-[#111316] p-3">
                 <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-black tracking-[.14em] text-blue-300">ASSIGNING CALL</span><span className="rounded-md bg-blue-500/15 px-2 py-1 text-[9px] font-black text-blue-200">{callNumber}</span></div>
                 <div title={call.incident || 'Call For Service'} className="mt-1 truncate text-xs font-black text-white">{call.incident || 'Call for Service'}</div>
                 <div title={call.location || ''} className="mt-1 truncate text-[10px] text-slate-400">{call.location || 'Location unavailable'}</div>
@@ -216,7 +216,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search..."
-                        className="h-9 rounded-lg border-slate-700 bg-[#0b1522] pl-8 text-sm text-white"
+                        className="h-9 rounded-lg border-slate-700 bg-[#111316] pl-8 text-sm text-white"
                     />
                 </div>
                 
@@ -240,7 +240,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                                 : null;
                             
                             return (
-                                <div key={unit.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#101b29] p-2.5 transition-colors hover:border-blue-700/60 hover:bg-[#142236]">
+                                <div key={unit.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#191a1b] p-2.5 transition-colors hover:border-blue-700/60 hover:bg-[#191a1b]">
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-xs font-black text-white">{unitName}</p>
                                         <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)} · {unit.status||'Duty active'}</p>

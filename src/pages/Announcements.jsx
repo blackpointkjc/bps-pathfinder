@@ -127,7 +127,7 @@ export default function Announcements() {
   return (
     <>
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+        <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="flex items-center gap-4">
               <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
@@ -228,7 +228,7 @@ export default function Announcements() {
               {announcementsLoading && <p className="p-4 text-slate-300">Loading company announcements…</p>}
               {publicationError && <p className="rounded-lg border border-amber-700/50 p-3 text-xs text-amber-200">Published schedule history could not load: {publicationError.message}</p>}
               {publishedWeeks.map(week => (
-                <Card key={`published-week-${week.id}`} className="border border-cyan-900/60 bg-[#0f1a28] text-white">
+                <Card key={`published-week-${week.id}`} className="border border-cyan-900/60 bg-[#191a1b] text-white">
                   <CardHeader><CardTitle className="text-base text-cyan-200">Schedule Published · {week.week_start_date} – {week.week_end_date}</CardTitle></CardHeader>
                   <CardContent className="text-sm text-slate-300">The company schedule for this week has been published. Review My Schedule for your assignments.</CardContent>
                 </Card>

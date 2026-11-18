@@ -78,7 +78,7 @@ export default function PostOrders() {
 
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <WorkspaceHeader eyebrow="Field operations / Site reference" title="Post Orders" description="Site instructions, patrol requirements, contacts and the chain of command." metrics={[
           {label:'Active properties',value:locations?.length||0},

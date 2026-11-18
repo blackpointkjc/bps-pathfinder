@@ -2603,7 +2603,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
     <div className={embedded?"scheduling-page min-h-0":"scheduling-page min-h-screen p-2 pb-24 sm:p-3 md:p-4"}>
       <div className="mx-auto max-w-7xl space-y-2 sm:space-y-3">
         {scheduleLeaveWarning && <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-red-600 bg-red-950/60 p-4 text-red-100"><div><strong>Approved time-off conflict</strong><p className="mt-1 text-sm">{scheduleLeaveWarning}</p></div><button type="button" onClick={()=>setScheduleLeaveWarning('')} className="shrink-0 rounded border border-red-400 px-2 py-1 text-xs">Dismiss</button></div>}
-        <section className="rounded-xl border border-slate-700 bg-[#0d1420] p-3 print:hidden">
+        <section className="rounded-xl border border-slate-700 bg-[#111316] p-3 print:hidden">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h1 className="flex items-center gap-2 text-lg font-bold text-white"><Calendar className="h-5 w-5 text-cyan-300"/>Schedule</h1>
             <div className="flex flex-wrap items-center gap-3">
@@ -2798,8 +2798,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
           </div>
         )}
 
-        <Card className="overflow-hidden border border-slate-800 bg-[#0b1220] text-white shadow-xl print:hidden">
-          <CardHeader className="border-b border-slate-800 bg-[#101826] p-4 sm:p-5">
+        <Card className="overflow-hidden border border-slate-800 bg-[#111316] text-white shadow-xl print:hidden">
+          <CardHeader className="border-b border-slate-800 bg-[#111316] p-4 sm:p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg font-black text-white">
@@ -2815,7 +2815,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
             <div className="overflow-x-auto overscroll-x-contain">
               <div style={{ minWidth: `${Math.max(980, 72 + (weekDays.length * 150))}px` }}>
                 <div
-                  className="grid border-b border-slate-700 bg-[#111827]"
+                  className="grid border-b border-slate-700 bg-[#111316]"
                   style={{ gridTemplateColumns: `72px repeat(${weekDays.length}, minmax(150px, 1fr))` }}
                 >
                   <div className="border-r border-slate-700 px-2 py-3 text-center text-[9px] font-black uppercase tracking-wider text-slate-500">TIME</div>
@@ -2833,10 +2833,10 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 </div>
 
                 <div
-                  className="grid bg-[#08111d]"
+                  className="grid bg-[#111316]"
                   style={{ gridTemplateColumns: `72px repeat(${weekDays.length}, minmax(150px, 1fr))` }}
                 >
-                  <div className="relative border-r border-slate-700 bg-[#0c1624]" style={{ height: `${timelineTotalHeight}px` }}>
+                  <div className="relative border-r border-slate-700 bg-[#111316]" style={{ height: `${timelineTotalHeight}px` }}>
                     {timelineHours.map((hour) => (
                       <div
                         key={`timeline-hour-${hour}`}
@@ -3332,7 +3332,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
             return (
               <Card key={dateStr} className="overflow-hidden border-slate-800 bg-slate-900 text-white shadow-none">
-                <CardHeader className="border-b border-slate-800 bg-[#111827] p-3">
+                <CardHeader className="border-b border-slate-800 bg-[#111316] p-3">
                   <CardTitle className="flex items-center justify-between gap-2 text-base text-white">
                     <span>{format(day, 'EEEE')}</span>
                     <Badge variant="outline" className="border-blue-700/60 bg-blue-950/30 text-blue-200">{format(day, 'MMM d')}</Badge>
@@ -3342,7 +3342,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                   {dayShifts.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-slate-800 py-5 text-center text-sm text-slate-500">No shifts scheduled.</p>
                   ) : dayShifts.map(shift => (
-                    <div key={shift.id} className="rounded-xl border border-slate-700 bg-[#101826] p-3">
+                    <div key={shift.id} className="rounded-xl border border-slate-700 bg-[#111316] p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-white">{shift.officer_email === 'OPEN' ? 'OPEN SHIFT' : getOfficerName(shift.officer_email)}</p>
@@ -3369,11 +3369,11 @@ Return ONLY a JSON array of suggestion objects with this structure:
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="hidden overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220] shadow-none print:hidden md:block">
+          <div className="hidden overflow-hidden rounded-xl border border-slate-800 bg-[#111316] shadow-none print:hidden md:block">
             <table className="w-full table-fixed border-collapse text-[10px] lg:text-[11px]">
               <thead>
-                <tr className="bg-[#111827]">
-                  <th className="sticky left-0 z-20 w-[22%] border border-slate-700 bg-[#111827] px-2 py-2 text-left">
+                <tr className="bg-[#111316]">
+                  <th className="sticky left-0 z-20 w-[22%] border border-slate-700 bg-[#111316] px-2 py-2 text-left">
                     <div className="text-xs font-black uppercase tracking-wider text-slate-200">Property / Officer</div>
                   </th>
                   {weekDays.map((day) => (
@@ -3382,7 +3382,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                       <div className="mt-0.5 text-[10px] font-medium text-slate-400">{format(day, 'M/d')}</div>
                     </th>
                   ))}
-                  <th className="w-[6%] border border-slate-700 bg-[#111827] px-1 py-2 text-center">
+                  <th className="w-[6%] border border-slate-700 bg-[#111316] px-1 py-2 text-center">
                     <div className="text-xs font-black uppercase tracking-wider text-slate-200">Total</div>
                   </th>
                 </tr>
@@ -3405,8 +3405,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
 
                   return (
                     <React.Fragment key={locationSiteName}>
-                      <tr className="bg-[#0f1b2d]">
-                        <td colSpan={weekDays.length + 2} className="sticky left-0 z-10 border border-slate-700 bg-[#0f1b2d] px-3 py-2.5 text-xs font-black uppercase tracking-wide text-blue-200">
+                      <tr className="bg-[#191a1b]">
+                        <td colSpan={weekDays.length + 2} className="sticky left-0 z-10 border border-slate-700 bg-[#191a1b] px-3 py-2.5 text-xs font-black uppercase tracking-wide text-blue-200">
                           {locationSiteName}
                         </td>
                       </tr>
@@ -3422,8 +3422,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
                         const officerUnit = getOfficerUnitNumber(officerEmail);
 
                         return (
-                          <tr key={`${locationSiteName}-${officerEmail}`} className={officerIdx % 2 === 0 ? 'bg-[#0b1220]' : 'bg-[#0d1625]'}>
-                            <td className={`sticky left-0 z-10 border border-slate-700 px-2 py-2 text-[10px] font-semibold ${officerIdx % 2 === 0 ? 'bg-[#0b1220]' : 'bg-[#0d1625]'}`}>
+                          <tr key={`${locationSiteName}-${officerEmail}`} className={officerIdx % 2 === 0 ? 'bg-[#111316]' : 'bg-[#111316]'}>
+                            <td className={`sticky left-0 z-10 border border-slate-700 px-2 py-2 text-[10px] font-semibold ${officerIdx % 2 === 0 ? 'bg-[#111316]' : 'bg-[#111316]'}`}>
                               <div className="flex min-w-0 items-center gap-1.5">
                                 {officerUnit && (
                                   <span className="shrink-0 rounded border border-blue-700/50 bg-blue-950/40 px-1.5 py-0.5 text-[9px] font-black text-blue-200">
@@ -3506,8 +3506,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
                           </tr>
                         );
                       })}
-                      <tr className="bg-[#101826]">
-                        <td colSpan={weekDays.length + 1} className="sticky left-0 z-10 border border-slate-700 bg-[#101826] p-2.5 text-right text-xs font-bold text-slate-300">
+                      <tr className="bg-[#111316]">
+                        <td colSpan={weekDays.length + 1} className="sticky left-0 z-10 border border-slate-700 bg-[#111316] p-2.5 text-right text-xs font-bold text-slate-300">
                           Location Total:
                         </td>
                         <td className="border border-slate-700 p-2.5 text-center text-xs font-black text-emerald-300">
@@ -3640,7 +3640,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               return <>
                 <div className="hidden md:block">
                   <table className="w-full table-fixed border-collapse bg-slate-950 text-[10px] text-slate-200 lg:text-[11px]">
-                    <thead><tr className="border-b border-slate-700 bg-[#111827] text-slate-300">
+                    <thead><tr className="border-b border-slate-700 bg-[#111316] text-slate-300">
                       <th className="w-[4%] p-2 text-center">#</th><th className="w-[7%] p-2 text-center">UNIT</th><th className="w-[17%] p-2 text-left">Officer</th><th className="w-[12%] p-2 text-left">RANK</th><th className="w-[12%] p-2 text-center">Scheduled</th><th className="w-[12%] p-2 text-center">Actual reg</th><th className="w-[10%] p-2 text-center">Actual OT</th><th className="w-[12%] p-2 text-center">Actual total</th><th className="w-[14%] p-2 text-right">Est. earned</th>
                     </tr></thead>
                     <tbody>{rows.map((r,idx)=><tr key={r.email} className="border-b border-slate-800 odd:bg-slate-950 even:bg-slate-900/60">

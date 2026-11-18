@@ -486,9 +486,9 @@ export default function AdminConfidentialReports({ embedded = false }) {
   }
 
   return (
-    <div className={embedded ? "confidential-reports-page min-h-0 bg-[#080d16] p-2 text-slate-100" : "confidential-reports-page min-h-screen bg-[radial-gradient(circle_at_top_left,_#251020_0,_#07101c_42%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6"}>
+    <div className={embedded ? "confidential-reports-page min-h-0 bg-[#090a0c] p-2 text-slate-100" : "confidential-reports-page min-h-screen bg-[radial-gradient(circle_at_top_left,_#251020_0,_#07101c_42%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6"}>
       <div className="mx-auto w-full max-w-[1500px] space-y-4">
-        {!embedded && <div className="relative overflow-hidden rounded-3xl border border-rose-500/20 bg-gradient-to-br from-[#251523] via-[#101725] to-[#07101c] p-5 shadow-2xl md:p-7">
+        {!embedded && <div className="relative overflow-hidden rounded-3xl border border-rose-500/20 bg-gradient-to-br from-[#251523] via-[#111316] to-[#111316] p-5 shadow-2xl md:p-7">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-rose-400/30 bg-rose-500/10"><Shield className="h-6 w-6 text-rose-300" /></div>
             <div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-rose-300">Protected Command Channel</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">Confidential Reports</h1><p className="mt-1 text-sm text-slate-400">Review, investigate, document, and resolve confidential officer concerns.</p></div>
@@ -496,7 +496,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
         </div>}
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
             <CardHeader className="border-b border-blue-900/50 bg-blue-950/25">
               <CardTitle className="text-blue-300 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
@@ -509,7 +509,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
             <CardHeader className="border-b border-amber-900/50 bg-amber-950/25">
               <CardTitle className="text-amber-300 text-sm flex items-center gap-2">
                 <Clock className="w-4 h-4" />
@@ -522,7 +522,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
             <CardHeader className="border-b border-emerald-900/50 bg-emerald-950/25">
               <CardTitle className="text-emerald-300 text-sm flex items-center gap-2">
                 <Archive className="w-4 h-4" />
@@ -536,13 +536,13 @@ export default function AdminConfidentialReports({ embedded = false }) {
           </Card>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader>
             <CardTitle>Reviewed Reports</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="investigating" className="w-full">
-              <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-slate-700 bg-[#0b1725] p-1">
+              <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-slate-700 bg-[#111316] p-1">
                 <TabsTrigger value="investigating">
                   Investigating ({investigatingReports.length})
                 </TabsTrigger>
@@ -626,7 +626,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
         </Card>
 
         <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-slate-700 bg-[#0b1725] p-1">
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-slate-700 bg-[#111316] p-1">
             <TabsTrigger value="active">
               Active Reports ({activeReports.length})
             </TabsTrigger>
@@ -636,7 +636,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
           </TabsList>
 
           <TabsContent value="active">
-            <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+            <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
               <CardHeader>
                 <CardTitle>Active Confidential Reports</CardTitle>
               </CardHeader>
@@ -716,7 +716,7 @@ export default function AdminConfidentialReports({ embedded = false }) {
           </TabsContent>
 
           <TabsContent value="archived">
-            <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+            <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
               <CardHeader>
                 <CardTitle>Resolved Confidential Reports</CardTitle>
               </CardHeader>

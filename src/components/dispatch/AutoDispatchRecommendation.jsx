@@ -132,7 +132,7 @@ export default function AutoDispatchRecommendation({ alert }) {
   const propertySettingsUrl = `${createPageUrl('AdminLocations')}?location_id=${encodeURIComponent(result.property?.id || alert?.propertyId || '')}`;
 
   return (
-    <div className="mt-3 rounded-lg border border-cyan-500/30 bg-[#071827] p-3">
+    <div className="mt-3 rounded-lg border border-cyan-500/30 bg-[#111316] p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-4 w-4 text-cyan-300" />

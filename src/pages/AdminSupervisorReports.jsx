@@ -564,7 +564,7 @@ export default function AdminSupervisorReports() {
   };
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />

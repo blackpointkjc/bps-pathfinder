@@ -293,7 +293,7 @@ export default function OfficerProfile() {
         onSave={saveCroppedPhoto}
       />
       <div className="mx-auto max-w-5xl space-y-5">
-        <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-5 shadow-2xl md:p-7">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-[#222321] via-[#111316] to-[#111316] p-5 shadow-2xl md:p-7">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10"><User className="h-6 w-6 text-blue-300" /></div><div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-[.2em] text-blue-300">Officer Account</div><h1 className="mt-1 break-words text-2xl font-black tracking-tight text-white sm:text-3xl">My Profile</h1><p className="mt-1 text-sm text-slate-400">View your company identity, contact information, credentials, and certifications.</p></div></div>
             <Button type="button" variant="outline" onClick={() => document.getElementById('home-navigation-address')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="border-cyan-600/60 bg-cyan-950/30 text-cyan-100 hover:bg-cyan-900/40">
@@ -302,7 +302,7 @@ export default function OfficerProfile() {
           </div>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-blue-950/35 to-violet-950/25">
             <CardTitle className="flex items-center gap-2 text-white">
               <User className="w-5 h-5 text-blue-600" />
@@ -377,7 +377,7 @@ export default function OfficerProfile() {
         </Card>
 
         {myCompanyMailbox && (
-          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
             <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-blue-50">
               <CardTitle className="flex items-center gap-2 text-white"><Mail className="h-5 w-5 text-emerald-600" /> Company Email</CardTitle>
             </CardHeader>
@@ -398,7 +398,7 @@ export default function OfficerProfile() {
           </Card>
         )}
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="border-b">
             <CardTitle className="text-white">Contact Information</CardTitle>
           </CardHeader>
@@ -444,7 +444,7 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card id="home-navigation-address" className="scroll-mt-6 overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card id="home-navigation-address" className="scroll-mt-6 overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="border-b border-slate-700 bg-gradient-to-r from-cyan-950/35 to-blue-950/25">
             <CardTitle className="flex items-center gap-2 text-white">
               <MapPin className="h-5 w-5 text-cyan-300" />
@@ -458,20 +458,20 @@ export default function OfficerProfile() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <Label htmlFor="home-address" className="text-sm text-slate-300">Street Address</Label>
-                <Input id="home-address" autoComplete="street-address" value={homeAddressForm.address} onChange={event => setHomeAddressForm(current => ({ ...current, address: event.target.value }))} placeholder="123 Main Street" className="mt-1 bg-[#07111f] text-white" />
+                <Input id="home-address" autoComplete="street-address" value={homeAddressForm.address} onChange={event => setHomeAddressForm(current => ({ ...current, address: event.target.value }))} placeholder="123 Main Street" className="mt-1 bg-[#111316] text-white" />
               </div>
               <div>
                 <Label htmlFor="home-city" className="text-sm text-slate-300">City</Label>
-                <Input id="home-city" autoComplete="address-level2" value={homeAddressForm.city} onChange={event => setHomeAddressForm(current => ({ ...current, city: event.target.value }))} placeholder="Richmond" className="mt-1 bg-[#07111f] text-white" />
+                <Input id="home-city" autoComplete="address-level2" value={homeAddressForm.city} onChange={event => setHomeAddressForm(current => ({ ...current, city: event.target.value }))} placeholder="Richmond" className="mt-1 bg-[#111316] text-white" />
               </div>
               <div className="grid grid-cols-[1fr_1.4fr] gap-3">
                 <div>
                   <Label htmlFor="home-state" className="text-sm text-slate-300">State</Label>
-                  <Input id="home-state" autoComplete="address-level1" maxLength={2} value={homeAddressForm.state} onChange={event => setHomeAddressForm(current => ({ ...current, state: event.target.value.toUpperCase() }))} placeholder="VA" className="mt-1 bg-[#07111f] text-white" />
+                  <Input id="home-state" autoComplete="address-level1" maxLength={2} value={homeAddressForm.state} onChange={event => setHomeAddressForm(current => ({ ...current, state: event.target.value.toUpperCase() }))} placeholder="VA" className="mt-1 bg-[#111316] text-white" />
                 </div>
                 <div>
                   <Label htmlFor="home-zip" className="text-sm text-slate-300">ZIP</Label>
-                  <Input id="home-zip" autoComplete="postal-code" value={homeAddressForm.zip} onChange={event => setHomeAddressForm(current => ({ ...current, zip: event.target.value }))} placeholder="23223" className="mt-1 bg-[#07111f] text-white" />
+                  <Input id="home-zip" autoComplete="postal-code" value={homeAddressForm.zip} onChange={event => setHomeAddressForm(current => ({ ...current, zip: event.target.value }))} placeholder="23223" className="mt-1 bg-[#111316] text-white" />
                 </div>
               </div>
             </div>
@@ -482,7 +482,7 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <Phone className="w-5 h-5 text-amber-600" />
@@ -507,7 +507,7 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <Shield className="w-5 h-5 text-blue-600" />
@@ -546,7 +546,7 @@ export default function OfficerProfile() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold text-blue-900">{cert.name}</p>
-                            {cert.course_id && <Badge variant="outline" className="border-blue-300 bg-[#0d1725] text-blue-800">{cert.course_id}</Badge>}
+                            {cert.course_id && <Badge variant="outline" className="border-blue-300 bg-[#111316] text-blue-800">{cert.course_id}</Badge>}
                             <Badge className={status === 'expired' ? 'bg-red-600' : status === 'expiring' ? 'bg-amber-500 text-slate-950' : 'bg-emerald-600'}>
                               {status === 'expiring' ? 'Expiring Soon' : status.charAt(0).toUpperCase() + status.slice(1)}
                             </Badge>
@@ -578,7 +578,7 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <Package className="w-5 h-5 text-slate-400" />
@@ -651,7 +651,7 @@ export default function OfficerProfile() {
           </Card>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <Award className="w-5 h-5 text-green-600" />
@@ -692,7 +692,7 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-red-50 to-rose-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -734,7 +734,7 @@ export default function OfficerProfile() {
                             {comp.investigation_completed_date && ` • Closed: ${format(parseISO(comp.investigation_completed_date), 'MMM d, yyyy')}`}
                           </p>
                           {comp.investigation_notes && (
-                            <div className="mt-2 p-2 bg-[#0d1725] rounded border border-red-100">
+                            <div className="mt-2 p-2 bg-[#111316] rounded border border-red-100">
                               <p className="text-xs text-slate-700"><strong>Investigation:</strong> {comp.investigation_notes}</p>
                             </div>
                           )}
@@ -752,7 +752,7 @@ export default function OfficerProfile() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b">
             <CardTitle className="flex items-center gap-2 text-white">
               <ClipboardCheck className="w-5 h-5 text-purple-600" />
@@ -797,23 +797,23 @@ export default function OfficerProfile() {
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#111316] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Punctuality</p>
                             <p className="text-lg font-bold text-purple-600">{review.punctuality_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#111316] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Professional</p>
                             <p className="text-lg font-bold text-purple-600">{review.professionalism_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#111316] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Reports</p>
                             <p className="text-lg font-bold text-purple-600">{review.report_quality_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#111316] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Teamwork</p>
                             <p className="text-lg font-bold text-purple-600">{review.teamwork_rating || '-'}/5</p>
                           </div>
-                          <div className="text-center p-2 bg-[#0d1725] rounded border border-purple-100">
+                          <div className="text-center p-2 bg-[#111316] rounded border border-purple-100">
                             <p className="text-xs text-slate-500">Initiative</p>
                             <p className="text-lg font-bold text-purple-600">{review.initiative_rating || '-'}/5</p>
                           </div>
@@ -839,28 +839,28 @@ export default function OfficerProfile() {
                         {review.strengths && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-green-700 mb-1">Strengths:</p>
-                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-green-100">{review.strengths}</p>
+                            <p className="text-sm text-slate-700 bg-[#111316] p-2 rounded border border-green-100">{review.strengths}</p>
                           </div>
                         )}
 
                         {review.areas_for_improvement && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-amber-700 mb-1">Areas for Improvement:</p>
-                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-amber-100">{review.areas_for_improvement}</p>
+                            <p className="text-sm text-slate-700 bg-[#111316] p-2 rounded border border-amber-100">{review.areas_for_improvement}</p>
                           </div>
                         )}
 
                         {review.goals_for_next_period && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-blue-700 mb-1">Goals:</p>
-                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-blue-100">{review.goals_for_next_period}</p>
+                            <p className="text-sm text-slate-700 bg-[#111316] p-2 rounded border border-blue-100">{review.goals_for_next_period}</p>
                           </div>
                         )}
 
                         {review.reviewer_comments && (
                           <div className="mb-2">
                             <p className="text-xs font-semibold text-purple-700 mb-1">Reviewer Comments:</p>
-                            <p className="text-sm text-slate-700 bg-[#0d1725] p-2 rounded border border-purple-100">{review.reviewer_comments}</p>
+                            <p className="text-sm text-slate-700 bg-[#111316] p-2 rounded border border-purple-100">{review.reviewer_comments}</p>
                           </div>
                         )}
 
@@ -879,7 +879,7 @@ export default function OfficerProfile() {
             )}
           </CardContent>
         </Card>
-        <Card className="border-2 border-red-300 shadow-lg bg-[#0d1725]">
+        <Card className="border-2 border-red-300 shadow-lg bg-[#111316]">
           <CardHeader className="bg-gradient-to-r from-red-50 to-rose-50 border-b">
             <CardTitle className="flex items-center gap-2 text-red-700">
               <Shield className="w-5 h-5" />

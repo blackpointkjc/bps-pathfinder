@@ -125,7 +125,7 @@ export default function AdminSupportStaffClock() {
   }
 
   return (
-    <div className="min-h-full bg-[#0b1420] p-4 text-slate-100 md:p-8">
+    <div className="min-h-full bg-[#111316] p-4 text-slate-100 md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <WorkspaceHeader eyebrow="Administration / Support time" title="Support Staff Time Clock" description={'Personal time clock for '+displayName} metrics={[
           {label:'Duty state',value:activeEntry?(activeEntry.on_break?'On break':'Clocked in'):'Clocked out'},

@@ -108,13 +108,13 @@ export default function ProfilePhotoCropper({ open, imageFile, onClose, onSave, 
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && !saving && onClose()}>
-      <DialogContent className="max-w-lg border-slate-700 bg-[#0d1826] text-white">
+      <DialogContent className="max-w-lg border-slate-700 bg-[#111316] text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Crop className="h-5 w-5 text-blue-400" />Adjust Profile Photo</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="rounded-lg border border-slate-700 bg-[#07111f] p-4">
+          <div className="rounded-lg border border-slate-700 bg-[#111316] p-4">
             <div
               ref={viewportRef}
               className="relative mx-auto h-80 w-80 max-w-full touch-none cursor-grab overflow-hidden rounded-full border-4 border-blue-400/70 bg-slate-950 active:cursor-grabbing"
@@ -141,7 +141,7 @@ export default function ProfilePhotoCropper({ open, imageFile, onClose, onSave, 
             <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-400"><Move className="h-3.5 w-3.5" />Drag the photo to reposition it</div>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-slate-700 bg-[#111e2d] p-4">
+          <div className="space-y-2 rounded-lg border border-slate-700 bg-[#191a1b] p-4">
             <div className="flex items-center justify-between text-sm text-slate-300"><span className="flex items-center gap-2"><ZoomIn className="h-4 w-4" />Zoom</span><span>{Math.round(zoom * 100)}%</span></div>
             <Slider value={[zoom]} min={1} max={3} step={0.01} onValueChange={([value]) => setZoom(value)} />
           </div>

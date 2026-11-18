@@ -638,8 +638,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   };
 
   return (
-    <div className={`flex h-full flex-col bg-gradient-to-b from-[#111317] via-[#111317] to-[#090b0e] ${mobile ? 'mobile-tool-library' : 'border-r border-[#302d25] shadow-[12px_0_40px_rgba(0,0,0,.25)]'}`}>
-      <div className="border-b border-[#302d25] bg-[#111317]/90 px-3 py-2.5 backdrop-blur-xl">
+    <div className={`flex h-full flex-col bg-gradient-to-b from-[#090a0c] via-[#090a0c] to-[#090a0c] ${mobile ? 'mobile-tool-library' : 'border-r border-[#302d25] shadow-[12px_0_40px_rgba(0,0,0,.25)]'}`}>
+      <div className="border-b border-[#302d25] bg-[#090a0c]/90 px-3 py-2.5 backdrop-blur-xl">
         <div className={`flex items-center ${collapsed && !mobile ? 'justify-center' : 'gap-3'}`}>
           {(!collapsed || mobile) && <div className="min-w-0 flex-1">
             <div className="text-[12px] font-black tracking-[0.16em] text-white">{mobile ? mobileTitle : 'BPS PATHFINDER'}</div>
@@ -674,7 +674,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                 </select>
               </div>
             ) : (
-              <div className="rounded-xl border border-[#302d25] bg-[#111317]/70 p-2.5 shadow-inner">
+              <div className="rounded-xl border border-[#302d25] bg-[#090a0c]/70 p-2.5 shadow-inner">
                 <div className="mb-1.5 flex items-center justify-between px-1">
                   <span className="text-[8px] font-black uppercase tracking-[0.18em] text-[#b8a06b]">Workspace</span>
                   <span className="text-[8px] font-bold text-cyan-300">{center.label}</span>
@@ -685,7 +685,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                     <SelectTrigger className="h-11 w-full border-[#695935] bg-gradient-to-r from-[#302d25] to-[#1a1b1c] pl-10 text-[11px] font-black text-white shadow-sm focus:ring-cyan-900/40" aria-label="Switch Pathfinder workspace">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[#695935] bg-[#111317] text-white">
+                    <SelectContent className="border-[#695935] bg-[#090a0c] text-white">
                       {availableCenters.map(key => {
                         const item = CENTER_CONFIG[key];
                         const unreadSummary = centerUnreadSummary(key, unreadCounts);
@@ -701,7 +701,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       </div>
 
       {(!collapsed || mobile) && (!desktopCenterPage || mobile) && <div className="px-3 pt-3">
-        <div className="flex items-center gap-2 rounded-lg border border-[#695935] bg-[#111317] px-3 py-2.5 shadow-inner transition focus-within:border-cyan-600/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
+        <div className="flex items-center gap-2 rounded-lg border border-[#695935] bg-[#090a0c] px-3 py-2.5 shadow-inner transition focus-within:border-cyan-600/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
           <Search className="h-3.5 w-3.5 text-[#b8a06b]" />
           <input value={search} onChange={event => setSearch(event.target.value)} aria-label={mobile ? 'Search authorized Pathfinder tools' : `Search ${center.label}`} placeholder={mobile ? 'Search all authorized tools…' : `Search ${center.label}`} className="w-full bg-transparent text-base text-white outline-none placeholder:text-[#b8a06b] md:text-sm" />
         </div>
@@ -770,11 +770,11 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         {!mobile && (
           <>
             {(!collapsed || mobile) && <div className="mb-1 px-2.5 pt-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#b8a06b]">Communication</div>}
-            <Link to={createPageUrl('OfficerInbox')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-[#302d25] text-white' : 'border-[#695935] bg-[#111317] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><MessageCircle className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">TEAMS MESSAGES</span>}</Link>
-            <Link to={createPageUrl('OutlookMail')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-[#302d25] text-white' : 'border-[#695935] bg-[#111317] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><Mail className="h-4 w-4 text-blue-300" />{!collapsed && <span className="text-[11px] font-black">OUTLOOK MAIL</span>}</Link>
-            {(hasFullAccess(user) || hasRole(user, 'officer')) && <Link to={createPageUrl('OfficerChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerChat' ? 'border-cyan-500/60 bg-[#302d25] text-white' : 'border-[#695935] bg-[#111317] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><Radio className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">OFFICER CHAT</span>}</Link>}
-            {(hasFullAccess(user) || allowedCenters(user).includes('supervisor')) && <Link to={createPageUrl('SupervisorChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'SupervisorChat' ? 'border-emerald-500/60 bg-[#123a35] text-white' : 'border-[#695935] bg-[#111317] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><ShieldCheck className="h-4 w-4 text-emerald-300" />{!collapsed && <span className="text-[11px] font-black">SUPERVISOR CHAT</span>}</Link>}
-            <Link to={createPageUrl('Announcements')} className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'Announcements' ? 'border-amber-500/60 bg-[#3a2d12] text-white' : 'border-[#695935] bg-[#111317] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><Bell className="h-4 w-4 text-amber-300" />{!collapsed && <span className="text-[11px] font-black">ANNOUNCEMENTS</span>}</Link>
+            <Link to={createPageUrl('OfficerInbox')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-[#302d25] text-white' : 'border-[#695935] bg-[#090a0c] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><MessageCircle className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">TEAMS MESSAGES</span>}</Link>
+            <Link to={createPageUrl('OutlookMail')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-[#302d25] text-white' : 'border-[#695935] bg-[#090a0c] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><Mail className="h-4 w-4 text-blue-300" />{!collapsed && <span className="text-[11px] font-black">OUTLOOK MAIL</span>}</Link>
+            {(hasFullAccess(user) || hasRole(user, 'officer')) && <Link to={createPageUrl('OfficerChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'OfficerChat' ? 'border-cyan-500/60 bg-[#302d25] text-white' : 'border-[#695935] bg-[#090a0c] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><Radio className="h-4 w-4 text-cyan-300" />{!collapsed && <span className="text-[11px] font-black">OFFICER CHAT</span>}</Link>}
+            {(hasFullAccess(user) || allowedCenters(user).includes('supervisor')) && <Link to={createPageUrl('SupervisorChat')} className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'SupervisorChat' ? 'border-emerald-500/60 bg-[#123a35] text-white' : 'border-[#695935] bg-[#090a0c] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><ShieldCheck className="h-4 w-4 text-emerald-300" />{!collapsed && <span className="text-[11px] font-black">SUPERVISOR CHAT</span>}</Link>}
+            <Link to={createPageUrl('Announcements')} className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 ${currentPageName === 'Announcements' ? 'border-amber-500/60 bg-[#3a2d12] text-white' : 'border-[#695935] bg-[#090a0c] text-[#ebd298]'} ${collapsed ? 'justify-center px-0' : ''}`}><Bell className="h-4 w-4 text-amber-300" />{!collapsed && <span className="text-[11px] font-black">ANNOUNCEMENTS</span>}</Link>
           </>
         )}
 
@@ -820,8 +820,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         {mobile && (query || mobileSection) && groups.length===0 && <div className="px-3 py-8 text-center text-sm text-[#ebd298]">{query?'No authorized pages match your search.':'No additional pages are assigned to this account.'}</div>}
       </nav>
 
-      <div className={`border-t border-[#302d25] bg-[#111317]/95 backdrop-blur ${mobile ? 'mobile-tool-footer' : 'p-2.5'}`}>
-        {(!collapsed || mobile) && <div className={`${mobile ? 'mobile-account-card' : 'mb-2'} rounded-lg border border-[#695935] bg-gradient-to-br from-[#1a1b1c] to-[#111317] px-3 py-2.5 shadow-inner`}>
+      <div className={`border-t border-[#302d25] bg-[#090a0c]/95 backdrop-blur ${mobile ? 'mobile-tool-footer' : 'p-2.5'}`}>
+        {(!collapsed || mobile) && <div className={`${mobile ? 'mobile-account-card' : 'mb-2'} rounded-lg border border-[#695935] bg-gradient-to-br from-[#1a1b1c] to-[#090a0c] px-3 py-2.5 shadow-inner`}>
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#695935] bg-[#1a1b1c] shadow-inner">
               {user?.profile_photo_url
@@ -846,7 +846,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 
       <AnimatePresence>{showDeleteAccountDialog && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4" onClick={() => setShowDeleteAccountDialog(false)}>
-          <motion.div initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 8 }} role="dialog" aria-modal="true" aria-labelledby="delete-account-title" className="w-full max-w-sm rounded-2xl border border-red-800/70 bg-[#111317] p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+          <motion.div initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 8 }} role="dialog" aria-modal="true" aria-labelledby="delete-account-title" className="w-full max-w-sm rounded-2xl border border-red-800/70 bg-[#090a0c] p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-950/70 text-red-300"><Trash2 className="h-5 w-5" /></div>
             <h2 id="delete-account-title" className="mt-4 text-lg font-black text-white">Request account deletion?</h2>
             <p className="mt-2 text-sm leading-relaxed text-[#ebd298]">This will sign you out and submit an account deletion request to Human Resources for processing.</p>
@@ -1541,18 +1541,18 @@ export default function Layout({ children, currentPageName }) {
   // GPS, CAD audio, refresh controls, duty briefings, or field menus at all.
   if (allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student') {
     return <AcceptableUseGate user={user}><div className="fixed inset-0 flex flex-col overflow-hidden bg-[#f6f2e8] text-[#1b1a17]">
-      <header className="flex min-h-16 items-center justify-between border-b border-[#cbb57a] bg-[#111214] text-[#f9f0d8] px-4 shadow-sm md:px-8">
+      <header className="flex min-h-16 items-center justify-between border-b border-[#cbb57a] bg-[#090a0c] text-[#f9f0d8] px-4 shadow-sm md:px-8">
         <Link to={createPageUrl('StudentPortal')} className="flex items-center gap-3 text-[#f2d48b]"><GraduationCap className="h-7 w-7"/><span className="text-base font-black">Black Point Student Portal</span></Link>
         <div className="flex items-center gap-3"><span className="hidden text-sm text-slate-600 sm:inline">{user?.first_name || 'Student'}</span><button type="button" onClick={() => logout(true)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100">Sign Out</button></div>
       </header>
       <main className="min-h-0 flex-1 overflow-y-auto pb-20">{currentPageName === 'StudentPortal' ? children : <div className="mx-auto max-w-xl p-8 text-center"><h1 className="text-xl font-bold">Student access only</h1><p className="mt-2 text-sm text-slate-500">Your account is assigned to the Student Portal.</p><Link to={createPageUrl('StudentPortal')} className="mt-5 inline-block rounded-lg bg-[#b39346] px-4 py-3 text-sm font-bold text-black">Go to Student Portal</Link></div>}</main>
-      <nav className="fixed inset-x-0 bottom-0 flex justify-center border-t border-[#cbb57a] bg-[#111214] text-[#f9f0d8] p-2" aria-label="Student navigation"><Link to={createPageUrl('StudentPortal')} className="flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-[#b39346] text-sm font-black text-black"><GraduationCap className="h-5 w-5"/>Student Portal</Link></nav>
+      <nav className="fixed inset-x-0 bottom-0 flex justify-center border-t border-[#cbb57a] bg-[#090a0c] text-[#f9f0d8] p-2" aria-label="Student navigation"><Link to={createPageUrl('StudentPortal')} className="flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-[#b39346] text-sm font-black text-black"><GraduationCap className="h-5 w-5"/>Student Portal</Link></nav>
     </div></AcceptableUseGate>;
   }
 
-  return <AcceptableUseGate user={user}><MicrosoftMailSetupGate user={user} enabled={false}><div className="fixed inset-0 flex overflow-hidden bg-[#090b0e] text-white cad-app"><PerformanceReviewTaskGate user={user} />{backgroundServicesReady && <NotificationMonitor user={user} />}{backgroundServicesReady && <OutlookNotificationMonitor user={user} />}{backgroundServicesReady && <TeamsNotificationMonitor user={user} />}<SupervisorOperationsMonitor user={user} enabled={backgroundServicesReady} /><CadSourceSyncMonitor user={user} /><GlobalMessageBanner user={user} /><CadVoiceBroadcastMonitor user={user} />{!allowedCenters(user).includes('student') && <WelcomeBriefing user={user} />}<MandatoryReadGate user={user} /><ForcedOOSOverlay />
+  return <AcceptableUseGate user={user}><MicrosoftMailSetupGate user={user} enabled={false}><div className="fixed inset-0 flex overflow-hidden bg-[#090a0c] text-white cad-app"><PerformanceReviewTaskGate user={user} />{backgroundServicesReady && <NotificationMonitor user={user} />}{backgroundServicesReady && <OutlookNotificationMonitor user={user} />}{backgroundServicesReady && <TeamsNotificationMonitor user={user} />}<SupervisorOperationsMonitor user={user} enabled={backgroundServicesReady} /><CadSourceSyncMonitor user={user} /><GlobalMessageBanner user={user} /><CadVoiceBroadcastMonitor user={user} />{!allowedCenters(user).includes('student') && <WelcomeBriefing user={user} />}<MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100050] flex items-stretch justify-start bg-black/75 p-0 backdrop-blur-[4px]" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
-      <motion.section initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -40, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[100dvh] max-h-[100dvh] w-[min(92vw,420px)] overflow-hidden rounded-r-2xl border-r border-[#695935] bg-[#111317] shadow-[0_30px_100px_rgba(0,0,0,.7)]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
+      <motion.section initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -40, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="pathfinder-mobile-drawer h-[100dvh] max-h-[100dvh] w-[min(92vw,420px)] overflow-hidden rounded-r-2xl border-r border-[#695935] bg-[#090a0c] shadow-[0_30px_100px_rgba(0,0,0,.7)]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'Pathfinder tools'} onClick={event => event.stopPropagation()}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => { if (user?.id) sessionStorage.removeItem(`bps-role-home-routed:${user.id}`); logout(true); }} />
       </motion.section>
     </motion.div>}</AnimatePresence>
@@ -1568,7 +1568,7 @@ export default function Layout({ children, currentPageName }) {
           initial={{ scale: 0.94, y: 24, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.96, y: 12, opacity: 0 }}
-          className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-xl border-2 border-red-500 bg-[#111317] shadow-[0_0_60px_rgba(239,68,68,.35)]"
+          className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-xl border-2 border-red-500 bg-[#090a0c] shadow-[0_0_60px_rgba(239,68,68,.35)]"
         >
           <div className="flex items-center gap-3 border-b border-red-700/60 bg-red-950/70 px-5 py-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-400 bg-red-600/20">
@@ -1615,7 +1615,7 @@ export default function Layout({ children, currentPageName }) {
     )}</AnimatePresence>, document.body) : null}
 
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <header className="pathfinder-header relative z-[300] flex min-h-14 shrink-0 items-center justify-between border-b border-[#302d25] bg-[#111317] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="pathfinder-header relative z-[300] flex min-h-14 shrink-0 items-center justify-between border-b border-[#302d25] bg-[#090a0c] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student'} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#695935] bg-[#1a1b1c] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#302d25] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
@@ -1668,7 +1668,7 @@ export default function Layout({ children, currentPageName }) {
               <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {gpsMenuOpen && typeof document !== 'undefined' && createPortal(
-              <div ref={gpsPopupRef} id="pathfinder-antenna-dialog" role="dialog" aria-labelledby="pathfinder-antenna-title" className="fixed right-3 top-[72px] z-[9999] max-h-[calc(100vh-84px)] w-[min(92vw,330px)] overflow-y-auto rounded-xl border border-[#695935] bg-[#111317] shadow-[0_18px_55px_rgba(0,0,0,.8)]">
+              <div ref={gpsPopupRef} id="pathfinder-antenna-dialog" role="dialog" aria-labelledby="pathfinder-antenna-title" className="fixed right-3 top-[72px] z-[9999] max-h-[calc(100vh-84px)] w-[min(92vw,330px)] overflow-y-auto rounded-xl border border-[#695935] bg-[#090a0c] shadow-[0_18px_55px_rgba(0,0,0,.8)]">
                 <div className="border-b border-[#302d25] bg-[#1a1b1c] px-3 py-3">
                   <div className="flex items-center justify-between gap-3"><h2 id="pathfinder-antenna-title" className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">GPS / External Antenna</h2><button type="button" onClick={() => setGpsMenuOpen(false)} aria-label="Close antenna settings" className="rounded p-2 text-slate-200 hover:bg-slate-700"><X className="h-4 w-4" /></button></div>
                   <div className="mt-1 text-[11px] font-bold text-white">
@@ -1691,7 +1691,7 @@ export default function Layout({ children, currentPageName }) {
                     type="button"
                     onClick={useDeviceGps}
                     disabled={gpsChanging}
-                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:opacity-50 ${!externalGps.connected ? 'border-emerald-600/60 bg-emerald-950/30' : 'border-slate-700 bg-[#111317] hover:border-slate-500'}`}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:opacity-50 ${!externalGps.connected ? 'border-emerald-600/60 bg-emerald-950/30' : 'border-slate-700 bg-[#090a0c] hover:border-slate-500'}`}
                   >
                     <div className="text-[10px] font-black uppercase text-white">Windows / Device GPS</div>
                     <div className="mt-0.5 text-[9px] text-slate-400">Use the computer, tablet, or Windows Location Services source.</div>
@@ -1711,13 +1711,13 @@ export default function Layout({ children, currentPageName }) {
                     type="button"
                     onClick={toggleExternalGpsLock}
                     disabled={gpsChanging || (!externalGps.connected && !externalGps.lockedToAntenna)}
-                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.lockedToAntenna ? 'border-cyan-500/70 bg-cyan-950/35' : 'border-slate-700 bg-[#111317] hover:border-cyan-600/70'}`}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.lockedToAntenna ? 'border-cyan-500/70 bg-cyan-950/35' : 'border-slate-700 bg-[#090a0c] hover:border-cyan-600/70'}`}
                   >
                     <div className="text-[10px] font-black uppercase text-white">{externalGps.lockedToAntenna ? 'Unlock Saved Antenna' : 'Lock This Antenna To This Computer'}</div>
                     <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.lockedToAntenna ? 'The saved receiver will remain preferred across logout, refresh, and restart until you unlock it.' : 'Prevent this computer from automatically switching to another approved GPS receiver.'}</div>
                   </button>
 
-                  <div className="rounded-lg border border-slate-700 bg-[#111317] p-2.5">
+                  <div className="rounded-lg border border-slate-700 bg-[#090a0c] p-2.5">
                     <label htmlFor="pathfinder-gps-baud" className="block text-[9px] font-black uppercase tracking-wider text-slate-400">Receiver baud rate</label>
                     <select
                       id="pathfinder-gps-baud"
@@ -1747,7 +1747,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
           {serialPortRequest && typeof document !== 'undefined' && createPortal(
             <div className="fixed inset-0 z-[100100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-              <div className="w-[min(94vw,520px)] overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#111317] shadow-[0_24px_80px_rgba(0,0,0,.85)]">
+              <div className="w-[min(94vw,520px)] overflow-hidden rounded-2xl border border-cyan-700/60 bg-[#090a0c] shadow-[0_24px_80px_rgba(0,0,0,.85)]">
                 <div className="border-b border-[#695935] bg-[#1a1b1c] px-5 py-4">
                   <div className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">Select External GPS Port</div>
                   <div className="mt-1 text-sm font-bold text-white">Choose the COM port connected to the GPS antenna.</div>
@@ -1762,7 +1762,7 @@ export default function Layout({ children, currentPageName }) {
                         key={port.portId}
                         type="button"
                         onClick={() => selectDesktopSerialPort(port.portId)}
-                        className="w-full rounded-xl border border-slate-700 bg-[#111317] px-4 py-3 text-left transition hover:border-cyan-500 hover:bg-cyan-950/25"
+                        className="w-full rounded-xl border border-slate-700 bg-[#090a0c] px-4 py-3 text-left transition hover:border-cyan-500 hover:bg-cyan-950/25"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-mono text-base font-black text-white">{title}</span>
@@ -1775,7 +1775,7 @@ export default function Layout({ children, currentPageName }) {
                     <div className="rounded-xl border border-amber-700/50 bg-amber-950/25 px-4 py-3 text-sm text-amber-200">No serial/COM ports were reported by Windows.</div>
                   )}
                 </div>
-                <div className="flex justify-end border-t border-[#695935] bg-[#111317] px-4 py-3">
+                <div className="flex justify-end border-t border-[#695935] bg-[#090a0c] px-4 py-3">
                   <button type="button" onClick={() => selectDesktopSerialPort('')} className="rounded-lg border border-slate-600 px-4 py-2 text-xs font-black text-slate-200 hover:bg-slate-800">CANCEL</button>
                 </div>
               </div>
@@ -1809,7 +1809,7 @@ export default function Layout({ children, currentPageName }) {
       <CommandPromotionBanner user={user}/>
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
-      <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${MODERNIZED_WORKSPACE_PAGES.has(currentPageName) ? 'pathfinder-modern-page' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#111317] text-white' : 'night-workspace bg-[#111317] text-slate-100'}`}>{children}</main>
+      <main ref={mainScrollRef} data-page={currentPageName} className={`bps-command-page mobile-field-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y ${OFFICER_MODERN_PAGES.has(currentPageName) ? 'officer-modern-workspace' : ''} ${MODERNIZED_WORKSPACE_PAGES.has(currentPageName) ? 'pathfinder-modern-page' : ''} ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#090a0c] text-white' : 'night-workspace bg-[#090a0c] text-slate-100'}`}>{children}</main>
       {/* Keep mobile tabs INSIDE the column-shaped workspace. As a sibling of
           the workspace they became a full-height FLEX ROW ITEM, squeezing the
           page and stretching Home into a vertical bar on iPhone. */}

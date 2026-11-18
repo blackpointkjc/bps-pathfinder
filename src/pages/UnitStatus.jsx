@@ -37,7 +37,7 @@ function UnitStatusPage() {
         }));
     }, [users, directory]);
     useEffect(() => subscribeOfficerLocationChanges(event => setUnits(rows => applyOfficerLocationEvent(rows, event))), []);
-    return <div className="min-h-full bg-[#07111d] p-3 text-white sm:p-5">
+    return <div className="min-h-full bg-[#111316] p-3 text-white sm:p-5">
         <WorkspaceHeader eyebrow="CAD / Personnel" title="Officer Status" description="Live duty state and assignments, organized by the company rank structure." metrics={[
           {label:'Operational officers',value:units.filter(isOperationalOfficer).length},
           {label:'Available',value:units.filter(isOperationalOfficer).filter(u=>u.status==='Available').length},

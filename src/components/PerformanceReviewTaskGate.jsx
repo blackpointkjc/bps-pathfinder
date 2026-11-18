@@ -62,9 +62,9 @@ export default function PerformanceReviewTaskGate({ user }) {
   if (!requiredReview || onReviewPage || responseInProgress) return null;
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#020711]/95 p-4 backdrop-blur-md">
-      <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-blue-500/35 bg-[#0b1522] shadow-[0_30px_100px_rgba(0,0,0,.65)]">
-        <div className="border-b border-slate-800 bg-gradient-to-r from-blue-950/80 to-[#0b1522] p-6">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#090a0c]/95 p-4 backdrop-blur-md">
+      <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-blue-500/35 bg-[#111316] shadow-[0_30px_100px_rgba(0,0,0,.65)]">
+        <div className="border-b border-slate-800 bg-gradient-to-r from-blue-950/80 to-[#111316] p-6">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
               <ClipboardCheck className="h-7 w-7 text-blue-300" />
@@ -76,7 +76,7 @@ export default function PerformanceReviewTaskGate({ user }) {
           </div>
         </div>
         <div className="space-y-5 p-6">
-          <div className="rounded-2xl border border-slate-700 bg-[#101b29] p-4">
+          <div className="rounded-2xl border border-slate-700 bg-[#191a1b] p-4">
             <div className="flex items-start gap-3">
               <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-slate-300" />
               <div>

@@ -267,7 +267,7 @@ export default function OfficerTraining() {
   const overdueCount = assignments.filter(a => a.due_date && isPast(new Date(a.due_date)) && a.status !== 'approved').length;
 
   return (
-    <div className="bps-command-page min-h-screen overflow-x-hidden bg-[#080d16] p-3 text-white sm:p-4 md:p-5">
+    <div className="bps-command-page min-h-screen overflow-x-hidden bg-[#090a0c] p-3 text-white sm:p-4 md:p-5">
       <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1180px' }}>
 
         {/* Header */}

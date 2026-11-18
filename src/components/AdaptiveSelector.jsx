@@ -39,7 +39,7 @@ export default function AdaptiveSelector({
           type="button"
           aria-haspopup="dialog"
           aria-expanded={open}
-          className="group flex min-h-11 w-full items-center gap-2 rounded-lg border border-slate-700/80 bg-[#0b1624] px-2.5 py-1.5 text-left transition hover:border-cyan-500/60"
+          className="group flex min-h-11 w-full items-center gap-2 rounded-lg border border-slate-700/80 bg-[#111316] px-2.5 py-1.5 text-left transition hover:border-cyan-500/60"
         >
           <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${accentClasses}`}>
             {ActiveIcon ? <ActiveIcon className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
@@ -54,7 +54,7 @@ export default function AdaptiveSelector({
         </Dialog.Trigger>
       </div>
 
-      <div className="hidden xl:flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-slate-800 bg-[#060d17]/80 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="hidden xl:flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-slate-800 bg-[#090a0c]/80 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {options.map(({ id, label: optionLabel, icon: Icon }) => {
           const selected = value === id;
           return (
@@ -97,7 +97,7 @@ export default function AdaptiveSelector({
                     type="button"
                     onClick={() => choose(item.id)}
                     aria-pressed={selected}
-                    className={`flex min-h-12 min-w-0 items-center gap-2 rounded-xl border p-2.5 text-left transition ${selected ? accentClasses : 'border-slate-800 bg-[#0d1826] text-slate-200 active:bg-slate-800'}`}
+                    className={`flex min-h-12 min-w-0 items-center gap-2 rounded-xl border p-2.5 text-left transition ${selected ? accentClasses : 'border-slate-800 bg-[#111316] text-slate-200 active:bg-slate-800'}`}
                   >
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-white/10' : 'bg-slate-950/70 text-slate-500'}`}>
                       {Icon ? <Icon className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}

@@ -157,7 +157,7 @@ export default function LinkedLegalRecordField({ formData, setFormData }) {
       <select
         value={selectedKey}
         onChange={event => selectRecord(event.target.value)}
-        className="h-10 w-full rounded-md border border-slate-700 bg-[#101f2e] px-3 text-sm text-slate-100"
+        className="h-10 w-full rounded-md border border-slate-700 bg-[#191a1b] px-3 text-sm text-slate-100"
         aria-label="Linked criminal complaint or summons"
       >
         <option value="">{complaintsLoading || summonsLoading ? 'Loading legal records…' : `Select a criminal complaint or summons (${options.length} available)`}</option>

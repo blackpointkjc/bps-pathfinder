@@ -511,13 +511,13 @@ export default function SupervisorPerformanceReview() {
         )}
 
         {!selectedReview && awaitingOfficerReviews.length > 0 && (
-          <Card className="overflow-hidden border border-slate-700 bg-[#0d1725] text-slate-100 shadow-xl">
-            <CardHeader className="border-b border-slate-800 bg-[#101b29]">
+          <Card className="overflow-hidden border border-slate-700 bg-[#111316] text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-slate-800 bg-[#191a1b]">
               <CardTitle className="text-white">Awaiting Officer Response ({awaitingOfficerReviews.length})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-4">
               {awaitingOfficerReviews.map(review => (
-                <div key={review.id} className="rounded-xl border border-slate-700 bg-[#101b29] p-4">
+                <div key={review.id} className="rounded-xl border border-slate-700 bg-[#191a1b] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-black text-white">{review.officer_name}</p>

@@ -449,7 +449,7 @@ export default function MyPerformanceAnalytics() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden px-4 py-4 sm:px-5 md:px-6">
       <div className="mx-auto w-full max-w-[1180px] min-w-0 space-y-5">
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-700 bg-[#0b1725] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-700 bg-[#111316] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">Officer Analytics</div>
             <h1 className="mt-1 flex items-center gap-2 text-2xl font-black text-white sm:text-3xl">

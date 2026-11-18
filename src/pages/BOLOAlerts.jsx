@@ -164,8 +164,8 @@ export default function BOLOAlerts() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#050a11] font-sans text-white">
-      <div className="flex-none border-b border-[#24354c] bg-[#0a1220] px-4 py-2.5">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#090a0c] font-sans text-white">
+      <div className="flex-none border-b border-[#635336] bg-[#111316] px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <AlertOctagon className="h-5 w-5 text-red-400" />
@@ -174,7 +174,7 @@ export default function BOLOAlerts() {
           <div className="flex-1" />
           <div className="relative w-full min-w-0 sm:w-auto sm:min-w-[240px]">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH BOLO, SUBJECT, PLATE, CASE..." className="h-10 w-full rounded-lg border border-[#2b405a] bg-[#0f1928] pl-8 pr-3 text-sm text-white outline-none focus:border-blue-500" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH BOLO, SUBJECT, PLATE, CASE..." className="h-10 w-full rounded-lg border border-[#635336] bg-[#191a1b] pl-8 pr-3 text-sm text-white outline-none focus:border-blue-500" />
           </div>
           {canCreate && <button onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-400 bg-red-700 px-4 text-[10px] font-black shadow-[0_0_18px_rgba(220,38,38,.25)] hover:bg-red-600 sm:h-9 sm:w-auto"><Plus className="h-4 w-4" />NEW BOLO</button>}
         </div>
@@ -182,14 +182,14 @@ export default function BOLOAlerts() {
 
       {pageError && <div role="alert" className="flex flex-none items-center justify-between gap-3 border-b border-red-700 bg-red-950/60 px-4 py-3 text-sm text-red-100"><span>{pageError}</span><button type="button" onClick={() => load()} className="rounded border border-red-500 px-3 py-1.5 text-xs font-semibold hover:bg-red-900">Retry</button></div>}
 
-      <div className="grid flex-none grid-cols-2 border-b border-[#24354c] bg-[#08111c] sm:grid-cols-4">
-        <button type="button" onClick={() => { setView('active'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'active' && typeFilter === 'all'}><div className="text-2xl font-bold text-green-400">{activeCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Active BOLOs</div></button>
-        <button type="button" onClick={() => { setView('drafts'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'drafts'}><div className="text-2xl font-bold text-amber-300">{draftCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Saved drafts</div></button>
-        <button type="button" onClick={() => { setView('active'); setTypeFilter('critical_safety'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'active' && typeFilter === 'critical_safety'}><div className="text-2xl font-bold text-red-400">{criticalSafetyCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Critical / officer safety</div></button>
-        <button type="button" onClick={() => { setView('history'); setTypeFilter('all'); }} className="min-h-20 px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'history'}><div className="text-2xl font-bold text-blue-300">{historyCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Past / resolved</div></button>
+      <div className="grid flex-none grid-cols-2 border-b border-[#635336] bg-[#111316] sm:grid-cols-4">
+        <button type="button" onClick={() => { setView('active'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#635336] px-4 py-3 text-left hover:bg-[#191a1b]" aria-pressed={view === 'active' && typeFilter === 'all'}><div className="text-2xl font-bold text-green-400">{activeCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Active BOLOs</div></button>
+        <button type="button" onClick={() => { setView('drafts'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#635336] px-4 py-3 text-left hover:bg-[#191a1b]" aria-pressed={view === 'drafts'}><div className="text-2xl font-bold text-amber-300">{draftCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Saved drafts</div></button>
+        <button type="button" onClick={() => { setView('active'); setTypeFilter('critical_safety'); }} className="min-h-20 border-r border-[#635336] px-4 py-3 text-left hover:bg-[#191a1b]" aria-pressed={view === 'active' && typeFilter === 'critical_safety'}><div className="text-2xl font-bold text-red-400">{criticalSafetyCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Critical / officer safety</div></button>
+        <button type="button" onClick={() => { setView('history'); setTypeFilter('all'); }} className="min-h-20 px-4 py-3 text-left hover:bg-[#191a1b]" aria-pressed={view === 'history'}><div className="text-2xl font-bold text-blue-300">{historyCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Past / resolved</div></button>
       </div>
 
-      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-[#24354c] bg-[#0b1320] px-3 py-2">
+      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-[#635336] bg-[#111316] px-3 py-2">
         <button type="button" aria-pressed={view === 'active'} onClick={() => { setView('active'); setTypeFilter('all'); }} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[11px] font-black ${view === 'active' ? 'border-green-500/60 bg-green-950/40 text-green-300' : 'border-slate-700 text-slate-500'}`}><Radio className="h-3 w-3" />ACTIVE ({activeCount})</button>
         <button type="button" aria-pressed={view === 'drafts'} onClick={() => { setView('drafts'); setTypeFilter('all'); }} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[11px] font-black ${view === 'drafts' ? 'border-amber-500/60 bg-amber-950/40 text-amber-200' : 'border-slate-700 text-slate-500'}`}><Edit2 className="h-3 w-3" />DRAFTS ({draftCount})</button>
         <button type="button" aria-pressed={view === 'history'} onClick={() => { setView('history'); setTypeFilter('all'); }} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[11px] font-black ${view === 'history' ? 'border-blue-500/60 bg-blue-950/40 text-blue-300' : 'border-slate-700 text-slate-500'}`}><History className="h-3 w-3" />PAST / RESOLVED ({historyCount})</button>
@@ -198,7 +198,7 @@ export default function BOLOAlerts() {
         {Object.entries(TYPE_CONFIG).map(([key,cfg]) => <button type="button" aria-pressed={typeFilter === key} key={key} onClick={() => setTypeFilter(typeFilter === key ? 'all' : key)} className={`rounded px-2 py-1 text-[11px] ${typeFilter === key ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{cfg.label}</button>)}
       </div>
 
-      <div className="flex flex-none items-center justify-between border-b border-[#24354c] bg-[#0a1220] px-3 py-2 text-xs text-slate-400"><span>Showing {filtered.length} of {bolos.length} BOLO records</span>{typeFilter !== 'all' && <button type="button" onClick={() => setTypeFilter('all')} className="rounded border border-slate-600 px-2 py-1 font-semibold text-slate-200 hover:bg-slate-800">Clear type filter</button>}</div>
+      <div className="flex flex-none items-center justify-between border-b border-[#635336] bg-[#111316] px-3 py-2 text-xs text-slate-400"><span>Showing {filtered.length} of {bolos.length} BOLO records</span>{typeFilter !== 'all' && <button type="button" onClick={() => setTypeFilter('all')} className="rounded border border-slate-600 px-2 py-1 font-semibold text-slate-200 hover:bg-slate-800">Clear type filter</button>}</div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {loading ? <div role="status" className="p-10 text-center text-sm text-slate-400">Loading intelligence records…</div> : filtered.length===0 ? <div className="rounded-xl border border-dashed border-slate-600 p-12 text-center text-slate-400"><AlertOctagon className="mx-auto mb-3 h-8 w-8"/><p>No records match this view.</p></div> :
@@ -225,7 +225,7 @@ export default function BOLOAlerts() {
       {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onEdit={modal.mode === 'view' && canEditRecord(modal.bolo) ? () => setModal({ mode: 'edit', bolo: { ...modal.bolo } }) : null} onSaved={payload => { if (payload?.record) setBolos(current => mergeBoloRecord(current, payload.record)); setModal(null); }} />}
 
       <Dialog open={!!resolutionDialog} onOpenChange={open => { if (!open && !resolving) { setResolutionDialog(null); setResolutionText(''); } }}>
-        <DialogContent className="max-w-lg border-slate-700 bg-[#0b1320] text-white">
+        <DialogContent className="max-w-lg border-slate-700 bg-[#111316] text-white">
           <DialogHeader>
             <DialogTitle className="text-lg font-black tracking-wide">Resolve BOLO</DialogTitle>
           </DialogHeader>

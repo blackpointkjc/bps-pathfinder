@@ -92,7 +92,7 @@ function CommandTree({ users, allUsers, onOpen, onPhotoOpen }) {
 
 function AreaMember({ person, onOpen, onPhotoOpen }) {
   const label = [person.rank, person.last_name || person.first_name].filter(Boolean).join(' ');
-  return <button type="button" onClick={() => onOpen(person)} className="flex w-full items-center gap-3 rounded-xl border border-slate-700/80 bg-[#091625] px-3 py-2.5 text-left text-slate-100 transition hover:border-cyan-500/70 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+  return <button type="button" onClick={() => onOpen(person)} className="flex w-full items-center gap-3 rounded-xl border border-slate-700/80 bg-[#111316] px-3 py-2.5 text-left text-slate-100 transition hover:border-cyan-500/70 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-400">
     {person.profile_photo_url ? <img alt="Click to enlarge officer portrait" onClick={event=>{event.stopPropagation();onPhotoOpen?.(person);}} src={person.profile_photo_url} className="h-10 w-10 shrink-0 cursor-zoom-in rounded-full border border-slate-600 object-cover"/> : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
     <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{label || person.full_name || 'Officer'}</div><div className="mt-0.5 text-xs text-slate-400">Unit {person.unit_number || '—'}</div><div className="mt-1 text-xs text-cyan-200">Mobile: {person.mobile_phone||'Not on file'}</div>{(person.assigned_site_name||person.assigned_location||person.subdivision||person.substation)&&<div className="mt-1 text-xs text-emerald-300">{[person.assigned_site_name||person.assigned_location,person.subdivision,person.substation].filter(Boolean).join(' · ')}</div>}</div>
     <span className="shrink-0 text-xs text-cyan-300">View</span>
@@ -121,9 +121,9 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
   const rankGroups=RANKS.filter(rank=>!COMMAND_RANKS.has(rank)).map(rank=>({rank,people:fieldPeople.filter(person=>normalizeRank(person.rank)===rank)})).filter(group=>group.people.length);
   const unclassified=fieldPeople.filter(person=>!RANKS.includes(normalizeRank(person.rank)));
   if(unclassified.length)rankGroups.push({rank:'Other personnel',people:unclassified});
-  const fieldControl='mt-1 h-10 w-full rounded-lg border border-slate-700 bg-[#071726] px-3 text-sm font-semibold text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-80';
-  return <section className="overflow-hidden rounded-3xl border border-[#2a4459] bg-[#081625] shadow-2xl shadow-black/30">
-    <div className="min-w-0 border-b border-slate-700/70 bg-gradient-to-r from-[#112d44] via-[#0c2237] to-[#081625] p-3.5 sm:p-4 md:p-5">
+  const fieldControl='mt-1 h-10 w-full rounded-lg border border-slate-700 bg-[#111316] px-3 text-sm font-semibold text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-80';
+  return <section className="overflow-hidden rounded-3xl border border-[#635336] bg-[#111316] shadow-2xl shadow-black/30">
+    <div className="min-w-0 border-b border-slate-700/70 bg-gradient-to-r from-[#222321] via-[#222321] to-[#111316] p-3.5 sm:p-4 md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-400">Operational command chart</div><h2 className="mt-1 text-lg font-black leading-tight text-white sm:text-xl">Regional Platoon & Field Assignments</h2></div><span className="rounded-lg border border-cyan-900/70 bg-cyan-950/30 px-3 py-1.5 text-xs font-bold text-cyan-200">{platoon ? (platoon.startsWith('Platoon ')?platoon:`Platoon ${platoon}`) : 'No platoon'}</span></div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <label className="min-w-0 text-xs font-bold text-slate-300">Region / State<select aria-label="Select region" className={fieldControl} disabled={!companyAccess} value={region} onChange={e=>{setChosenRegion(e.target.value);setChosenPlatoon('');}}>{!regionNames.length&&<option value="">No regions configured</option>}{regionNames.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
@@ -132,7 +132,7 @@ function FocusedRankFlow({ users, viewer, commands = [], platoonDefinitions = []
       </div>
     </div>
     <div className="mx-auto min-w-0 max-w-6xl p-3 sm:p-4 md:p-6">
-      <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-b from-[#332714] to-[#101e2b] shadow-xl shadow-amber-950/20" data-platoon-command={platoon}>
+      <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-b from-[#332714] to-[#191a1b] shadow-xl shadow-amber-950/20" data-platoon-command={platoon}>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/25 px-4 py-3"><span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-amber-200"><Shield className="h-4 w-4"/>Active Platoon Command</span><span className={`rounded-md border px-2 py-1 text-[10px] font-bold ${commander?.status==='active'?'border-emerald-600/50 bg-emerald-950/30 text-emerald-300':'border-amber-500/30 bg-amber-950/40 text-amber-200'}`}>{commander?.status==='active'?'ACTIVE':commander?.status==='acting'?'ACTING':'VACANT'}</span></div>
         {commander?.id ? <div className="p-4 sm:p-5">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
@@ -232,7 +232,7 @@ export default function RankStructure(){
     <div className="min-w-0 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 to-slate-950 p-3.5 sm:p-5"><div className="flex items-center gap-3"><div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"><Shield className="h-7 w-7 text-amber-400"/></div><div><h1 className="text-lg font-black tracking-wide sm:text-2xl">RANK STRUCTURE & CHAIN OF COMMAND</h1><p className="text-sm text-slate-400">Company command and regional platoons are organized by rank, with each officer’s current assignment shown on their card.</p></div></div></div>
 
     {hasSupervisorAccess(user) && <div className="flex justify-end"><button type="button" onClick={()=>setPrintRequested(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-500 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-600 sm:w-auto sm:py-2"><Printer className="h-4 w-4"/>Print Personnel / Command Roster</button></div>}
-    {hasRoster && isCompanyCommand && <section className="rounded-2xl border border-amber-700/50 bg-[#0e1829] p-4 sm:p-5">
+    {hasRoster && isCompanyCommand && <section className="rounded-2xl border border-amber-700/50 bg-[#191a1b] p-4 sm:p-5">
       <button type="button" aria-expanded={companyExpanded} onClick={()=>setCompanyExpanded(value=>!value)} className="flex w-full items-center justify-between gap-3 text-left"><span className="flex items-center gap-2 text-lg font-black text-white"><Shield className="h-5 w-5 text-amber-300"/>Company Command</span><span className="text-xs font-semibold text-amber-200">{companyExpanded?'Minimize':'Expand'}</span></button>
       {companyExpanded&&<div className="mt-4"><p className="mb-3 text-xs text-slate-400">Colonel · Lieutenant Colonels · Majors — above regional Platoon leadership</p><CommandTree users={active.filter(person=>COMMAND_RANKS.has(person.rank))} allUsers={active} onOpen={setSelectedPerson} onPhotoOpen={setPhotoPerson}/></div>}
     </section>}

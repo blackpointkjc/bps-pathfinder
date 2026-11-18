@@ -190,7 +190,7 @@ export default function ExpenseReports() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#0b2c27_0,_#07101c_42%,_#050a12_100%)] p-3 text-slate-100 sm:p-4 md:p-6">
       <div className="mx-auto max-w-[1500px] space-y-5">
-        <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-[#102c2b] via-[#0c1a26] to-[#07101c] p-5 shadow-2xl md:p-7">
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-[#191a1b] via-[#111316] to-[#111316] p-5 shadow-2xl md:p-7">
           <div className="mobile-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-500/10 shadow-lg sm:h-14 sm:w-14">
@@ -209,7 +209,7 @@ export default function ExpenseReports() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Card className="overflow-hidden rounded-2xl border border-amber-700/50 bg-gradient-to-br from-amber-950/55 to-[#0d1725] text-white shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-amber-700/50 bg-gradient-to-br from-amber-950/55 to-[#111316] text-white shadow-xl">
             <CardContent className="p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -221,7 +221,7 @@ export default function ExpenseReports() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border border-emerald-700/50 bg-gradient-to-br from-emerald-950/55 to-[#0d1725] text-white shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-emerald-700/50 bg-gradient-to-br from-emerald-950/55 to-[#111316] text-white shadow-xl">
             <CardContent className="p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -233,7 +233,7 @@ export default function ExpenseReports() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border border-blue-700/50 bg-gradient-to-br from-blue-950/55 to-[#0d1725] text-white shadow-xl">
+          <Card className="overflow-hidden rounded-2xl border border-blue-700/50 bg-gradient-to-br from-blue-950/55 to-[#111316] text-white shadow-xl">
             <CardContent className="p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -246,7 +246,7 @@ export default function ExpenseReports() {
           </Card>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0d1725] text-slate-100 shadow-xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-700/80 bg-[#111316] text-slate-100 shadow-xl">
           <CardHeader>
             <CardTitle>My Expense Reports</CardTitle>
           </CardHeader>
@@ -259,7 +259,7 @@ export default function ExpenseReports() {
             ) : (
               <div className="space-y-4">
                 {expenses.map((expense) => (
-                  <div key={expense.id} className="rounded-xl border border-slate-700 bg-[#101b29] p-4 transition-all hover:border-emerald-600/50 hover:shadow-lg">
+                  <div key={expense.id} className="rounded-xl border border-slate-700 bg-[#191a1b] p-4 transition-all hover:border-emerald-600/50 hover:shadow-lg">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">

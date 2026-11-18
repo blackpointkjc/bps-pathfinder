@@ -86,7 +86,7 @@ export default function SupervisorDailyCode() {
   }
 
   return (
-    <div className="bps-command-page mx-auto min-h-screen max-w-3xl space-y-6 bg-[#080d16] p-4 text-white md:p-8">
+    <div className="bps-command-page mx-auto min-h-screen max-w-3xl space-y-6 bg-[#090a0c] p-4 text-white md:p-8">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-slate-600 -ml-2">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back

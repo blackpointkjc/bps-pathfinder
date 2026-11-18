@@ -976,7 +976,7 @@ export default function DailyActivityReports() {
 
                 <div className="space-y-2">
                    <Label>Hourly Activity Entries *</Label>
-                   <div className="p-3 bg-[#111d2b] border border-slate-700 rounded-lg mb-3">
+                   <div className="p-3 bg-[#191a1b] border border-slate-700 rounded-lg mb-3">
                      <p className="text-xs text-slate-200 font-semibold mb-2">Add timestamped entries</p>
                      <div className="space-y-3">
                        <div className="space-y-1">
@@ -1028,7 +1028,7 @@ export default function DailyActivityReports() {
                          {formData.hourly_entries_array.map((entry, idx) => {
                            const isSiteCheck = entry.text?.includes('arrived on site to conduct a site check') || entry.text?.includes('departed the site after conducting a site check');
                            return (
-                           <div key={idx} className={`flex items-start justify-between gap-2 p-3 rounded border ${isSiteCheck ? 'bg-emerald-950/25 border-emerald-600/50' : 'bg-[#0d1825] border-slate-700'}`}>
+                           <div key={idx} className={`flex items-start justify-between gap-2 p-3 rounded border ${isSiteCheck ? 'bg-emerald-950/25 border-emerald-600/50' : 'bg-[#111316] border-slate-700'}`}>
                              <div className="flex-1">
                                {isSiteCheck && <p className="text-xs text-emerald-300 font-semibold mb-1">🔒 Supervisor Site Check</p>}
                                <p className="font-mono font-semibold text-slate-100">{entry.time}</p>

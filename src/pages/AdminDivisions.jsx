@@ -314,7 +314,7 @@ export default function AdminDivisions() {
   }
 
   return (
-    <div className="bps-command-page divisions-page min-h-screen bg-[#080d16] p-3 text-white sm:p-4 md:p-6">
+    <div className="bps-command-page divisions-page min-h-screen bg-[#090a0c] p-3 text-white sm:p-4 md:p-6">
       <div className="mx-auto w-full max-w-[1400px] min-w-0 space-y-6">
         <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex min-w-0 items-start gap-3">

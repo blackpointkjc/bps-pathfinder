@@ -4,7 +4,7 @@ import {base44} from '@/api/base44Client';
 import {rentRollRowsFromText,RENT_ROLL_CSV_HEADERS} from '@/lib/rentRollCsv';
 import {Download,FileUp,CheckCircle2,AlertTriangle} from 'lucide-react';
 
-const button='rounded-lg border border-cyan-700 bg-[#0a2639] px-3 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50';
+const button='rounded-lg border border-cyan-700 bg-[#222321] px-3 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50';
 function downloadTemplate(){
  const escape=value=>'"'+String(value||'').replaceAll('"','""')+'"';
  const content=RENT_ROLL_CSV_HEADERS.map(escape).join(',')+'\r\n';
@@ -51,7 +51,7 @@ export default function RentRollImportPanel({site,onImported,onImportingChange})
   }catch(e){setError('Import stopped: '+(e?.response?.data?.error||e?.data?.error||e.message||'Server unavailable')+'. Previously completed batches remain saved; reimporting is safe and matches existing residents and vehicle plates.');setSummary(result);if(result.processed>0){try{await onImported?.()}catch{}}}
   finally{setBusy(false);onImportingChange?.(false)}
  };
- return <section className="space-y-3 rounded-xl border border-cyan-600/60 bg-[#0b263c] p-3 sm:p-4">
+ return <section className="space-y-3 rounded-xl border border-cyan-600/60 bg-[#222321] p-3 sm:p-4">
   <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="flex items-center gap-2 text-sm font-black text-cyan-100"><FileUp size={19}/>Bulk import rent roll / residents</h3><p className="mt-1 text-xs text-slate-300">Upload a CSV or paste a list. All residents and vehicles will be linked to <b>{site||'the selected property'}</b>. Matching resident names and units are updated instead of duplicated.</p></div><button type="button" className={button} onClick={downloadTemplate}><Download size={13} className="mr-1 inline"/>Download CSV template</button></div>
   <label className="block text-xs font-semibold">Choose a CSV / text file<input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={!site||busy} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs" onChange={e=>{void fileSelected(e.target.files?.[0]);e.target.value=''}}/></label>
   <label className="block text-xs font-semibold">Or paste a list (CSV columns or one resident name + unit per line)<AIRewriteField value={raw} disabled={!site||busy} onChange={e=>{setRaw(e.target.value);setSource('Pasted list');setConfirmed(false);setSummary(null)}} rows={4} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs text-white" placeholder={'full_name,unit_number,vehicle_plate,vehicle_state\nJane Example,101,ABC123,VA\nJane Example,101,DEF456,VA\nJohn Example,102'}/></label>

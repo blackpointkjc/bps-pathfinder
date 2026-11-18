@@ -239,7 +239,7 @@ export default function AdminAnnouncements() {
   }) || [];
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
       <div className="max-w-6xl mx-auto space-y-5">
         <WorkspaceHeader eyebrow="Administration / Communications" title="Manage Announcements" description="Publish company updates, target the right audience and track read receipts." metrics={[
           {label:'Announcements',value:filteredAnnouncements.length},

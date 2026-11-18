@@ -401,7 +401,7 @@ export default function ManageTimeEntries() {
   const activeOfficers = allUsers.filter(isOperationalOfficer).sort(comparePersonnel);
 
   return (
-    <div className="bps-command-page min-h-screen bg-[#080d16] p-4 text-white md:p-8">
+    <div className="bps-command-page min-h-screen bg-[#090a0c] p-4 text-white md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <WorkspaceHeader eyebrow="Administration / Employee time" title="Manage Time Entries" description="Review attendance, correct punches and document changes. Open an entry to edit its full record." metrics={[
           {label:'Entries shown',value:timeEntries.length},{label:'Active shifts',value:timeEntries.filter(e=>!e.clock_out).length},{label:'Completed paid hours',value:timeEntries.filter(e=>e.clock_out).reduce((sum,e)=>sum+calculatePaidHours(e),0).toFixed(2)+' h'}

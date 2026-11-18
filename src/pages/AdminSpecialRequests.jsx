@@ -312,7 +312,7 @@ export default function AdminSpecialRequests({embedded=false}) {
   );
 
   return (
-    <div className={embedded?"text-white":"bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8"}>
+    <div className={embedded?"text-white":"bps-command-page min-h-screen bg-[#090a0c] p-3 pb-24 text-white sm:p-4 md:p-8"}>
       <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />

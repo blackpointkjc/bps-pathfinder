@@ -136,7 +136,7 @@ export default function SupervisorInspections() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-[#0b1420] text-slate-100">
+    <div className="p-4 md:p-8 min-h-screen bg-[#111316] text-slate-100">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="mobile-page-header flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div>
@@ -404,7 +404,7 @@ export default function SupervisorInspections() {
           </Card>
         )}
 
-        <Card className="border border-slate-700 bg-[#111d2b] shadow-lg">
+        <Card className="border border-slate-700 bg-[#191a1b] shadow-lg">
           <CardHeader className="border-b border-slate-700">
             <CardTitle className="text-white">Inspection History</CardTitle>
           </CardHeader>
@@ -413,7 +413,7 @@ export default function SupervisorInspections() {
               {inspectionsLoading && <p className="py-8 text-center text-slate-400">Loading inspections...</p>}
               {inspectionsError && <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-200">Unable to load inspections: {inspectionsError.message}</div>}
               {!inspectionsLoading && !inspectionsError && inspections.map((inspection) => (
-                <div key={inspection.id} className="rounded-lg border border-slate-700 bg-[#0d1825] p-5">
+                <div key={inspection.id} className="rounded-lg border border-slate-700 bg-[#111316] p-5">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-bold text-white text-lg">{inspection.officer_inspected || 'Officer not selected'}</p>

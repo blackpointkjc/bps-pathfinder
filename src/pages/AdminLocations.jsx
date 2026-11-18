@@ -617,9 +617,9 @@ export default function AdminLocations({ embedded = false }) {
     .filter(Boolean);
 
   return (
-    <div className={embedded ? "bps-command-page min-h-0 bg-[#080d16] p-0 pb-8 text-white" : "bps-command-page min-h-screen bg-[#080d16] p-3 pb-24 text-white sm:p-4 md:p-8"}> 
+    <div className={embedded ? "bps-command-page min-h-0 bg-[#090a0c] p-0 pb-8 text-white" : "bps-command-page min-h-screen bg-[#090a0c] p-3 pb-24 text-white sm:p-4 md:p-8"}> 
       <div className={`${embedded ? 'w-full' : 'mx-auto max-w-7xl'} space-y-4`}>
-        <div className="flex flex-col gap-3 rounded-2xl border border-[#29445f] bg-[#0b1725] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#635336] bg-[#111316] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Shield className="h-6 w-6 text-blue-300" />
             <div>
@@ -669,7 +669,7 @@ export default function AdminLocations({ embedded = false }) {
           </Card>
         )}
 
-        <div className="rounded-2xl border border-[#29445f] bg-[#0b1725] p-3 shadow-lg sm:p-4">
+        <div className="rounded-2xl border border-[#635336] bg-[#111316] p-3 shadow-lg sm:p-4">
           <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-blue-300">
             <MapPin className="h-3 w-3" />Filter by region, division and substation
           </div>
@@ -1151,7 +1151,7 @@ export default function AdminLocations({ embedded = false }) {
               </div>
             </div>
 
-            <div ref={geofenceSectionRef} className="scroll-mt-4 rounded-xl border border-cyan-700/50 bg-[#081522] p-4 space-y-3">
+            <div ref={geofenceSectionRef} className="scroll-mt-4 rounded-xl border border-cyan-700/50 bg-[#111316] p-4 space-y-3">
               <div className="font-semibold text-cyan-200">Edit Geofence — {formData.site_name || 'New Location'}</div>
               {formData.is_special_event ? (
                 <p className="text-sm text-slate-300">This is a variable-location special event. Change it to a fixed site to configure a property geofence.</p>
@@ -1166,7 +1166,7 @@ export default function AdminLocations({ embedded = false }) {
               )}
             </div>
             {formData.latitude && formData.longitude && !formData.is_special_event && (
-              <div data-vaul-no-drag className="space-y-3 rounded-xl border border-slate-700 bg-[#081522] p-4">
+              <div data-vaul-no-drag className="space-y-3 rounded-xl border border-slate-700 bg-[#111316] p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <Label className="text-slate-100">Property & Geofence Boundary Editor</Label>
@@ -1249,7 +1249,7 @@ export default function AdminLocations({ embedded = false }) {
             )}
 
             {formData.latitude && formData.longitude && !formData.is_special_event && (
-              <div className="rounded-xl border border-blue-500/30 bg-[#0b1d31] p-4 space-y-4">
+              <div className="rounded-xl border border-blue-500/30 bg-[#191a1b] p-4 space-y-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <Label className="font-semibold text-blue-200 flex items-center gap-2">
@@ -1263,13 +1263,13 @@ export default function AdminLocations({ embedded = false }) {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <Label className="text-slate-300">Monitoring Boundary</Label>
-                      <div className="mt-1 rounded-lg border border-slate-700 bg-[#0e2138] px-3 py-2 text-sm text-white">
+                      <div className="mt-1 rounded-lg border border-slate-700 bg-[#222321] px-3 py-2 text-sm text-white">
                         {(formData.geofence_polygon || []).length >= 3 ? `Custom map polygon · ${formData.geofence_polygon.length} points` : 'Circle / radius fallback'}
                       </div>
                     </div>
                     <div>
                       <Label className="text-slate-300">Shared Fallback Radius</Label>
-                      <div className="mt-1 rounded-lg border border-slate-700 bg-[#0e2138] px-3 py-2 text-sm text-white">{formData.geofence_radius_meters || 100} meters · used only when no polygon is drawn</div>
+                      <div className="mt-1 rounded-lg border border-slate-700 bg-[#222321] px-3 py-2 text-sm text-white">{formData.geofence_radius_meters || 100} meters · used only when no polygon is drawn</div>
                     </div>
                     <div className="md:col-span-2">
                       <Label className="text-slate-300">Monitoring Notes</Label>

@@ -50,7 +50,7 @@ export default function AutoDispatchShadowFeed() {
   if (!evaluations.length) return null;
 
   return (
-    <section className="max-h-64 flex-none overflow-y-auto border-b border-cyan-500/30 bg-[#081522] p-3">
+    <section className="max-h-64 flex-none overflow-y-auto border-b border-cyan-500/30 bg-[#111316] p-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Radar className="h-5 w-5 text-cyan-300" />

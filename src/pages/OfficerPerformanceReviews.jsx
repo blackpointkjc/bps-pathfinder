@@ -138,7 +138,7 @@ export default function OfficerPerformanceReviews() {
     }
   };
 
-  return <div className="min-h-screen bg-[#08131f] p-4 text-slate-100 md:p-8">
+  return <div className="min-h-screen bg-[#111316] p-4 text-slate-100 md:p-8">
     <div className="mx-auto max-w-5xl space-y-5">
       <div>
         <h1 className="flex items-center gap-3 text-3xl font-bold"><ClipboardCheck className="text-amber-400"/>My Reviews & Feedback</h1>

@@ -491,7 +491,7 @@ export default function QRPatrolScan() {
   };
 
   return (
-    <div className="bps-command-page mx-auto max-w-3xl space-y-4 bg-[#080d16] p-4 pb-10 text-white md:p-6">
+    <div className="bps-command-page mx-auto max-w-3xl space-y-4 bg-[#090a0c] p-4 pb-10 text-white md:p-6">
       <div className="flex items-center gap-3 mb-2">
         <div className="bg-blue-600 p-2 rounded-xl">
           <QrCode className="w-6 h-6 text-white" />

@@ -102,13 +102,13 @@ export default function SupervisorTasks() {
   }
 
   return (
-    <div className="min-h-screen bg-[#070d17] p-3 pb-10 text-white sm:p-4">
+    <div className="min-h-screen bg-[#090a0c] p-3 pb-10 text-white sm:p-4">
       <div className="mx-auto max-w-[1500px] space-y-4">
-        {parkingReviews.length>0&&(group==='all'||group==='reports')&&<section className="rounded-xl border border-amber-500/40 bg-[#132236] p-4">
+        {parkingReviews.length>0&&(group==='all'||group==='reports')&&<section className="rounded-xl border border-amber-500/40 bg-[#191a1b] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-base font-black text-amber-200">Parking approval tasks ({parkingReviews.length})</h2><p className="mt-1 text-xs text-slate-400">Issued notices awaiting supervisor approval or return with correction notes.</p></div><button type="button" className="rounded-lg border border-cyan-600 px-3 py-2 text-xs font-bold" disabled={parkingFetching} onClick={()=>refreshParking()}>Refresh parking tasks</button></div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">{parkingReviews.slice(0,15).map(review=><button type="button" key={review.id} className="rounded-lg border border-slate-600 p-3 text-left hover:border-amber-500" onClick={()=>navigate(`${createPageUrl('SupervisorCenter')}?section=command&tool=parking`)}><div className="text-sm font-bold text-white">{review.citation_number||'Parking notice'} · {review.license_plate||'No plate'}</div><div className="mt-1 text-xs text-slate-300">{review.location} · {review.violation_date} · {review.violation_type}</div><div className="mt-1 text-[11px] text-amber-200">Open Parking Review to approve or return</div></button>)}</div>
         </section>}
-        <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-[#10233b] via-[#0b1726] to-[#07101c] p-4 shadow-lg sm:p-5">
+        <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-[#222321] via-[#111316] to-[#111316] p-4 shadow-lg sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-500/10"><ClipboardList className="h-5 w-5 text-emerald-300" /></div>
@@ -124,7 +124,7 @@ export default function SupervisorTasks() {
             </Button>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-            <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-[#0b1725] px-2.5 py-1 font-bold text-slate-200">
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-[#111316] px-2.5 py-1 font-bold text-slate-200">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
               {payload.fullAccess ? 'Company-wide view' : 'Assigned to you'}
             </span>
@@ -139,35 +139,35 @@ export default function SupervisorTasks() {
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <div className="rounded-xl border border-blue-500/30 bg-[#0d2033] p-4">
+          <div className="rounded-xl border border-blue-500/30 bg-[#191a1b] p-4">
             <div className="text-3xl font-black text-white">{summary.total}</div>
             <div className="text-sm font-bold text-white">Open action items</div>
             <p className="text-xs text-blue-200">{summary.urgent} high or critical</p>
           </div>
-          <div className="rounded-xl border border-cyan-500/30 bg-[#0d2033] p-4">
+          <div className="rounded-xl border border-cyan-500/30 bg-[#191a1b] p-4">
             <div className="text-3xl font-black text-white">{summary.byGroup.duty}</div>
             <div className="text-sm font-bold text-white">Duty &amp; attendance</div>
             <p className="text-xs text-cyan-200">Officer outreach follow-ups</p>
           </div>
-          <div className="rounded-xl border border-amber-500/30 bg-[#0d2033] p-4">
+          <div className="rounded-xl border border-amber-500/30 bg-[#191a1b] p-4">
             <div className="text-3xl font-black text-white">{summary.byGroup.conduct}</div>
             <div className="text-sm font-bold text-white">Conduct &amp; inspections</div>
             <p className="text-xs text-amber-200">Complaints, write-ups, inspections</p>
           </div>
-          <div className="rounded-xl border border-purple-500/30 bg-[#0d2033] p-4">
+          <div className="rounded-xl border border-purple-500/30 bg-[#191a1b] p-4">
             <div className="text-3xl font-black text-white">{summary.oldestDays}</div>
             <div className="text-sm font-bold text-white">Oldest item (days)</div>
             <p className="text-xs text-purple-200">{summary.byGroup.reviews} review · {summary.byGroup.reports} report · {summary.byGroup.live} live</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-[#0a1421] p-4 shadow-lg sm:p-5">
+        <div className="rounded-2xl border border-slate-800 bg-[#111316] p-4 shadow-lg sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setGroup('all')}
-                className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === 'all' ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#0b1725] text-slate-300 hover:text-white'}`}
+                className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === 'all' ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#111316] text-slate-300 hover:text-white'}`}
               >
                 All ({summary.total})
               </button>
@@ -176,7 +176,7 @@ export default function SupervisorTasks() {
                   key={option.id}
                   type="button"
                   onClick={() => setGroup(option.id)}
-                  className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === option.id ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#0b1725] text-slate-300 hover:text-white'}`}
+                  className={`min-h-9 rounded-lg border px-3 text-[11px] font-black uppercase tracking-wider transition ${group === option.id ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 bg-[#111316] text-slate-300 hover:text-white'}`}
                 >
                   {option.label} ({summary.byGroup[option.id] || 0})
                 </button>
@@ -188,7 +188,7 @@ export default function SupervisorTasks() {
                 value={search}
                 onChange={event => setSearch(event.target.value)}
                 placeholder="Search officer or task"
-                className="h-11 w-[240px] border-slate-700 bg-[#0b1725] pl-9 text-slate-100 placeholder:text-slate-500"
+                className="h-11 w-[240px] border-slate-700 bg-[#111316] pl-9 text-slate-100 placeholder:text-slate-500"
               />
             </div>
           </div>

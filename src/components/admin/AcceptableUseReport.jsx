@@ -23,7 +23,7 @@ export default function AcceptableUseReport(){
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='pathfinder-acceptable-use-approvals.csv';a.click();URL.revokeObjectURL(url);
   };
   if(me?.role!=='admin')return null;
-  return <section className="rounded-xl border border-cyan-800/65 bg-[#0c1928] p-4 text-white" aria-label="Acceptable use approval report">
+  return <section className="rounded-xl border border-cyan-800/65 bg-[#191a1b] p-4 text-white" aria-label="Acceptable use approval report">
     <div className="flex flex-wrap items-start justify-between gap-3"><div className="flex gap-3"><div className="rounded-lg border border-cyan-700 bg-cyan-900/20 p-2 text-cyan-300"><FileCheck2 className="h-6 w-6"/></div><div><h2 className="text-sm font-black">Pathfinder Application User Agreement — Approved Acknowledgments</h2><p className="mt-1 text-xs text-slate-400">Signed first-login approvals · policy version {data?.policy_version||'2026-10-31-pathfinder-v2'}</p></div></div>
       <div className="flex gap-2"><div className="rounded-lg border border-emerald-700/40 bg-emerald-950/40 px-3 py-2 text-sm font-black text-emerald-300">{data?.accepted_count||0} Approved</div><button type="button" onClick={()=>refetch()} className="rounded-lg border border-slate-600 px-3 py-2" title="Refresh approvals"><RefreshCw className="h-4 w-4"/></button><button type="button" onClick={exportCSV} disabled={!rows.length} className="flex items-center gap-1 rounded-lg border border-cyan-700 px-3 py-2 text-xs text-cyan-200 disabled:opacity-40"><Download className="h-4 w-4"/>Export CSV</button></div>
     </div>

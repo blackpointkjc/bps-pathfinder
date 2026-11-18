@@ -3,7 +3,7 @@ import {base44} from '@/api/base44Client';
 import {Search,Users,Car,RefreshCw,CheckCircle2} from 'lucide-react';
 
 const plate=value=>String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-const cls='h-11 w-full rounded-lg border border-slate-600 bg-[#0b1827] px-3 text-sm text-white';
+const cls='h-11 w-full rounded-lg border border-slate-600 bg-[#111316] px-3 text-sm text-white';
 const isMatch=(resident,cars,q)=>{
  const tokens=String(q||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
  const searchable=[resident.full_name,resident.unit_number,resident.building,resident.phone,resident.email,resident.lease_id,resident.lease_status,resident.lease_start,resident.lease_end,resident.resident_type,
@@ -45,7 +45,7 @@ export default function PropertyResidentPicker({site,onSelect,label='Search resi
   return data.residents.filter(row=>isMatch(row,data.vehicles.filter(car=>car.resident_id===row.id),query));
  },[data,query]);
  const select=(person,car=null)=>{setSelected({resident:person,vehicle:car});onSelect?.(person,car)};
- return <section className="space-y-3 rounded-xl border border-cyan-700/40 bg-[#0b2030] p-3 text-slate-100">
+ return <section className="space-y-3 rounded-xl border border-cyan-700/40 bg-[#191a1b] p-3 text-slate-100">
   <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-cyan-200"><Users size={17}/><span className="min-w-0 flex-1">{label}</span><button type="button" disabled={!site||loading||query.trim().length<2} onClick={()=>setReload(n=>n+1)} className="flex items-center gap-1 rounded-md border border-cyan-700 px-2 py-1 text-xs"><RefreshCw size={14}/>Refresh</button></div>
   {!site?<p className="text-xs text-amber-300">Choose the property first to search its resident and vehicle records.</p>:<>
     <div className="relative"><Search size={16} className="absolute left-3 top-3.5 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Start typing a name, unit, phone, email, plate, VIN, make, model or permit…" className={`${cls} pl-10`} aria-label="Type to find property residents and vehicles" autoComplete="off"/></div>
@@ -58,7 +58,7 @@ export default function PropertyResidentPicker({site,onSelect,label='Search resi
       const selectedResident=selected?.resident?.id===row.id;
       return <div key={row.id} className={`rounded-lg border p-2 ${selectedResident?'border-emerald-500 bg-emerald-950/20':'border-slate-700 bg-slate-950/60'}`}>
         <button type="button" onClick={()=>select(row)} className="flex w-full items-start gap-2 rounded p-2 text-left hover:bg-cyan-950/40"><Users size={16} className="mt-0.5 shrink-0 text-cyan-300"/><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-white">{row.full_name}</span><span className="block text-xs text-slate-300">Apartment / address: {row.unit_number||'Not recorded'}{row.building?` · Building ${row.building}`:''}</span><span className="mt-1 block text-[11px] font-bold capitalize text-emerald-300">Lease: {row.lease_status||'Not recorded'}</span>{row.phone&&<span className="block text-xs text-slate-400">{row.phone}</span>}</span>{selectedResident&&!selected?.vehicle&&<CheckCircle2 size={17} className="text-emerald-300"/>}</button>
-        {showVehicle&&cars.length>0&&<div className="mt-1 space-y-1 pl-4">{cars.map(car=><button type="button" key={car.id} onClick={()=>select(row,car)} className="flex w-full items-center gap-2 rounded-md border border-slate-700 bg-[#102135] px-3 py-2 text-left text-xs hover:border-cyan-500"><Car size={14} className="shrink-0 text-amber-300"/><span className="min-w-0 flex-1"><b>{plate(car.plate)} {car.state||'VA'}</b> · {car.year||''} {car.make||''} {car.model||''} {car.color||''} · Permit {car.permit_status||'unknown'}</span>{selectedResident&&selected?.vehicle?.id===car.id&&<CheckCircle2 size={16} className="shrink-0 text-emerald-300"/>}</button>)}</div>}
+        {showVehicle&&cars.length>0&&<div className="mt-1 space-y-1 pl-4">{cars.map(car=><button type="button" key={car.id} onClick={()=>select(row,car)} className="flex w-full items-center gap-2 rounded-md border border-slate-700 bg-[#191a1b] px-3 py-2 text-left text-xs hover:border-cyan-500"><Car size={14} className="shrink-0 text-amber-300"/><span className="min-w-0 flex-1"><b>{plate(car.plate)} {car.state||'VA'}</b> · {car.year||''} {car.make||''} {car.model||''} {car.color||''} · Permit {car.permit_status||'unknown'}</span>{selectedResident&&selected?.vehicle?.id===car.id&&<CheckCircle2 size={16} className="shrink-0 text-emerald-300"/>}</button>)}</div>}
       </div>;
     })}</div>}
     {selected&&<p role="status" className="flex gap-2 rounded-lg border border-emerald-600 bg-emerald-950/30 p-2 text-xs text-emerald-200"><CheckCircle2 size={16} className="shrink-0"/>Selected {selected.resident.full_name} · Unit {selected.resident.unit_number||'—'}{selected.vehicle?` · Vehicle ${selected.vehicle.plate}`:''}. Linked to this form.</p>}

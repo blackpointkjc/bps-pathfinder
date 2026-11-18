@@ -109,7 +109,7 @@ export default function AdminDocuments() {
   }
 
   return (
-    <div className="bps-command-page p-4 md:p-8 min-h-screen bg-[#080d16] text-white">
+    <div className="bps-command-page p-4 md:p-8 min-h-screen bg-[#090a0c] text-white">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
