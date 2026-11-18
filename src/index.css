@@ -2110,3 +2110,19 @@ html.bps-night-mode{
 .cad-app :is(button,a,[role="tab"])[class*="hover:bg-blue"]:hover{background:#403622!important;}
 .cad-app :is(button,a,[role="tab"]):focus-visible{outline:2px solid #edcc73!important;outline-offset:2px;}
 /* Rich data visualizations, maps, and operational red/green status colors are not recolored. */
+
+/* Final shared theme coverage for legacy Tailwind slate/blue utility pages.
+   Do not recolor explicit fire/medical/status warning UI or navigational maps. */
+.cad-app main:not(.light-workspace) :is(.bg-slate-950,.bg-gray-950){background-color:#0c0d0f!important;}
+.cad-app main:not(.light-workspace) :is(.bg-slate-900,.bg-gray-900){background-color:#151719!important;}
+.cad-app main:not(.light-workspace) :is(.bg-slate-800,.bg-gray-800){background-color:#232321!important;}
+.cad-app main:not(.light-workspace) :is(.bg-slate-700,.bg-gray-700){background-color:#353127!important;}
+.cad-app main:not(.light-workspace) :is(.border-slate-700,.border-slate-800,.border-gray-700,.border-gray-800){border-color:#534831!important;}
+.cad-app main:not(.light-workspace) :is(.border-cyan-500,.border-cyan-600,.border-cyan-700,.border-blue-500,.border-blue-600,.border-blue-700){border-color:#bc9b52!important;}
+.cad-app main:not(.light-workspace) :is(.text-cyan-300,.text-cyan-400,.text-sky-300,.text-blue-300,.text-blue-400):not([role="alert"]){color:#e6c679!important;}
+.cad-app main:not(.light-workspace) :is(.bg-cyan-950,.bg-blue-950){background-color:#29251b!important;}
+.cad-app main:not(.light-workspace) :is(.bg-cyan-900,.bg-blue-900){background-color:#3a3020!important;}
+.cad-app main:not(.light-workspace) :is(button.bg-cyan-700,button.bg-blue-700,button.bg-cyan-600,button.bg-blue-600){background-color:#bd9c54!important;color:#0c0d0f!important;}
+.cad-app main:not(.light-workspace) :is(button.bg-cyan-700,button.bg-blue-700,button.bg-cyan-600,button.bg-blue-600):hover{background-color:#f0d485!important;}
+.cad-app [role="dialog"] :is(.bg-slate-900,.bg-blue-950,.bg-cyan-950){background:#151719!important;}
+.cad-app [role="dialog"] :is(.border-slate-700,.border-cyan-700,.border-blue-700){border-color:#675737!important;}
