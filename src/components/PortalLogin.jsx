@@ -70,7 +70,7 @@ export default function PortalLogin(){
   <div className="bp-login-layout">
    <section className="bp-login-hero" aria-label="BlackPoint fleet and mission">
     <div className="bp-login-fleet-stage">
-     <video className="bp-login-fleet-video" autoPlay muted loop playsInline preload="metadata" poster="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg" aria-label="BlackPoint security vehicles" style={isVideo?{}:{display:'none'}}>
+     <video className="bp-login-fleet-video" autoPlay muted loop playsInline preload="metadata" poster="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg" aria-label="BlackPoint security vehicles" style={!activePhoto?{}:{display:'none'}}>
       <source src="https://media.base44.com/videos/public/694de31c7e0f5645fb95de52/8b3f7aa83_pathfinder-sign-in-background.mp4" type="video/mp4"/>
      </video>
      {activePhoto&&activePhoto.kind==='video'&&<video key={activePhoto.video_url} className="bp-login-fleet-video" autoPlay muted loop playsInline preload="metadata" poster={activePhoto.image_url||undefined}><source src={activePhoto.video_url} type={/\.webm(?:\?|$)/i.test(activePhoto.video_url)?'video/webm':'video/mp4'}/></video>}
