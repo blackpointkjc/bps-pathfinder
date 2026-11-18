@@ -8,7 +8,8 @@ export default async function(req:Request){
   const body=await req.json().catch(()=>({}));
   if(body.action==='public'){
    const all=await db.list('-created_date',100);
-   const now=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
+   const dateParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).formatToParts(new Date());
+   const now=`${dateParts.find(p=>p.type==='year')?.value}-${dateParts.find(p=>p.type==='month')?.value}`;
    const active=all.filter((r:any)=>r.active===true);
    const photos=active.filter((r:any)=>r.kind==='photo').sort((a:any,b:any)=>Number(a.sort_order||0)-Number(b.sort_order||0));
    const recognition=active.filter((r:any)=>['officer','supervisor'].includes(r.kind)&&r.month===now).sort((a:any,b:any)=>String(b.updated_date||'').localeCompare(String(a.updated_date||'')));

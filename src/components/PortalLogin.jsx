@@ -1,7 +1,7 @@
 import {publicBase44} from '@/api/publicClient';
 import {authEntry,assertAuthResponse,requestPasswordReset,completePasswordReset} from '@/lib/portalAuthFlow';
 import {recordLoginActivity} from '@/lib/sessionPolicy';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {base44,clearBase44ReadCache} from '@/api/base44Client';
 import {appParams} from '@/lib/app-params';
@@ -12,6 +12,15 @@ export default function PortalLogin(){
  const [mode,setMode]=useState(()=>{try{return entry.mode==='login'&&sessionStorage.getItem('bps:verification-email')?'verify':entry.mode;}catch{return entry.mode;}});
  const [form,setForm]=useState(()=>{let saved={};try{saved=JSON.parse(sessionStorage.getItem('bps:registration-draft')||'{}');}catch{}return {email:entry.email||saved.email||'',password:'',confirm_password:'',first_name:saved.first_name||'',last_name:saved.last_name||'',date_of_birth:saved.date_of_birth||'',requested_type:params.has('type')?entry.requestedType:saved.requested_type||'employee',otp:''};});
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const [showcase,setShowcase]=useState({photos:[],recognition:[]}),[slide,setSlide]=useState(0);
+ useEffect(()=>{
+  let alive=true;
+  const load=async()=>{try{const response=await publicBase44.functions.invoke('portalShowcase',{action:'public'});if(alive&&response?.data?.photos){setShowcase({photos:response.data.photos||[],recognition:response.data.recognition||[]});}}catch{/* Retain fleet video when the public showcase is unavailable. */}};
+  load();const refresh=window.setInterval(load,180000);
+  return()=>{alive=false;window.clearInterval(refresh);};
+ },[]);
+ useEffect(()=>{if(showcase.photos.length<2)return;const timer=window.setInterval(()=>setSlide(previous=>(previous+1)%showcase.photos.length),8500);return()=>window.clearInterval(timer);},[showcase.photos.length]);
+ const activePhoto=showcase.photos[slide%Math.max(1,showcase.photos.length)];
  const change=(key,value)=>setForm(p=>({...p,[key]:value}));
  const switchMode=m=>{if(m==='login')sessionStorage.removeItem('bps:verification-email');setMode(m);setError('');setMessage('');};
  async function enter(){
@@ -60,12 +69,14 @@ export default function PortalLogin(){
   <div className="bp-login-layout">
    <section className="bp-login-hero" aria-label="BlackPoint fleet and mission">
     <div className="bp-login-fleet-stage">
-     <video className="bp-login-fleet-video" autoPlay muted loop playsInline preload="metadata" poster="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg" aria-label="BlackPoint security vehicles">
+     <video className="bp-login-fleet-video" autoPlay muted loop playsInline preload="metadata" poster="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg" aria-label="BlackPoint security vehicles" style={activePhoto?{display:'none'}:{}}>
       <source src="https://media.base44.com/videos/public/694de31c7e0f5645fb95de52/8b3f7aa83_pathfinder-sign-in-background.mp4" type="video/mp4"/>
      </video>
-     <span className="bp-login-fleet-tag">BLACKPOINT · FIELD OPERATIONS</span>
+     {activePhoto&&<img className="bp-showcase-photo" src={activePhoto.image_url} alt={activePhoto.title||'BlackPoint fleet and operations'}/>}
+     <div className="bp-showcase-bottom"><div><span className="bp-login-fleet-tag">{activePhoto?.title||'BLACKPOINT · FIELD OPERATIONS'}</span>{activePhoto?.caption&&<p className="bp-showcase-caption">{activePhoto.caption}</p>}</div>{showcase.photos.length>1&&<div className="bp-showcase-controls" aria-label="Gallery controls"><button type="button" onClick={()=>setSlide(n=>(n+showcase.photos.length-1)%showcase.photos.length)} aria-label="Previous gallery photo">‹</button><span>{slide%showcase.photos.length+1} / {showcase.photos.length}</span><button type="button" onClick={()=>setSlide(n=>(n+1)%showcase.photos.length)} aria-label="Next gallery photo">›</button></div>}</div>
     </div>
-    <div className="bp-login-hero-copy"><span className="bp-login-badge">VIRGINIA DCJS LICENSED · #11-30423</span><h1>Your people. <span>Your mission.</span> One Pathfinder.</h1><p>Secure access for officers, students, clients and staff. All account options remain available in the sign-in panel.</p></div>
+    <div className="bp-login-hero-copy"><span className="bp-login-badge">VIRGINIA DCJS LICENSED · #11-30423</span><h1>One mission. <span>One Pathfinder.</span></h1><p>BlackPoint's secure operations platform for field officers, supervisors, staff, students and clients.</p></div>
+    {showcase.recognition.length>0&&<div className="bp-showcase-honors" aria-label="Monthly recognition">{showcase.recognition.map(person=><article key={person.id} className="bp-showcase-honor"><div className="bp-showcase-honor-image">{person.image_url?<img src={person.image_url} alt={person.title}/>:<span aria-hidden="true">★</span>}</div><div><p>{person.kind==='supervisor'?'SUPERVISOR OF THE MONTH':'OFFICER OF THE MONTH'}</p><strong>{person.title}</strong><small>{person.caption||'Recognized for outstanding service'}</small></div></article>)}</div>}
    </section>
    <section className="portal-card bp-login-card" aria-label="Account sign-in and recovery"><p className="portal-eyebrow">Secure account access</p><h2>{({login:'Welcome back',register:'Request an account',verify:'Verify your email',forgot:'Reset your password',reset:'Choose a new password'})[mode]}</h2>
     {error&&<div role="alert" className="portal-message portal-error">{error}</div>}
