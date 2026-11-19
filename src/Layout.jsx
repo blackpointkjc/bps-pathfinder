@@ -1654,19 +1654,22 @@ export default function Layout({ children, currentPageName }) {
           <div ref={gpsMenuRef} className={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student' ? 'hidden' : 'relative'}>
             <button
               type="button"
-              onClick={() => setGpsMenuOpen(open => !open)}
+              onClick={() => externalGps.lockedToAntenna || externalGps.connected
+                ? connectExternalAntenna(externalGps.baudRate || 4800)
+                : setGpsMenuOpen(open => !open)}
               className={`flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 font-black uppercase tracking-[0.08em] transition sm:px-3 ${externalGps.connected ? 'border-cyan-500/70 bg-cyan-950/35 text-cyan-100 hover:bg-cyan-900/45' : 'border-slate-600 bg-slate-900/70 text-slate-200 hover:border-slate-500 hover:bg-slate-800'}`}
               title="Change GPS / external antenna source"
               aria-label="Change GPS or external antenna source"
-              aria-expanded={gpsMenuOpen}
-              aria-haspopup="dialog"
-              aria-controls="pathfinder-antenna-dialog"
+              aria-expanded={externalGps.lockedToAntenna || externalGps.connected ? undefined : gpsMenuOpen}
+              aria-haspopup={externalGps.lockedToAntenna || externalGps.connected ? undefined : 'dialog'}
+              aria-controls={externalGps.lockedToAntenna || externalGps.connected ? undefined : 'pathfinder-antenna-dialog'}
             >
               <Radio className={`h-3.5 w-3.5 ${externalGps.connecting ? 'animate-pulse' : ''}`} />
               <span className="hidden md:inline">{externalGps.connecting ? 'Connecting GPS' : externalGps.lockedToAntenna || externalGps.portGranted ? 'GPS · Refresh' : 'External Antenna'}</span>
               <span className="md:hidden">Antenna</span>
-              <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />
+              {externalGps.lockedToAntenna || externalGps.connected ? <RotateCw className={`h-3 w-3 ${gpsChanging ? 'animate-spin' : ''}`} /> : <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />}
             </button>
+            {(externalGps.lockedToAntenna || externalGps.connected) && <button type="button" onClick={() => setGpsMenuOpen(open => !open)} aria-label="GPS device settings and change receiver" title="GPS settings / Change receiver" className="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-slate-600 bg-slate-900 text-slate-200"><Settings className="h-3.5 w-3.5"/></button>}
             {gpsMenuOpen && typeof document !== 'undefined' && createPortal(
               <div ref={gpsPopupRef} id="pathfinder-antenna-dialog" role="dialog" aria-labelledby="pathfinder-antenna-title" className="fixed right-3 top-[72px] z-[9999] max-h-[calc(100vh-84px)] w-[min(92vw,330px)] overflow-y-auto rounded-xl border border-[#315879] bg-[#071421] shadow-[0_18px_55px_rgba(0,0,0,.8)]">
                 <div className="border-b border-[#233b55] bg-[#0b1c2b] px-3 py-3">

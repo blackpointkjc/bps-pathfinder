@@ -728,18 +728,25 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
   // Never silently substitute a different COM port when multiple ports share
   // identical USB vendor/product IDs (Windows serial adapters often do).
   const saved = storedSelector();
-  const authorized = await navigator.serial.getPorts().catch(() => []);
-  const matching = saved ? authorized.filter(port => selectorMatches(port, saved)) : [];
-  const reuse = activePort && authorized.includes(activePort) ? activePort
-    : matching.length === 1 ? matching[0]
-    : !saved && authorized.length === 1 ? authorized[0] : null;
-  if (antennaLockEnabled() && saved && !reuse) {
-    emit({connected:false,connecting:false,portGranted:authorized.length>0,error:'Saved antenna is unavailable. Unlock it in Pathfinder before selecting a replacement.'});
-    throw new Error('Saved antenna not detected. Unlock the saved antenna in Pathfinder to select a replacement receiver.');
-  }
-  // Only a genuine new-device selection invokes Chromium's mandatory chooser.
-  // requestPort stays on the user gesture path for browsers enforcing it.
-  const selectPort = reuse ? Promise.resolve(reuse) : navigator.serial.requestPort();
+  // On initial approval, open the native permission chooser immediately in
+  // the user's click; awaiting getPorts first could lose Chromium activation.
+  const firstPermission = !saved && !state.portGranted;
+  const selectPort = firstPermission ? navigator.serial.requestPort() : (async () => {
+    const authorized = await navigator.serial.getPorts().catch(() => []);
+    const matching = saved ? authorized.filter(port => selectorMatches(port, saved)) : [];
+    const reuse = activePort && authorized.includes(activePort) ? activePort
+      : matching.length === 1 ? matching[0]
+      : !saved && authorized.length === 1 ? authorized[0] : null;
+    if (reuse) return reuse;
+    if (antennaLockEnabled() && saved) {
+      emit({ connected:false, connecting:false, portGranted:authorized.length>0,
+        error:'Saved antenna is unavailable. Change the receiver from Pathfinder settings.' });
+      throw new Error('Saved receiver is missing or ambiguous. Use GPS settings to authorize a replacement.');
+    }
+    // On a deliberate replacement (after unlock), permission is still owned
+    // by Chromium; no app can legally bypass its native authorization UI.
+    return navigator.serial.requestPort();
+  })();
   connectPromise = selectPort
     .then(async port => {
       const selector = portSelector(port);
@@ -770,7 +777,11 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
       await delay(400);
 
       const hasStableSelector = selector.usbVendorId != null || selector.usbProductId != null;
-      if (workerSerialSupported() && hasStableSelector) {
+      const approvedMatches = (await navigator.serial.getPorts().catch(() => []))
+        .filter(approved => selectorMatches(approved, selector));
+      // The worker can identify USB vendor/product but not Windows COM numbers.
+      // With two ports exposing the same ID, it must not guess the wrong COM.
+      if (workerSerialSupported() && hasStableSelector && approvedMatches.length === 1) {
         try {
           return await startWorkerPort({ baudRate, selector });
         } catch (workerError) {

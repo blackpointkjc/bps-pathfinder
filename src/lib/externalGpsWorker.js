@@ -128,7 +128,8 @@ async function selectGrantedPort(selector = {}) {
   const hasIdentity = (selector.usbVendorId !== null && selector.usbVendorId !== undefined)
     || (selector.usbProductId !== null && selector.usbProductId !== undefined);
   if (!hasIdentity) return ports.length === 1 ? ports[0] : null;
-  return ports.find(port => portMatches(port, selector)) || null;
+  const matches = ports.filter(port => portMatches(port, selector));
+  return matches.length === 1 ? matches[0] : null;
 }
 
 const recoverableSerialError = error => /framing|parity|buffer.?overrun|break.?error/i.test(String(error?.name || '')+' '+String(error?.message || ''));
