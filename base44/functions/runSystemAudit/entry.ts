@@ -102,7 +102,9 @@ Deno.serve(async (req) => {
         });
         if (limited) break;
       }
-      await delay(300);
+      // Full diagnostics are background work; pace entity scans rather than
+      // competing with live CAD/voice traffic for shared request limits.
+      await delay(750);
     }
 
     const throttledFailures = serviceFailures.filter(item =>

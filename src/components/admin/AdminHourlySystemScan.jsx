@@ -4,7 +4,11 @@ import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
-const STARTUP_DEFER_MS = 90 * 1000;
+const STARTUP_DEFER_MS = 3 * 60 * 1000;
+const SCAN_ATTEMPT_KEY='bps:hourly-scan-attempt-v1';
+const SCAN_BACKOFF_MS=30*60*1000;
+const lastAttempt=()=>{try{return Number(localStorage.getItem(SCAN_ATTEMPT_KEY)||0)||0;}catch{return 0;}};
+const saveAttempt=()=>{try{localStorage.setItem(SCAN_ATTEMPT_KEY,String(Date.now()));}catch{}};
 
 function combineAudits(serverAudit, clientAudit) {
   const findingMap = new Map();
@@ -40,7 +44,7 @@ export default function AdminHourlySystemScan({ user }) {
     let active = true;
 
     const runIfDue = async () => {
-      if (!active || runningRef.current || document.hidden) return;
+      if (!active || runningRef.current || document.hidden || Date.now()-lastAttempt()<SCAN_BACKOFF_MS) return;
       const requestHealth = getBase44RequestHealth();
       const recentLimitAt = requestHealth.recentRateLimitAt ? new Date(requestHealth.recentRateLimitAt).getTime() : 0;
       const recentlyThrottled = Number.isFinite(recentLimitAt) && recentLimitAt > 0 && Date.now() - recentLimitAt < 10 * 60 * 1000;
@@ -54,12 +58,19 @@ export default function AdminHourlySystemScan({ user }) {
           const lastScanAt = new Date(latest?.[0]?.scanned_at || 0).getTime();
           if (Number.isFinite(lastScanAt) && Date.now() - lastScanAt < ONE_HOUR_MS) return;
 
-          // Run the server and browser audits sequentially so the hourly scan does
-          // not compete with itself for the same Base44 request allowance.
+          // Record one cross-tab attempt before running a long 19-dataset audit.
+          // Failed/throttled checks must not immediately retry from another tab.
+          saveAttempt();
+          // Run server and browser audits sequentially to preserve CAD capacity.
           const serverResponse = await base44.functions.invoke('runSystemAudit', {});
           const serverAudit = serverResponse?.data || serverResponse || {};
-          const clientAudit = serverAudit.scan_incomplete ? { findings:[], summary:{skipped:'server_scan_incomplete'}, incomplete_areas:['Page Code'] } : await runClientFunctionalAudit({ includeFunctionalProbes: false });
-          if (serverAudit.error) throw new Error(serverAudit.error);
+          if (serverAudit.error || serverAudit.scan_incomplete) {
+            // An incomplete scan is not an all-clear and should not publish an
+            // empty issue list. Try again during a quieter future window.
+            console.warn('Hourly audit deferred after incomplete server scan:',serverAudit.error||serverAudit.status);
+            return;
+          }
+          const clientAudit = await runClientFunctionalAudit({ includeFunctionalProbes: false });
           const audit = combineAudits(serverAudit, clientAudit);
           const publishResponse = await base44.functions.invoke('publishSystemScan', { audit });
           const published = publishResponse?.data || publishResponse || {};
