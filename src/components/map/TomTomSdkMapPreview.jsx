@@ -156,6 +156,12 @@ function registerCadIcons(map){
 // base44.app URLs can fail credentialed tile-worker requests (wildcard CORS).
 // Use same-origin /functions, both in published and preview apps.
 const sdkProxyBase = () => `${window.location.origin}/functions/tomtomMapProxy`;
+// Keep a useful street-level close-up. The unrestricted MapLibre zoom (22)
+// exceeds the practical detail of TomTom's driving basemap and can show
+// empty tiles/obscuring 3D perspective at the far end of pinch-wheel zoom.
+const TOMTOM_CLOSE_ZOOM = 18.5;
+const TOMTOM_CLOSE_PITCH = 30;
+const safeZoom = value => Math.min(TOMTOM_CLOSE_ZOOM, Number(value) || 16);
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
 export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,onMapReady,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false}) {
@@ -229,7 +235,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     if(fitMarkers && !markerFitRef.current && units.length && map.getZoom){
       markerFitRef.current=true;
       const coordsArray=units.map(({position})=>[Number(position.longitude),Number(position.latitude)]);
-      if(coordsArray.length===1){map.easeTo({center:coordsArray[0],zoom:13.5,pitch:42,duration:300});}
+      if(coordsArray.length===1){map.easeTo({center:coordsArray[0],zoom:13.5,pitch:30,duration:300});}
       else{
         const bounds=coordsArray.reduce((acc,point)=>[[Math.min(acc[0][0],point[0]),Math.min(acc[0][1],point[1])],[Math.max(acc[1][0],point[0]),Math.max(acc[1][1],point[1])]],
           [[Infinity,Infinity],[-Infinity,-Infinity]]);
@@ -300,7 +306,8 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           style:{type:'standard',id:mapTheme==='night'?'streetDarkDriving':'streetLightDriving',include:[]},
           mapLibre:{container:elementRef.current,center:coords(currentLocation)
             ? [Number(currentLocation[1]),Number(currentLocation[0])] : coords(initialCenter)
-              ? [Number(initialCenter[1]),Number(initialCenter[0])] : [-77.436,37.541],zoom:fitMarkers?12:coords(currentLocation)?15:11.5,pitch:embedded?0:30},
+              ? [Number(initialCenter[1]),Number(initialCenter[0])] : [-77.436,37.541],zoom:fitMarkers?12:coords(currentLocation)?15:11.5,
+            maxZoom:TOMTOM_CLOSE_ZOOM,maxPitch:55,pitch:embedded?0:30},
           // MapLibre's transformRequest MUST be synchronous; an async callback
           // returns a Promise instead of RequestParameters and breaks tiles.
           transformRequest:request=>{
@@ -453,6 +460,12 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           if(!features.length && mapClickEnabledRef.current)onSelectPointRef.current?.([event.lngLat.lat,event.lngLat.lng]);
         });
         map.on('dragstart',()=>{userInteractedRef.current=true;});
+        // The SDK can preserve the driver's pitched camera during manual zoom.
+        // Ease toward a readable near-top-down view at the closest street scale.
+        map.on('zoomend',()=>{
+          if(cancelled || map.getZoom()<18 || map.getPitch()<=TOMTOM_CLOSE_PITCH)return;
+          map.easeTo({pitch:TOMTOM_CLOSE_PITCH,duration:220,essential:true});
+        });
         if(map.isStyleLoaded()) dataInit();
         const onMapError=e=>{
           if(cancelled)return;
@@ -575,7 +588,12 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     if(now-lastFollowAtRef.current<700)return;
     lastFollowAtRef.current=now;
     const bearing=Number.isFinite(Number(heading)) ? Number(heading) : map.getBearing();
-    map.easeTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:Math.max(map.getZoom(),16),pitch:55,bearing,duration:650,essential:true});
+    map.easeTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],
+      zoom:safeZoom(Math.max(map.getZoom(),16)),
+      // At building-level zoom, an upright camera keeps roads in frame and
+      // avoids viewing mostly sky/3D geometry on a small mobile viewport.
+      pitch:map.getZoom()>=18?TOMTOM_CLOSE_PITCH:45,
+      bearing,duration:650,essential:true});
   },[ready,currentLocation,heading,navigation?.instruction,speedMph]);
   useEffect(()=>{
     if(!ready || !recenterRevision)return;
