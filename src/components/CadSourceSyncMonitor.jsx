@@ -33,7 +33,11 @@ export default function CadSourceSyncMonitor({ user }) {
       running = true;
       try {
         const result = await requestCadLiveSync();
-        if (active && result?.success && !result?.skipped) {
+        // Real-time entity subscriptions already paint every new/updated call.
+        // A no-change source heartbeat must not trigger another full CAD read.
+        const changed=['created','updated','removed','property_alerts_created']
+          .some(field=>Number(result?.[field]||0)>0);
+        if (active && result?.success && !result?.skipped && changed) {
           window.dispatchEvent(new CustomEvent('bps-cad-ingest-finished', { detail: result }));
         }
       } catch (error) {

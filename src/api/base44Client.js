@@ -504,7 +504,16 @@ function protectedWrite(key, task, meta = {}) {
   const request = Promise.resolve()
     .then(task)
     .then(value => {
-      invalidateReadCacheForWrite(meta);
+      const payload = value?.data || value || {};
+      const isCadPoll = meta?.kind==='function' && meta?.name==='ingestGractivecalls';
+      const cadCounts = ['created','updated','removed','property_alerts_created'];
+      const unchangedCadPoll = isCadPoll && (payload.skipped===true ||
+        (payload.success===true && cadCounts.every(field =>
+          typeof payload[field]==='number' && payload[field]===0)));
+      // A successful GRAC heartbeat with no changed calls is NOT a data write.
+      // Invalidating every live-CAD query after each five-second heartbeat
+      // caused repeated dashboard reloads and contributed to shared 429 limits.
+      if (!unchangedCadPoll) invalidateReadCacheForWrite(meta);
       recordRequestTrace({
         label: requestLabel(meta),
         kind: meta.kind || 'write',
@@ -520,6 +529,7 @@ function protectedWrite(key, task, meta = {}) {
       // save in one tool, connected active views refresh immediately instead of
       // waiting for their staleTime window or a full browser reload.
       try {
+        if (unchangedCadPoll) return value;
         const detail = { ...meta, at: Date.now() };
         window.dispatchEvent(new CustomEvent('bps-data-changed', { detail }));
         if (typeof BroadcastChannel !== 'undefined') {
