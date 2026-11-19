@@ -1280,9 +1280,9 @@ export default function Layout({ children, currentPageName }) {
         // reads are cached rather than multiplied on every 10-second timer.
         const [alerts, receipts, calls, locations] = await Promise.all([
           incomingAlert?.id ? Promise.resolve([incomingAlert]) : base44.entities.PropertyAlert.list('-created_date', 50),
-          cachedRead('receipts',60_000,()=>user?.email ? base44.entities.PropertyAlertReceipt.filter({user_email:String(user.email).trim().toLowerCase()},'-dismissed_at',100) : Promise.resolve([])),
-          cachedRead('calls',30_000,()=>base44.entities.DispatchCall.list('-created_date',80)),
-          cachedRead('locations',5*60_000,()=>base44.entities.Location.list('site_name',100)),
+          incomingAlert?.id ? Promise.resolve(cache.receipts) : cachedRead('receipts',60_000,()=>user?.email ? base44.entities.PropertyAlertReceipt.filter({user_email:String(user.email).trim().toLowerCase()},'-dismissed_at',100) : Promise.resolve([])),
+          incomingAlert?.id ? Promise.resolve(cache.calls) : cachedRead('calls',30_000,()=>base44.entities.DispatchCall.list('-created_date',80)),
+          incomingAlert?.id ? Promise.resolve(cache.locations) : cachedRead('locations',5*60_000,()=>base44.entities.Location.list('site_name',100)),
         ]);
         const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
         const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
@@ -1310,7 +1310,7 @@ export default function Layout({ children, currentPageName }) {
           if (!propertyAlertWasTimely(item)) return false;
           const location = locationById.get(String(item.propertyId));
           const inactiveProperty = location && (location.active === false || location.property_monitoring_enabled !== true);
-          const inactiveCall = linkedCall && HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status));
+          const inactiveCall = HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall?.status || item.callStatus));
           if (inactiveProperty || inactiveCall || seenPairs.has(eventKey)) return false;
           seenPairs.add(eventKey);
           return Number.isFinite(eventTime)
@@ -1333,15 +1333,15 @@ export default function Layout({ children, currentPageName }) {
         let location = locationById.get(String(record.propertyId));
         // New alerts may precede the corresponding call's cached list index.
         // Resolve just the missing record, not another full database scan.
-        if (!linkedCall || !location) {
+        if (!location || (!linkedCall && !incomingAlert?.id)) {
           const [freshCall,freshLocation]=await Promise.all([
-            linkedCall ? Promise.resolve(linkedCall) : base44.entities.DispatchCall.get(record.callId).catch(()=>null),
+            linkedCall || incomingAlert?.id ? Promise.resolve(linkedCall) : base44.entities.DispatchCall.get(record.callId).catch(()=>null),
             location ? Promise.resolve(location) : base44.entities.Location.get(record.propertyId).catch(()=>null),
           ]);
           linkedCall=freshCall||linkedCall;location=freshLocation||location;
         }
         if (!location || location.active===false || location.property_monitoring_enabled!==true
-          || (linkedCall && HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status)))) return;
+          || HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall?.status || record.callStatus))) return;
         // The popup is as site-specific as its horn and voice. An admin merely
         // being online must not wake them for a property they are not covering.
         if (!await mayReceivePropertyAlarm(base44,user,location) || cancelled) {

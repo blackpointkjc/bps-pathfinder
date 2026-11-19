@@ -938,7 +938,14 @@ export default function GlobalMessageBanner({ user }) {
         }).catch(() => null);
       };
       void recoverRecentPropertyCalls();
-      const onCadIngestFinished = () => { void recoverRecentPropertyCalls(); };
+      // Realtime creation owns normal delivery; don't run a full alert-list
+      // recovery after every five-second GRAC heartbeat and exhaust Base44.
+      let lastPropertyRecoveryAt=Date.now();
+      const onCadIngestFinished = () => {
+        if (Date.now()-lastPropertyRecoveryAt<60_000) return;
+        lastPropertyRecoveryAt=Date.now();
+        void recoverRecentPropertyCalls();
+      };
       window.addEventListener('bps-cad-ingest-finished', onCadIngestFinished);
       unsubscribers.push(() => window.removeEventListener('bps-cad-ingest-finished', onCadIngestFinished));
 

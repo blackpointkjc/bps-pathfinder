@@ -145,13 +145,16 @@ const readPriority = meta => {
   if (meta?.kind === 'auth') return 100;
   if (meta?.kind === 'function' && meta?.name === 'routeNavigation') return 99;
   if (meta?.kind === 'function' && ['getCallOutShifts','getNavigationLocations','geocodeNavigationDestination'].includes(meta?.name)) return 90;
-  if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 96;
+  // Realtime subscriptions deliver voice events. A recovery list is not
+  // allowed to jump ahead of urgent CAD/property reads in the shared queue.
+  if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return meta.action === 'list' ? 40 : 96;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
   if (meta?.kind === 'function' && meta?.name === 'getRoadSpeedLimit') return 86;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
+  if (meta?.kind === 'entity' && ['PropertyAlert','PropertyAlertReceipt'].includes(meta?.name)) return 97;
   if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer','TimeEntry'].includes(meta?.name)) return 90;
   if (meta?.kind === 'entity' && ['BOLOAlert','Vehicle','Schedule','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 82;
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
