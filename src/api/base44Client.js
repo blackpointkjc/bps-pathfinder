@@ -154,7 +154,8 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getRoadSpeedLimit') return 86;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
-  if (meta?.kind === 'entity' && ['PropertyAlert','PropertyAlertReceipt'].includes(meta?.name)) return 97;
+  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 97;
+  if (meta?.kind === 'entity' && meta?.name === 'PropertyAlertReceipt') return 80;
   if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer','TimeEntry'].includes(meta?.name)) return 90;
   if (meta?.kind === 'entity' && ['BOLOAlert','Vehicle','Schedule','PlannedShift','JobDutyRule','QRCheckpoint'].includes(meta?.name)) return 82;
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
@@ -239,7 +240,10 @@ function pumpReads() {
   const waitFor = job => Math.max(0, (job.readyAt || 0) - Date.now(),
     job.meta?.kind === 'entity' && job.meta?.method === 'list' ? entityListWaitMs() : 0,
     job.meta?.kind === 'auth' ? 0 : criticalRecovery,
-    job.priority < 70 ? cooldown : 0);
+    // Routine panels must not restart during provider throttling. Keep the
+    // scarce recovery allowance for authenticated CAD, property alerts and
+    // whichever foreground operation the officer is actively performing.
+    job.priority < 90 ? cooldown : 0);
   // A background cooldown never holds the head of the queue ahead of live CAD.
   readQueue.sort((a,b) => Number(waitFor(a) > 0) - Number(waitFor(b) > 0)
     || Number(b.meta?.kind === 'auth') - Number(a.meta?.kind === 'auth')
