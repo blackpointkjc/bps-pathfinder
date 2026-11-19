@@ -74,6 +74,5 @@ export default function PublishedUpdateNotice() {
   if (!available) return null;
   return <aside role="status" aria-live="polite" className="fixed inset-x-3 bottom-4 z-[100200] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-700/70 bg-[#0c1720] px-4 py-3 text-white shadow-2xl">
     <div><strong className="block text-sm">{refreshing ? 'Updating Pathfinder…' : 'New Pathfinder update detected'}</strong><p className="text-xs text-slate-300">{deferred ? 'Update will load automatically when you finish your current work or leave navigation.' : 'The latest changes will load automatically when it is safe.'}</p></div>
-    <button type="button" disabled={refreshing} onClick={() => { if (reloadSafe()) { setRefreshing(true); refreshUrl(); } else setDeferred(true); }} className="min-h-10 rounded-lg border border-emerald-600/60 bg-emerald-900/35 px-4 text-xs font-bold text-emerald-100 disabled:opacity-60">{refreshing ? 'Updating…' : 'Update now'}</button>
   </aside>;
 }
