@@ -1321,10 +1321,11 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   for (let offset = 0; offset < updateQueue.length; offset += 4) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async row => {
       const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
-      const preservedAssignment = await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, previous);
+      const upstreamTerminal = ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(row.status));
+      const preserveOfficerQueue = upstreamTerminal && await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, previous);
       const patch = {
         ...persistableCall(row),
-        ...(preservedAssignment && ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(row.status)) ? {status: previous.status} : {}),
+        ...(preserveOfficerQueue ? {status: previous.status} : {}),
         ...(previous.priority_override ? {priority:previous.priority} : {}),
         source_first_seen_at: previous.source_first_seen_at || previous.created_date || row.source_first_seen_at || new Date().toISOString(),
         source_channel: row.source_channel || previous.source_channel || 'grac_api',
@@ -1558,6 +1559,7 @@ Deno.serve(async (req) => {
       }
       for (const duplicate of records) {
         if (duplicate.id === canonical.id) continue;
+        if (await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, duplicate)) continue;
         await base44.asServiceRole.entities.DispatchCall.delete(duplicate.id).catch(() => null);
         duplicatesRemoved += 1;
       }
@@ -1676,7 +1678,8 @@ Deno.serve(async (req) => {
         const officialCad = matchedOfficialCad || savedOfficialCad;
         const bpsReference = String(existing.bps_reference || '').trim();
         const manuallyCleared = existing.manual_dismissed === true;
-        const assignedInPathfinder = await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, existing);
+        const upstreamTerminal = ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(callData.status));
+        const assignedInPathfinder = upstreamTerminal && await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, existing);
         const incomingWithCad = {
           ...persistableCall(callData),
           ...(existing.priority_override ? {priority:existing.priority} : {}),
@@ -1684,7 +1687,7 @@ Deno.serve(async (req) => {
           source_channel: callData.source_channel || existing.source_channel || 'grac_api',
           // A Pathfinder manual clear is authoritative for this exact upstream call
           // ID. GRAC may continue publishing it, but ingestion must keep it dismissed.
-          status: manuallyCleared ? 'Cleared' : (assignedInPathfinder && ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(callData.status)) ? existing.status : callData.status),
+          status: manuallyCleared ? 'Cleared' : (assignedInPathfinder ? existing.status : callData.status),
           manual_dismissed: manuallyCleared,
           ...(manuallyCleared ? { manual_dismissed_at: existing.manual_dismissed_at || existing.time_cleared || new Date().toISOString() } : {}),
           agency_cad_number: officialCad,
@@ -1750,6 +1753,7 @@ Deno.serve(async (req) => {
       const canonical = chooseCanonical(records);
       for (const duplicate of records) {
         if (duplicate.id !== canonical.id) {
+          if (await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, duplicate)) continue;
           await base44.asServiceRole.entities.DispatchCall.delete(duplicate.id).catch(() => null);
           duplicatesRemoved += 1;
         }
