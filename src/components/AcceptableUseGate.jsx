@@ -35,10 +35,15 @@ const saveVerified = user => {
 };
 const forgetVerified = user => { try { localStorage.removeItem(policyReceiptKey(user)); } catch {} };
 const POLICY_REQUEST_TIMEOUT_MS = 12_000;
-const policyRequest = (action,payload={}) => Promise.race([
-  base44.functions.invoke('acceptableUsePolicy',{action,...payload}),
-  new Promise((_,reject)=>setTimeout(()=>reject(new Error('Policy verification timed out. Pathfinder will retry.')),POLICY_REQUEST_TIMEOUT_MS)),
-]);
+const policyRequest = async (action,payload={}) => {
+  let timer;
+  try {
+    return await Promise.race([
+      base44.functions.invoke('acceptableUsePolicy',{action,...payload}),
+      new Promise((_,reject)=>{ timer=setTimeout(()=>reject(new Error('Policy verification timed out. Pathfinder will retry.')),POLICY_REQUEST_TIMEOUT_MS); }),
+    ]);
+  } finally { clearTimeout(timer); }
+};
 
 export default function AcceptableUseGate({user,children}) {
   const client=useQueryClient();
@@ -59,6 +64,7 @@ export default function AcceptableUseGate({user,children}) {
       return result;
     },
     staleTime:5*60_000,retry:1,retryDelay:1500,
+    refetchInterval:10*60_000,refetchIntervalInBackground:false,
     refetchOnMount:false,refetchOnWindowFocus:false,refetchOnReconnect:true,
   });
   useEffect(()=>{setCachedApproval(previouslyVerified(user));},[user?.id,user?.email]);
@@ -84,7 +90,10 @@ export default function AcceptableUseGate({user,children}) {
   // Server negative results always take precedence over the cached display
   // optimization, including if a policy receipt was revoked or reset.
   if(data?.accepted===true&&data?.policy_version===AUP_VERSION)return children;
-  if(cachedApproval && (!data || isError)) return children;
+  // Local approval only optimizes a slow lookup; an explicit authentication
+  // denial still prevents access and requires a fresh authorized session.
+  const authorizationDenied=isError && [401,403].includes(Number(error?.response?.status||error?.status));
+  if(cachedApproval && (!data || (isError && !authorizationDenied))) return children;
   // Unknown/new employees see the agreement immediately, while status loads.
   // An already accepted employee will be dismissed as soon as the response lands.
   return <div className="fixed inset-0 z-[999999] flex items-center justify-center overflow-y-auto bg-[#030914] p-3 text-white sm:p-5" role="dialog" aria-modal="true" aria-label="Required Pathfinder user agreement">
