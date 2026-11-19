@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { isClientAccount } from '@/lib/directoryUtils';
@@ -17,38 +17,86 @@ const sections = [
 ];
 export function AcceptableUsePolicyText(){return <div className="space-y-4">{sections.map(section=><section key={section.heading}><h3 className="font-bold text-slate-100">{section.heading}</h3><p className="mt-1 text-sm leading-6 text-slate-300">{section.text}</p></section>)}</div>;}
 
+// A receipt is a local display optimization, never an authorization token.
+// The server rechecks its authoritative acknowledgment on every new session.
+// Cache is scoped to the exact employee, version, and account email; expired
+// approvals cannot silently authorize a new policy version or different user.
+const RECEIPT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const policyReceiptKey = user => `bps:accepted-policy:${AUP_VERSION}:${String(user?.id||'')}:${String(user?.email||'').trim().toLowerCase()}`;
+const previouslyVerified = user => {
+  try {
+    const entry=JSON.parse(localStorage.getItem(policyReceiptKey(user))||'null');
+    return entry?.version===AUP_VERSION && entry?.userId===user?.id &&
+      Number.isFinite(Number(entry.verifiedAt)) && Date.now()-Number(entry.verifiedAt)<RECEIPT_MAX_AGE_MS;
+  } catch { return false; }
+};
+const saveVerified = user => {
+  try { localStorage.setItem(policyReceiptKey(user),JSON.stringify({version:AUP_VERSION,userId:user?.id,verifiedAt:Date.now()})); } catch {}
+};
+const forgetVerified = user => { try { localStorage.removeItem(policyReceiptKey(user)); } catch {} };
+const POLICY_REQUEST_TIMEOUT_MS = 12_000;
+const policyRequest = (action,payload={}) => Promise.race([
+  base44.functions.invoke('acceptableUsePolicy',{action,...payload}),
+  new Promise((_,reject)=>setTimeout(()=>reject(new Error('Policy verification timed out. Pathfinder will retry.')),POLICY_REQUEST_TIMEOUT_MS)),
+]);
+
 export default function AcceptableUseGate({user,children}) {
-  const client = useQueryClient();
-  const exemptClient = isClientAccount(user);
-  const [confirmed,setConfirmed] = useState(false);
-  const [signature,setSignature] = useState('');
-  // Include the current app-wide agreement version in the query identity so
-  // cached approvals for an earlier agreement cannot bypass a new version.
+  const client=useQueryClient();
+  const exemptClient=isClientAccount(user);
+  const [confirmed,setConfirmed]=useState(false);
+  const [signature,setSignature]=useState('');
+  const [cachedApproval,setCachedApproval]=useState(()=>previouslyVerified(user));
   const key=['acceptableUsePolicy',AUP_VERSION,user?.id,String(user?.email||'').toLowerCase()];
-  const {data, isLoading,isError,refetch} = useQuery({
-    queryKey:key,enabled:Boolean(user?.id)&&!exemptClient,queryFn:async()=> (await base44.functions.invoke('acceptableUsePolicy',{action:'status'})).data,
-    staleTime:0,retry:1,refetchOnMount:'always',refetchOnWindowFocus:true
+  // Query status in the background rather than forcing a full-screen spinner
+  // through every route change, refresh or app deployment.
+  const {data,isLoading,isError,error,refetch}=useQuery({
+    queryKey:key,enabled:Boolean(user?.id)&&!exemptClient,
+    queryFn:async()=>{
+      const response=await policyRequest('status');
+      const result=response?.data||response||{};
+      if(result.error||result.policy_version!==AUP_VERSION || typeof result.accepted!=='boolean')
+        throw new Error(result.error||'Policy verification did not return a valid acknowledgment.');
+      return result;
+    },
+    staleTime:5*60_000,retry:1,retryDelay:1500,
+    refetchOnMount:false,refetchOnWindowFocus:false,refetchOnReconnect:true,
   });
+  useEffect(()=>{setCachedApproval(previouslyVerified(user));},[user?.id,user?.email]);
+  useEffect(()=>{
+    if(!user?.id||!data)return;
+    if(data.policy_version===AUP_VERSION && data.accepted===true){saveVerified(user);setCachedApproval(true);}
+    else if(data.policy_version===AUP_VERSION && data.accepted===false){forgetVerified(user);setCachedApproval(false);}
+  },[user?.id,user?.email,data?.accepted,data?.policy_version]);
   const accept=useMutation({
-    mutationFn:async()=> (await base44.functions.invoke('acceptableUsePolicy',{action:'accept',policy_version:data?.policy_version,confirmed,signature})).data,
-    onSuccess:result=>{if(result?.accepted && result?.policy_version===AUP_VERSION)client.setQueryData(key,prev=>({...prev,accepted:true,policy_version:AUP_VERSION,accepted_at:result.accepted_at}));}
+    mutationFn:async()=>{
+      const response=await policyRequest('accept',{policy_version:AUP_VERSION,confirmed,signature});
+      const result=response?.data||response||{};
+      if(result.error||result.accepted!==true||result.policy_version!==AUP_VERSION)
+        throw new Error(result.error||'The server did not confirm acknowledgment.');
+      return result;
+    },
+    onSuccess:result=>{
+      saveVerified(user);setCachedApproval(true);
+      client.setQueryData(key,prev=>({...prev,accepted:true,policy_version:AUP_VERSION,accepted_at:result.accepted_at}));
+    },
   });
-  // Client Portal accounts are not company employees and must never be held
-  // behind the internal employee agreement or its verification request.
-  if(!user?.id || exemptClient) return children;
-  // A yes/no flag alone is insufficient: acceptances belong only to the
-  // matching version of the full Pathfinder-wide agreement.
-  if(data?.accepted===true && data?.policy_version===AUP_VERSION) return children;
+  if(!user?.id||exemptClient)return children;
+  // Server negative results always take precedence over the cached display
+  // optimization, including if a policy receipt was revoked or reset.
+  if(data?.accepted===true&&data?.policy_version===AUP_VERSION)return children;
+  if(cachedApproval && (!data || isError)) return children;
+  // Unknown/new employees see the agreement immediately, while status loads.
+  // An already accepted employee will be dismissed as soon as the response lands.
   return <div className="fixed inset-0 z-[999999] flex items-center justify-center overflow-y-auto bg-[#030914] p-3 text-white sm:p-5" role="dialog" aria-modal="true" aria-label="Required Pathfinder user agreement">
     <div className="my-auto flex w-full max-w-[780px] flex-col overflow-hidden rounded-2xl border border-[#315574] bg-[#091522] shadow-[0_30px_100px_rgba(0,0,0,.8)]">
       <header className="flex gap-4 border-b border-[#29435d] bg-[#10263d] p-5"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-600/20 text-cyan-200"><ShieldCheck className="h-7 w-7"/></div><div><div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-300">Pathfinder · Required account acknowledgment</div><h1 className="mt-1 text-xl font-bold">Pathfinder Application User Agreement</h1><p className="mt-1 text-xs text-slate-300">Read and approve before continuing into your company account.</p></div></header>
-      {isLoading?<div className="flex justify-center gap-2 p-12 text-slate-300"><Loader2 className="animate-spin"/>Checking policy acknowledgment…</div>
-      :isError?<div className="space-y-3 p-6 text-center"><AlertTriangle className="mx-auto h-7 w-7 text-amber-300"/><p>Policy verification is unavailable. For account security, access remains held until verification succeeds.</p><button type="button" onClick={()=>refetch()} className="rounded bg-blue-600 px-5 py-2">Retry verification</button></div>
-      :<><div className="max-h-[48dvh] overflow-y-auto px-5 py-5 sm:px-7"><div className="mb-4 flex justify-between gap-2 text-xs text-slate-400"><span>Employee agreement · Client Portal accounts exempt</span><span>Policy {data?.policy_version||AUP_VERSION}</span></div><AcceptableUsePolicyText/></div>
+      <><div className="max-h-[48dvh] overflow-y-auto px-5 py-5 sm:px-7"><div className="mb-4 flex justify-between gap-2 text-xs text-slate-400"><span>Employee agreement · Client Portal accounts exempt</span><span>Policy {data?.policy_version||AUP_VERSION}</span></div><AcceptableUsePolicyText/></div>
       <div className="space-y-3 border-t border-[#29435d] bg-[#0b1d30] p-5">
         <label className="flex items-start gap-3 text-sm text-slate-200"><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)} className="mt-1 h-4 w-4 accent-cyan-500"/><span>I have read the Pathfinder Application User Agreement, agree to follow its account, operational, confidentiality, security, and authorized-use requirements, and understand that violations may result in corrective or disciplinary action.</span></label>
         <label className="block text-xs font-bold text-slate-300">Electronic signature — type your full name<input value={signature} onChange={event=>setSignature(event.target.value)} maxLength={100} autoComplete="name" placeholder={data?.user_name||'First and last name'} className="mt-1.5 h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-base text-white"/></label>
-        <div className="flex flex-wrap items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs text-slate-400"><LockKeyhole className="h-4 w-4"/>Approval is saved to your account and visible in Admin Reports</span><button type="button" disabled={!confirmed||signature.trim().length<3||accept.isPending||data?.policy_version!==AUP_VERSION} onClick={()=>accept.mutate()} className="flex min-h-11 items-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40">{accept.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:<FileCheck2 className="h-4 w-4"/>}Accept & Continue</button></div>
+        {isError&&<div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-700/50 bg-amber-950/35 p-3 text-xs text-amber-200"><span>{error?.message||'Policy verification unavailable. Your account remains protected until checked.'}</span><button type="button" onClick={()=>refetch()} className="rounded-md border border-amber-500/50 px-3 py-2 font-bold">Retry verification</button></div>}
+        {isLoading&&!isError&&<div role="status" className="text-xs text-slate-400">Checking your existing approval in the background. You can read the agreement while it verifies.</div>}
+        <div className="flex flex-wrap items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs text-slate-400"><LockKeyhole className="h-4 w-4"/>Approval is saved to your account and visible in Admin Reports</span><button type="button" disabled={!confirmed||signature.trim().length<3||accept.isPending||isError||!data||data?.policy_version!==AUP_VERSION} onClick={()=>accept.mutate()} className="flex min-h-11 items-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40">{accept.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:<FileCheck2 className="h-4 w-4"/>}Accept & Continue</button></div>
         {accept.isError && <p className="text-xs text-red-300">{accept.error?.response?.data?.error||accept.error?.message||'Could not record acknowledgment.'}</p>}
       </div></>}
     </div>
