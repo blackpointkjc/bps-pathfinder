@@ -235,7 +235,7 @@ const ALLOWED_AGENCIES = new Set(['RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD']);
 const AGENCY_SOURCE: Record<string, string> = { RPD: 'richmond', RFD: 'richmond', HPD: 'henrico', HFD: 'henrico', CCPD: 'chesterfield', CCFD: 'chesterfield' };
 const PROPERTY_MONITORING_EDGE_TOLERANCE_METERS = 100;
 const LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS = 3 * 60 * 1000;
-const LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS = 15 * 60 * 1000;
+const LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS = 5 * 60 * 1000;
 
 function isFreshLivePropertyCall(call: any) {
   const now = Date.now();

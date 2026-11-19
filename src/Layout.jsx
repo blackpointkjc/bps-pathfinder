@@ -19,7 +19,7 @@ import {
   Home, Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
   Siren, Trash2, UserCheck, UserX, Users, Wrench, X, RotateCw
 } from 'lucide-react';
-import { base44, clearBase44ReadCache } from '@/api/base44Client';
+import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
@@ -29,9 +29,6 @@ import { formatEasternDateTime } from '@/lib/easternTime';
 import { parseCadUtcTime } from '@/lib/propertyAlertFreshness';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
-import { clearOfficerLocationSnapshotCache } from '@/lib/officerLocationHub';
-import { clearActiveDispatchCallMemoryCache } from '@/lib/activeDispatchCalls';
-import { invalidateAppDirectory } from '@/lib/appDirectory';
 import { disconnectExternalGps, getExternalGpsStatus, lockExternalGpsToCurrentAntenna, requestExternalGpsConnection, subscribeExternalGpsStatus, unlockExternalGpsAntenna } from '@/lib/externalGpsService';
 import GlobalMessageBanner, { CadAudioToggle } from '@/components/GlobalMessageBanner';
 import CadVoiceBroadcastMonitor from '@/components/CadVoiceBroadcastMonitor';
@@ -879,7 +876,6 @@ export default function Layout({ children, currentPageName }) {
   const dismissedPropertyAlertIdsRef = useRef(new Set());
   const dismissedPropertyAlertKeysRef = useRef(new Set());
   const [outages, setOutages] = useState([]);
-  const [refreshingApp, setRefreshingApp] = useState(false);
   const [backgroundServicesReady, setBackgroundServicesReady] = useState(false);
   const [gpsMenuOpen, setGpsMenuOpen] = useState(false);
   const [gpsChanging, setGpsChanging] = useState(false);
@@ -1021,39 +1017,6 @@ export default function Layout({ children, currentPageName }) {
     } catch (error) {
       toast.error(error?.message || 'Unable to change the GPS antenna lock.');
     }
-  };
-
-  const refreshApplication = async () => {
-    if (refreshingApp) return;
-    setRefreshingApp(true);
-    stopAllAlerts();
-    stopVoice();
-    clearBase44ReadCache();
-    clearOfficerLocationSnapshotCache();
-    clearActiveDispatchCallMemoryCache();
-    invalidateAppDirectory();
-    try {
-      // A stale service worker/cache can keep an older Pathfinder bundle alive
-      // after a new Base44 release. Remove only browser asset caches; application
-      // data in localStorage/sessionStorage (drafts, preferences, auth) is preserved.
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map(async registration => {
-          try { await registration.update(); } catch {}
-          try { registration.waiting?.postMessage({ type: 'SKIP_WAITING' }); } catch {}
-          if (!registration.active?.scriptURL?.endsWith('/pathfinder-sw.js')) { try { await registration.unregister(); } catch {} }
-        }));
-      }
-      if ('caches' in window) {
-        const keys = await window.caches.keys();
-        await Promise.all(keys.filter(key => !key.startsWith('pathfinder-offline-')).map(key => window.caches.delete(key)));
-      }
-    } catch (error) {
-      console.warn('[APP REFRESH] Cache cleanup was partial:', error?.message);
-    }
-    const url = new URL(window.location.href);
-    url.searchParams.set('_pathfinder_refresh', String(Date.now()));
-    window.location.replace(url.toString());
   };
 
   const switchCenter = center => {
@@ -1795,18 +1758,6 @@ export default function Layout({ children, currentPageName }) {
           )}
           <CadAudioToggle />
 
-          <button
-            type="button"
-            onClick={refreshApplication}
-            disabled={refreshingApp}
-            hidden={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student'}
-            className="flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-600/60 bg-emerald-950/30 px-2.5 font-black uppercase tracking-[0.08em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-900/40 disabled:cursor-wait disabled:opacity-60 sm:px-3"
-            title="Load the newest Pathfinder update"
-            aria-label="Refresh Pathfinder and load the newest update"
-          >
-            <RotateCw className={`h-3.5 w-3.5 ${refreshingApp ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{refreshingApp ? 'Refreshing' : 'Refresh'}</span>
-          </button>
           <HeaderClock />
 
         </div>
