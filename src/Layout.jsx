@@ -26,7 +26,7 @@ import { stopAllAlerts } from '@/utils/alertUtils';
 import { mayReceivePropertyAlarm } from '@/lib/clockedPropertyAlarm';
 import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
-import { parseCadUtcTime } from '@/lib/propertyAlertFreshness';
+import { parseCadUtcTime, propertyAlertWasTimely } from '@/lib/propertyAlertFreshness';
 import { cleanIncident } from '@/utils/callUtils';
 import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 import { disconnectExternalGps, getExternalGpsStatus, lockExternalGpsToCurrentAntenna, requestExternalGpsConnection, subscribeExternalGpsStatus, unlockExternalGpsAntenna } from '@/lib/externalGpsService';
@@ -1263,17 +1263,26 @@ export default function Layout({ children, currentPageName }) {
 
     let monitorInFlight = false;
     let rateLimitBackoffUntil = 0;
-    const monitor = async () => {
-      if (cancelled || monitorInFlight || document.visibilityState !== 'visible' || Date.now() < rateLimitBackoffUntil) return;
+    let queuedRealtimeAlert = null;
+    const cache = { receipts:[], calls:[], locations:[], receiptsAt:0, callsAt:0, locationsAt:0 };
+    const cachedRead = async (kind,ttl,read) => {
+      if (Date.now()-cache[`${kind}At`]<ttl) return cache[kind];
+      const rows=await read();
+      if (!Array.isArray(rows)) throw new Error(`Property context ${kind} was unavailable`);
+      cache[kind]=rows;cache[`${kind}At`]=Date.now();return rows;
+    };
+    const monitor = async (incomingAlert=null) => {
+      if (cancelled || document.visibilityState !== 'visible' || Date.now()<rateLimitBackoffUntil) return;
+      if (monitorInFlight) { if(incomingAlert?.id)queuedRealtimeAlert=incomingAlert; return; }
       monitorInFlight = true;
       try {
-        // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
-        // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
+        // Fresh entity events bypass the PropertyAlert list entirely. Context
+        // reads are cached rather than multiplied on every 10-second timer.
         const [alerts, receipts, calls, locations] = await Promise.all([
-          base44.entities.PropertyAlert.list('-created_date', 100).catch(() => []),
-          user?.email ? base44.entities.PropertyAlertReceipt.filter({ user_email: String(user.email).trim().toLowerCase() }, '-dismissed_at', 100).catch(() => []) : Promise.resolve([]),
-          base44.entities.DispatchCall.list('-created_date', 75).catch(() => []),
-          base44.entities.Location.list('site_name', 100).catch(() => []),
+          incomingAlert?.id ? Promise.resolve([incomingAlert]) : base44.entities.PropertyAlert.list('-created_date', 50),
+          cachedRead('receipts',60_000,()=>user?.email ? base44.entities.PropertyAlertReceipt.filter({user_email:String(user.email).trim().toLowerCase()},'-dismissed_at',100) : Promise.resolve([])),
+          cachedRead('calls',30_000,()=>base44.entities.DispatchCall.list('-created_date',80)),
+          cachedRead('locations',5*60_000,()=>base44.entities.Location.list('site_name',100)),
         ]);
         const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
         const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
@@ -1298,9 +1307,10 @@ export default function Layout({ children, currentPageName }) {
           // source may publish a call several minutes after its reported call time,
           // so gating this popup by callTime incorrectly suppresses brand-new alerts.
           const eventTime = createdTime;
+          if (!propertyAlertWasTimely(item)) return false;
           const location = locationById.get(String(item.propertyId));
-          const inactiveProperty = !location || location.active === false || location.property_monitoring_enabled !== true;
-          const inactiveCall = !linkedCall || HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status));
+          const inactiveProperty = location && (location.active === false || location.property_monitoring_enabled !== true);
+          const inactiveCall = linkedCall && HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status));
           if (inactiveProperty || inactiveCall || seenPairs.has(eventKey)) return false;
           seenPairs.add(eventKey);
           return Number.isFinite(eventTime)
@@ -1319,8 +1329,19 @@ export default function Layout({ children, currentPageName }) {
           }
           return;
         }
-        const linkedCall = callById.get(String(record.callId));
-        const location = locationById.get(String(record.propertyId));
+        let linkedCall = callById.get(String(record.callId));
+        let location = locationById.get(String(record.propertyId));
+        // New alerts may precede the corresponding call's cached list index.
+        // Resolve just the missing record, not another full database scan.
+        if (!linkedCall || !location) {
+          const [freshCall,freshLocation]=await Promise.all([
+            linkedCall ? Promise.resolve(linkedCall) : base44.entities.DispatchCall.get(record.callId).catch(()=>null),
+            location ? Promise.resolve(location) : base44.entities.Location.get(record.propertyId).catch(()=>null),
+          ]);
+          linkedCall=freshCall||linkedCall;location=freshLocation||location;
+        }
+        if (!location || location.active===false || location.property_monitoring_enabled!==true
+          || (linkedCall && HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status)))) return;
         // The popup is as site-specific as its horn and voice. An admin merely
         // being online must not wake them for a property they are not covering.
         if (!await mayReceivePropertyAlarm(base44,user,location) || cancelled) {
@@ -1366,33 +1387,37 @@ export default function Layout({ children, currentPageName }) {
         }
       } finally {
         monitorInFlight = false;
+        if (queuedRealtimeAlert && !cancelled) {
+          const queued=queuedRealtimeAlert;queuedRealtimeAlert=null;
+          window.setTimeout(()=>{if(!cancelled)void monitor(queued);},50);
+        }
       }
     };
 
     // Let the dashboard's Active Calls request own the startup lane. Realtime is
     // already connected below, so delaying this history reconciliation does not
     // prevent newly-created property alerts from being observed.
-    const initialMonitorTimer = window.setTimeout(monitor, 1000);
+    const initialMonitorTimer = window.setTimeout(()=>monitor(), 4000);
     // Realtime owns fast delivery. Use one slow fallback poll and debounce entity
     // events so a burst of alert writes cannot fan out into four list requests per event.
     let refreshTimer;
-    const scheduleMonitor = () => {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(() => {
-        if (!cancelled && document.visibilityState === 'visible') monitor();
-      }, 150);
+    const scheduleMonitor = event => {
+      if (!['create','update'].includes(event?.type) || !event?.data?.id) return;
+      // Realtime is the primary pathway, so even a busy dashboard must not
+      // delay a new property call behind the next scheduled batch poll.
+      void monitor(event.data);
     };
     const id = setInterval(() => {
-      if (document.visibilityState === 'visible') monitor();
-    }, 10000);
+      if (document.visibilityState === 'visible') void monitor();
+    }, 60_000);
     const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(scheduleMonitor);
     const refreshOnVisibility = () => {
-      if (document.visibilityState === 'visible') scheduleMonitor();
+      if (document.visibilityState === 'visible') void monitor();
     };
     const recoverPropertyAlerts = () => {
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
-        if (!cancelled) monitor();
+        if (!cancelled) void monitor();
       }, 250);
     };
     document.addEventListener('visibilitychange', refreshOnVisibility);
