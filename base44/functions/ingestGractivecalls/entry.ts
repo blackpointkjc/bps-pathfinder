@@ -541,39 +541,32 @@ function liveMergeKey(call: any) {
   return [String(call?.agency || '').toUpperCase(), String(call?.time_received || ''), cleanMatchText(call?.incident), cleanMatchText(call?.location)].join('|');
 }
 
-function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[], websiteCacheAgeSeconds = 0) {
+// The GRAC HTML page advertises CDN caching for up to fifteen minutes. It
+// cannot be used as a gate for calls already visible on the private/no-store
+// JSON endpoint: a newer API incident may have an earlier agency receive-time
+// than the newest row in the cached HTML. Preserve *both* live sources; the
+// API owns stable identifiers/coordinates, and website-only calls remain a
+// fallback if the API temporarily lags or omits an incident.
+function mergeLiveWebsiteAndApi(websiteCalls: any[], apiCalls: any[], _websiteCacheAgeSeconds = 0) {
   const byKey = new Map<string, any>();
   for (const web of websiteCalls || []) byKey.set(liveMergeKey(web), web);
   for (const api of apiCalls || []) {
     const key = liveMergeKey(api);
     const web = byKey.get(key);
     if (!web) {
-      // The API can lag behind the website. Enrich website rows, never union
-      // disappeared API-only incidents back into a successful live table.
-      const stamp = new Date(api.time_received || 0).getTime();
-      const newestWebsiteStamp = websiteCalls.reduce((latest, row) => Math.max(latest, new Date(row.time_received || 0).getTime() || 0), 0);
-      // A cached HTML table cannot veto a newer JSON incident. Limit additions to
-      // the operational hour and nonterminal statuses; never revive old API-only
-      // history simply because it is missing from the website.
-      if (websiteCalls.length && !((stamp >= newestWebsiteStamp || websiteCacheAgeSeconds > 30) && stamp <= Date.now() + 120000
-        && Date.now() - stamp <= 3600000 && !['Cleared','Cancelled','Canceled','Closed'].includes(String(api.status || '')))) continue;
-      byKey.set(key, { ...api, source_channel: api.source_channel || 'grac_api' });
+      // Never discard an API row because a separately cached website page
+      // happens to display a call with a later agency timestamp.
+      byKey.set(key, { ...api, source_channel: 'grac_api_live' });
       continue;
     }
-    // Website owns what is currently visible/status; API enriches stable id/GPS.
     byKey.set(key, {
-      ...api,
       ...web,
+      ...api,
+      // Keep the API's stable ID for subsequent updates, while retaining the
+      // website description when it provides helpful public context.
       external_call_id: api.external_call_id || web.external_call_id,
-      ...(Number.isFinite(Number(api.latitude)) && Number.isFinite(Number(api.longitude)) ? {
-        latitude: Number(api.latitude), longitude: Number(api.longitude),
-        geo_confidence: api.geo_confidence || 'high', geo_method: api.geo_method || 'grac',
-        geo_approximate: api.geo_approximate === true,
-      } : {}),
-      agency_cad_number: api.agency_cad_number || web.agency_cad_number || '',
-      official_cad_verified: api.official_cad_verified === true,
-      cad_number_source: api.official_cad_verified === true ? (api.cad_number_source || 'upstream_public_feed') : 'bps_internal',
-      source_channel: 'grac_website_live+api',
+      source_channel: 'grac_api_live+website',
+      description: api.description || web.description,
     });
   }
   return [...byKey.values()];
@@ -1469,10 +1462,9 @@ Deno.serve(async (req) => {
     }
 
     try {
-    // The website table is the live source of truth. Pull it every run and merge
-    // the JSON API only as an enrichment source for stable IDs/coordinates. This
-    // prevents a lagging /api/active cache from holding a website-visible call for
-    // 10-20 minutes before BPSPF can see it.
+    // Fetch both GRAC feeds concurrently. The private/no-store JSON API can
+    // publish a new incident before the CDN-cached website HTML refreshes.
+    // Neither source may veto a new, valid call from the other.
     const [websiteResult, apiResult] = await Promise.allSettled([
       fetchNonEmptySource(fetchLiveWebsiteCalls, 'GRAC website'),
       fetchNonEmptySource(fetchLiveApiCalls, 'GRAC API'),

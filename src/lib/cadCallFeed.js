@@ -1,4 +1,4 @@
-import { base44, getBase44RequestHealth } from '@/api/base44Client';
+import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
 const STALE_AFTER_MS = 12 * 1000;
@@ -81,17 +81,10 @@ function isRateLimitError(error) {
 
 async function performCadLiveSync() {
   const now = Date.now();
-  const health = getBase44RequestHealth();
-  // Ingestion fans out to many backend reads/writes and bypasses the page-read
-  // queue. Never let it consume recovery capacity while app data is still loading.
-  if (health.rateLimitedUntil || health.readRetryAt) {
-    return { skipped: true, reason: 'rate_limit_backoff' };
-  }
-  // Operational call ingestion has priority over routine dashboard reads.
-  // Do not skip the upstream source poll merely because unrelated read/write
-  // requests are running: sustained dashboard traffic can otherwise suppress
-  // CAD ingestion for many minutes. The global server lease, local cross-tab
-  // lock, cooldown and 429 backoff still prevent overlapping source polls.
+  // Do not inherit the global dashboard/query 429 cooldown. A single noisy
+  // payroll/reporting/voice request can repeatedly extend that shared window
+  // and block live GRAC for minutes. This source poll has its OWN bounded 429
+  // backoff and the backend's ingestion lease still serializes the work.
   const backoffUntil = liveSyncBackoffUntil();
   if (backoffUntil > now) {
     return { skipped: true, reason: 'rate_limit_backoff', retry_after_ms: backoffUntil - now };
@@ -141,7 +134,8 @@ export async function requestCadLiveSync() {
   if (liveSyncInFlight) return liveSyncInFlight;
   liveSyncInFlight = (async () => {
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {
-      return navigator.locks.request('bps-cad-live-source-sync', { mode: 'exclusive' }, performCadLiveSync);
+      return navigator.locks.request('bps-cad-live-source-sync', { mode: 'exclusive', ifAvailable:true },
+        lock => lock ? performCadLiveSync() : {skipped:true,reason:'another_tab_syncing'});
     }
     return performCadLiveSync();
   })().finally(() => { liveSyncInFlight = null; });
