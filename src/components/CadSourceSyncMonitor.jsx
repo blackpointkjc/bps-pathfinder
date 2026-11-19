@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { requestCadLiveSync } from '@/lib/cadCallFeed';
-import { getBase44RequestHealth } from '@/api/base44Client';
 
 // One app-wide guarded source poll, including when an officer is not on Dispatch Center.
 // cadCallFeed shares a cross-tab cooldown/lock; the server has its own ingestion lease.
@@ -27,12 +26,9 @@ export default function CadSourceSyncMonitor({ user }) {
       const onCommandScreen = /Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|SupervisorCenter|SupervisorOverview|SupervisorCommandBoard|SupervisorFieldOversight|admin_center=(cad|supervisor)/i.test(page);
       const minimumInterval = document.visibilityState === 'visible' && onCommandScreen ? 5_000 : 20_000;
       if (Date.now() - lastSyncAttemptAt < minimumInterval) return;
-      const health=getBase44RequestHealth();
-      const cooldown=Math.max(Date.parse(health.readRetryAt||'')||0,Date.parse(health.rateLimitedUntil||'')||0);
-      // A large unrelated read queue must not block CAD source ingestion.
-      // Respect actual provider rate limits, but let the server lease protect
-      // against concurrent ingestion.
-      if(Date.now()<cooldown)return;
+      // The CAD source has an independent backoff and a server lease.
+      // An unrelated background 429 must NEVER postpone checking GRAC;
+      // its cooldown is intentionally enforced inside requestCadLiveSync.
       lastSyncAttemptAt = Date.now();
       running = true;
       try {

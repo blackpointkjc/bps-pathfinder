@@ -1,6 +1,6 @@
 // Public CAD timestamps identify when the agency received the call, not when
 // Pathfinder's polling job first observed it. Never confuse those two clocks.
-export const LIVE_PROPERTY_UPSTREAM_MAX_AGE_MS = 5 * 60 * 1000;
+export const LIVE_PROPERTY_UPSTREAM_MAX_AGE_MS = 15 * 60 * 1000;
 export function parseCadUtcTime(value) {
   const raw=String(value || '').trim();
   if (!raw) return NaN;

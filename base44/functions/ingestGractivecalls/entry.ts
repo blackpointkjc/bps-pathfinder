@@ -235,7 +235,7 @@ const ALLOWED_AGENCIES = new Set(['RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD']);
 const AGENCY_SOURCE: Record<string, string> = { RPD: 'richmond', RFD: 'richmond', HPD: 'henrico', HFD: 'henrico', CCPD: 'chesterfield', CCFD: 'chesterfield' };
 const PROPERTY_MONITORING_EDGE_TOLERANCE_METERS = 100;
 const LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS = 3 * 60 * 1000;
-const LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS = 5 * 60 * 1000;
+const LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS = 15 * 60 * 1000;
 
 function isFreshLivePropertyCall(call: any) {
   const now = Date.now();
@@ -243,10 +243,10 @@ function isFreshLivePropertyCall(call: any) {
   const callAt = new Date(call?.time_received || call?.created_date || 0).getTime();
   const firstSeenAgeMs = now - firstSeenAt;
   const upstreamAgeMs = now - callAt;
-  // Public CAD feeds can intentionally publish several minutes after the event's
-  // reported receive time. Treat a call as live when Pathfinder has just observed
-  // it, while retaining an upstream-age ceiling so an outage cannot replay truly
-  // old calls as brand-new monitored-property emergencies.
+  // Agencies can report the original call time several minutes before the call
+  // is published on GRAC. Do not suppress an incident that Pathfinder discovers
+  // seconds after publication merely because agency time is 6-10 minutes old.
+  // Still cap old upstream calls to prevent replay after a prolonged outage.
   return Number.isFinite(firstSeenAt) && firstSeenAt > 0
     && firstSeenAgeMs >= 0 && firstSeenAgeMs <= LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS
     && Number.isFinite(callAt) && callAt > 0
