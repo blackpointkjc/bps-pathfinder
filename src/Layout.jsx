@@ -1663,7 +1663,7 @@ export default function Layout({ children, currentPageName }) {
               aria-controls="pathfinder-antenna-dialog"
             >
               <Radio className={`h-3.5 w-3.5 ${externalGps.connecting ? 'animate-pulse' : ''}`} />
-              <span className="hidden md:inline">{externalGps.connecting ? 'Connecting Antenna' : 'External Antenna'}</span>
+              <span className="hidden md:inline">{externalGps.connecting ? 'Connecting GPS' : externalGps.lockedToAntenna || externalGps.portGranted ? 'GPS · Refresh' : 'External Antenna'}</span>
               <span className="md:hidden">Antenna</span>
               <ChevronDown className={`h-3 w-3 transition-transform ${gpsMenuOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -1703,8 +1703,8 @@ export default function Layout({ children, currentPageName }) {
                     disabled={gpsChanging}
                     className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.connected ? 'border-cyan-500/60 bg-cyan-950/30' : 'border-blue-700 bg-blue-950/25 hover:border-blue-500'}`}
                   >
-                    <div className="text-[10px] font-black uppercase text-white">{externalGps.connected ? 'Change External GPS Antenna' : 'Connect External GPS Antenna'}</div>
-                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.policyAllowed === false ? 'Direct antenna selection is unavailable in this browser session.' : 'Choose an approved USB / serial NMEA receiver or COM device.'}</div>
+                    <div className="text-[10px] font-black uppercase text-white">{externalGps.lockedToAntenna || externalGps.portGranted ? 'Refresh GPS Connection' : 'Connect External GPS Antenna'}</div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.policyAllowed === false ? 'Direct antenna selection is unavailable in this browser session.' : externalGps.lockedToAntenna || externalGps.portGranted ? 'Reconnect the saved COM receiver without asking you to select it again.' : 'The first connection requires browser permission. After approval Pathfinder reuses the saved receiver.'}</div>
                   </button>
 
                   <button
@@ -1713,8 +1713,8 @@ export default function Layout({ children, currentPageName }) {
                     disabled={gpsChanging || (!externalGps.connected && !externalGps.lockedToAntenna)}
                     className={`w-full rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${externalGps.lockedToAntenna ? 'border-cyan-500/70 bg-cyan-950/35' : 'border-slate-700 bg-[#0b1725] hover:border-cyan-600/70'}`}
                   >
-                    <div className="text-[10px] font-black uppercase text-white">{externalGps.lockedToAntenna ? 'Unlock Saved Antenna' : 'Lock This Antenna To This Computer'}</div>
-                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.lockedToAntenna ? 'The saved receiver will remain preferred across logout, refresh, and restart until you unlock it.' : 'Prevent this computer from automatically switching to another approved GPS receiver.'}</div>
+                    <div className="text-[10px] font-black uppercase text-white">{externalGps.lockedToAntenna ? 'Change Saved Antenna' : 'Lock This Antenna To This Computer'}</div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">{externalGps.lockedToAntenna ? 'Only use this if the old COM device has been unplugged or replaced; the next Connect action can authorize a new receiver.' : 'Pin the receiver so refresh and reconnect do not ask you to select a COM port again.'}</div>
                   </button>
 
                   <div className="rounded-lg border border-slate-700 bg-[#0b1725] p-2.5">
@@ -1731,7 +1731,7 @@ export default function Layout({ children, currentPageName }) {
                       <option value="38400">38400 baud</option>
                       <option value="115200">115200 baud</option>
                     </select>
-                    <div className="mt-1 text-[8px] leading-4 text-slate-500">Changing the baud rate will reopen the external receiver chooser so Pathfinder connects using the selected speed.</div>
+                    <div className="mt-1 text-[8px] leading-4 text-slate-500">Changing the baud rate restarts the saved receiver without reopening device selection.</div>
                   </div>
 
                   {!externalGps.serialApiAvailable && (

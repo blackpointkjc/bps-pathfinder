@@ -71,5 +71,8 @@ export function advanceSpeedingEpisode(episode, sample) {
   },completed:null};
 }
 export function shouldReportSpeeding(episode) {
-  return !!episode && episode.criticalSamples>=2 && episode.criticalDurationMs>=10000 && episode.durationMs>=10000;
+  // A sustained warning (>5 mph over for 10 seconds) requires supervisory
+  // review. The separate >10 mph threshold remains a critical severity, not a
+  // prerequisite to creating a task.
+  return !!episode && episode.samples>=2 && episode.maxExcess>5 && episode.durationMs>=10000;
 }

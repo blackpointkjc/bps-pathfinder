@@ -68,9 +68,9 @@ export default async function(req:Request):Promise<Response>{
     const accuracy=num(payload.gps_accuracy_m),samples=num(payload.samples);
     const source=str(payload.speed_limit_source).slice(0,110);
     if(![duration,criticalSeconds,distance,maxSpeed,limit,maxOver,accuracy,samples].every(Number.isFinite)
-      ||duration<10||duration>24*3600||criticalSeconds<10||criticalSeconds>duration
-      ||distance<0||distance>duration/3600*135*1.15||maxSpeed<limit+10
-      ||maxSpeed>135||limit<10||limit>90||maxOver<10||maxOver>135
+      ||duration<10||duration>24*3600||criticalSeconds<0||criticalSeconds>duration
+      ||distance<0||distance>duration/3600*135*1.15||maxSpeed<=limit+5
+      ||maxSpeed>135||limit<10||limit>90||maxOver<=5||maxOver>135
       ||accuracy<0||accuracy>50||samples<2||samples>100000
       ||!/(virginia dot|tomtom|openstreetmap posted)/i.test(source))
       return Response.json({error:'Speed telemetry does not meet the verified reporting thresholds'},{status:400});

@@ -721,10 +721,26 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
   nextAutomaticReconnectAt = 0;
   consecutiveReconnectFailures = 0;
 
-  // Keep requestPort directly attached to the user's click. Ownership handoff is
-  // performed only after the user selects the receiver, so Chromium's user-gesture
-  // requirement is preserved.
-  connectPromise = navigator.serial.requestPort()
+  // A previously authorized COM port can be reopened without a native browser
+  // chooser. The OS/browser permission dialog is needed only on first approval,
+  // or when the saved receiver is no longer available and a new one is chosen.
+  // Try the exact in-memory port first, then the unique saved USB identity.
+  // Never silently substitute a different COM port when multiple ports share
+  // identical USB vendor/product IDs (Windows serial adapters often do).
+  const saved = storedSelector();
+  const authorized = await navigator.serial.getPorts().catch(() => []);
+  const matching = saved ? authorized.filter(port => selectorMatches(port, saved)) : [];
+  const reuse = activePort && authorized.includes(activePort) ? activePort
+    : matching.length === 1 ? matching[0]
+    : !saved && authorized.length === 1 ? authorized[0] : null;
+  if (antennaLockEnabled() && saved && !reuse) {
+    emit({connected:false,connecting:false,portGranted:authorized.length>0,error:'Saved antenna is unavailable. Unlock it in Pathfinder before selecting a replacement.'});
+    throw new Error('Saved antenna not detected. Unlock the saved antenna in Pathfinder to select a replacement receiver.');
+  }
+  // Only a genuine new-device selection invokes Chromium's mandatory chooser.
+  // requestPort stays on the user gesture path for browsers enforcing it.
+  const selectPort = reuse ? Promise.resolve(reuse) : navigator.serial.requestPort();
+  connectPromise = selectPort
     .then(async port => {
       const selector = portSelector(port);
       const lockedSelector = storedSelector();
@@ -744,6 +760,11 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
 
       rememberSelector(selector);
       rememberGpsSource('external');
+      // The selected receiver is pinned across app sessions. Reconnect/baud
+      // refreshes reuse its existing permission without reopening the chooser.
+      if (selector.usbVendorId != null || selector.usbProductId != null) {
+        try { localStorage.setItem(STORAGE_LOCK_KEY, '1'); } catch (_) {}
+      }
       await stopWorkerPort({ terminate: true });
       await closeCurrentPort();
       await delay(400);

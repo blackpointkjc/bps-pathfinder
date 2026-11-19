@@ -42,7 +42,7 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
       ended_at:completed?new Date(snapshot.last.timestamp).toISOString():undefined,
       completed,
       duration_seconds:Math.max(10,Math.round(snapshot.durationMs/1000)),
-      critical_duration_seconds:Math.max(10,Math.round(snapshot.criticalDurationMs/1000)),
+      critical_duration_seconds:Math.max(0,Math.round(snapshot.criticalDurationMs/1000)),
       distance_miles:snapshot.totalMiles,
       max_speed_mph:snapshot.maxSpeed,
       speed_limit_mph:snapshot.first.limit,
