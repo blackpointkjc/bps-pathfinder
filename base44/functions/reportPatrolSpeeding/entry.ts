@@ -19,8 +19,14 @@ const own=(o:any,k:string)=>Object.prototype.hasOwnProperty.call(o||{},k);
 const asRows=(v:any)=>Array.isArray(v)?v:Array.isArray(v?.items)?v.items:[];
 const safeDate=(value:any)=>{const t=Date.parse(str(value));return Number.isFinite(t)?t:null;};
 function supervisorQualified(u:any){
-  const roles=new Set((u?.additional_roles||[]).map(lower));
-  return u?.role==='admin'||u?.is_supervisor===true||roles.has('supervisor')||roles.has('full_access');
+  if(!u || u.disabled || lower(u.employment_status)==='terminated' || u.termination_date) return false;
+  const roles=new Set((u.additional_roles||[]).map(lower));
+  // HR rank and command assignments can identify supervisors even when the
+  // legacy is_supervisor flag has not synchronized to the user record.
+  const rank=lower(u.rank).replace(/[.]/g,'').replace(/\s+/g,' ').trim();
+  const commandRank=/^(?:corporal|sergeant|sgt|first sergeant|first sgt|lieutenant|lt|captain|major|colonel|lt colonel|lt col|lieutenant colonel)$/.test(rank);
+  const officerRole=u.role==='officer' || roles.has('officer') || roles.has('supervisor');
+  return u.role==='admin'||u.is_supervisor===true||roles.has('supervisor')||roles.has('full_access')||(officerRole&&commandRank);
 }
 const label=(u:any)=>[u.rank,u.last_name].filter(Boolean).join(' ')||u.full_name||u.email||'Officer';
 function taskDescription(row:any,officer:any,supervisor:any){
@@ -145,6 +151,7 @@ export default async function(req:Request):Promise<Response>{
     if(queues.length)await api.asServiceRole.entities.WorkQueueState.update(queues[0].id,{
       title:queueTitle,
       source_location:queueDetail,
+      ...(supervisor ? {assigned_to_id:supervisor.id,assigned_to_email:supervisor.email,assigned_to_name:label(supervisor)} : {}),
       last_seen_at:new Date().toISOString()
     });
     else await api.asServiceRole.entities.WorkQueueState.create({
