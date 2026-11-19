@@ -585,3 +585,31 @@ html.pf-map-fullscreen .live-map-toolbar {
     border-radius:10px;
   }
 }
+
+/* Header controls: one compact horizontal toolbar. The GPS split control must
+   never place its settings arrow on a separate line on tablets or foldables. */
+.cad-app .pathfinder-header > div:last-child {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+@media (min-width: 768px) and (max-width: 1099px) {
+  .cad-app .pathfinder-header { padding-inline: 9px; gap: 6px; }
+  .cad-app .pathfinder-header > div:last-child { gap: 4px; }
+  .cad-app .pathfinder-header .pf-header-context { display: none; }
+}
+@media (max-width: 767px) {
+  .cad-app .pathfinder-header > div:last-child {
+    flex: 1 1 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cad-app .pathfinder-header > div:last-child::-webkit-scrollbar { display: none; }
+  .cad-app .pathfinder-header > div:last-child > * { flex-shrink: 0; }
+}
