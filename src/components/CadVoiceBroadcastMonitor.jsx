@@ -6,7 +6,7 @@ import { announceVoiceAsync, cancelVoiceEvent } from '@/utils/voiceAnnouncer';
 export default function CadVoiceBroadcastMonitor({ user }) {
   useEffect(() => {
     if (!user?.id || !user?.email) return;
-    let disposed = false, busy = false, timer, speakingId, lastRecovery = 0, needsAudioUnlock = false;
+    let disposed = false, busy = false, timer, speakingId, lastRecovery = 0, needsAudioUnlock = false, cooldownUntil = 0;
     const keyFor = id => 'bps:cad-broadcast-played:' + user.id + ':' + id;
     const invoke = async payload => {
       const response = await base44.functions.invoke('cad-voice-broadcast', payload);
@@ -45,24 +45,37 @@ export default function CadVoiceBroadcastMonitor({ user }) {
       if (navigator.locks?.request) await navigator.locks.request(eventId, {ifAvailable:true}, lock => lock ? deliver() : undefined);
       else await deliver();
     };
-    const schedule = (ms = 180000) => {
+    const schedule = (ms = 5 * 60_000) => {
       window.clearTimeout(timer);
       if (!disposed) timer = window.setTimeout(recover, ms + Math.random() * (ms < 10000 ? 1000 : 10000));
     };
     const recover = async () => {
       if (disposed || busy || navigator.onLine === false) { schedule(); return; }
       const health = getBase44RequestHealth();
-      if (health.rateLimitedUntil || health.readRetryAt) { schedule(120000); return; }
+      const healthCooldown=Math.max(Date.parse(health.rateLimitedUntil||'')||0,Date.parse(health.readRetryAt||'')||0);
+      if (Date.now() < Math.max(cooldownUntil,healthCooldown)) {
+        schedule(Math.max(60_000,Math.max(cooldownUntil,healthCooldown)-Date.now()));
+        return;
+      }
+      // Broadcast rows arrive through realtime subscriptions. Full recovery is
+      // only a fallback; never poll them at alert/CAD-source frequency.
       busy = true; lastRecovery = Date.now();
       try {
         const data = await invoke({action:'list'});
         for (const record of data.broadcasts || []) await process(record);
       } catch (error) {
-        if (/429|rate.limit|too many requests/i.test(String(error?.message || ''))) schedule(120000);
+        if (/429|rate.limit|too many requests/i.test(String(error?.message || ''))) cooldownUntil=Date.now()+10*60_000;
         console.warn('CAD voice recovery will retry:', error?.message || 'Connection unavailable');
-      } finally { busy = false; schedule(); }
+      } finally {
+        busy = false;
+        schedule(Math.max(5*60_000,cooldownUntil-Date.now()));
+      }
     };
-    const wake = () => { if (!busy) schedule(Math.max(300, 10000 - (Date.now() - lastRecovery))); };
+    const wake = () => {
+      // Many duty/location events fire together. Coalesce them into a single
+      // background recovery and keep provider 429 cooldown authoritative.
+      if (!busy) schedule(Math.max(2500,45_000-(Date.now()-lastRecovery),cooldownUntil-Date.now()));
+    };
     const unlock = () => { if (needsAudioUnlock) wake(); };
     const dutyChanged = event => {
       const row = event?.data;
@@ -78,7 +91,7 @@ export default function CadVoiceBroadcastMonitor({ user }) {
     window.addEventListener('online', wake);
     window.addEventListener('focus', wake);
     window.addEventListener('pointerdown', unlock);
-    schedule(1000);
+    schedule(25_000);
     return () => {
       disposed = true; window.clearTimeout(timer);
       if (speakingId) cancelVoiceEvent(speakingId);

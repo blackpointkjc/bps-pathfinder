@@ -25,7 +25,7 @@ export default function CadSourceSyncMonitor({ user }) {
       if (!active || running || !navigator.onLine) return;
       const page = window.location.pathname + window.location.search;
       const onCommandScreen = /Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|SupervisorCenter|SupervisorOverview|SupervisorCommandBoard|SupervisorFieldOversight|admin_center=(cad|supervisor)/i.test(page);
-      const minimumInterval = document.visibilityState === 'visible' && onCommandScreen ? 5_000 : 30_000;
+      const minimumInterval = document.visibilityState === 'visible' && onCommandScreen ? 5_000 : 20_000;
       if (Date.now() - lastSyncAttemptAt < minimumInterval) return;
       const health=getBase44RequestHealth();
       const cooldown=Math.max(Date.parse(health.readRetryAt||'')||0,Date.parse(health.rateLimitedUntil||'')||0);

@@ -31,7 +31,7 @@ let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
   if (meta?.kind === 'auth') return 5 * 60_000;
-  if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 1000;
+  if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 90_000;
   if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 30 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'User') return 5 * 60_000;
   if (meta?.kind === 'entity' && ['Location','Division'].includes(meta?.name)) return 30 * 60_000;
