@@ -34,6 +34,20 @@ async function fetchCadSource(primaryUrl: string, fallbackUrl: string, accept: s
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 const isClosedCall = (call: any) => !call || call.manual_dismissed === true || ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(call.status));
 
+// The GRAC website only controls the upstream feed, never an officer's live
+// Pathfinder assignment. A missing/closed upstream row must not release that unit.
+// If the assignment lookup fails, retain the call rather than dropping a dispatch.
+async function hasOutstandingOfficerAssignment(entities: any, call: any): Promise<boolean> {
+  if ((call?.assigned_units || []).some((id: any) => String(id).trim())) return true;
+  try {
+    const rows = await entities.CallAssignment.filter({ call_id: String(call.id) }, '-assigned_at', 1000);
+    return rows.some((a: any) => !['cleared','cancelled','canceled'].includes(lower(a.status)));
+  } catch (error: any) {
+    console.warn('Keeping GRAC call while assignment verification is unavailable', call?.id, error?.message || error);
+    return true;
+  }
+}
+
 // Update every duty-status mirror without modifying presence, GPS or clock records.
 // Re-running after a partial failure repairs the same terminal transition.
 async function releaseClosedCall(entities: any, call: any) {
@@ -1307,8 +1321,10 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   for (let offset = 0; offset < updateQueue.length; offset += 4) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async row => {
       const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+      const preservedAssignment = await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, previous);
       const patch = {
         ...persistableCall(row),
+        ...(preservedAssignment && ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(row.status)) ? {status: previous.status} : {}),
         ...(previous.priority_override ? {priority:previous.priority} : {}),
         source_first_seen_at: previous.source_first_seen_at || previous.created_date || row.source_first_seen_at || new Date().toISOString(),
         source_channel: row.source_channel || previous.source_channel || 'grac_api',
@@ -1354,17 +1370,23 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       !['Cleared','Cancelled'].includes(String(row.status || '')) &&
       row.manual_dismissed !== true && row.source !== 'public_helpme' && !row.public_request_id && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
   }).slice(0, 20);
+  const closedIdsFromSource = new Set<string>();
   for (let offset = 0; offset < disappeared.length; offset += 4) {
-    await Promise.all(disappeared.slice(offset, offset + 4).map((row: any) =>
-      base44.asServiceRole.entities.DispatchCall.update(row.id, {
-        status: 'Cleared', time_closed: row.time_closed || new Date().toISOString(),
-      }).then(() => releaseClosedCall(base44.asServiceRole.entities, { ...row, status: 'Cleared' })).catch((error: any) => console.warn('Fast CAD close failed', error?.message || error))
-    ));
+    await Promise.all(disappeared.slice(offset, offset + 4).map(async (row: any) => {
+      if (await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, row)) return;
+      try {
+        await base44.asServiceRole.entities.DispatchCall.update(row.id, {
+          status: 'Cleared', time_closed: row.time_closed || new Date().toISOString(),
+        });
+        await releaseClosedCall(base44.asServiceRole.entities, { ...row, status: 'Cleared' });
+        closedIdsFromSource.add(String(row.id));
+      } catch (error: any) { console.warn('Fast CAD close failed', error?.message || error); }
+    }));
   }
   await Promise.allSettled(sideEffects);
   // Recover existing alerts after a transient first-evaluation failure. The
   // ingestion lease serializes runs; cap work to keep the minute poll bounded.
-  const closedIds = new Set(disappeared.map((call:any) => String(call.id)));
+  const closedIds = closedIdsFromSource;
   const activeIds = new Set(saved.filter((call:any) => !closedIds.has(String(call.id)) && !['Cleared','Cancelled'].includes(String(call.status))).map((call:any) => String(call.id)));
   const properties = new Map<string, any>(monitored.map((property:any) => [String(property.id), property]));
   const candidates = alerts.filter((alert:any) => {
@@ -1396,7 +1418,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     } catch (error: any) { alertFailures++; console.error('Automatic dispatch recovery deferred to next poll', error?.message || error); }
   }
   return { success: true, lightweight: true, active: incoming.length,
-    created, updated, removed: disappeared.length, property_alerts_created: propertyAlertsCreated,
+    created, updated, removed: closedIdsFromSource.size, property_alerts_created: propertyAlertsCreated,
     alert_failures: alertFailures, synced_at: new Date().toISOString(), duration_ms: Date.now() - started };
 }
 
@@ -1654,6 +1676,7 @@ Deno.serve(async (req) => {
         const officialCad = matchedOfficialCad || savedOfficialCad;
         const bpsReference = String(existing.bps_reference || '').trim();
         const manuallyCleared = existing.manual_dismissed === true;
+        const assignedInPathfinder = await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, existing);
         const incomingWithCad = {
           ...persistableCall(callData),
           ...(existing.priority_override ? {priority:existing.priority} : {}),
@@ -1661,7 +1684,7 @@ Deno.serve(async (req) => {
           source_channel: callData.source_channel || existing.source_channel || 'grac_api',
           // A Pathfinder manual clear is authoritative for this exact upstream call
           // ID. GRAC may continue publishing it, but ingestion must keep it dismissed.
-          status: manuallyCleared ? 'Cleared' : callData.status,
+          status: manuallyCleared ? 'Cleared' : (assignedInPathfinder && ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(callData.status)) ? existing.status : callData.status),
           manual_dismissed: manuallyCleared,
           ...(manuallyCleared ? { manual_dismissed_at: existing.manual_dismissed_at || existing.time_cleared || new Date().toISOString() } : {}),
           agency_cad_number: officialCad,
@@ -1699,6 +1722,9 @@ Deno.serve(async (req) => {
       const external = externalKey(record);
       const legacy = legacyKey(record);
       if (recordKey(record) && !currentExternalKeys.has(external) && !currentLegacyKeys.has(legacy)) {
+        // GRAC may close the website incident while an officer is enroute/on scene.
+        // Keep that officer's CAD queue and assignment until Pathfinder clearance.
+        if (await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, record)) continue;
         await base44.asServiceRole.entities.DispatchCall.update(record.id, {
           status: 'Cleared',
           time_closed: record.time_closed || new Date().toISOString(),

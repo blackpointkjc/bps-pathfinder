@@ -64,6 +64,18 @@ Deno.serve(async (req) => {
         for (const { call, stamp } of archiveCandidates) {
             const ageMs = now.getTime() - stamp;
 
+            // Website disappearance or the one-hour timer must never remove an
+            // officer's assigned call. Only explicit Pathfinder clearance ends it.
+            if ((call.assigned_units || []).some((id:any) => String(id).trim())) continue;
+            let assignments: any[];
+            try {
+                assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: String(call.id) }, '-assigned_at', 1000);
+            } catch (error:any) {
+                console.warn('Deferring archive until assignments can be verified', call.id, error?.message || error);
+                continue;
+            }
+            if (assignments.some((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()))) continue;
+
             if (ageMs >= ARCHIVE_AFTER_MS) {
                 try {
                     const existing = await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: call.id }, '-archived_date', 1);
