@@ -16,7 +16,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
 export default async function(req){
  try{
  const sdk=createClientFromRequest(req),u=await sdk.auth.me().then(__portalAppIdentity).catch(()=>null),db=sdk.asServiceRole.entities;
- // Base44 validates the caller; scheduled jobs cannot hold a browser PortalAuthSession.\n // Reviewer/service authorization and account-lock checks remain enforced below.
+ if(u&&!u.is_service&&!await __portalLoginIsCurrent(req,sdk,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  let service=u?.is_service===true;
  if(!u&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);service=true;}catch{}}
  if(!service&&psRole(u)!=='reviewer')return Response.json({error:'Trusted workflow or main administrator access required'},{status:403});
