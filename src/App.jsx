@@ -192,20 +192,8 @@ function LoadingScreen() {
   );
 }
 
-const FORCED_SIGN_OUT_NOTICE_KEY = 'bps:forced-sign-out-notice';
-
-const readForcedSignOutNotice = () => {
-  try {
-    const value = JSON.parse(localStorage.getItem(FORCED_SIGN_OUT_NOTICE_KEY) || 'null');
-    return value && typeof value === 'object' ? value : null;
-  } catch {
-    return null;
-  }
-};
-
 const AuthenticatedApp = () => {
   const location = useLocation();
-  const [forcedSignOutNotice, setForcedSignOutNotice] = useState(() => readForcedSignOutNotice());
   const {
     isLoadingAuth,
     isLoadingPublicSettings,
