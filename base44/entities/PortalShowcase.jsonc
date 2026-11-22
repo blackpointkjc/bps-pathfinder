@@ -36,6 +36,10 @@
     },
     "updated_by": {
       "type": "string"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Existing employee selected for monthly recognition"
     }
   },
   "required": [
