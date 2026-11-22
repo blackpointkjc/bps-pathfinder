@@ -60,7 +60,6 @@ export function CadAudioToggle() {
   );
 }
 
-let notificationAudioContext;
 const LOCAL_CLAIM_TTL_MS = 6 * 60 * 60 * 1000;
 const LIVE_PROPERTY_ALERT_MAX_AGE_MS = 3 * 60 * 1000;
 const localAnnouncementClaims = new Map();
@@ -88,15 +87,6 @@ function rememberLocalAnnouncementClaim(eventKey) {
   const at = Date.now();
   localAnnouncementClaims.set(eventKey, at);
   try { localStorage.setItem(localClaimKey(eventKey), String(at)); } catch {}
-}
-
-function audioContext() {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) return null;
-  if (!notificationAudioContext || notificationAudioContext.state === 'closed') {
-    notificationAudioContext = new AudioContextClass();
-  }
-  return notificationAudioContext;
 }
 
 function speakNotification(text, options = {}) {
@@ -146,34 +136,6 @@ async function finalizeAnnouncementEvent(claim, eventKey, state, error = '') {
   if (state === 'blocked' || state === 'failed') {
     localAnnouncementClaims.delete(eventKey);
     try { localStorage.removeItem(localClaimKey(eventKey)); } catch {}
-  }
-}
-
-function playNotificationChime(urgent = false) {
-  try {
-    const context = audioContext();
-    if (!context) return;
-    if (context.state === 'suspended') context.resume().catch(() => {});
-    const start = context.currentTime + 0.02;
-    const notes = urgent
-      ? [{ frequency: 740, at: 0 }, { frequency: 740, at: 0.18 }, { frequency: 988, at: 0.36 }]
-      : [{ frequency: 880, at: 0 }, { frequency: 1175, at: 0.16 }];
-
-    notes.forEach(({ frequency, at }) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, start + at);
-      gain.gain.setValueAtTime(0.0001, start + at);
-      gain.gain.exponentialRampToValueAtTime(0.16, start + at + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + at + 0.22);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(start + at);
-      oscillator.stop(start + at + 0.24);
-    });
-  } catch (error) {
-    console.warn('Notification chime unavailable:', error?.message);
   }
 }
 
@@ -258,6 +220,13 @@ function BannerIcon({ kind }) {
 
 export default function GlobalMessageBanner({ user }) {
   const navigate = useNavigate();
+  // Refresh establishes a silent baseline; only events created after this page
+  // opened may enter automatic audio. Search-result speech is independent.
+  const audioStartedAt = useRef(Date.now());
+  const isLiveAudioEvent = record => {
+    const at = parseCadUtcTime(record?.created_date);
+    return Number.isFinite(at) && at >= audioStartedAt.current;
+  };
   const [banners, setBanners] = useState([]);
   const [voiceWarning, setVoiceWarning] = useState(null);
   const audioSettings = useRef({ enabled: true, volume: 1, voice_profile: 'american_ai', enabled_event_types: [] });
@@ -318,7 +287,7 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     const showBanner = (source, record, options = {}) => {
-      const allowAudio = options.allowAudio !== false;
+      const allowAudio = options.allowAudio !== false && isLiveAudioEvent(record);
       if (!record?.id) return;
       if (source.sourceName && record.source_name !== source.sourceName) return;
       const senderIdentity = normalized(record.created_by_id || record.sender_user_id || record.sender_id || record.sender_email || record.created_by);
@@ -366,13 +335,6 @@ export default function GlobalMessageBanner({ user }) {
           // genuinely new realtime messages, never for recovery/history loads.
           if (allowAudio) speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
         } else if (isSupervisorTask && freshForAudio && allowAudio) {
-          // A missed check-in must cut through: critical tasks repeat the urgent
-          // chime so the alert cannot be missed; routine tasks chime once.
-          playNotificationChime(true);
-          if (String(record.priority || '').toLowerCase() === 'critical') {
-            window.setTimeout(() => playNotificationChime(true), 900);
-            window.setTimeout(() => playNotificationChime(true), 1800);
-          }
           const settings = audioSettings.current;
           const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
           const taskAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('supervisor_task'));
@@ -402,7 +364,6 @@ export default function GlobalMessageBanner({ user }) {
           // The durable CallStatusLog event owns assignment speech. This targeted
           // notification remains visual so the officer receives the assignment
           // without creating a second competing announcement.
-          if (allowAudio) playNotificationChime(true);
         }
         // Ordinary messages, announcements, mentions and recovery records are
         // visual-only. They previously shared the generic chime and could sound
@@ -453,7 +414,7 @@ export default function GlobalMessageBanner({ user }) {
     // BOLOs use their own global alert path because they must notify every
     // authorized user, including the person who issued the BOLO.
     const showBolo = async (record, options = {}) => {
-      const allowAudio = options.allowAudio !== false;
+      const allowAudio = options.allowAudio !== false && isLiveAudioEvent({...record,created_date:record?.updated_date||record?.created_date});
       if (!record?.id || record.status !== 'active') return;
       const version = record.updated_date || record.created_date || 'active';
       const key = `BOLOAlert:${record.id}:${version}`;
@@ -482,7 +443,6 @@ export default function GlobalMessageBanner({ user }) {
           await finalizeAnnouncementEvent(claim, speechKey, accepted ? 'played' : (isVoiceEnabled() ? 'blocked' : 'quiet'));
         }
       }
-      if (allowAudio) playNotificationChime(true);
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'BOLOAlerts', key },
       }));
@@ -541,7 +501,7 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     const showPropertyCall = async (record, options = {}) => {
-      const allowAudio = options.allowAudio !== false;
+      const allowAudio = options.allowAudio !== false && isLiveAudioEvent(record);
       if (!record?.id) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
@@ -775,7 +735,7 @@ export default function GlobalMessageBanner({ user }) {
           : initial && incoming?.call_id
             ? { ...incoming, event_key: `call:${incoming.call_id}:initial` }
             : incoming;
-        if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false) return;
+        if (!record?.id || !record?.event_key || !record?.announcement_text || record.audio_enabled === false || !isLiveAudioEvent(record)) return;
         // BOLOAlert owns its own reliable speech path. Property alerts deliberately
         // remain enabled here as the durable fallback when the raw PropertyAlert
         // realtime create is missed. Both paths share the same claim/event key.

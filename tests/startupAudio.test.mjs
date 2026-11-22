@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const source=fs.readFileSync('src/components/GlobalMessageBanner.jsx','utf8');
+const start=source.indexOf('const isLiveAudioEvent = record => {');
+const end=source.indexOf('\n  };',start)+5;
+const helper=source.slice(start,end).replace('const isLiveAudioEvent = ','');
+const opened=Date.parse('2026-11-22T01:20:00Z');
+const live=Function('parseCadUtcTime','audioStartedAt','return '+helper)(Date.parse,{current:opened});
+assert.equal(live({created_date:'2026-11-22T01:19:59Z'}),false,'recent history must be silent after refresh');
+assert.equal(live({created_date:'2026-11-22T01:20:01Z'}),true,'new live alerts retain audio');
+assert.equal(live({created_date:'invalid'}),false);
+assert.equal(live({}),false);
+assert(!/createOscillator|playNotificationChime|new.*AudioContext/.test(source),'generic chime generator removed');
+assert(source.includes('record.audio_enabled === false || !isLiveAudioEvent(record)'),'durable recovery uses the same silent baseline');
+assert.equal((source.match(/options.allowAudio !== false && isLiveAudioEvent/g)||[]).length,3,'messages, BOLOs and property recovery use the baseline');
+console.log('PASS refresh audio: existing/recovered events silent; new live events allowed; generic chime removed');
