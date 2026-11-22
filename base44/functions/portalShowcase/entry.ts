@@ -8,6 +8,20 @@ const activePerson=(u:any)=>!u.disabled&&!u.termination_date&&!['terminated','su
 const hasRole=(u:any,role:string)=>activePerson(u)&&[u.role,...(u.additional_roles||[])].some(v=>String(v).toLowerCase()===role);
 const personName=(u:any)=>[u.first_name,u.last_name].filter(Boolean).join(' ').trim()||u.full_name||u.email;
 async function roster(sdk:any){const rows=[];for(let skip=0;;skip+=500){const page=await sdk.asServiceRole.entities.User.list('id',500,skip);rows.push(...page);if(page.length<500)return rows;}}
+const nameKey=v=>String(v||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+function profileRecognition(items:any[],people:any[]){
+ return items.map(item=>{
+  if(!['officer','supervisor'].includes(item.kind))return item;
+  const eligible=people.filter(person=>hasRole(person,item.kind));
+  let person=eligible.find(person=>person.id===item.user_id);
+  if(!person&&!item.user_id){
+   const title=nameKey(item.title);
+   const matches=eligible.filter(p=>{const first=nameKey(p.first_name),last=nameKey(p.last_name);return title===nameKey(personName(p))||title===nameKey([p.rank,personName(p)].filter(Boolean).join(' '))||(first&&last&&title===first[0]+' '+last);});
+   if(matches.length===1)person=matches[0];
+  }
+  return person?{...item,user_id:person.id,title:personName(person),image_url:person.profile_photo_url||person.profile_photo_original_url||''}:{...item,active:false};
+ });
+}
 const originalVideo=()=>({kind:'video',title:'BlackPoint Field Operations',caption:'The fleet and the people behind the mission',video_url:VIDEO,image_url:POSTER,active:true,sort_order:0,builtin:true});
 export default async function(req:Request){
  let phase='start';
@@ -22,12 +36,9 @@ export default async function(req:Request){
    const gallery=[...(rows.some((r:any)=>r.kind==='video')?active.filter((r:any)=>r.kind==='video'):[originalVideo()]),...active.filter((r:any)=>r.kind==='photo')]
     .sort((a:any,b:any)=>Number(a.sort_order||0)-Number(b.sort_order||0));
    const honorees=active.filter((r:any)=>['officer','supervisor'].includes(r.kind)&&r.month===now).sort((a:any,b:any)=>String(b.updated_date||'').localeCompare(String(a.updated_date||'')));
-   if(honorees.some((r:any)=>r.user_id)){
-    const people=await sdk.asServiceRole.entities.User.filter({id:{$in:honorees.map((r:any)=>r.user_id).filter(Boolean)}});
-    for(const r of honorees){const person=people.find((u:any)=>u.id===r.user_id);if(person){r.title=personName(person);r.image_url=person.profile_photo_url||person.profile_photo_original_url||'';}else if(r.user_id){r.active=false;}}
-   }
+   const currentHonorees=honorees.length?profileRecognition(honorees,await roster(sdk)):[];
    const safe=(r:any)=>({id:r.id,kind:r.kind,title:r.title,caption:r.caption,image_url:r.image_url,video_url:r.video_url||'',month:r.month});
-   return json({photos:gallery.slice(0,20).map(safe),recognition:['officer','supervisor'].map(kind=>honorees.find((r:any)=>r.kind===kind&&r.active!==false)).filter(Boolean).map(safe)});
+   return json({photos:gallery.slice(0,20).map(safe),recognition:['officer','supervisor'].map(kind=>currentHonorees.find((r:any)=>r.kind===kind&&r.active!==false)).filter(Boolean).map(safe)});
   }
   phase='authenticate administrator';
   const me=await sdk.auth.me().catch(()=>null);
@@ -42,7 +53,7 @@ export default async function(req:Request){
    return json({people:people.filter((u:any)=>hasRole(u,'officer')||hasRole(u,'supervisor')).map((u:any)=>({id:u.id,name:personName(u),rank:u.rank||'',roles:['officer','supervisor'].filter(role=>hasRole(u,role)),profile_photo_url:u.profile_photo_url||u.profile_photo_original_url||''})).sort((a:any,b:any)=>a.name.localeCompare(b.name))});
   }
   if(body.action==='list'){
-   phase='list records';const items=await db.list('-created_date',100);
+   phase='list records';const items=profileRecognition(await db.list('-created_date',100),await roster(sdk));
    return json({items:items.some((r:any)=>r.kind==='video')?items:[originalVideo(),...items]});
   }
   if(body.action==='save'){

@@ -3,7 +3,7 @@ import {announceRecordSearch,announceVoice} from '@/utils/voiceAnnouncer';
 import {useEffect,useRef,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
-import {Search,UserRound,CarFront,FileText,MapPin,CalendarDays,ArrowUpRight,AlertTriangle,Loader2,Shield,X,ChevronDown,Clock3} from 'lucide-react';
+import {Search,UserRound,CarFront,FileText,MapPin,CalendarDays,ArrowUpRight,AlertTriangle,Loader2,Shield} from 'lucide-react';
 import '@/components/reports/pathfinderRecordsTheme.css';
 
 const clean=value=>String(value??'').trim();
