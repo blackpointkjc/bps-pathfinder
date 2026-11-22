@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
 
     const existing = await base44.asServiceRole.entities.CadAnnouncementReceipt.filter(
       { event_key: eventKey, user_email: userEmail },
-      '-processed_at',
+      'created_date',
       5,
     );
     if (existing?.length) {
@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     await new Promise(resolve=>setTimeout(resolve,220));
     // Self-heal: a concurrent claim for the same user/event can pass the
     // existence check above at the same instant and create a duplicate receipt.
-    // Re-query and keep only the earliest; the audit flags duplicates of this
+    // Re-query and choose the earliest for playback; preserve all audit records for this
     // exact user_email|event_key pair.
     const allFor = await base44.asServiceRole.entities.CadAnnouncementReceipt.filter(
       { event_key: eventKey, user_email: userEmail },
@@ -163,12 +163,7 @@ Deno.serve(async (req) => {
     );
     if (allFor?.length > 1) {
       const [earliest, ...extras] = allFor;
-      await Promise.all(extras.map((r: any) =>
-        base44.asServiceRole.entities.CadAnnouncementReceipt.delete(r.id).catch(() => null)
-      ));
-      // Only the request that created the surviving earliest receipt owns audio.
-      // A concurrent request whose newly-created receipt was removed must return
-      // claimed:false or two devices can both speak the same event.
+      // Preserve every audit row; only the earliest request owns playback.
       const ownsClaim = String(earliest.id) === String(receipt.id);
       return Response.json({ success: true, claimed: ownsClaim, announcement_text: announcementText, property_announcement_text: propertyAnnouncementText, assignment_announcement_text: assignmentAnnouncementText, receipt: earliest, deduplicated: extras.length });
     }
