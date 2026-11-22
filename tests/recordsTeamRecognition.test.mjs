@@ -31,7 +31,7 @@ assert.equal(matches.length,1);assert.equal(matches[0].id,'01500');assert.equal(
 assert.equal((await call(search,{action:'get',entity:'ConfidentialReport',id:'x'})).status,403);
 console.log('PASS records search: oldest row beyond 1500 records, continuation, restricted record detail');
 const fairReads=[];
-const fairEntities=new Proxy({}, {get:(_target,name)=>({list:async(_sort,limit,skip=0)=>{fairReads.push({name,skip});return name==='DispatchCall'?oldRows.slice(skip,skip+limit):name==='IncidentReport'?[{id:'found-report',description:'specific needle'}]:[];}})});
+const fairEntities=new Proxy({}, {get:(_target,name)=>({filter:async(_query,_sort,limit,skip=0)=>{fairReads.push({name,skip});return name==='DispatchCall'?oldRows.slice(skip,skip+limit):[];},list:async(_sort,limit,skip=0)=>{fairReads.push({name,skip});return name==='DispatchCall'?oldRows.slice(skip,skip+limit):name==='IncidentReport'?[{id:'found-report',description:'specific needle'}]:[];}})});
 const fair=await backend('base44/functions/searchCompanyRecords/entry.ts',{auth:{me:async()=>a},entities:fairEntities,asServiceRole:{entities:fairEntities}});
 const first=await call(fair,{query:'specific needle'});
 assert(first.data.results.some(r=>r.id==='found-report'),'reports appear before a large dispatch source finishes');
