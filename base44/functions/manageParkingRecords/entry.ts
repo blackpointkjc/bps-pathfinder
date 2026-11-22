@@ -1,3 +1,4 @@
+import {resolveReportTeam} from '../../shared/reportTeam.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { portalSessionState } from '../../shared/portalLoginGuard.ts';
@@ -475,6 +476,7 @@ Deno.serve(async req => {
       entry.officer_name=clean(user.full_name||`${user.first_name||''} ${user.last_name||''}`.trim()||user.email);
       entry.officer_id=String(user.id);
       entry.approval_history=[history(user,'issued',entry.description||'Officer submitted parking notice')];
+      Object.assign(entry,await resolveReportTeam(sdk,user,entry));
       const result=await entities.ParkingViolation.create(entry);
       return Response.json({success:true,violation:result});
     }

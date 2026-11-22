@@ -22,7 +22,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import { getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, recordBelongsToDirectoryUser } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
-import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import {
   formatReportClock,
   formatReportDate,
@@ -867,13 +866,7 @@ export default function ShiftReports() {
                   </Select>
                 </div>
 
-                <AttachedOfficerSelector
-                  users={allUsers || []}
-                  selectedIds={formData.attached_officer_ids || []}
-                  currentUserId={user?.id}
-                  onChange={(ids) => setFormData(prev => ({ ...prev, attached_officer_ids: ids }))}
-                  label="Attach Other Officers Covered by This Shift/DAR Report"
-                />
+                
 
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">

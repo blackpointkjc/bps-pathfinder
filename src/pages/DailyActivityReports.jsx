@@ -21,7 +21,6 @@ import StatusBadge from "../components/dashboard/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
-import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import {
@@ -918,13 +917,7 @@ export default function DailyActivityReports() {
                   </Select>
                 </div>
 
-                <AttachedOfficerSelector
-                  users={allUsers || []}
-                  selectedIds={formData.attached_officer_ids || []}
-                  currentUserId={user?.id}
-                  onChange={(ids) => setFormData(prev => ({ ...prev, attached_officer_ids: ids }))}
-                  label="Attach Other Officers Covered by This DAR"
-                />
+                
 
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">

@@ -236,22 +236,19 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Additional officer user IDs attached to this report"
+      }
     },
     "attached_officer_emails": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Additional officer emails attached to this report"
+      }
     },
     "attached_officer_names": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Display names of additional officers attached to this report"
+      }
     },
     "report_type": {
       "type": "string",
@@ -313,6 +310,22 @@
     "vehicle_record_id": {
       "type": "string",
       "description": "Property-registered vehicle ID linked to incident"
+    },
+    "team_schedule_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "team_credit_source": {
+      "type": "string"
+    },
+    "team_location": {
+      "type": "string"
+    },
+    "team_date": {
+      "type": "string",
+      "format": "date"
     }
   },
   "required": [

@@ -26,7 +26,6 @@ import VehicleFields from '@/components/reports/VehicleFields';
 import PropertyResidentPicker from '@/components/reports/PropertyResidentPicker';
 import RecordsCheckButton from '@/components/reports/RecordsCheckButton';
 import {vehicleSummary} from '@/lib/vehicleForm';
-import AttachedOfficerSelector from '@/components/reports/AttachedOfficerSelector';
 import { toast } from 'sonner';
 import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { listAllDispatchCallsForLinking, createReportCallLink, callDisplayNumber } from '@/lib/reportCallLinking';
@@ -1354,13 +1353,7 @@ Provide:
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <AttachedOfficerSelector
-                      users={allUsers || []}
-                      selectedIds={formData.attached_officer_ids || []}
-                      currentUserId={user?.id}
-                      onChange={(ids) => setFormData(prev => ({ ...prev, attached_officer_ids: ids }))}
-                      label="Attach Other Officers"
-                    />
+                    
                   </div>
 
                   <div className="space-y-2 md:col-span-2">

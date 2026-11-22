@@ -386,6 +386,40 @@
     "officer_ip_address": {
       "type": "string",
       "description": "IP address of officer when issuing summons"
+    },
+    "attached_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attached_officer_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attached_officer_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "team_schedule_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "team_credit_source": {
+      "type": "string"
+    },
+    "team_location": {
+      "type": "string"
+    },
+    "team_date": {
+      "type": "string",
+      "format": "date"
     }
   },
   "required": [

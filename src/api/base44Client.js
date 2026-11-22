@@ -591,6 +591,16 @@ function invalidateReadCacheForRealtimeEntity(name) {
   }
 }
 
+const TEAM_REPORT_ENTITIES = new Set(['ShiftHandover','ShiftReport','DailyActivityReport','IncidentReport','ConfidentialReport','ParkingViolation','MaintenanceReport','OpenDoorReport','ExpenseReport','QRScanEvent','QRPatrolReport','TrespassingNotice','CriminalComplaint','Summons','WitnessSubpoenaRequest']);
+async function reportWriteArgs(name,method,args){
+ if(!TEAM_REPORT_ENTITIES.has(name)||!['create','update'].includes(method))return args;
+ const index=method==='update'?1:0,data=args[index]||{};
+ // Review/acknowledgment updates must retain the original reporting team's identity.
+ if(method==='update'&&!['description','narrative','hourly_entries','key_updates','action_taken','incident_type','officer_note','violation_type'].some(key=>key in data))return args;
+ const response=await rawBase44.functions.invoke('prepareReportTeam',{entity:name,data});
+ if(response.data?.error)throw Error(response.data.error);
+ const next=[...args];next[index]={...data,...response.data.team};return next;
+}
 function wrappedEntity(name) {
   if (entityWrappers.has(name)) return entityWrappers.get(name);
   const entity = rawBase44.entities[name];
@@ -607,7 +617,8 @@ function wrappedEntity(name) {
       if (['Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview','ClientFeedback'].includes(name) && ['list','filter','get','create','update','delete'].includes(property)) {
         return (...args) => {
           const request = async () => {
-            const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args});
+            const reportArgs=await reportWriteArgs(name,String(property),args);
+            const response = await rawBase44.functions.invoke('professionalStandards', {action:'legacy_entity',entity:name,method:String(property),args:reportArgs});
             if(response.data?.error)throw new Error(response.data.error);
             if((response.data?.receipt?.tracking_code||response.data?.receipt?.pending))window.dispatchEvent(new CustomEvent('bps-ia-submission-receipt',{detail:response.data.receipt}));
             return response.data?.result;
@@ -620,7 +631,7 @@ function wrappedEntity(name) {
         return (...args) => queuedRead(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args), { kind: 'entity', name, method: String(property) });
       }
       if (WRITE_METHODS.has(property)) {
-        return (...args) => protectedWrite(`entity:${name}:${String(property)}:${stableKey(args)}`, () => value.apply(target, args), { kind: 'entity', name, method: String(property) });
+        return (...args) => protectedWrite(`entity:${name}:${String(property)}:${stableKey(args)}`, async () => value.apply(target, await reportWriteArgs(name,String(property),args)), { kind: 'entity', name, method: String(property) });
       }
       return value.bind(target);
     },
