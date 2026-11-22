@@ -1,3 +1,4 @@
+import {waitUntil} from 'base44:runtime';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 
 
@@ -1377,7 +1378,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
       } catch (error: any) { console.warn('Fast CAD close failed', error?.message || error); }
     }));
   }
-  await Promise.allSettled(sideEffects);
+  waitUntil(Promise.allSettled(sideEffects));
   // Recover existing alerts after a transient first-evaluation failure. The
   // ingestion lease serializes runs; cap work to keep the minute poll bounded.
   const closedIds = closedIdsFromSource;
@@ -1416,13 +1417,15 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     alert_failures: alertFailures, synced_at: new Date().toISOString(), duration_ms: Date.now() - started };
 }
 
-Deno.serve(async (req) => {
+export async function handleGracIngestion(req) {
   const startedAt = Date.now();
   try {
     const base44 = createClientFromRequest(req);
+    const jobInput=await req.clone().json().catch(()=>({}));
+    const platformScheduledAdmin=jobInput.scheduled===true; 
     // Pending account identities cannot call operational service-role endpoints.
     const __portalCaller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    if(__portalCaller&&!__portalCaller.is_service&&!(__portalCaller.role==='admin'&&platformScheduledAdmin)&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || (__portalCaller.termination_date&&Date.parse(__portalCaller.termination_date)<=Date.now()) || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -1781,4 +1784,5 @@ Deno.serve(async (req) => {
     console.error('GRAC ingestion failed:', error);
     return Response.json({ success: false, error: error?.message || 'GRAC ingestion failed' }, { status: 500 });
   }
-});
+}
+export default handleGracIngestion;

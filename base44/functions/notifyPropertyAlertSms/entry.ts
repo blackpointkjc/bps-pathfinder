@@ -1,3 +1,4 @@
+import {sendCompanyEmail} from '../../shared/companyGraph.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -109,43 +110,13 @@ function sameProperty(value: unknown, propertyNames: string[]) {
   return candidates.some((candidate) => propertyNames.some((property) => candidate === property));
 }
 
-async function sendTwilioSms(to: string, message: string) {
-  const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID') || null;
-  const authToken = Deno.env.get('TWILIO_AUTH_TOKEN') || null;
-  const fromNumber = Deno.env.get('TWILIO_FROM_NUMBER') || null;
-  const messagingServiceSid = Deno.env.get('TWILIO_MESSAGING_SERVICE_SID') || null;
-
-  if (!accountSid || !authToken || (!fromNumber && !messagingServiceSid)) {
-    throw new Error('SMS provider not configured: add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID.');
-  }
-
-  const params = new URLSearchParams({ To: to, Body: message });
-  if (messagingServiceSid) params.set('MessagingServiceSid', messagingServiceSid);
-  else params.set('From', String(fromNumber));
-
-  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const providerMessage = String(payload?.message || `Twilio HTTP ${response.status}`).slice(0, 500);
-    throw new Error(providerMessage);
-  }
-  return { sid: String(payload?.sid || '') };
-}
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
     const __portalCaller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    if(__portalCaller&&!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -242,13 +213,13 @@ Deno.serve(async (req) => {
     const callLocation = call?.location || alert.callLocation || property?.address || 'location unavailable';
     const message = `BLACK POINT PROPERTY CALL: ${propertyName} | ${incident} | ${callLocation} | CAD ${cadNumber}. Open Pathfinder CAD for details.`;
 
-    const results = { sent: 0, skipped_sent: 0, missing_phone: 0, failed: 0, recipients: recipients.size };
+    const results = { channel:'email',provider:'microsoft_graph',sent: 0, skipped_sent: 0, failed: 0, recipients: recipients.size };
     for (const [email, recipient] of recipients.entries()) {
       const existing = await base44.asServiceRole.entities.PropertyAlertSmsDelivery.filter({
         property_alert_id: propertyAlertId,
         recipient_email: email,
       }, '-created_date', 10).catch(() => []);
-      const sentReceipt = (existing || []).find((row: any) => row.status === 'sent');
+      const sentReceipt = (existing || []).find((row: any) => row.status === 'sent'&&row.provider==='microsoft_graph');
       if (sentReceipt) {
         results.skipped_sent += 1;
         continue;
@@ -256,42 +227,23 @@ Deno.serve(async (req) => {
 
       const latestReceipt = (existing || [])[0] || null;
       const latestAttempt = latestReceipt?.attempted_at ? new Date(latestReceipt.attempted_at).getTime() : 0;
-      if (latestReceipt?.status === 'failed' && Number.isFinite(latestAttempt) && Date.now() - latestAttempt < 5 * 60 * 1000) {
+      if (latestReceipt?.status === 'failed' && latestReceipt?.provider==='microsoft_graph' && Number.isFinite(latestAttempt) && Date.now() - latestAttempt < 5 * 60 * 1000) {
         results.failed += 1;
         continue;
       }
 
-      const mobile = normalizePhone(recipient.user.mobile_phone);
       const attemptedAt = new Date().toISOString();
-      if (!mobile) {
-        const data = {
-          property_alert_id: propertyAlertId,
-          call_id: String(alert.callId || ''),
-          recipient_email: email,
-          recipient_type: recipient.type,
-          phone_last4: phoneLast4(recipient.user.mobile_phone),
-          status: 'failed',
-          provider: 'twilio',
-          attempted_at: attemptedAt,
-          error: 'No valid mobile phone is configured for this recipient.',
-        };
-        if (latestReceipt?.id) await base44.asServiceRole.entities.PropertyAlertSmsDelivery.update(latestReceipt.id, data).catch(() => null);
-        else await base44.asServiceRole.entities.PropertyAlertSmsDelivery.create(data).catch(() => null);
-        results.missing_phone += 1;
-        continue;
-      }
-
       try {
-        const provider = await sendTwilioSms(mobile, message);
+        const provider = await sendCompanyEmail({to:email,subject:'Pathfinder property alert — '+propertyName,body:message});
         const data = {
           property_alert_id: propertyAlertId,
           call_id: String(alert.callId || ''),
           recipient_email: email,
           recipient_type: recipient.type,
-          phone_last4: phoneLast4(mobile),
+          phone_last4: '',
           status: 'sent',
-          provider: 'twilio',
-          provider_message_id: provider.sid,
+          provider: 'microsoft_graph',
+          provider_message_id: provider.request_id,
           attempted_at: attemptedAt,
           sent_at: new Date().toISOString(),
           error: '',
@@ -300,15 +252,15 @@ Deno.serve(async (req) => {
         else await base44.asServiceRole.entities.PropertyAlertSmsDelivery.create(data);
         results.sent += 1;
       } catch (error: any) {
-        const errorMessage = String(error?.message || error || 'SMS send failed').slice(0, 1000);
+        const errorMessage = String(error?.message || error || 'Graph email send failed').slice(0, 1000);
         const data = {
           property_alert_id: propertyAlertId,
           call_id: String(alert.callId || ''),
           recipient_email: email,
           recipient_type: recipient.type,
-          phone_last4: phoneLast4(mobile),
+          phone_last4: '',
           status: 'failed',
-          provider: 'twilio',
+          provider: 'microsoft_graph',
           attempted_at: attemptedAt,
           error: errorMessage,
         };
@@ -321,7 +273,7 @@ Deno.serve(async (req) => {
     return Response.json({ success: true, ...results });
   } catch (error: any) {
     console.error('notifyPropertyAlertSms failed', error?.message || error);
-    return Response.json({ error: error?.message || 'Unable to send property-call SMS notifications' }, { status: 500 });
+    return Response.json({ error: error?.message || 'Unable to send property-call email notifications' }, { status: 500 });
   }
 });
 
