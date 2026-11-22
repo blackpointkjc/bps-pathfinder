@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import AIRewriteField from '@/components/AIRewriteField';
 import {useEffect,useMemo,useState,useRef} from 'react';
 import { base44,clearBase44ReadCacheMatching,getBase44RequestHealth } from '@/api/base44Client';
@@ -53,6 +54,7 @@ export default function ParkingRecords({mode='officer'}){
  const [site,setSite]=useState(''),[sites,setSites]=useState([]),[tab,setTab]=useState(rentRollOnly?'residents':client||supervisor?'violations':'new'),[data,setData]=useState({violations:[],rules:[],residents:[],vehicles:[]}),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [ticket,setTicket]=useState(blankTicket),[resident,setResident]=useState(blankResident),[residentId,setResidentId]=useState(''),[rule,setRule]=useState({label:'',violation_type:'no_permit',fine_amount:0,warning_only:false,active:true,description:''}),[ruleId,setRuleId]=useState('');
  const [reviewNotes,setReviewNotes]=useState(''),[statusFilter,setStatusFilter]=useState('all'),[photoUploading,setPhotoUploading]=useState(false),[editingTicketId,setEditingTicketId]=useState('');
+  useAutomaticReportTeam('ParkingViolation',{...ticket,location:site},tab==='new' && !!site && !!ticket.license_plate);
  const [sessionUser,setSessionUser]=useState(null),[returnedTasks,setReturnedTasks]=useState([]);
  const [car,setCar]=useState(blankCar),[carId,setCarId]=useState(''),[rentSearch,setRentSearch]=useState(''),[siteAuto,setSiteAuto]=useState(false),[importing,setImporting]=useState(false),[directoryRetry,setDirectoryRetry]=useState(0),[directoryBusy,setDirectoryBusy]=useState(true),[loadedSite,setLoadedSite]=useState('');
  const lastSite=useRef(site),readSequence=useRef(0);

@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import {offlineDelete} from '@/lib/offlineWork';
 import OfflineDraftGuard from '@/components/OfflineDraftGuard';
 import { uploadInternalFile } from '@/lib/internalUpload';
@@ -58,6 +59,7 @@ export default function ShiftReports() {
     photo_url: "",
     attached_officer_ids: [],
   });
+  useAutomaticReportTeam('ShiftReport',formData,showForm);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false); // New state for 'saving as draft'
   const queryClient = useQueryClient();

@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -35,6 +36,7 @@ export default function ExpenseReports() {
     start_mileage_photo_url: "",
     end_mileage_photo_url: ""
   });
+  useAutomaticReportTeam('ExpenseReport',formData,showDialog);
 
   const queryClient = useQueryClient();
 

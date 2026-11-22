@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import { uploadInternalFile } from '@/lib/internalUpload';
 
 import React, { useState, useEffect } from "react";
@@ -34,6 +35,7 @@ export default function OpenDoorReports() {
     photo_url: "",
     status: "open"
   });
+  useAutomaticReportTeam('OpenDoorReport',formData,showForm);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({

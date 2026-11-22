@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import {offlineDelete} from '@/lib/offlineWork';
 import OfflineDraftGuard from '@/components/OfflineDraftGuard';
 import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
@@ -104,6 +105,7 @@ export default function IncidentReports() {
     parent_report_number: '',
     supplement_number: null,
   });
+  useAutomaticReportTeam('IncidentReport',formData,showForm);
 
   // Check if we're creating a report from a call for service
   React.useEffect(() => {

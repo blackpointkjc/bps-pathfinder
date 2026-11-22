@@ -1,0 +1,114 @@
+{
+  "name": "TeamReportWork",
+  "type": "object",
+  "properties": {
+    "work_key": {
+      "type": "string"
+    },
+    "report_entity": {
+      "type": "string"
+    },
+    "report_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "incident_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "incident_time": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "linked_call_id": {
+      "type": "string"
+    },
+    "linked_call_number": {
+      "type": "string"
+    },
+    "officer_email": {
+      "type": "string"
+    },
+    "officer_id": {
+      "type": "string"
+    },
+    "attached_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attached_officer_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attached_officer_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "team_schedule_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "team_credit_source": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_progress",
+        "submitted",
+        "cancelled"
+      ]
+    },
+    "report_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "work_key",
+    "report_entity",
+    "officer_id",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.officer_id": "{{user.id}}"
+        },
+        {
+          "data.attached_officer_ids": "{{user.id}}"
+        }
+      ]
+    }
+  }
+}

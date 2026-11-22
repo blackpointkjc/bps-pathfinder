@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
@@ -27,6 +28,7 @@ const shiftEndTime = (date, start, end) => {
 
 export default function ShiftHandover(){
   const [showForm,setShowForm]=useState(false); const [form,setForm]=useState(blank); const qc=useQueryClient();
+  useAutomaticReportTeam('ShiftHandover',form,showForm);
   const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>getCurrentDirectoryUser()});
   const {data:schedules=[]}=useQuery({queryKey:['handoverSchedules'],queryFn:()=>base44.entities.Schedule.list('shift_date',1000)});
   const {data:locations=[]}=useQuery({queryKey:['handoverLocations'],queryFn:()=>listDirectoryLocations('site_name')});

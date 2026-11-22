@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect, useRef } from "react";
@@ -61,6 +62,7 @@ export default function DailyActivityReports() {
     photo_urls: [],
     attached_officer_ids: [],
   });
+  useAutomaticReportTeam('DailyActivityReport',formData,showForm);
   const [entryText, setEntryText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);

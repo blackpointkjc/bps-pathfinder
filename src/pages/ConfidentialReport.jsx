@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -30,6 +31,7 @@ export default function ConfidentialReport() {
   });
   const [submitted, setSubmitted] = useState(false);
 
+  useAutomaticReportTeam('ConfidentialReport',formData,!submitted && !!formData.description.trim());
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => getCurrentDirectoryUser(),

@@ -1,3 +1,4 @@
+import useAutomaticReportTeam from '@/hooks/useAutomaticReportTeam';
 import { uploadInternalFile } from '@/lib/internalUpload';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -42,6 +43,7 @@ export default function MaintenanceReports() {
     priority: "medium",
     photo_url: "",
   });
+  useAutomaticReportTeam('MaintenanceReport',formData,showForm);
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
 
