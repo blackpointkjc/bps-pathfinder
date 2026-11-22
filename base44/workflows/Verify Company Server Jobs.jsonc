@@ -1,0 +1,44 @@
+{
+  "name": "Verify Company Server Jobs",
+  "description": "Read-only administrator check for independent Graph delivery and GRAC polling. Kept inactive after verification.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "one_time",
+      "cron_expression": null,
+      "one_time_date": "2026-11-22T01:31:51.965000Z",
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "verify_company_server_jobs",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "check_company_jobs": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "checkCompanyAutomation",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Verify server authentication and company Graph mail"
+          }
+        }
+      }
+    ]
+  }
+}
