@@ -44,7 +44,7 @@ let source=fs.readFileSync('base44/functions/generateWeeklyInvoices/entry.ts','u
 const transformed=await transform(source,{loader:'ts',format:'esm'});
 await import('data:text/javascript;base64,'+Buffer.from(transformed.code).toString('base64'));
 const handler=globalThis.__registeredHandler;
-const call=async body=>{const response=await handler(new Request('https://unit.invalid',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(body)}));return {status:response.status,...await response.json()};};
+const call=async body=>{globalThis.__billingSdk.auth.me=async()=>actor;const response=await handler(new Request('https://unit.invalid',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(body)}));return {status:response.status,...await response.json()};};
 const scheduled=await call({scheduled:true,action:'scheduled'});assert.equal(scheduled.status,200);assert.equal(scheduled.skipped,true);assert.ok(!reads.includes('PortalAuthSession'),'verified scheduled admin never requires a portal session');assert.equal(writes.length,0);
 actor=null;const forged=await call({scheduled:true,action:'scheduled'});assert.ok([401,403].includes(forged.status));assert.equal(writes.length,0);
 console.log('PASS scheduler auth: offline platform admin works, outside-Monday run skips, anonymous scheduled flag rejected');
