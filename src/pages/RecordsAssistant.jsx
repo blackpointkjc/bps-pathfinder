@@ -76,19 +76,18 @@ export default function RecordsAssistant(){
   event?.preventDefault();const term=clean(query);if(term.length<2)return;
   const seq=++latest.current;
   installVoiceUnlockListeners();
-  let lastAnnouncedCount=0;
   setSearching(true);setSearched(false);setError('');setPartial('');setSourceFilter('all');setResults([]);setResidents([]);
   // Both searches run concurrently. The property registry is scoped to the
   // employee's authorized operational sites by the backend, with no dropdown.
   const settled=await Promise.allSettled([
-   searchAllRecords({query:term,search_type:'all'},{isCurrent:()=>seq===latest.current,onProgress:d=>{if(seq!==latest.current)return;setResults(d.results);if(d.results.length>lastAnnouncedCount){lastAnnouncedCount=d.results.length;announceRecordSearch(d.results,{searchType:'all',partial:true});}setProgress('Searching authorized app records · '+d.source+' / '+d.total_sources+' sources');}}),
+   searchAllRecords({query:term,search_type:'all'},{isCurrent:()=>seq===latest.current,onProgress:d=>{if(seq!==latest.current)return;setResults(d.results);setProgress('Searching authorized app records · '+d.source+' / '+d.total_sources+' sources');}}),
    withSearchDeadline(base44.functions.invoke('manageParkingRecords',{action:'search_all',query:term}),45000),
   ]);
   if(seq!==latest.current)return;
   const problems=[];let ok=0,company=[],people=[],matched=0;
   if(settled[0].status==='fulfilled'){
    const d=settled[0].value?.data||settled[0].value||{};
-   if(d.error)problems.push(d.error);else{ok++;company=d.results||[];matched=Number(d.total_matches)||company.length;if(d.partial||d.truncated)problems.push(d.truncated?'Company results exceed the display limit; narrow your search to see more':'Some company sources were unavailable');}
+   if(d.error)problems.push(d.error);else{ok++;company=d.results||[];matched=Number(d.total_matches)||company.length;if(d.partial||d.truncated)problems.push(d.truncated?'Company results exceed the display limit; narrow your search to see more':'Search could not finish: '+(d.failed_source_labels?.join(', ')||'remaining records'));}
   }else problems.push(settled[0].reason?.response?.data?.error||settled[0].reason?.message||'Company record search failed');
   if(settled[1].status==='fulfilled'){
    const d=settled[1].value?.data||settled[1].value||{};

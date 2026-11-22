@@ -518,8 +518,8 @@ export function announceDistressSignalAsync({ unit, name, eventId }) {
   return announceVoiceAsync(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62, priority: 'emergency', eventId: eventId ? `distress:${eventId}` : undefined });
 }
 
-export function announceRecordSearch(results = [], metadata = {}) {
- const prefix=metadata.partial?'Partial records response. Some sources were unavailable.':'Pathfinder records response.';
+export function announceRecordSearch(results = []) {
+ const prefix='Pathfinder records response.';
  const sources=[...new Set(results.map(r=>r.source).filter(Boolean))];
  const details=results.slice(0,5).map((r,i)=>[
   'Result '+(i+1),r.source,r.label||r.full_name||r.citation_number||r.vehicle_plate||'Record',

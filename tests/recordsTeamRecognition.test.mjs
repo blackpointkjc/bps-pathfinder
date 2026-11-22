@@ -79,7 +79,7 @@ const voiceSource=fs.readFileSync('src/utils/voiceAnnouncer.js','utf8');
 const voiceFn=voiceSource.slice(voiceSource.indexOf('export function announceRecordSearch('));
 const voiceModule=await import('data:text/javascript;base64,'+Buffer.from('const announceVoice=(text)=>text;\n'+voiceFn).toString('base64'));
 const spoken=voiceModule.announceRecordSearch([{source:'Incident Reports',label:'IR-42',person:'Example Person',location:'Alpha',status:'submitted',warrant_issued:true}],{partial:true});
-assert.match(spoken,/Partial records response/);assert.match(spoken,/IR-42/);assert.match(spoken,/Example Person/);assert.match(spoken,/Current status unverified/);
+assert.doesNotMatch(spoken,/Partial records response|sources were unavailable/);assert.match(spoken,/IR-42/);assert.match(spoken,/Example Person/);assert.match(spoken,/Current status unverified/);
 assert.match(voiceModule.announceRecordSearch([]),/No matching records/);
 console.log('PASS paginated client merge, relevance order, cancellation and spoken result content');
 for(const path of ['base44/shared/reportTeam.ts','base44/shared/reportWork.ts','base44/functions/manageParkingRecords/entry.ts','base44/functions/getMyPerformanceData/performanceData.ts','base44/functions/getCompanyPerformanceData/entry.ts','base44/functions/syncSupervisorOperationalTasks/entry.ts','base44/functions/sendDailyCompanySummary/entry.ts']){
