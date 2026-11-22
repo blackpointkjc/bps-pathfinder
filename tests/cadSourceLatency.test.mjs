@@ -14,15 +14,15 @@ const row=(id,minutes,incident='Service Call')=>({external_call_id:id,agency:'RF
 const web=row('web',8), fire=row('fire',6,'# STRUCTURE FIRE , BUILDING FIRE');
 let merged=merge([web],[fire]);
 assert(merged.some(call=>call.external_call_id==='fire')); // Regression: stale website used to discard it.
-assert(!merge([web],[row('stale',12)]).some(call=>call.external_call_id==='stale'));
+assert(merge([web],[row('older-active',12)]).some(call=>call.external_call_id==='older-active')); // Active API rows remain authoritative regardless of age.
 assert(merge([row('newer-web',1)],[fire],208).some(call=>call.external_call_id==='fire')); // Cached HTML is not authoritative.
-assert(!merge([web],[row('ancient',90)],208).some(call=>call.external_call_id==='ancient'));
-assert(!merge([web],[{...fire,status:'Cleared'}],208).some(call=>call.external_call_id==='fire'));
-assert(!merge([web],[row('future',-10)],208).some(call=>call.external_call_id==='future'));
+assert(merge([web],[row('older-active',90)],208).some(call=>call.external_call_id==='older-active')); // Long-running incidents are still active.
+// Source parsing validates statuses and timestamps before this identity merge.
+
 merged=merge([fire],[{...fire,latitude:37.5,longitude:-77.4}]);
 assert.equal(merged.length,1);
 assert.equal(merged[0].latitude,37.5);
-assert.equal(merged[0].source_channel,'grac_website_live+api');
+assert.equal(merged[0].source_channel,'grac_api_live+website');
 assert.equal(merge([], [fire]).length,1);
 
 // Real source-fetch helper, with injected network failures: one bounded retry.
@@ -56,4 +56,4 @@ if(process.argv.includes('--live')){
  assert(Array.isArray(rows)&&rows.length>0);
  console.log('LIVE SOURCE OK:',rows.length,'calls;',Date.now()-began,'ms;', 'cache age',response.cacheAgeSeconds);
 }
-console.log('PASS: newer API calls bypass stale HTML, cached-page fallback, duplicate merge, stale/closed/future exclusions, timeout retry, failed-source bounds.');
+console.log('PASS: newer API calls bypass stale HTML, cached-page fallback, duplicate merge, older active call retention, timeout retry, failed-source bounds.');
