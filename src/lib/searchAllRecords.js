@@ -1,10 +1,14 @@
 import {base44} from '@/api/base44Client';
+const boundedSearch=promise=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Company record search timed out. Please retry.')),45000);Promise.resolve(promise).then(resolve,reject).finally(()=>clearTimeout(timer));});
 export async function searchAllRecords(payload,{onProgress,isCurrent=()=>true}={}){
  const records=new Map(),failures=new Set();let cursor=null,sources=0,warrants=0,successfulPages=0;
  do{
   if(!isCurrent())return {cancelled:true};
-  const response=await base44.functions.invoke('searchCompanyRecords',{...payload,cursor});
-  const data=response?.data||{};
+  let response;
+  try{response=await boundedSearch(base44.functions.invoke('searchCompanyRecords',{...payload,cursor}));}
+  catch(error){if(!successfulPages)throw error;failures.add(error?.message||'Remaining sources unavailable');break;}
+  const data=response?.data||response||{};
+  if(!Array.isArray(data.results)&&!data.error)throw Error('Record search returned an invalid response. Please retry.');
   if(data.error)throw Error(data.error);
   successfulPages+=Number(data.searched_sources)||0;
   for(const row of data.results||[])records.set(row.entity+':'+row.id,row);
