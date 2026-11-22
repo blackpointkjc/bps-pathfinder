@@ -1,16 +1,8 @@
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
+import {portalSessionState} from '../../shared/portalLoginGuard.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
-async function __portalLoginIsCurrent(request,sdk,user){
- try{
-  if(!user||user.disabled||user.termination_date||['suspended','denied','terminated'].includes(String(user.account_status||'').toLowerCase())||['suspended','terminated'].includes(String(user.employment_status||'').toLowerCase()))return false;
-  const token=String(request.headers.get('authorization')||request.headers.get('on-behalf-of')||'').replace(/^Bearer\s+/i,'');
-  if(!token)return false;
-  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
-  const rows=await sdk.asServiceRole.entities.PortalAuthSession.filter({token_hash:hash},'-created_date',1),session=rows[0];
-  return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
- }catch{return false;}
-}
+async function __portalLoginIsCurrent(request,sdk,user){return (await portalSessionState(request,sdk,user)).state!=='invalid';}
 const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
 const SOURCES = [
@@ -37,7 +29,19 @@ const SOURCES = [
   ['QRPatrolReport', 'QR Patrol Reports', 'AdminQRReports'],
   ['ShiftReport', 'Shift Reports', 'ShiftReports'],
   ['Vehicle', 'Fleet / Vehicle Records', 'AdminPortal'],
+  ['ShiftHandover', 'Shift Handovers', 'ShiftHandover'],
+  ['WitnessSubpoenaRequest', 'Witness Subpoena Requests', 'WitnessSubpoenaRequest'],
+  ['PropertyAlert', 'Property Calls / Alerts', 'CallHistory'],
+  ['PropertyVehicle', 'Property Vehicle Registry', 'ParkingRecords'],
+  ['QRScanEvent', 'QR Patrol Scans', 'QRPatrolScan'],
+  ['PostOrder', 'Site Post Orders', 'PostOrders'],
+  ['SecurityAlert', 'Security Alerts', 'BOLOAlerts'],
+  ['UnitMaintenance', 'Fleet Maintenance', 'AdminAssets'],
+
 ] as const;
+const CALLER_SOURCES = [["AcceptableUseAcknowledgment", "Acceptable Use Acknowledgment", "RecordsAssistant"], ["AccessRequest", "Access Request", "RecordsAssistant"], ["AccountLock", "Account Lock", "RecordsAssistant"], ["AccountingAutomationRun", "Accounting Automation Run", "RecordsAssistant"], ["ActiveOfficer", "Active Officer", "RecordsAssistant"], ["Announcement", "Announcement", "RecordsAssistant"], ["AnnouncementReceipt", "Announcement Receipt", "RecordsAssistant"], ["AuditLog", "Audit Log", "RecordsAssistant"], ["AutoDispatchEvaluation", "Auto Dispatch Evaluation", "RecordsAssistant"], ["AvailabilityRequest", "Availability Request", "RecordsAssistant"], ["BoloEmailAudit", "Bolo Email Audit", "RecordsAssistant"], ["BoloEmailAudit2", "Bolo Email Audit2", "RecordsAssistant"], ["BoloEmailDelivery", "Bolo Email Delivery", "RecordsAssistant"], ["BrowserAccessRequest", "Browser Access Request", "RecordsAssistant"], ["BrowserActivity", "Browser Activity", "RecordsAssistant"], ["BrowserPolicy", "Browser Policy", "RecordsAssistant"], ["BrowserRemoteSession", "Browser Remote Session", "RecordsAssistant"], ["BrowserSiteRule", "Browser Site Rule", "RecordsAssistant"], ["CadAnnouncementReceipt", "Cad Announcement Receipt", "RecordsAssistant"], ["CadAudioSettings", "Cad Audio Settings", "RecordsAssistant"], ["CadCounter", "Cad Counter", "RecordsAssistant"], ["CadVoiceBroadcast", "Cad Voice Broadcast", "RecordsAssistant"], ["CadVoiceReceipt", "Cad Voice Receipt", "RecordsAssistant"], ["CallAlert", "Call Alert", "RecordsAssistant"], ["CallAssignment", "Call Assignment", "RecordsAssistant"], ["CallNote", "Call Note", "RecordsAssistant"], ["CallOut", "Call Out", "RecordsAssistant"], ["CallPerformanceDecision", "Call Performance Decision", "RecordsAssistant"], ["CallStatusLog", "Call Status Log", "RecordsAssistant"], ["CertificationAlert", "Certification Alert", "RecordsAssistant"], ["CertificationCheckAlert", "Certification Check Alert", "RecordsAssistant"], ["CertificationTodo", "Certification Todo", "RecordsAssistant"], ["ChatMention", "Chat Mention", "RecordsAssistant"], ["ChatMessage", "Chat Message", "RecordsAssistant"], ["Client", "Client", "RecordsAssistant"], ["ClientFeedback", "Client Feedback", "RecordsAssistant"], ["Commendation", "Commendation", "RecordsAssistant"], ["CompanyExpense", "Company Expense", "RecordsAssistant"], ["CompanyImapMailbox", "Company Imap Mailbox", "RecordsAssistant"], ["CompanyPlatoon", "Company Platoon", "RecordsAssistant"], ["Contract", "Contract", "RecordsAssistant"], ["DispatcherShiftReport", "Dispatcher Shift Report", "RecordsAssistant"], ["Division", "Division", "RecordsAssistant"], ["Dummy", "Dummy", "RecordsAssistant"], ["DutyAttendanceAdjustment", "Duty Attendance Adjustment", "RecordsAssistant"], ["DutySupervisorAssignment", "Duty Supervisor Assignment", "RecordsAssistant"], ["EmailRecipientPreference", "Email Recipient Preference", "RecordsAssistant"], ["Equipment", "Equipment", "RecordsAssistant"], ["ExpenseReport", "Expense Report", "RecordsAssistant"], ["GeneralPostOrder", "General Post Order", "RecordsAssistant"], ["GeofenceAlert", "Geofence Alert", "RecordsAssistant"], ["InboxThreadPreference", "Inbox Thread Preference", "RecordsAssistant"], ["Invoice", "Invoice", "RecordsAssistant"], ["JobDutyRule", "Job Duty Rule", "RecordsAssistant"], ["Lead", "Lead", "RecordsAssistant"], ["LiveLocationPrivacy", "Live Location Privacy", "RecordsAssistant"], ["Location", "Location", "RecordsAssistant"], ["LocationHistory", "Location History", "RecordsAssistant"], ["LocationLog", "Location Log", "RecordsAssistant"], ["MonitoredProperty", "Monitored Property", "RecordsAssistant"], ["OfficerAvailability", "Officer Availability", "RecordsAssistant"], ["OfficerDistress", "Officer Distress", "RecordsAssistant"], ["OfficerPerformanceMetric", "Officer Performance Metric", "RecordsAssistant"], ["OfficerRoster", "Officer Roster", "RecordsAssistant"], ["OfficerStatusOverride", "Officer Status Override", "RecordsAssistant"], ["OfficerWelfareCheck", "Officer Welfare Check", "RecordsAssistant"], ["PTOAdjustment", "P T O Adjustment", "RecordsAssistant"], ["PTOUsage", "P T O Usage", "RecordsAssistant"], ["PatrolSpeedingEvent", "Patrol Speeding Event", "RecordsAssistant"], ["PayrollConfig", "Payroll Config", "RecordsAssistant"], ["PayrollEntry", "Payroll Entry", "RecordsAssistant"], ["PayrollPeriod", "Payroll Period", "RecordsAssistant"], ["PerformanceReview", "Performance Review", "RecordsAssistant"], ["PersonnelPromotion", "Personnel Promotion", "RecordsAssistant"], ["PlannedShift", "Planned Shift", "RecordsAssistant"], ["PropertyAlertReceipt", "Property Alert Receipt", "RecordsAssistant"], ["PropertyAlertSmsDelivery", "Property Alert Sms Delivery", "RecordsAssistant"], ["PropertyCallLink", "Property Call Link", "RecordsAssistant"], ["PropertyCheckpointRules", "Property Checkpoint Rules", "RecordsAssistant"], ["PropertyParkingRule", "Property Parking Rule", "RecordsAssistant"], ["PropertyResident", "Property Resident", "RecordsAssistant"], ["PublicDispatchRequest", "Public Dispatch Request", "RecordsAssistant"], ["QRCheckpoint", "Q R Checkpoint", "RecordsAssistant"], ["RecurringCompanyBill", "Recurring Company Bill", "RecordsAssistant"], ["ReportCallLink", "Report Call Link", "RecordsAssistant"], ["ReportTodo", "Report Todo", "RecordsAssistant"], ["Schedule", "Schedule", "RecordsAssistant"], ["ScheduleEmailDelivery", "Schedule Email Delivery", "RecordsAssistant"], ["ScheduleWeekStatus", "Schedule Week Status", "RecordsAssistant"], ["ServiceSite", "Service Site", "RecordsAssistant"], ["ShiftBid", "Shift Bid", "RecordsAssistant"], ["SpecialCoverageRequest", "Special Coverage Request", "RecordsAssistant"], ["StudentEnrollment", "Student Enrollment", "RecordsAssistant"], ["SupervisorDailyCode", "Supervisor Daily Code", "RecordsAssistant"], ["SupervisorFollowUp", "Supervisor Follow Up", "RecordsAssistant"], ["SupervisorShiftHandover", "Supervisor Shift Handover", "RecordsAssistant"], ["SupervisorSiteCheck", "Supervisor Site Check", "RecordsAssistant"], ["SystemOutage", "System Outage", "RecordsAssistant"], ["SystemScanRun", "System Scan Run", "RecordsAssistant"], ["Task", "Task", "RecordsAssistant"], ["TaxRate", "Tax Rate", "RecordsAssistant"], ["Tenant", "Tenant", "RecordsAssistant"], ["TenantBranding", "Tenant Branding", "RecordsAssistant"], ["TimeEntry", "Time Entry", "RecordsAssistant"], ["TimeOffRequest", "Time Off Request", "RecordsAssistant"], ["TrainingAssignment", "Training Assignment", "RecordsAssistant"], ["TrainingAttendee", "Training Attendee", "RecordsAssistant"], ["TrainingCertificate", "Training Certificate", "RecordsAssistant"], ["TrainingClass", "Training Class", "RecordsAssistant"], ["TrainingCompletion", "Training Completion", "RecordsAssistant"], ["TrainingDocument", "Training Document", "RecordsAssistant"], ["TrainingModule", "Training Module", "RecordsAssistant"], ["TrainingRequirement", "Training Requirement", "RecordsAssistant"], ["TrainingSchoolSettings", "Training School Settings", "RecordsAssistant"], ["TrainingSubmission", "Training Submission", "RecordsAssistant"], ["Unit", "Unit", "RecordsAssistant"], ["UnitSchedule", "Unit Schedule", "RecordsAssistant"], ["UnitStatusLog", "Unit Status Log", "RecordsAssistant"], ["UnitUnion", "Unit Union", "RecordsAssistant"], ["UserSessionControl", "User Session Control", "RecordsAssistant"], ["UserUnitProfile", "User Unit Profile", "RecordsAssistant"], ["VehicleAssignment", "Vehicle Assignment", "RecordsAssistant"], ["VehicleAssignmentAudit", "Vehicle Assignment Audit", "RecordsAssistant"], ["Vendor", "Vendor", "RecordsAssistant"], ["W2Form", "W2 Form", "RecordsAssistant"]];
+const ALL_SOURCES = [...SOURCES,...CALLER_SOURCES];
+const operationalNames = new Set(SOURCES.map(([name])=>name));
 
 const text = (value: unknown) => String(value ?? '').trim();
 const lower = (value: unknown) => text(value).toLowerCase();
@@ -122,20 +126,11 @@ function matchesTerms(haystack: string, terms: string[]) {
 
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-async function listWithRetry(entity: any, entityName: string) {
-  let lastError: any;
-  // A company search spans more than twenty entities. Pulling 1,000 rows from
-  // every source caused the function to time out before it could return matches.
-  const limit = entityName === 'CallHistory' ? 1000 : entityName === 'DispatchCall' ? 750 : 450;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return await entity.list('-created_date', limit);
-    } catch (error) {
-      lastError = error;
-      if (attempt === 0) await wait(400);
-    }
-  }
-  throw new Error(`${entityName} unavailable: ${lastError?.message || lastError || 'unknown error'}`);
+async function listWithRetry(entity:any,entityName:string,offset=0) {
+ for(let attempt=0;;attempt++){
+  try{return await entity.list('id',250,offset);}
+  catch(error){if(attempt>=1)throw error;await wait(400);}
+ }
 }
 
 Deno.serve(async (req) => {
@@ -152,7 +147,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    const allowed = user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor') || roles.has('dispatch');
+    const allowed = user.role === 'officer' || user.role === 'supervisor' || user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor') || roles.has('dispatch');
     if (!allowed) return Response.json({ error: 'Records access required' }, { status: 403 });
 
     const privileged = user.role === 'admin' || roles.has('full_access');
@@ -166,9 +161,9 @@ Deno.serve(async (req) => {
     if (body?.action === 'get' && body?.entity && body?.id) {
       if(!privileged && new Set(['ConfidentialReport','Complaint','WriteUpReport','InspectionReport','UseOfForceReport']).has(String(body.entity)))
         return Response.json({error:'Record outside authorized access scope'},{status:403});
-      const source = SOURCES.find(([entityName]) => entityName === body.entity);
+      const source = ALL_SOURCES.find(([entityName]) => entityName === body.entity);
       if (!source) return Response.json({ error: 'Unsupported record type' }, { status: 400 });
-      const entity = (entityClient as any)[body.entity];
+      const entity = (operationalNames.has(body.entity)?entityClient:base44.entities)[body.entity];
       const record = await entity.get(body.id);
       return Response.json({ record, source: source[1], page: source[2] });
     }
@@ -182,7 +177,7 @@ Deno.serve(async (req) => {
     const requestedEntities = Array.isArray(body?.entities)
       ? new Set(body.entities.map((value: unknown) => String(value || '').trim()).filter(Boolean))
       : null;
-    const permittedSources = privileged ? SOURCES : SOURCES.filter(([entityName]) => !restrictedEntities.has(entityName));
+    const permittedSources = privileged ? ALL_SOURCES : ALL_SOURCES.filter(([entityName]) => !restrictedEntities.has(entityName));
     const searchableSources = requestedEntities?.size
       ? permittedSources.filter(([entityName]) => requestedEntities.has(entityName))
       : permittedSources;
@@ -190,13 +185,16 @@ Deno.serve(async (req) => {
     // Loading every source at once caused API throttling and then silently returned
     // an empty search. Process a few sources at a time and retry transient failures.
     const settled: PromiseSettledResult<any[]>[] = [];
-    const batchSize = 5;
-    for (let index = 0; index < searchableSources.length; index += batchSize) {
-      const batch = searchableSources.slice(index, index + batchSize);
-      const batchResults = await Promise.allSettled(batch.map(async ([entityName, sourceLabel, page]) => {
-        const entity = (entityClient as any)[entityName];
-        if (!entity?.list) return [];
-        const rows = await listWithRetry(entity, entityName);
+    let sourceIndex=Math.max(0,Math.min(searchableSources.length,Math.floor(Number(body?.cursor?.source)||0)));
+    let offset=Math.max(0,Math.floor(Number(body?.cursor?.offset)||0));
+    let pages=0;
+    const failedLabels:string[]=[];
+    while(sourceIndex<searchableSources.length&&pages<5){
+      const [entityName,sourceLabel,page]=searchableSources[sourceIndex];
+      const currentOffset=offset;let rowCount=0;
+      const batchResults=await Promise.allSettled([(async()=>{
+        const entity=(operationalNames.has(entityName)?entityClient:base44.entities)[entityName];
+        const rows=await listWithRetry(entity,entityName,currentOffset);rowCount=rows?.length||0;
         return (rows || []).filter((record: any) => {
           const allText = normalizeSearchText(JSON.stringify(record));
           // People searches must match people, not a street name or incidental
@@ -209,7 +207,7 @@ Deno.serve(async (req) => {
               ? normalizeSearchText(vehicleText(record))
               : allText;
           return scoped && matchesTerms(scoped, terms);
-        }).slice(0, 100).map((record: any) => {
+        }).map((record: any) => {
           const vehicle = vehicleDisplay(record);
           const isWarrant = entityName === 'CriminalComplaint' && (record.warrant_issued === true || record.status === 'warrant_issued' || Boolean(record.warrant_number));
           const names=normalizeSearchText([personName(record),
@@ -246,13 +244,16 @@ Deno.serve(async (req) => {
             linked_call_number: record.linked_call_number || record.call_number || record.call_id || '',
           };
         });
-      }));
-      settled.push(...batchResults);
+      })()]);
+      settled.push(...batchResults);pages++;
+      if(batchResults[0].status==='rejected')failedLabels.push(sourceLabel);
+      if(batchResults[0].status==='fulfilled'&&rowCount===250)offset+=250;
+      else{sourceIndex++;offset=0;}
     }
 
     const successfulSources = settled.filter(result => result.status === 'fulfilled').length;
     const failedSources = settled.length - successfulSources;
-    if (successfulSources === 0) throw new Error('The records index is temporarily unavailable. Please retry the search.');
+
     const results: any[] = settled.flatMap(result => result.status === 'fulfilled' ? result.value : []);
     const linkedNumbers = [...new Set(results.map(item => item.linked_call_number).filter(Boolean).map(String))];
     if (linkedNumbers.length) {
@@ -274,8 +275,11 @@ Deno.serve(async (req) => {
     results.sort((a,b)=>(relevance[a.match_context]??5)-(relevance[b.match_context]??5)||String(b.date||'').localeCompare(String(a.date||'')));
     const warrantMatches = results.filter(item => item.warrant_issued).length;
     return Response.json({
-      results: results.slice(0, 500),
-      truncated:results.length>500,
+      results,
+      next_cursor:sourceIndex<searchableSources.length?{source:sourceIndex,offset}:null,
+      total_sources:searchableSources.length,
+      failed_source_labels:failedLabels,
+      truncated:false,
       searched_sources: successfulSources,
       failed_sources: failedSources,
       partial: failedSources > 0,
