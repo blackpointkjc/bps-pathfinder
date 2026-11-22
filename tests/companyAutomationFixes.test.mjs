@@ -63,3 +63,15 @@ for(const path of ['src/Layout.jsx','src/components/RecordsSearchDialog.jsx','sr
  await transform(fs.readFileSync(path,'utf8'),{loader:path.endsWith('.jsx')?'jsx':'js'});
 }
 console.log('PASS popup permission gate, quiet search start, short BOLO reference, Graph alert transport and changed frontend syntax');
+
+const ingestionSource=fs.readFileSync('base44/functions/ingestGractivecalls/entry.ts','utf8');
+const start=ingestionSource.indexOf('async function hasOutstandingOfficerAssignment('),end=ingestionSource.indexOf('async function releaseClosedCall(',start);
+assert.ok(start>=0&&end>start);
+const helperCode="const lower=v=>String(v||'').toLowerCase();\n"+ingestionSource.slice(start,end)+"\nexport {hasOutstandingOfficerAssignment};";
+const cachedPolicy=await import('data:text/javascript;base64,'+Buffer.from(helperCode).toString('base64'));
+let assignmentReads=0;const assignmentDb={CallAssignment:{filter:async()=>{assignmentReads++;return [];}}};
+for(let i=0;i<40;i++)assert.equal(await cachedPolicy.hasOutstandingOfficerAssignment(assignmentDb,{id:'call-'+i,assigned_units:[]},[]),false);
+assert.equal(assignmentReads,0,'unassigned call checks share one snapshot rather than one request per call');
+assert.equal(await cachedPolicy.hasOutstandingOfficerAssignment(assignmentDb,{id:'c',assigned_units:[]},[{call_id:'c',status:'assigned'}]),true);
+assert.equal(await cachedPolicy.hasOutstandingOfficerAssignment(assignmentDb,{id:'c',assigned_units:['officer']},[]),true);
+console.log('PASS GRAC read budget: cached assignment checks issue zero per-call reads and preserve assigned calls');
