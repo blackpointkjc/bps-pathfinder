@@ -38,8 +38,9 @@ const isClosedCall = (call: any) => !call || call.manual_dismissed === true || [
 // The GRAC website only controls the upstream feed, never an officer's live
 // Pathfinder assignment. A missing/closed upstream row must not release that unit.
 // If the assignment lookup fails, retain the call rather than dropping a dispatch.
-async function hasOutstandingOfficerAssignment(entities: any, call: any): Promise<boolean> {
+async function hasOutstandingOfficerAssignment(entities: any, call: any, cachedAssignments:any[]=null): Promise<boolean> {
   if ((call?.assigned_units || []).some((id: any) => String(id).trim())) return true;
+  if(cachedAssignments)return cachedAssignments.some(row=>String(row.call_id)===String(call.id)&&!['cleared','cancelled','canceled'].includes(lower(row.status)));
   try {
     const rows = await entities.CallAssignment.filter({ call_id: String(call.id) }, '-assigned_at', 1000);
     return rows.some((a: any) => !['cleared','cancelled','canceled'].includes(lower(a.status)));
@@ -199,10 +200,10 @@ async function readWithThrottleRetry<T>(operation: () => Promise<T>, label: stri
 
 
 // Feed refresh timestamps and CAD-number enrichment are not spoken updates.
-async function announceAssignedCallUpdate(base44: any, previous: any, saved: any) {
+async function announceAssignedCallUpdate(base44: any, previous: any, saved: any, cachedAssignments:any[]=null) {
   const fields = ['incident', 'location', 'priority', 'status', 'description'];
   if (!fields.some(field => saved[field] !== undefined && String(saved[field] || '') !== String(previous[field] || ''))) return;
-  const assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: previous.id });
+  const assignments = cachedAssignments ? cachedAssignments.filter(row=>String(row.call_id)===String(previous.id)) : await base44.asServiceRole.entities.CallAssignment.filter({ call_id: previous.id });
   if (!(previous.assigned_units || []).length && !(assignments || []).some((row: any) => !['cleared', 'cancelled'].includes(String(row.status || '').toLowerCase()))) return;
   const changes=fields.filter(field=>saved[field]!==undefined&&String(saved[field]||'')!==String(previous[field]||''))
     .map(field=>`${field==='description'?'Call notes':field.charAt(0).toUpperCase()+field.slice(1)}: ${String(previous[field]||'not listed').slice(0,100)} → ${String(saved[field]||'not listed').slice(0,100)}`);
@@ -1174,7 +1175,7 @@ function chooseCanonical(records: any[]) {
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const GLOBAL_SOURCE_POLL_MIN_GAP_MS = 5_000;
 
-async function acquireIngestionLease(base44: any) {
+async function acquireIngestionLease(base44: any, serverRun=false) {
   const token = crypto.randomUUID();
   const now = Date.now();
   const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: 'dispatch_call' });
@@ -1194,6 +1195,8 @@ async function acquireIngestionLease(base44: any) {
     });
   }
 
+  const lastServer=Date.parse(counter.last_server_poll_at||'');
+  if(!serverRun&&Number.isFinite(lastServer)&&now-lastServer<75000)return {skip:true,reason:'server_source_sync_active',retry_after_ms:75000-(now-lastServer)};
   const lastPollAt = new Date(counter.last_source_poll_at || 0).getTime();
   const lastPollSucceeded = String(counter.last_source_poll_status || '').startsWith('success');
   if (lastPollSucceeded && Number.isFinite(lastPollAt) && now - lastPollAt >= 0 && now - lastPollAt < GLOBAL_SOURCE_POLL_MIN_GAP_MS) {
@@ -1240,11 +1243,15 @@ async function releaseIngestionLease(base44: any, lease: any) {
 // enrichment and long history reconciliation out of the live notification path.
 async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   const started = Date.now();
-  const [saved, history, locations, alerts] = await Promise.all([
+  const [saved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list('-created_date', 500),
     base44.asServiceRole.entities.CallHistory.list('-archived_date', 500).catch(() => []),
     base44.asServiceRole.entities.Location.list('site_name', 100).catch(() => []),
     base44.asServiceRole.entities.PropertyAlert.list('-created_date', 300).catch(() => []),
+    base44.asServiceRole.entities.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled']}},'-assigned_at',1000),
+    base44.asServiceRole.entities.ActiveOfficer.filter({current_call_id:{$exists:true}},'-last_update',500),
+    base44.asServiceRole.entities.Unit.filter({assigned_call_ids:{$exists:true}},'-last_update_at',500),
+
   ]);
   const byExternal = new Map<string, any>();
   const byLegacy = new Map<string, any>();
@@ -1306,17 +1313,18 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
     propertyAlertsCreated+=await createImmediatePropertyAlerts(base44,{...call,...patch,...updatedCall},monitored,callPropertyKeys,alertKeys,sideEffects);
     } catch(error:any) {alertFailures++;console.warn('New call is published; coordinate enrichment will retry',error?.message||error);}
   }));
+  const sameLiveField=(field,a,b)=>field==='time_received'?Date.parse(a)===Date.parse(b):['latitude','longitude'].includes(field)?Number(a)===Number(b):String(a??'').trim().toLowerCase()===String(b??'').trim().toLowerCase();
   const updateQueue = recent.filter(row => {
     const existing = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
     return existing && existing.manual_dismissed !== true &&
       ['incident','location','agency','zone','status','priority','time_received','latitude','longitude']
-        .some(field => row[field] !== undefined && row[field] !== existing[field]);
+        .some(field => row[field] !== undefined && !(field==='priority'&&existing.priority_override) && !sameLiveField(field,row[field],existing[field]));
   }).slice(0, 60);
   for (let offset = 0; offset < updateQueue.length; offset += 4) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async row => {
       const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
       const upstreamTerminal = ['cleared','cancelled','canceled','closed','resolved','completed'].includes(lower(row.status));
-      const preserveOfficerQueue = upstreamTerminal && await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, previous);
+      const preserveOfficerQueue = upstreamTerminal && await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, previous,cachedAssignments);
       const patch = {
         ...persistableCall(row),
         ...(preserveOfficerQueue ? {status: previous.status} : {}),
@@ -1329,7 +1337,7 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
         official_cad_verified: previous.official_cad_verified === true,
       };
       const saved = await base44.asServiceRole.entities.DispatchCall.update(previous.id, patch);
-      await announceAssignedCallUpdate(base44, previous, { ...previous, ...patch, ...saved }).catch((error: any) => console.error('Assigned call update announcement failed', error?.message));
+      await announceAssignedCallUpdate(base44, previous, { ...previous, ...patch, ...saved },cachedAssignments).catch((error: any) => console.error('Assigned call update announcement failed', error?.message));
       updated++;
       if (!['Cleared', 'Cancelled'].includes(String(patch.status || ''))) {
         try {
@@ -1368,12 +1376,13 @@ async function ingestFastPublishedCalls(base44: any, incoming: any[]) {
   const closedIdsFromSource = new Set<string>();
   for (let offset = 0; offset < disappeared.length; offset += 4) {
     await Promise.all(disappeared.slice(offset, offset + 4).map(async (row: any) => {
-      if (await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, row)) return;
+      if (await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, row,cachedAssignments)) return;
       try {
         await base44.asServiceRole.entities.DispatchCall.update(row.id, {
           status: 'Cleared', time_closed: row.time_closed || new Date().toISOString(),
         });
-        await releaseClosedCall(base44.asServiceRole.entities, { ...row, status: 'Cleared' });
+        const hasMirror=cachedSessions.some(item=>String(item.current_call_id)===String(row.id))||cachedUnits.some(item=>(item.assigned_call_ids||[]).map(String).includes(String(row.id)));
+        if(hasMirror)await releaseClosedCall(base44.asServiceRole.entities, { ...row, status: 'Cleared' });
         closedIdsFromSource.add(String(row.id));
       } catch (error: any) { console.warn('Fast CAD close failed', error?.message || error); }
     }));
@@ -1451,7 +1460,7 @@ export async function handleGracIngestion(req) {
     // can never bypass authentication or account restrictions.
     if (!isInternalUser && !hasCadAccess) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-    const lease = await acquireIngestionLease(base44);
+    const lease = await acquireIngestionLease(base44,scheduledRun);
     if (!lease) {
       return Response.json({ success: true, skipped: true, reason: 'GRAC synchronization already in progress' });
     }
