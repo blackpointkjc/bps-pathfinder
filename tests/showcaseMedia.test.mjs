@@ -12,11 +12,11 @@ assert(manager.includes("['media','Fleet / company photos & videos'"));assert(!m
 const login=fs.readFileSync('src/components/PortalLogin.jsx','utf8');assert(login.includes("activePhoto?.kind==='video'"));
 let writes=[],stored=[{id:'original',kind:'video',builtin:true,title:'Original fleet video',video_url:'https://example.test/fleet.mp4',active:true},{id:'old-photo',kind:'photo',image_url:'https://example.test/photo.jpg',title:'Existing photo',active:true}];
 const db={list:async()=>stored,filter:async q=>stored.filter(item=>Object.entries(q).every(([key,value])=>item[key]===value)),create:async value=>{const saved={...value,id:'new-video'};writes.push({action:'create',saved});stored.push(saved);return saved;},update:async(id,value)=>{writes.push({action:'update',id,value});const row=stored.find(r=>r.id===id);Object.assign(row,value);return row;}};
-globalThis.__gallerySdk={auth:{me:async()=>({id:'admin',role:'admin'})},asServiceRole:{entities:{PortalShowcase:db,User:{list:async()=>[]}}}};
+globalThis.__gallerySdk={auth:{me:async()=>({id:'admin',role:'admin'})},asServiceRole:{entities:{PortalShowcase:db,PortalAuthSession:{filter:async()=>[{user_id:'admin',started_at:new Date().toISOString(),last_activity_at:new Date().toISOString()}]},User:{list:async()=>[]}}}};
 globalThis.Deno={serve:fn=>globalThis.__galleryHandler=fn};
 const src=fs.readFileSync('base44/functions/portalShowcase/entry.ts','utf8').replace(/^import .*from ['"]npm:@base44\/sdk['"];?$/m,'const createClientFromRequest=()=>globalThis.__gallerySdk;');
 const built=await transform(src,{loader:'ts',format:'esm'});await import('data:text/javascript;base64,'+Buffer.from(built.code).toString('base64'));
-const call=async body=>{const response=await globalThis.__galleryHandler(new Request('https://test.local',{method:'POST',body:JSON.stringify(body)}));assert.equal(response.status,200);return response.json();};
+const call=async body=>{const response=await globalThis.__galleryHandler(new Request('https://test.local',{method:'POST',headers:{authorization:'Bearer test-token'},body:JSON.stringify(body)}));assert.equal(response.status,200);return response.json();};
 await call({action:'save',item:{kind:'video',builtin:false,title:'Additional MOV converted to MP4',video_url:'https://example.test/converted.mp4',active:true}});
 assert.equal(writes[0].action,'create','new videos must not overwrite the current fleet video');assert.equal(stored[0].title,'Original fleet video');
 let gallery=await call({action:'public'});assert.equal(gallery.photos.filter(r=>r.kind==='video').length,2);assert.equal(gallery.photos.filter(r=>r.kind==='photo').length,1);
