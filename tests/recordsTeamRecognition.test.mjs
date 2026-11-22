@@ -34,6 +34,7 @@ const fairReads=[];
 const fairEntities=new Proxy({}, {get:(_target,name)=>({filter:async(_query,_sort,limit,skip=0)=>{fairReads.push({name,skip});return name==='DispatchCall'?oldRows.slice(skip,skip+limit):[];},list:async(_sort,limit,skip=0)=>{fairReads.push({name,skip});return name==='DispatchCall'?oldRows.slice(skip,skip+limit):name==='IncidentReport'?[{id:'found-report',description:'specific needle'}]:[];}})});
 const fair=await backend('base44/functions/searchCompanyRecords/entry.ts',{auth:{me:async()=>a},entities:fairEntities,asServiceRole:{entities:fairEntities}});
 const first=await call(fair,{query:'specific needle'});
+assert.equal(first.status,200,JSON.stringify(first.data));
 assert(first.data.results.some(r=>r.id==='found-report'),'reports appear before a large dispatch source finishes');
 assert.equal(fairReads.filter(r=>r.name==='DispatchCall').length,1,'only one page of a large source per turn');
 assert(first.data.next_cursor.source>0,'source progress advances on the first response');
