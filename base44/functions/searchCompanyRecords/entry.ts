@@ -1,3 +1,4 @@
+import {reportOfficerName} from '../../shared/reportPresentation.ts';
 // base44/functions/searchCompanyRecords/entry.ts
 import { createClientFromRequest } from "npm:@base44/sdk";
 var PORTAL_REAUTH_AFTER = "2026-11-01T22:38:04.000Z";
@@ -239,7 +240,8 @@ Deno.serve(async (req) => {
       if (!source) return Response.json({ error: "Unsupported record type" }, { status: 400 });
       const entity = (operationalNames.has(body.entity) ? entityClient : base44.entities)[body.entity];
       const record = await entity.get(body.id);
-      return Response.json({ record, source: source[1], page: source[2] });
+      const officerName=await reportOfficerName(base44,record);
+      return Response.json({record:{...record,...(officerName?{issued_by_name:officerName}: {})},source:source[1],page:source[2]});
     }
     const query = normalizeSearchText(body?.query);
     const searchType = ["all", "person", "vehicle"].includes(String(body?.search_type || "all")) ? String(body?.search_type || "all") : "all";

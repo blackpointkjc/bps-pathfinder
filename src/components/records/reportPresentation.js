@@ -10,4 +10,4 @@ export function mediaItems(value,label='Photograph'){
 }
 export const officerDisplay=record=>[record.issued_by_name,record.reporting_officer_name,record.officer_name,record.complainant_name,record.filed_by_name,record.primary_officer_name,record.issued_by].find(v=>typeof v==='string'&&v.trim()&&!/^[a-f\d]{20,32}$/i.test(v.trim())&&!/^[\w.+-]+@/.test(v))||'Not recorded';
 export const reportReference=r=>r.report_number||r.notice_number||r.citation_number||r.complaint_number||r.summons_number||r.bolo_number||r.case_number||r.call_id||r.call_number||'Record';
-export const presentValue=value=>value!==null&&value!==undefined&&value!==''&&(!Array.isArray(value)||value.length>0);
+export const presentValue=value=>!(typeof value==='string'&&/^[a-f\d]{20,32}$/i.test(value.trim()))&&value!==null&&value!==undefined&&value!==''&&(!Array.isArray(value)||value.length>0);
