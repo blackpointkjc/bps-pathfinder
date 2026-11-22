@@ -35,6 +35,13 @@ const hasSupervisorAccess = user => {
   return user?.role === 'admin' || normalized(user?.role) === 'supervisor' || user?.is_supervisor === true || roles.has('supervisor') || roles.has('full_access') || SUPERVISORY_RANKS.has(normalized(user?.rank));
 };
 
+const canHearPropertyAlerts = user => {
+  const roles=lowerRoles(user);
+  return ['admin','officer','supervisor','dispatch'].includes(normalized(user?.role))
+    || ['officer','supervisor','dispatch','cad_access','full_access'].some(role=>roles.has(role))
+    || Boolean(user?.dispatch_role) || user?.is_supervisor===true;
+};
+
 export function CadAudioToggle() {
   const [audioEnabled, setAudioEnabled] = useState(() => isVoiceEnabled());
 
@@ -501,7 +508,7 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     const showPropertyCall = async (record, options = {}) => {
-      const allowAudio = options.allowAudio !== false && isLiveAudioEvent(record);
+      const allowAudio = options.allowAudio !== false && isLiveAudioEvent(record) && canHearPropertyAlerts(user);
       if (!record?.id) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
@@ -741,6 +748,7 @@ export default function GlobalMessageBanner({ user }) {
         // remain enabled here as the durable fallback when the raw PropertyAlert
         // realtime create is missed. Both paths share the same claim/event key.
         if (record.event_type === 'bolo_published') return;
+        if (record.event_type === 'property_alert' && !canHearPropertyAlerts(user)) return;
         if (record.sensitive === true && !cadAuthorized) return;
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
