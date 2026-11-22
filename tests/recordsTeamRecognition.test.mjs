@@ -46,7 +46,7 @@ assert.equal(workAsReports([{id:'w',status:'cancelled'}]).length,0);
 assert.equal(workAsReports([{id:'w',status:'in_progress',report_entity:'IncidentReport',officer_id:'a'}])[0].status,'in_progress');
 console.log('PASS report work: started vs cancelled lifecycle');
 const {calculateJobDutyCompliance}=await bundled('src/lib/performanceScoring.js');
-const duty={officer:b,timeEntries:[{id:'tb',officer_email:b.email,location:'Alpha',clock_in:'2026-11-21T05:00:00Z',clock_out:'2026-11-21T09:00:00Z'}],dailyReports:[{id:'team-dar',officer_email:a.email,report_date:'2026-11-21',location:'Alpha',status:'in_progress',team_credit_source:'schedule',attached_officer_ids:['b'],attached_officer_emails:[b.email]}],dutyRules:[{property_site:'Alpha',active:true,dar_required:true}],monthStart:new Date('2026-11-01T00:00:00Z'),monthEnd:new Date('2026-12-01T00:00:00Z')};
+const duty={officer:b,timeEntries:[{id:'tb',officer_email:b.email,location:'Alpha',clock_in:'2026-11-21T05:00:00Z',clock_out:'2026-11-21T09:00:00Z'}],dailyReports:[{id:'team-dar',officer_email:a.email,report_date:'2026-11-21',location:'Alpha',status:'in_progress',team_credit_source:'schedule',attached_officer_ids:['b'],attached_officer_emails:[b.email]}],dutyRules:[{property_site:'Alpha',active:true,dar_required:true}],monthStart:'2026-11-01',monthEnd:'2026-11-30'};
 const credit=calculateJobDutyCompliance(duty);
 assert.ok(credit.dailyActivity.completed>0,'scheduled partner receives started DAR obligation credit');
 const noCredit=calculateJobDutyCompliance({...duty,officer:c,timeEntries:duty.timeEntries.map(t=>({...t,officer_email:c.email}))});
