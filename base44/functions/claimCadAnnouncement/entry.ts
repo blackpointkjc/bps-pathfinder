@@ -113,9 +113,14 @@ Deno.serve(async (req) => {
       // A browser-blocked speech attempt is not a delivered announcement.
       // Allow one bounded recovery claim while the original event is fresh;
       // never replay a completed or historical dispatch event.
-      const originalEvent=clean(body.event_id)
+      let originalEvent=clean(body.event_id)
         ? await base44.asServiceRole.entities.CallStatusLog.get(clean(body.event_id)).catch(()=>null)
         : null;
+      if(!originalEvent && clean(body.event_type)==='property_alert' && clean(body.event_id)){
+        const alert=await base44.asServiceRole.entities.PropertyAlert.get(clean(body.event_id)).catch(()=>null);
+        if(alert && eventKey===`property-alert:${alert.id}:created`)
+          originalEvent={...alert,event_key:eventKey};
+      }
       const eventAge=Date.now()-Date.parse(originalEvent?.created_date||'');
       if (prior.state==='blocked' && originalEvent?.event_key===eventKey
           && Number.isFinite(eventAge) && eventAge>=0 && eventAge<=90_000
