@@ -15,7 +15,7 @@ export default function RecordsCheckButton({name='',plate='',site='',compact=fal
   // The resident registry is a separate, property-scoped source. A temporary
   // general records outage must not erase a successful resident lookup.
   const tasks=[searchAllRecords({query,search_type:plate?'vehicle':'person'})];
-  if(site)tasks.push(base44.functions.invoke('manageParkingRecords',{action:'records_check',site_name:site,query}));
+  tasks.push(base44.functions.invoke('manageParkingRecords',{action:'search_all',query}));
   try{
    const [companyResult,registryResult]=await Promise.allSettled(tasks);
    const failures=[];
@@ -24,7 +24,7 @@ export default function RecordsCheckButton({name='',plate='',site='',compact=fal
      const result=companyResult.value?.data||companyResult.value||{};
      if(result.error)failures.push(result.error);else companyMatches=result.results||[];
    }else failures.push(companyResult.reason?.response?.data?.error||companyResult.reason?.message||'Company records unavailable');
-   if(site){
+   if(registryResult){
     if(registryResult.status==='fulfilled'){
      const result=registryResult.value?.data||registryResult.value||{};
      if(result.error)failures.push(result.error);else registryMatches=result.matches||[];

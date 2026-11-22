@@ -297,13 +297,16 @@ function collectMissingItems(users: any[], metricData: any, extra: any) {
         (sameDayEntries.length===1&&String(row.item_date||'').slice(0,10)===date));
       if(excluded)continue;
       const report = dailyReports.find((row: any) => {
-        if (row?.status === 'draft' || usedReports.has(String(row.id || ''))) return false;
-        if (!recordBelongs(row, user, aliases, ['officer_email', 'created_by', 'created_by_email'])) return false;
+        if (row?.status === 'rejected' || (row?.status === 'draft'&&row.team_credit_source!=='schedule') || usedReports.has(String(row.id || ''))) return false;
+        const partner=(row.attached_officer_ids||[]).map(String).includes(String(user.id))||(row.attached_officer_emails||[]).some((value:any)=>aliases.has(emailKey(value)));
+        if (!partner&&!recordBelongs(row, user, aliases, ['officer_email', 'created_by', 'created_by_email'])) return false;
         if (row?.shift_id && String(row.shift_id) === String(entry.id)) return true;
         // Historical reports can carry a Schedule ID rather than TimeEntry ID.
         // An authored, submitted report for the same worked date and property
         // is still real work; do not call it missing just because IDs differ.
-        return row?.report_date === date && siteKey(row?.location) === siteKey(entry?.location);
+        const windowMatch=row.team_credit_source==='schedule'&&Date.parse(row.team_window_start)<Date.parse(entry.clock_out||new Date().toISOString())&&Date.parse(row.team_window_end)>Date.parse(entry.clock_in);
+        if(row.team_credit_source==='schedule'&&row.team_window_start&&!windowMatch)return false;
+        return (windowMatch||row?.report_date === date) && siteKey(row?.location) === siteKey(entry?.location);
       });
       if (report) usedReports.add(String(report.id || ''));
       else addMissing(missing, user, `Daily Activity Report: ${formatDate(date)} at ${textValue(entry.location) || 'assigned post'}`);
