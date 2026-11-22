@@ -185,14 +185,15 @@ export async function handleWeeklyBilling(req) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart)|| !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)||periodEnd<periodStart || periodEnd>=today) return Response.json({error:'Invoice periods must be completed dates in YYYY-MM-DD format'},{status:400});
     // Historical sending does not require time punches or schedules, but must load
     // assigned client users to resolve billing emails consistently with creation.
+    const all=async(entity:any,query:any={})=>{const rows=[];for(let skip=0;;skip+=500){const page=await entity.filter(query,'id',500,skip);rows.push(...page);if(page.length<500)return rows;}};
     const [entries,locations,users,invoices,schedules]=action==='send_ready_drafts'
-      ? [[],await base44.asServiceRole.entities.Location.list('site_name',100),await base44.asServiceRole.entities.User.list(undefined,200),await base44.asServiceRole.entities.Invoice.list('-created_date',500),[]]
+      ? [[],await all(base44.asServiceRole.entities.Location),await all(base44.asServiceRole.entities.User),await all(base44.asServiceRole.entities.Invoice),[]]
       : await Promise.all([
-          base44.asServiceRole.entities.TimeEntry.list('-clock_in',2500),
-          base44.asServiceRole.entities.Location.list('site_name',100),
-          base44.asServiceRole.entities.User.list(undefined,200),
-          base44.asServiceRole.entities.Invoice.list('-created_date',500),
-          base44.asServiceRole.entities.Schedule.list('-shift_date',2500),
+          all(base44.asServiceRole.entities.TimeEntry,{clock_in:{$gte:dateOffset(action==='backfill_drafts'?dateOffset(lastSaturday,-7*16):periodStart,-1)+'T00:00:00Z'}}),
+          all(base44.asServiceRole.entities.Location),
+          all(base44.asServiceRole.entities.User),
+          all(base44.asServiceRole.entities.Invoice),
+          all(base44.asServiceRole.entities.Schedule,{shift_date:{$gte:dateOffset(action==='backfill_drafts'?dateOffset(lastSaturday,-7*16):periodStart,-1)}}),
         ]);
     // Recover older verified drafts without silently duplicating overlapping
     // service periods or sending invoices whose historical rates need review.
@@ -290,7 +291,7 @@ export async function handleWeeklyBilling(req) {
       try {
       if (!location?.site_name || !(Number(location.site_bill_rate)>0)) {skipped++;continue;}
       const name=siteOf(location.site_name);
-      const keys=['backfill_drafts','scheduled','run_now'].includes(action)
+      const keys=action==='backfill_drafts'
         ? Array.from({length:16},(_,i)=>{const end=dateOffset(lastSaturday,-7*i);return [dateOffset(end,-6),end]})
         : [[periodStart,periodEnd]];
       for(const [start,end] of keys){
@@ -299,19 +300,20 @@ export async function handleWeeklyBilling(req) {
         if (existingInvoice && (['paid','partial','pending','overdue','void','cancelled'].includes(String(existingInvoice.status||'').toLowerCase()) || (action==='backfill_drafts' && existingInvoice.status==='sent'))) {skipped++;continue;}
         // Never create another invoice for a service interval already billed
         // under a different date range (legacy monthly/multi-week records).
-        const overlap=(invoices||[]).find((old:any)=>
-          String(old.id)!==String(existingInvoice?.id||'') &&
-          siteOf(old.site_name).toLowerCase()===name.toLowerCase() &&
-          old.period_start<=end && old.period_end>=start &&
-          !['void','cancelled'].includes(String(old.status||'').toLowerCase()));
-        if(overlap){
-          held++;
-          results.push({site:name,status:'overlap_requires_review',invoice_number:overlap.invoice_number,
-            existing_invoice_number:existingInvoice?.invoice_number||null,
-            reason:'Another invoice covers some or all of these service dates. The charges and line items must be reconciled before another bill is sent.'});
-          continue;
+        const rows=(entries||[]).filter((entry:any)=>entry.clock_in&&entry.clock_out&&entry.archived!==true&&siteOf(entry.location).toLowerCase()===name.toLowerCase()&&easternDate(entry.clock_in)>=start&&easternDate(entry.clock_in)<=end);
+        const overlapping=(invoices||[]).filter((old:any)=>String(old.id)!==String(existingInvoice?.id||'')&&siteOf(old.site_name).toLowerCase()===name.toLowerCase()&&old.period_start<=end&&old.period_end>=start&&!['void','cancelled'].includes(String(old.status||'').toLowerCase()));
+        if(overlapping.length){
+          const issued=overlapping.filter((old:any)=>old.status==='paid'||old.delivery_status==='accepted'||!!old.sent_at);
+          const day=(v:any)=>{const raw=String(v||'');if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;const parsed=new Date(raw);return Number.isFinite(parsed.getTime())?new Intl.DateTimeFormat('en-CA',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).format(parsed):'';};
+          const oldLines=issued.flatMap((old:any)=>{try{return JSON.parse(old.shifts||'[]')}catch{return []}});
+          const covered=rows.length>0&&rows.every((entry:any)=>{
+            const person=byOfficer.get(String(entry.officer_email||'').toLowerCase()) as any;
+            const last=String(person?.last_name||'').toLowerCase();
+            return oldLines.some((line:any)=>day(line.date)===easternDate(entry.clock_in)&&String(line.officer||'').trim().split(/\s+/).at(-1)?.toLowerCase()===last&&Math.abs(Number(line.hours)-hours(entry))<.025);
+          });
+          if(covered||!rows.length){skipped++;results.push({site:name,status:'already_billed',invoice_number:issued[0]?.invoice_number||overlapping[0].invoice_number,period_start:start,period_end:end});continue;}
+          held++;results.push({site:name,status:'overlap_requires_review',invoice_number:overlapping[0].invoice_number,reason:'Some work is not matched to an existing invoice. Review the unmatched shifts before issuing additional charges.'});continue;
         }
-        const rows=(entries||[]).filter((entry:any)=>entry.clock_in&&entry.clock_out&&entry.archived!==true&&siteOf(entry.location)===name&&easternDate(entry.clock_in)>=start&&easternDate(entry.clock_in)<=end);
         if(!rows.length){skipped++;continue;}
         let totalHours=0,total=0;
         const reviewReasons=new Set<string>();
