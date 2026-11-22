@@ -15,21 +15,19 @@ async function __portalLoginIsCurrent(request,sdk,user){
 const money=(n:any)=>Math.round(Number(n||0)*100)/100;
 const yes=(v:any)=>['sent','pending','partial','overdue'].includes(String(v||'').toLowerCase());
 const emailOk=(v:any)=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||''));
-export async function handleInvoiceLateFees(req) {
+Deno.serve(async req=>{
   try{
     const base44=createClientFromRequest(req);
-    const jobInput=await req.clone().json().catch(()=>({}));
-    const platformScheduledAdmin=jobInput.scheduled===true; 
     // Pending account identities cannot call operational service-role endpoints.
     const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!(__portalCaller.role==='admin'&&platformScheduledAdmin)&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
     const requestingUser = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
-    if(requestingUser && !(requestingUser.role==='admin'&&platformScheduledAdmin) && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
+    if(requestingUser && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
     const body=req.method==='POST'?await req.json().catch(()=>({})):{};
     const manual=['run_now','preview'].includes(String(body.action||''));
     if(manual){const user=await base44.auth.me().then(__portalAppIdentity).catch(()=>null);const roles=new Set((user?.additional_roles||[]).map((v:string)=>v.toLowerCase()));if(!user||String(user.id)!=='6ae7d733d4b1a647cd3e6f38')return Response.json({error:'Accounting access required'},{status:403});}
@@ -91,5 +89,4 @@ export async function handleInvoiceLateFees(req) {
     }
     return Response.json({success:failed===0,overdue,fees_assessed:assessed,emails_accepted:notified,failed,summary,results,as_of:new Date().toISOString()});
   }catch(error:any){return Response.json({error:error?.message||'Overdue invoice job failed'},{status:500});}
-}
-export default handleInvoiceLateFees;
+});

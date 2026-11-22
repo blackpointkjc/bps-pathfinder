@@ -1,4 +1,3 @@
-import {getCompanyGraphToken} from '../../shared/companyGraph.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -38,7 +37,54 @@ function activeInternalUser(u: any) {
     && !roles.has('student');
 }
 
-async function graphToken(base44:any){return getCompanyGraphToken();}
+async function graphToken(base44: any) {
+  const mailboxes = await base44.asServiceRole.entities.OutlookSharedMailbox.filter({
+    mailbox_email: MANAGEMENT,
+    active: true,
+  }, '-updated_date', 1);
+  const mailbox = mailboxes?.[0];
+  if (!mailbox) throw new Error('Management Outlook mailbox is not configured.');
+
+  const credentials = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({
+    user_id: mailbox.user_id,
+    active: true,
+  }, '-last_refreshed_at', 1);
+  const credential = credentials?.[0];
+  if (!credential?.refresh_token) throw new Error('Management Outlook authorization is unavailable.');
+
+  const scope = String(credential.scope || 'Mail.Send Mail.Send.Shared User.Read offline_access');
+  const response = await fetch(`https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', Origin: ORIGIN },
+    body: new URLSearchParams({
+      client_id: CLIENT,
+      grant_type: 'refresh_token',
+      refresh_token: String(credential.refresh_token),
+      scope,
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.access_token) {
+    const detail = String(payload?.error_description || payload?.error || '');
+    const expired = /AADSTS700084|refresh token.*expired|invalid_grant|interaction_required/i.test(detail);
+    if (expired) {
+      await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
+        last_error: 'Microsoft session expired; interactive sign-in required.',
+        active: false,
+      }).catch(() => null);
+      throw new Error('The management Microsoft session has expired. An administrator must sign in again before BOLO email can be sent.');
+    }
+    throw new Error('Microsoft email authorization failed. An administrator should reconnect the management mailbox.');
+  }
+  await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
+    refresh_token: String(payload.refresh_token || credential.refresh_token),
+    scope: String(payload.scope || scope),
+    last_refreshed_at: new Date().toISOString(),
+    last_error: '',
+    active: true,
+  }).catch(() => null);
+  return String(payload.access_token);
+}
 
 async function recipientAddresses(base44: any) {
   const [users, credentials, preferences] = await Promise.all([
