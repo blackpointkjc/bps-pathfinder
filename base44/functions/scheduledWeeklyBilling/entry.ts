@@ -144,7 +144,7 @@ async function handleWeeklyBilling(req) {
     const base44 = createClientFromRequest(req);
     const jobInput = await req.clone().json().catch(() => ({}));
     const platformScheduledAdmin = jobInput.scheduled === true;
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
+    const __portalCaller = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).catch(() => null);
     if (__portalCaller && !__portalCaller.is_service && !(__portalCaller.role === "admin" && platformScheduledAdmin) && !await __portalLoginIsCurrent(req, base44, __portalCaller)) return Response.json({ error: "Your Pathfinder session ended. Please sign in again.", code: "SESSION_REAUTH_REQUIRED" }, { status: 401 });
     let __portalService = false;
     if (!__portalCaller && req.headers.get("Authorization")) {
@@ -156,14 +156,14 @@ async function handleWeeklyBilling(req) {
     }
     if (!__portalCaller && !__portalService || __portalCaller && ((__portalCaller.additional_roles || []).includes("visitor") || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status || "").toLowerCase() === "terminated" || !__portalCaller.is_service && __portalCaller.role !== "admin" && !(__portalCaller.additional_roles || []).length && !["investigator", "reviewer"].includes(__portalCaller.ps_role))) return Response.json({ error: "Approved portal access required" }, { status: 403 });
     base44.auth.me = async () => __portalCaller;
-    const requestingUser = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
+    const requestingUser = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).catch(() => null);
     if (requestingUser && !(requestingUser.role === "admin" && platformScheduledAdmin) && String(requestingUser.id) !== "6ae7d733d4b1a647cd3e6f38") return Response.json({ error: "Accounting access required" }, { status: 403 });
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const action = String(body?.action || "scheduled").toLowerCase();
     if (!["scheduled", "run_now", "backfill_drafts", "send_existing", "approve_historical_rate", "create_draft", "create_invoice", "send_ready_drafts"].includes(action)) return Response.json({ error: "Unsupported invoice operation" }, { status: 400 });
     const manual = action !== "scheduled" && !(platformScheduledAdmin && requestingUser?.role === "admin" && action === "send_ready_drafts");
     if (manual) {
-      const caller = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
+      const caller = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).catch(() => null);
       const roles = new Set((caller?.additional_roles || []).map((role) => String(role).toLowerCase()));
       if (!caller || String(caller.id) !== "6ae7d733d4b1a647cd3e6f38") return Response.json({ error: "Accounting access required" }, { status: 403 });
     }
@@ -192,7 +192,7 @@ async function handleWeeklyBilling(req) {
         total += amount;
         return { ...item, rate: verifiedRate.toFixed(2), amount: amount.toFixed(2) };
       });
-      const actor = await base44.auth.me().then(__portalAppIdentity);
+      const actor = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user));
       const locations2 = await base44.asServiceRole.entities.Location.list("site_name", 2e3);
       const location = (locations2 || []).find((site) => siteOf(site.site_name).toLowerCase() === siteOf(invoice.site_name).toLowerCase());
       if (!location) return Response.json({ error: "Site missing: cannot apply approved rate to company billing records" }, { status: 409 });

@@ -1424,7 +1424,7 @@ export async function handleGracIngestion(req) {
     const jobInput=await req.clone().json().catch(()=>({}));
     const platformScheduledAdmin=jobInput.scheduled===true; 
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
+    const __portalCaller = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).then(__limitFullAccess).catch(()=>null);
     if(__portalCaller&&!__portalCaller.is_service&&!(__portalCaller.role==='admin'&&platformScheduledAdmin)&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
@@ -1433,7 +1433,7 @@ export async function handleGracIngestion(req) {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const scheduledRun = body?.scheduled === true;
-    const user = __portalService ? {id:'scheduled-cad-ingestion',role:'dispatch',additional_roles:['cad_access'],is_service:true} : await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(() => null);
+    const user = __portalService ? {id:'scheduled-cad-ingestion',role:'dispatch',additional_roles:['cad_access'],is_service:true} : await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).then(__limitFullAccess).catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).trim().toLowerCase()));
     const primaryRole = String(user.role || '').trim().toLowerCase();
