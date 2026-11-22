@@ -12,7 +12,7 @@ const clean=value=>String(value??'').trim();
 const lower=value=>clean(value).toLowerCase();
 const formatLabel=value=>clean(value).replaceAll('_',' ').replace(/\b\w/g,ch=>ch.toUpperCase());
 const dateLabel=value=>{if(!value)return '';const date=new Date(value);return Number.isFinite(date.getTime())?new Intl.DateTimeFormat('en-US',{year:'numeric',month:'short',day:'numeric',timeZone:'America/New_York'}).format(date):clean(value).slice(0,16)};
-const recordTitle=item=>clean(item?.label||item?.citation_number||item?.call_number||item?.report_number||item?.id)||'Company record';
+const recordTitle=item=>{const value=clean(item?.label||item?.citation_number||item?.call_number||item?.report_number);return value&&!/^[a-f\d]{20,32}$/i.test(value)?value:item?.source||'Company record';};
 const badgeClass='rounded-md border border-[#35556b] bg-[#122f43] px-2 py-1 text-[10px] font-bold text-cyan-200';
 const leaseBadge=status=>lower(status)==='active'?'border-emerald-700/50 bg-emerald-950/30 text-emerald-300':lower(status)==='former'?'border-slate-600 bg-slate-800 text-slate-300':'border-amber-700/50 bg-amber-950/30 text-amber-300';
 function ResidentResult({item,onOpen}){
