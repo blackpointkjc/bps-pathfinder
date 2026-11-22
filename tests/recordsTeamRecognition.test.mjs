@@ -30,6 +30,15 @@ do{const r=await call(search,{query:'ancient needle',entities:['IncidentReport']
 assert.equal(matches.length,1);assert.equal(matches[0].id,'01500');assert.equal(pages,2,'continuation beyond first batch');
 assert.equal((await call(search,{action:'get',entity:'ConfidentialReport',id:'x'})).status,403);
 console.log('PASS records search: oldest row beyond 1500 records, continuation, restricted record detail');
+const fairReads=[];
+const fairEntities=new Proxy({}, {get:(_target,name)=>({list:async(_sort,limit,skip=0)=>{fairReads.push({name,skip});return name==='DispatchCall'?oldRows.slice(skip,skip+limit):name==='IncidentReport'?[{id:'found-report',description:'specific needle'}]:[];}})});
+const fair=await backend('base44/functions/searchCompanyRecords/entry.ts',{auth:{me:async()=>a},entities:fairEntities,asServiceRole:{entities:fairEntities}});
+const first=await call(fair,{query:'specific needle'});
+assert(first.data.results.some(r=>r.id==='found-report'),'reports appear before a large dispatch source finishes');
+assert.equal(fairReads.filter(r=>r.name==='DispatchCall').length,1,'only one page of a large source per turn');
+assert(first.data.next_cursor.source>0,'source progress advances on the first response');
+console.log('PASS search fairness: large CAD history cannot starve reports or freeze progress at zero');
+
 let saved;
 const people=[{...a,first_name:'Alex',last_name:'Officer',profile_photo_url:'https://example.test/existing.jpg'},{...b,additional_roles:['supervisor'],profile_photo_url:'https://example.test/partner.jpg'}];
 const admin={id:'admin',email:'admin@test',role:'admin'};
