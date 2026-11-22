@@ -3,7 +3,6 @@ import {publicBase44} from '@/api/publicClient';
 import {authEntry,assertAuthResponse,requestPasswordReset,completePasswordReset} from '@/lib/portalAuthFlow';
 import {recordLoginActivity} from '@/lib/sessionPolicy';
 import {useEffect,useState} from 'react';
-import {Link} from 'react-router-dom';
 import {base44,clearBase44ReadCache} from '@/api/base44Client';
 import {appParams} from '@/lib/app-params';
 import './portal.css';
