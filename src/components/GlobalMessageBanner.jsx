@@ -392,7 +392,7 @@ export default function GlobalMessageBanner({ user }) {
         message: text.message,
       };
 
-      setBanners(current => [...current.slice(-4), banner]);
+      setBanners(current => current.some(entry=>entry.id===banner.id)?current:[...current.slice(-4), banner]);
       if (!banner.persistent) {
         const timer = window.setTimeout(() => {
           setBanners(current => current.filter(entry => entry.id !== key));
@@ -459,7 +459,7 @@ export default function GlobalMessageBanner({ user }) {
         photo: record.photo_urls?.[0] || '',
         message: summary,
       };
-      setBanners(current => [...current.slice(-4), banner]);
+      setBanners(current => current.some(entry=>entry.id===banner.id)?current:[...current.slice(-4), banner]);
       const timer = window.setTimeout(() => {
         setBanners(current => current.filter(entry => entry.id !== key));
         timers.current.delete(key);
@@ -505,7 +505,7 @@ export default function GlobalMessageBanner({ user }) {
       if (!record?.id) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
-      if (knownIds.current.has(key)) return;
+      if (knownIds.current.has(key) && (!allowAudio || announcedPropertySpeech.current.has(`property-alert:${record.id}:created`))) return;
       const alertCreatedAt = parseCadUtcTime(record.created_date);
       // The public CAD source can expose a call several minutes after its reported
       // receive time. PropertyAlert.created_date is the moment Pathfinder verified
@@ -532,7 +532,7 @@ export default function GlobalMessageBanner({ user }) {
         const callKey = String(record.callId);
         const currentStatus = callStatusKey(record.callStatus || 'new');
         if (HIDDEN_EXISTING_CALL_STATUSES.has(normalized(record.callStatus))) return;
-        if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
+        if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus && (!allowAudio || announcedPropertySpeech.current.has(`property-alert:${record.id}:created`))) return;
 
         // Normalize every initial delivery path to the same call identity.
         // PropertyAlert realtime and CallStatusLog are two delivery paths for ONE
@@ -542,9 +542,9 @@ export default function GlobalMessageBanner({ user }) {
         const cadNumber = String(record.cadNumber || '');
         const announcementText = `Active call for service at ${record.propertyName || 'monitored property'}. ${record.callIncident || 'Call for service'} at ${record.callLocation || 'address unavailable'}. ${cadNumber ? `CAD number ${cadNumber}.` : ''}`;
 
-        const property = allowAudio ? await base44.entities.Location.get(record.propertyId).catch(()=>null) : null;
-        const onPost = allowAudio && await mayReceivePropertyAlarm(base44,user,property);
-        if (onPost && !announcedPropertySpeech.current.has(propertyEventKey)) {
+        // The verified live alert already grants visibility. Duty lookups only
+        // control the optional on-post horn, never the spoken alert.
+        if (allowAudio && !announcedPropertySpeech.current.has(propertyEventKey)) {
           const settings = audioSettings.current;
           const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
           const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
@@ -575,6 +575,7 @@ export default function GlobalMessageBanner({ user }) {
                 propertyEventKey,
                 accepted ? 'played' : 'blocked',
               );
+              if(!accepted)announcedPropertySpeech.current.delete(propertyEventKey);
             })();
           }
         }
@@ -602,7 +603,7 @@ export default function GlobalMessageBanner({ user }) {
             event_key: propertyEventKey,
           },
         };
-        setBanners(current => [...current.slice(-4), banner]);
+        setBanners(current => current.some(entry=>entry.id===banner.id)?current:[...current.slice(-4), banner]);
         const timer = window.setTimeout(() => {
           setBanners(current => current.filter(entry => entry.id !== key));
           timers.current.delete(key);
@@ -625,7 +626,7 @@ export default function GlobalMessageBanner({ user }) {
       // Announce once per call+status, regardless of how many alert rows arrive.
       const callKey = String(call.id || record.callId);
       const currentStatus = callStatusKey(call.status || 'new');
-      if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
+      if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus && (!allowAudio || announcedPropertySpeech.current.has(`property-alert:${record.id}:created`))) return;
 
       const summary = propertyCallSummary(record, call);
       const propertyEventKey = `property-alert:${record.id}:created`;
@@ -649,8 +650,7 @@ export default function GlobalMessageBanner({ user }) {
       // speech whenever that log row was created before this browser subscribed.
       // Claim the canonical property+call+status event so multiple tabs/devices
       // still speak it only once for this user.
-      const onPost = allowAudio && await mayReceivePropertyAlarm(base44,user,monitoredProperty);
-      if (onPost && !announcedPropertySpeech.current.has(propertyEventKey)) {
+      if (allowAudio && !announcedPropertySpeech.current.has(propertyEventKey)) {
         const settings = audioSettings.current;
         const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
         const propertyAudioEnabled = settings.enabled !== false && (!enabledTypes.length || enabledTypes.includes('property_alert'));
@@ -679,6 +679,7 @@ export default function GlobalMessageBanner({ user }) {
             voiceProfile: audioSettings.current.voice_profile,
           });
           await finalizeAnnouncementEvent(claim, propertyEventKey, accepted ? 'played' : 'blocked');
+          if(!accepted)announcedPropertySpeech.current.delete(propertyEventKey);
         }
       }
 
@@ -706,7 +707,7 @@ export default function GlobalMessageBanner({ user }) {
           event_key: propertyEventKey,
         },
       };
-      setBanners(current => [...current.slice(-4), banner]);
+      setBanners(current => current.some(entry=>entry.id===banner.id)?current:[...current.slice(-4), banner]);
       const timer = window.setTimeout(() => {
         setBanners(current => current.filter(entry => entry.id !== key));
         timers.current.delete(key);
@@ -748,12 +749,8 @@ export default function GlobalMessageBanner({ user }) {
         if (knownIds.current.has(key)) return;
         const email = normalized(user.email);
         if (!email) return;
-        if (record.event_type === 'property_alert') {
-          const matching = record.call_id ? await base44.entities.PropertyAlert.filter({callId:record.call_id},'-created_date',10).catch(()=>[]) : [];
-          const match = matching.find(alert => alert.propertyId && alert.is_test !== true && propertyAlertWasTimely(alert));
-          const property=match ? await base44.entities.Location.get(match.propertyId).catch(()=>null) : null;
-          if (!await mayReceivePropertyAlarm(base44,user,property)) return;
-        }
+        // The durable event is the fallback for the same verified property alert.
+        // Duty/GPS reads are reserved for its optional horn prelude.
         const claim = await claimAnnouncementEvent({
           event_key: record.event_key,
           event_id: record.id,
@@ -832,7 +829,7 @@ export default function GlobalMessageBanner({ user }) {
           photo: '',
           message: announcementText,
         };
-        setBanners(current => [...current.slice(-4), banner]);
+        setBanners(current => current.some(entry=>entry.id===banner.id)?current:[...current.slice(-4), banner]);
         const timer = window.setTimeout(() => {
           setBanners(current => current.filter(entry => entry.id !== key));
           timers.current.delete(key);
