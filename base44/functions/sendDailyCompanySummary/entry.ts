@@ -1,3 +1,4 @@
+import {loadReportWork} from '../../shared/reportWork.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { blackPointEmail } from './blackPointEmail.ts';
@@ -597,6 +598,10 @@ Deno.serve(async (req) => {
       () => safeFilter(base44, 'CallPerformanceDecision', utc('created_date'), '-created_date', sourceIssues),
       () => safeFilter(base44, 'DutyAttendanceAdjustment', date('item_date'), '-created_date', sourceIssues),
     ],4);
+
+    const teamWork=await loadReportWork(base44.asServiceRole.entities,now.monthStart);
+    dailyReports.push(...teamWork.filter(row=>['DailyActivityReport','ShiftReport'].includes(row.report_entity)));
+    metricData.incidents.push(...teamWork.filter(row=>row.report_entity==='IncidentReport'));
 
     // Missing/time-limited sources must never be silently treated as an
     // officer failing work or training. Do not send misleading score emails.

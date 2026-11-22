@@ -53,7 +53,7 @@ const normalizeSearchText = (value: unknown) => lower(value)
 const compact = (values: unknown[]) => values.map(text).filter(Boolean).join(' ');
 
 const labelFor = (record: any) =>
-  record.report_number || record.bolo_number || record.notice_number || record.citation_number ||
+  record.title || record.checkpoint_name_snapshot || record.report_number || record.bolo_number || record.notice_number || record.citation_number ||
   record.complaint_number || record.summons_number || record.call_id || record.call_number ||
   record.linked_call_number || record.subject_name || record.person_name || record.vehicle_id ||
   record.license_plate || record.vehicle_plate || record.location || record.id;

@@ -74,6 +74,7 @@ export default function RecordsAssistant(){
  const runSearch=async event=>{
   event?.preventDefault();const term=clean(query);if(term.length<2)return;
   const seq=++latest.current;
+  announceVoice('Searching Pathfinder app records.',{force:true,dedupeMs:1000});
   setSearching(true);setSearched(false);setError('');setPartial('');setSourceFilter('all');setResults([]);setResidents([]);
   // Both searches run concurrently. The property registry is scoped to the
   // employee's authorized operational sites by the backend, with no dropdown.
@@ -99,7 +100,7 @@ export default function RecordsAssistant(){
  };
  const openRecord=async item=>{
    const seq=++detailSequence.current;setSelected(item);setDetail(null);setDetailError('');
-   if(item.source==='Property resident registry'){setDetail(item);setDetailLoading(false);return;}
+   if(item.source==='Property resident registry'){announceVoice([item.full_name,item.address||item.unit_number,item.site_name,item.lease_status&&item.lease_status+' lease'].filter(Boolean).join('. '),{force:true,dedupeMs:1000});setDetail(item);setDetailLoading(false);return;}
    setDetailLoading(true);
    announceVoice([item.source,recordTitle(item),item.person,item.location,item.status,item.summary?.slice(0,180)].filter(Boolean).join('. '),{force:true,dedupeMs:1000});
    try{
