@@ -1,7 +1,5 @@
 // base44/functions/portalShowcase/entry.ts
 import { createClientFromRequest } from "npm:@base44/sdk";
-
-// base44/shared/portalLoginGuard.ts
 var PORTAL_REAUTH_AFTER = "2026-11-01T22:38:04.000Z";
 var IDLE_MS = 13 * 60 * 60 * 1e3;
 var delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -49,8 +47,6 @@ async function portalSessionState(request, sdk, user) {
   }
   return { state: "current", row: adopted };
 }
-
-// base44/functions/portalShowcase/entry.ts
 var clean = (v, n = 180) => String(v ?? "").trim().slice(0, n);
 var json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 var VIDEO = "https://media.base44.com/videos/public/694de31c7e0f5645fb95de52/8b3f7aa83_pathfinder-sign-in-background.mp4";
@@ -159,6 +155,6 @@ async function entry_default(req) {
     return json({ error: "Showcase service unavailable", code: "SHOWCASE_BACKEND_ERROR", phase }, 503);
   }
 }
-export {
-  entry_default as default
-};
+
+// <stdin>
+Deno.serve(entry_default);
