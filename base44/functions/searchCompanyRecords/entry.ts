@@ -184,11 +184,14 @@ Deno.serve(async (req) => {
     // Loading every source at once caused API throttling and then silently returned
     // an empty search. Process a few sources at a time and retry transient failures.
     const settled: PromiseSettledResult<any[]>[] = [];
-    let sourceIndex=Math.max(0,Math.min(searchableSources.length,Math.floor(Number(body?.cursor?.source)||0)));
-    let offset=Math.max(0,Math.floor(Number(body?.cursor?.offset)||0));
+    // Round-robin pages: a large CAD archive must not block every report source.
+    const pending = Array.isArray(body?.cursor?.pending)
+      ? body.cursor.pending.filter((p:any)=>Number.isInteger(p.source)&&p.source>=0&&p.source<searchableSources.length&&Number.isInteger(p.offset)&&p.offset>=0).map((p:any)=>({source:p.source,offset:p.offset}))
+      : searchableSources.map((_,source)=>({source,offset:0}));
     let pages=0;
     const failedLabels:string[]=[];
-    while(sourceIndex<searchableSources.length&&pages<5){
+    while(pending.length&&pages<5){
+      const {source:sourceIndex,offset}=pending.shift();
       const [entityName,sourceLabel,page]=searchableSources[sourceIndex];
       const currentOffset=offset;let rowCount=0;
       const batchResults=await Promise.allSettled([(async()=>{
@@ -246,8 +249,7 @@ Deno.serve(async (req) => {
       })()]);
       settled.push(...batchResults);pages++;
       if(batchResults[0].status==='rejected')failedLabels.push(sourceLabel);
-      if(batchResults[0].status==='fulfilled'&&rowCount===250)offset+=250;
-      else{sourceIndex++;offset=0;}
+      if(batchResults[0].status==='fulfilled'&&rowCount===250)pending.push({source:sourceIndex,offset:offset+250});
     }
 
     const successfulSources = settled.filter(result => result.status === 'fulfilled').length;
@@ -275,7 +277,7 @@ Deno.serve(async (req) => {
     const warrantMatches = results.filter(item => item.warrant_issued).length;
     return Response.json({
       results,
-      next_cursor:sourceIndex<searchableSources.length?{source:sourceIndex,offset}:null,
+      next_cursor:pending.length?{pending,source:searchableSources.length-new Set(pending.map((p:any)=>p.source)).size}:null,
       total_sources:searchableSources.length,
       failed_source_labels:failedLabels,
       truncated:false,

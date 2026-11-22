@@ -142,6 +142,7 @@ const recordRequestTrace = entry => {
   }
 };
 const readPriority = meta => {
+  if(meta?.kind==='function'&&['searchCompanyRecords','manageParkingRecords'].includes(meta.name)&&(!meta.action||['search_all','get'].includes(meta.action)))return 98;
   if (meta?.kind === 'auth') return 100;
   if (meta?.kind === 'function' && meta?.name === 'routeNavigation') return 99;
   if (meta?.kind === 'function' && ['getCallOutShifts','getNavigationLocations','geocodeNavigationDestination'].includes(meta?.name)) return 90;

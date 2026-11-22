@@ -1,11 +1,12 @@
 import {searchAllRecords} from '@/lib/searchAllRecords';
-import {announceRecordSearch,announceVoice} from '@/utils/voiceAnnouncer';
+import {announceRecordSearch,announceVoice,installVoiceUnlockListeners} from '@/utils/voiceAnnouncer';
 import {useEffect,useRef,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {Search,UserRound,CarFront,FileText,MapPin,CalendarDays,ArrowUpRight,AlertTriangle,Loader2,Shield} from 'lucide-react';
 import '@/components/reports/pathfinderRecordsTheme.css';
 
+const withSearchDeadline=(promise,ms)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Resident search timed out. Other record results are still available.')),ms);Promise.resolve(promise).then(resolve,reject).finally(()=>clearTimeout(timer));});
 const clean=value=>String(value??'').trim();
 const lower=value=>clean(value).toLowerCase();
 const formatLabel=value=>clean(value).replaceAll('_',' ').replace(/\b\w/g,ch=>ch.toUpperCase());
@@ -74,12 +75,14 @@ export default function RecordsAssistant(){
  const runSearch=async event=>{
   event?.preventDefault();const term=clean(query);if(term.length<2)return;
   const seq=++latest.current;
+  installVoiceUnlockListeners();
+  let lastAnnouncedCount=0;
   setSearching(true);setSearched(false);setError('');setPartial('');setSourceFilter('all');setResults([]);setResidents([]);
   // Both searches run concurrently. The property registry is scoped to the
   // employee's authorized operational sites by the backend, with no dropdown.
   const settled=await Promise.allSettled([
-   searchAllRecords({query:term,search_type:'all'},{isCurrent:()=>seq===latest.current,onProgress:d=>{setResults(d.results);setProgress('Searching authorized app records · '+d.source+' / '+d.total_sources+' sources');}}),
-   base44.functions.invoke('manageParkingRecords',{action:'search_all',query:term}),
+   searchAllRecords({query:term,search_type:'all'},{isCurrent:()=>seq===latest.current,onProgress:d=>{if(seq!==latest.current)return;setResults(d.results);if(d.results.length>lastAnnouncedCount){lastAnnouncedCount=d.results.length;announceRecordSearch(d.results,{searchType:'all',partial:true});}setProgress('Searching authorized app records · '+d.source+' / '+d.total_sources+' sources');}}),
+   withSearchDeadline(base44.functions.invoke('manageParkingRecords',{action:'search_all',query:term}),45000),
   ]);
   if(seq!==latest.current)return;
   const problems=[];let ok=0,company=[],people=[],matched=0;
