@@ -22,11 +22,13 @@ export default function MissingReportsCheck({ schedules: _schedules, allUsers = 
     enabled: sourceReports === undefined,
     queryKey: ['allDutyActivityReports', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
     queryFn: async () => {
-      const [daily, shift] = await Promise.all([
+      const [daily, shift, work] = await Promise.all([
         base44.entities.DailyActivityReport.list('-report_date', 500),
         base44.entities.ShiftReport.list('-shift_date', 500),
+        base44.entities.TeamReportWork.filter({status:'in_progress',report_date:{$gte:format(periodStart,'yyyy-MM-dd'),$lte:format(periodEnd,'yyyy-MM-dd')}},'-created_date',1000),
       ]);
       return [
+        ...(work||[]).filter(r=>['DailyActivityReport','ShiftReport'].includes(r.report_entity)).map(r=>({...r,id:'team-work:'+r.id,status:'draft',created_by_id:r.officer_id,source_report_type:r.report_entity==='ShiftReport'?'shift_report':'daily_activity_report'})),
         ...(daily || []).map(report => ({ ...report, source_report_type: 'daily_activity_report' })),
         ...(shift || []).map(report => ({
           ...report,
@@ -108,7 +110,7 @@ export default function MissingReportsCheck({ schedules: _schedules, allUsers = 
             || attachedEmails.has(session.email)
             || emailKey(report.officer_email) === session.email
             || (officer?.id && String(report.created_by_id || '') === String(officer.id));
-          return explicitCredit || !['draft', 'rejected'].includes(String(report.status || '').toLowerCase());
+          return explicitCredit || (report.team_credit_source!=='schedule'&&!['draft', 'rejected'].includes(String(report.status || '').toLowerCase()));
         })
         .sort((a, b) => new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0))[0];
 
@@ -119,7 +121,7 @@ export default function MissingReportsCheck({ schedules: _schedules, allUsers = 
           ? 'accepted'
           : ['submitted', 'pending', 'pending_approval', 'under_review'].includes(rawStatus)
             ? 'pending'
-            : rawStatus === 'draft'
+            : ['draft','in_progress'].includes(rawStatus)
               ? 'draft'
               : 'pending';
 

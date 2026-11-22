@@ -749,7 +749,7 @@ export function calculateJobDutyCompliance({
       detail.daily_activity.session_entry_ids = session.entries.map(item => item.id).filter(Boolean);
       detail.daily_activity.session_sites = [...session.sites].filter(Boolean);
       const matchingDar = darIsExempt ? null : dailyReports.find(report => {
-        if (['draft', 'rejected'].includes(String(report?.status || '').toLowerCase()) || usedDarIds.has(String(report?.id || ''))) return false;
+        if ((String(report?.status||'').toLowerCase()==='rejected'||(String(report?.status||'').toLowerCase()==='draft'&&report.team_credit_source!=='schedule')) || usedDarIds.has(String(report?.id || ''))) return false;
         const reportId = String(report?.id || '');
         const shiftIds = new Set(session.entries.map(item => String(item.id || '')));
         if (report?.shift_id && shiftIds.has(String(report.shift_id))) return true;
@@ -762,12 +762,13 @@ export function calculateJobDutyCompliance({
         // A team DAR submitted by any officer working this post/session satisfies
         // the shared operational reporting requirement. Attached officers are
         // explicitly credited even when they moved sites before submission.
-        return reportCreditsOfficer(report) || Boolean(reportId);
+        return reportCreditsOfficer(report) || (report.team_credit_source!=='schedule'&&Boolean(reportId));
       });
       if (matchingDar) {
         usedDarIds.add(String(matchingDar.id));
         darCompleted++;
         detail.daily_activity.completed = true;
+        detail.daily_activity.started = ['draft','in_progress'].includes(String(matchingDar.status||'').toLowerCase());
         detail.daily_activity.report_id = matchingDar.id;
         detail.daily_activity.report_author = matchingDar.officer_email || matchingDar.created_by_email || matchingDar.created_by || '';
         detail.daily_activity.shared_report = !reportCreditsOfficer(matchingDar);
@@ -831,7 +832,7 @@ export function calculateJobDutyCompliance({
         incidentRequired++;
         detail.incidents.required++;
         const callNumbers = [call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String);
-        const report = officerIncidents.filter(ir => !['draft', 'rejected'].includes(String(ir.status || '').toLowerCase())).find(ir =>
+        const report = officerIncidents.filter(ir => String(ir.status||'').toLowerCase()!=='rejected'&&(String(ir.status||'').toLowerCase()!=='draft'||ir.team_credit_source==='schedule')).find(ir =>
           String(ir.linked_call_id || '') === String(call.id || '') ||
           callNumbers.includes(String(ir.linked_call_number || '')) ||
           callNumbers.includes(String(ir.call_number || ''))
@@ -840,14 +841,14 @@ export function calculateJobDutyCompliance({
         const callTypeLabel = call.incident || call.incident_type || call.call_type || 'Call for service';
         const callLocation = call.location || call.property_site || detail.property || '';
         const callTimestamp = call.time_received || call.created_date || '';
-        if (report && !['draft', 'rejected'].includes(String(report.status || '').toLowerCase())) {
+        if (report && String(report.status||'').toLowerCase()!=='rejected'&&(String(report.status||'').toLowerCase()!=='draft'||report.team_credit_source==='schedule')) {
           incidentCompleted++;
           detail.incidents.completed++;
           detail.incidents.items.push({
             call_id: call.id,
             key: incidentKey,
             call_number: callNumber,
-            status: 'completed',
+            status: ['draft','in_progress'].includes(String(report.status||'').toLowerCase())?'in_progress':'completed',
             call_type: callTypeLabel,
             call_location: callLocation,
             call_time: callTimestamp,

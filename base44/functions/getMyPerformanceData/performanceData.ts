@@ -1,3 +1,4 @@
+import {loadReportWork} from '../../shared/reportWork.ts';
 function easternMidnight(day:string) {
   const raw = Date.parse(day + 'T00:00:00.000Z');
   const zone = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(raw)).find(part=>part.type==='timeZoneName')?.value || 'GMT';
@@ -173,6 +174,10 @@ export async function loadPerformanceData(base44: any, officer: any, body: any, 
       safeFilter('PropertyAlert', { created_date: { $gte: activityCutoff, $lt: activityEndExclusive } }, '-created_date', 750),
       Promise.resolve([]),
     ]);
+    const teamWork=await loadReportWork(base44.asServiceRole.entities,monthDateCutoff,monthDateEnd);
+    incidentsAll.push(...teamWork.filter(row=>row.report_entity==='IncidentReport'));
+    dailyReportsAll.push(...teamWork.filter(row=>row.report_entity==='DailyActivityReport'));
+    shiftReportsAll.push(...teamWork.filter(row=>row.report_entity==='ShiftReport'));
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));
     const myAssignments = assignmentsAll.filter((r:any) => sameEmail(r, 'officer_email', aliases));

@@ -502,6 +502,7 @@ Deno.serve(async req => {
       patch.resident_id=registered?.id||'';patch.resident_verified=!!registered&&clean(registered.lease_status)==='active';patch.vehicle_record_id=car?.id||'';
       patch.fine_amount=original.fine_amount;patch.status='issued';patch.supervisor_review_status='pending';patch.was_rejected=true;
       patch.approval_history=[...(Array.isArray(original.approval_history)?original.approval_history:[]),history(user,'resubmitted',patch.description||'Officer revised returned parking notice')].slice(-60);
+      Object.assign(patch,await resolveReportTeam(sdk,user,{...original,...patch}));
       return Response.json({success:true,violation:await entities.ParkingViolation.update(id,patch)});
     }
     if(action==='violations'||action==='export'){

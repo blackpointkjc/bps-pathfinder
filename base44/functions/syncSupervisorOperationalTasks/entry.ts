@@ -1,3 +1,4 @@
+import {loadReportWork} from '../../shared/reportWork.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { isOutOfOffice } from './absencePolicy.ts';
 import { clean, lower, isSupervisorAccount as isSupervisor, supervisorDisplayName as displayName } from './supervisorIdentity.ts';
@@ -103,6 +104,9 @@ Deno.serve(async (req) => {
     const timeEntries = await readRows('recent time entries', () => base44.asServiceRole.entities.TimeEntry.filter({ clock_in: { $gte: recentCutoffIso } }, '-clock_in', 5000), true);
     const dailyReports = await readRows('recent daily reports', () => base44.asServiceRole.entities.DailyActivityReport.filter({ report_date: { $gte: recentCutoffDate } }, '-report_date', 5000), true);
     const shiftReports = await readRows('recent shift reports', () => base44.asServiceRole.entities.ShiftReport.filter({ shift_date: { $gte: recentCutoffDate } }, '-shift_date', 5000), true);
+    const teamWork=await loadReportWork(base44.asServiceRole.entities,recentCutoffDate,current.date);
+    dailyReports.push(...teamWork.filter(row=>row.report_entity==='DailyActivityReport'));
+    shiftReports.push(...teamWork.filter(row=>row.report_entity==='ShiftReport'));
     const complaints = await readRows('complaints', () => base44.asServiceRole.entities.Complaint.list('-complaint_date', 1000), true);
     const writeups = await readRows('write-ups', () => base44.asServiceRole.entities.WriteUpReport.list('-report_date', 1000), true);
     const reviews = await readRows('performance reviews', () => base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000), true);
@@ -162,7 +166,7 @@ Deno.serve(async (req) => {
       ...(dailyReports || []).map((report:any) => ({ ...report, report_date: report.report_date, source_report_type:'daily_activity_report' })),
       ...(shiftReports || []).map((report:any) => ({ ...report, report_date: report.report_date || report.shift_date, source_report_type:'shift_report' })),
     ];
-    const validDutyReports = dutyReports.filter((report:any) => !['draft','rejected'].includes(lower(report.status)));
+    const validDutyReports = dutyReports.filter((report:any) => lower(report.status)!=='rejected'&&(lower(report.status)!=='draft'||report.team_credit_source==='schedule'));
     const tasks:any[] = [];
 
     for (const shift of schedules || []) {
@@ -253,7 +257,8 @@ Deno.serve(async (req) => {
         if (report.shift_id && entryIds.has(String(report.shift_id))) return true;
         const reportDate = clean(report.report_date || report.shift_date);
         const reportSite = lower(siteNameFrom(report.location));
-        return session.dates.has(reportDate) && session.sites.has(reportSite);
+        const credited=lower(report.officer_email)===session.officer_email||(report.attached_officer_emails||[]).map(lower).includes(session.officer_email);
+        return session.dates.has(reportDate) && session.sites.has(reportSite) && (report.team_credit_source!=='schedule'||credited);
       });
       if (covered) continue;
       const first = session.entries[0];
