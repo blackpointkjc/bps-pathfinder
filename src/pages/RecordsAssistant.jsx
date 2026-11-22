@@ -74,7 +74,6 @@ export default function RecordsAssistant(){
  const runSearch=async event=>{
   event?.preventDefault();const term=clean(query);if(term.length<2)return;
   const seq=++latest.current;
-  announceVoice('Searching Pathfinder app records.',{force:true,dedupeMs:1000});
   setSearching(true);setSearched(false);setError('');setPartial('');setSourceFilter('all');setResults([]);setResidents([]);
   // Both searches run concurrently. The property registry is scoped to the
   // employee's authorized operational sites by the backend, with no dropdown.

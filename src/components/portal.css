@@ -132,3 +132,39 @@
 .bp-showcase-honor small{display:block;font-size:11px;line-height:1.35;color:#bcb6a7;margin-top:4px;}
 @media(max-width:1050px){.bp-login .bp-login-layout{grid-template-columns:1fr;max-width:760px;}.bp-login-fleet-stage{max-height:none;}.bp-showcase-honors{margin-top:14px;}}
 @media(max-width:560px){.bp-showcase-honors{grid-template-columns:1fr;gap:8px;}.bp-showcase-honor{padding:9px;}.bp-showcase-honor-image{width:48px;height:55px;flex-basis:48px;}.bp-showcase-bottom{padding:24px 7px 7px;}.bp-showcase-caption{font-size:10px;}.bp-login .bp-login-fleet-tag{font-size:8px;}.bp-showcase-controls{gap:2px;font-size:10px;}.bp-login .bp-showcase-controls button{min-height:30px;min-width:30px;}.bp-login .bp-login-card{padding:18px 16px;}}
+
+/* Fit the sign-in surface and both monthly honorees inside a normal viewport. */
+.bp-login{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;scrollbar-gutter:auto;}
+.bp-login .bp-login-header{padding:10px clamp(14px,3vw,36px);}
+.bp-login .bp-login-layout{width:100%;height:100%;min-height:0;max-width:1560px;padding:12px clamp(14px,3vw,36px);gap:clamp(14px,3vw,40px);grid-template-columns:minmax(0,1.35fr) minmax(320px,.8fr);align-items:center;}
+.bp-login .bp-login-hero{height:100%;min-height:0;display:grid;grid-template-rows:minmax(90px,1fr) auto auto;gap:10px;align-self:stretch;}
+.bp-login .bp-login-fleet-stage{height:100%;min-height:0;max-height:none;aspect-ratio:auto;}
+.bp-login .bp-login-hero-copy{padding:0 2px;}
+.bp-login .bp-login-hero-copy h1{font-size:clamp(24px,2.5vw,38px);margin:7px 0 4px;}
+.bp-login .bp-login-hero-copy>p{font-size:12px;line-height:1.4;}
+.bp-login .bp-login-badge{font-size:8px;padding:4px 8px;}
+.bp-login .bp-showcase-honors{margin-top:0;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr));}
+.bp-login .bp-showcase-honor{padding:8px;gap:8px;}
+.bp-login .bp-showcase-honor-image{width:48px;height:54px;flex-basis:48px;}
+.bp-login .bp-showcase-honor p{font-size:8px;}
+.bp-login .bp-showcase-honor small{font-size:10px;line-height:1.2;margin-top:2px;}
+.bp-login .bp-login-card{max-height:100%;overflow-y:auto;padding:18px 20px;}
+.bp-login .bp-login-card h2{font-size:24px;margin:6px 0 12px;}
+.bp-login .bp-login-card label{margin-bottom:10px;}
+.bp-login .bp-login-card .portal-actions{margin-top:10px;gap:7px;}
+.bp-login .bp-login-card .portal-actions button{min-height:38px;padding:8px;font-size:11px;}
+.bp-login .bp-login-footer{width:100%;max-width:none;margin:0;padding:8px clamp(14px,3vw,36px);font-size:10px;}
+@media(max-width:760px){
+ .bp-login .bp-login-layout{grid-template-columns:1fr;grid-template-rows:minmax(140px,1fr) auto;gap:8px;padding:8px 12px;}
+ .bp-login .bp-login-hero{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(50px,1fr) auto;gap:7px;}
+ .bp-login .bp-login-hero-copy{display:none;}
+ .bp-login .bp-login-card{max-width:none;padding:12px 16px;max-height:60dvh;}
+ .bp-login .bp-login-card .portal-actions{grid-template-columns:repeat(3,minmax(0,1fr));}
+ .bp-login .bp-login-card .portal-actions button:last-child:nth-child(odd){grid-column:auto;}
+ .bp-login .bp-login-header nav{display:none;}
+ .bp-login .bp-wordmark img{height:32px;width:30px;}.bp-login .bp-wordmark strong{font-size:19px;}.bp-login .bp-wordmark small{font-size:7px;}
+ .bp-login .bp-showcase-honor-image{width:34px;height:40px;flex-basis:34px;}.bp-login .bp-showcase-honor{padding:6px;}.bp-login .bp-showcase-honor strong{font-size:11px;}.bp-login .bp-showcase-honor small{display:none;}
+ .bp-login .bp-login-card input:not([type=checkbox]){min-height:40px;padding:8px;}.bp-login .bp-login-card h2{font-size:21px;margin:3px 0 6px;}
+ .bp-login .bp-login-card form>button{min-height:40px;padding:9px 16px;}
+ .bp-login .bp-login-footer{font-size:8px;padding:5px 12px;gap:4px;}
+}

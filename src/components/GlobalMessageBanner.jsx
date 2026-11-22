@@ -216,20 +216,11 @@ function bannerText(source, record) {
 }
 
 function boloSummary(record) {
-  const party = record?.parties?.[0] || null;
-  const vehicle = record?.vehicles?.[0] || null;
-  const subject = party?.name || record?.subject_name || '';
-  const vehicleText = [vehicle?.year || record?.vehicle_year, vehicle?.color || record?.vehicle_color, vehicle?.make || record?.vehicle_make, vehicle?.model || record?.vehicle_model].filter(Boolean).join(' ');
-  const plate = vehicle?.plate || record?.vehicle_plate || '';
-  const details = [
-    record?.title,
-    subject && `Subject ${subject}`,
-    vehicleText && `Vehicle ${vehicleText}`,
-    plate && `Plate ${plate}`,
-    record?.last_known_location && `Last known location ${record.last_known_location}`,
-    record?.description,
-  ].filter(Boolean);
-  return details.join('. ') || 'Review the active BOLO for details.';
+  const party=record?.parties?.[0]||{},vehicle=record?.vehicles?.[0]||{};
+  const reference=String(record?.bolo_number||record?.linked_call_number||'').replace(/\D/g,'').slice(-5);
+  const origin=record?.issuing_agency||record?.source_agency||record?.agency||record?.source_name||record?.issued_by_name||record?.issuing_officer_name||record?.created_by_name||record?.officer_name||'BlackPoint Pathfinder';
+  const vehicleText=[vehicle.year||record?.vehicle_year,vehicle.color||record?.vehicle_color,vehicle.make||record?.vehicle_make,vehicle.model||record?.vehicle_model].filter(Boolean).join(' ');
+  return [reference&&'BOLO '+reference,'Issued by '+origin,record?.title,party.name||record?.subject_name,vehicleText&&'Vehicle '+vehicleText,(vehicle.plate||record?.vehicle_plate)&&'Plate '+(vehicle.plate||record.vehicle_plate),record?.last_known_location&&'Last known location '+record.last_known_location,record?.description||record?.summary||record?.details,record?.officer_safety_notes].filter(Boolean).join('. ');
 }
 
 const HIDDEN_EXISTING_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);

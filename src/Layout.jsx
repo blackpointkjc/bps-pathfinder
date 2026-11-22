@@ -1,3 +1,4 @@
+import RecordsSearchDialog from '@/components/RecordsSearchDialog';
 import {getRoleHome} from '@/lib/roleHome';
 import {hasIAAccess,hasWholeAppAccess} from '@/lib/portalAccess';
 import '@/components/map/mapWorkspace.css';
@@ -884,6 +885,7 @@ export default function Layout({ children, currentPageName }) {
   const gpsMenuRef = useRef(null);
   const gpsPopupRef = useRef(null);
   const [search, setSearch] = useState('');
+  const [recordsSearchOpen,setRecordsSearchOpen]=useState(false);
   // The user's primary role owns the initial workspace. Do not bootstrap from a
   // stale browser-wide CAD selection left by a previous page or role.
   const [activeCenter, setActiveCenterState] = useState(() => allowedCenters(user)[0] || 'cad');
@@ -1621,6 +1623,7 @@ export default function Layout({ children, currentPageName }) {
             <Home className="h-4 w-4" />
             <span>{userHomeLabel}</span>
           </Link>
+          {canAccessPage('RecordsAssistant',user)&&<button type="button" onClick={()=>setRecordsSearchOpen(true)} className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/60 bg-cyan-950/40 px-2 text-[10px] font-black uppercase tracking-wide text-cyan-100 sm:px-3" aria-label="Search Records"><Search className="h-4 w-4"/><span>Search Records</span></button>}
           {!['AdminCenter','CorporateBrowser','AdminBrowserControl','AdminReports'].includes(currentPageName) && <div className="pf-header-context hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
@@ -1821,6 +1824,7 @@ export default function Layout({ children, currentPageName }) {
       <button type="button" className="pf-phone-nav-item" onClick={openMobileToolsMenu} aria-label="Open all Pathfinder tools" aria-expanded={mobileOpen}><Menu aria-hidden="true" /><span>Tools</span></button>
     </nav>
     </section>
+    <RecordsSearchDialog open={recordsSearchOpen} onOpenChange={setRecordsSearchOpen}/>
   </div></MicrosoftMailSetupGate></AcceptableUseGate>;
 }
 export {canAccessPage};
