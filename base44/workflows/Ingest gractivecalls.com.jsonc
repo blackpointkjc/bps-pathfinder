@@ -1,0 +1,245 @@
+{
+  "name": "Ingest gractivecalls.com",
+  "description": "Five-minute server runs perform ten bounded GRAC refreshes with short waits. No personnel login is required.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 5,
+      "interval_unit": "minutes",
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "continuous_grac_sync",
+      "version": "2.1",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "poll_0": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_0",
+          "x-base44": {
+            "title": "Server GRAC refresh 1"
+          }
+        }
+      },
+      {
+        "pause_0": {
+          "wait": "PT25S",
+          "then": "poll_1",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_1": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_1",
+          "x-base44": {
+            "title": "Server GRAC refresh 2"
+          }
+        }
+      },
+      {
+        "pause_1": {
+          "wait": "PT25S",
+          "then": "poll_2",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_2": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_2",
+          "x-base44": {
+            "title": "Server GRAC refresh 3"
+          }
+        }
+      },
+      {
+        "pause_2": {
+          "wait": "PT25S",
+          "then": "poll_3",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_3": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_3",
+          "x-base44": {
+            "title": "Server GRAC refresh 4"
+          }
+        }
+      },
+      {
+        "pause_3": {
+          "wait": "PT25S",
+          "then": "poll_4",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_4": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_4",
+          "x-base44": {
+            "title": "Server GRAC refresh 5"
+          }
+        }
+      },
+      {
+        "pause_4": {
+          "wait": "PT25S",
+          "then": "poll_5",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_5": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_5",
+          "x-base44": {
+            "title": "Server GRAC refresh 6"
+          }
+        }
+      },
+      {
+        "pause_5": {
+          "wait": "PT25S",
+          "then": "poll_6",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_6": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_6",
+          "x-base44": {
+            "title": "Server GRAC refresh 7"
+          }
+        }
+      },
+      {
+        "pause_6": {
+          "wait": "PT25S",
+          "then": "poll_7",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_7": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_7",
+          "x-base44": {
+            "title": "Server GRAC refresh 8"
+          }
+        }
+      },
+      {
+        "pause_7": {
+          "wait": "PT25S",
+          "then": "poll_8",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_8": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "pause_8",
+          "x-base44": {
+            "title": "Server GRAC refresh 9"
+          }
+        }
+      },
+      {
+        "pause_8": {
+          "wait": "PT25S",
+          "then": "poll_9",
+          "x-base44": {
+            "title": "Wait between live refreshes"
+          }
+        }
+      },
+      {
+        "poll_9": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledGracSync",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Server GRAC refresh 10"
+          }
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "ingestGractivecalls"
+  }
+}
