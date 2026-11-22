@@ -94,7 +94,7 @@ export async function handleWeeklyBilling(req) {
     const body=req.method==='POST'? await req.json().catch(()=>({})) : {};
     const action=String(body?.action||'scheduled').toLowerCase();
     if (!['scheduled','run_now','backfill_drafts','send_existing','approve_historical_rate','create_draft','create_invoice','send_ready_drafts'].includes(action)) return Response.json({error:'Unsupported invoice operation'},{status:400});
-    const manual=action!=='scheduled';
+    const manual=action!=='scheduled'&&!(platformScheduledAdmin&&requestingUser?.role==='admin'&&action==='send_ready_drafts');
     if(manual) {
       const caller=await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
       const roles=new Set((caller?.additional_roles||[]).map((role:string)=>String(role).toLowerCase()));
@@ -103,7 +103,7 @@ export async function handleWeeklyBilling(req) {
     const now=new Date();
     const eastern=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
     const part=(name:string)=>eastern.find(item=>item.type===name)?.value||'';
-    if(!manual && (part('weekday')!=='Mon'||Number(part('hour'))!==8)) return Response.json({success:true,skipped:true,reason:'Automatic invoice generation runs Mondays at 8 AM Eastern'});
+    if(!manual && action==='scheduled' && (part('weekday')!=='Mon'||Number(part('hour'))!==8)) return Response.json({success:true,skipped:true,reason:'Automatic invoice generation runs Mondays at 8 AM Eastern'});
     const today=`${part('year')}-${part('month')}-${part('day')}`;
     if(action==='approve_historical_rate') {
       const invoice=await base44.asServiceRole.entities.Invoice.get(String(body.invoice_id || '')).catch(()=>null);
