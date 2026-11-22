@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {createRequire} from 'node:module';
+import {build} from 'esbuild';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {mediaItems,officerDisplay} from '../src/components/records/reportPresentation.js';
+const require=createRequire(import.meta.url);
+const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+assert.equal(mediaItems([image])[0].url,image,'a base64 comma is part of the image, not a list separator');
+assert.equal(mediaItems(JSON.stringify([{url:'https://example.test/report.jpg',caption:'Vehicle photograph'}]))[0].label,'Vehicle photograph');
+assert.equal(mediaItems('javascript:alert(1)').length,0);
+assert.equal(officerDisplay({issued_by_id:'6a72bbee2842d6338cbae513'}),'Not recorded');
+const compiled=await build({entryPoints:['src/components/records/OfficerRecordReport.jsx'],bundle:true,write:false,format:'cjs',platform:'node',packages:'external',jsx:'automatic',loader:{'.css':'empty'}});
+const mod={exports:{}};Function('require','module','exports',compiled.outputFiles[0].text)(require,mod,mod.exports);
+const fixture={report_number:'IR-2026-00123',issued_by_id:'6a72bbee2842d6338cbae513',issued_by_name:'Officer Example Smith',incident_date:'2026-11-21',location:'Example Property',subject_name:'Example Person',photo_urls:[image],facts_basis:'Example factual statement for the written report.',parties:[{name:'Example Witness',role:'Witness',person_id:'6a72bbee2842d6338cbae513'}],status:'submitted'};
+const markup=renderToStaticMarkup(React.createElement(mod.exports.default,{record:fixture,source:'Incident Report'}));
+assert.match(markup,/<img[^>]*src="data:image\/png;base64/);
+assert.match(markup,/Officer Example Smith/);assert.match(markup,/Statement of facts/);assert.match(markup,/Example factual statement/);
+assert.doesNotMatch(markup,/<pre|Issued By Id|Photo Urls|6a72bbee2842d6338cbae513|&quot;name&quot;/);
+assert.match(markup,/Example Witness/);
+const page=fs.readFileSync('src/pages/RecordsAssistant.jsx','utf8');
+const opening=page.slice(page.indexOf('const openRecord=async'),page.indexOf(' const sources='));
+assert(!opening.includes('item.summary'),'opening audio does not read facts/narrative summaries');
+const issuerBundle=await build({entryPoints:['base44/shared/reportPresentation.ts'],bundle:true,write:false,format:'esm',platform:'node'});
+const {reportOfficerName}=await import('data:text/javascript;base64,'+Buffer.from(issuerBundle.outputFiles[0].text).toString('base64'));
+const issuer=await reportOfficerName({asServiceRole:{entities:{User:{get:async id=>id===fixture.issued_by_id?{first_name:'Example',last_name:'Smith',rank:'Officer'}:null}}}},fixture);
+assert.equal(issuer,'Officer Example Smith');
+console.log('PASS report presentation: actual images, resolved author, structured written report, no raw IDs/JSON, facts excluded from opening speech');
+if(process.argv.includes('--preview')){
+ fs.writeFileSync('public/__report-review.html','<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Report layout verification</title><style>body{margin:0;padding:20px;background:#e2e8f0;max-width:900px;margin:auto}'+fs.readFileSync('src/components/records/officerRecordReport.css','utf8')+'</style>'+markup+'</html>');
+}
