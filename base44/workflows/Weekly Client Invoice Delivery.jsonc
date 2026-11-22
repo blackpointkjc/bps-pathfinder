@@ -1,0 +1,44 @@
+{
+  "name": "Weekly Client Invoice Delivery",
+  "description": "Every Monday at 8 AM Eastern, bill the completed service week and retry existing verified unsent drafts using company Graph mail. Runs independently of personnel login.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 8 * * 1",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "weekly_client_billing",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "bill_completed_week": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "scheduledWeeklyBilling",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Generate and send verified weekly client invoices"
+          }
+        }
+      }
+    ]
+  }
+}
