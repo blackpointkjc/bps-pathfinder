@@ -80,6 +80,11 @@ function profileRecognition(items, people) {
   });
 }
 var originalVideo = () => ({ kind: "video", title: "BlackPoint Field Operations", caption: "The fleet and the people behind the mission", video_url: VIDEO, image_url: POSTER, active: true, sort_order: 0, builtin: true });
+function galleryCatalog(rows){
+ const visible=(rows||[]).filter(row=>row.archived!==true);
+ const original=visible.find(row=>row.builtin===true||row.video_url===VIDEO)||visible.find(row=>row.kind==='video'&&row.builtin===undefined);
+ return [...(original?[]:[originalVideo()]),...visible.map(row=>({...row,builtin:original?.id===row.id}))];
+}
 async function entry_default(req) {
   let phase = "start";
   try {
@@ -87,11 +92,11 @@ async function entry_default(req) {
     const body = await req.json().catch(() => ({}));
     if (body.action === "public") {
       phase = "read public showcase";
-      const rows = await db.list("-created_date", 100);
+      const rows = galleryCatalog(await db.list("-created_date", 200));
       const dateParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit" }).formatToParts(/* @__PURE__ */ new Date());
       const now = `${dateParts.find((p) => p.type === "year")?.value}-${dateParts.find((p) => p.type === "month")?.value}`;
       const active = rows.filter((r) => r.active === true);
-      const gallery = [...rows.some((r) => r.kind === "video") ? active.filter((r) => r.kind === "video") : [originalVideo()], ...active.filter((r) => r.kind === "photo")].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+      const gallery = active.filter(r=>["video","photo"].includes(r.kind)).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0));
       const honorees = active.filter((r) => ["officer", "supervisor"].includes(r.kind) && r.month === now).sort((a, b) => String(b.updated_date || "").localeCompare(String(a.updated_date || "")));
       const currentHonorees = honorees.length ? profileRecognition(honorees, await roster(sdk)) : [];
       const safe = (r) => ({ id: r.id, kind: r.kind, title: r.title, caption: r.caption, image_url: r.image_url, video_url: r.video_url || "", month: r.month });
@@ -109,8 +114,8 @@ async function entry_default(req) {
     }
     if (body.action === "list") {
       phase = "list records";
-      const items = profileRecognition(await db.list("-created_date", 100), await roster(sdk));
-      return json({ items: items.some((r) => r.kind === "video") ? items : [originalVideo(), ...items] });
+      const items = profileRecognition(galleryCatalog(await db.list("-created_date", 200)), await roster(sdk));
+      return json({ items });
     }
     if (body.action === "save") {
       const r = { ...body.item || {} };
@@ -128,16 +133,16 @@ async function entry_default(req) {
       if (r.kind === "photo" && !image) return json({ error: "A gallery photo is required" }, 400);
       if (r.kind === "video" && !/^https:\/\/[^\s]+\.(?:mp4|webm)(?:\?[^\s]*)?$/i.test(video)) return json({ error: "Enter a secure MP4 or WebM video URL" }, 400);
       if (["officer", "supervisor"].includes(r.kind) && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return json({ error: "Select a valid award month" }, 400);
-      const value = { user_id: ["officer", "supervisor"].includes(r.kind) ? clean(r.user_id, 120) : "", kind: r.kind, title: clean(r.title, 110), caption: clean(r.caption, 240), image_url: image, video_url: r.kind === "video" ? video : "", month: ["photo", "video"].includes(r.kind) ? "" : month, active: r.active !== false, sort_order: Math.min(9999, Math.max(0, Number(r.sort_order) || 0)), updated_by: me.email || me.id };
+      const value = { builtin:r.builtin===true, archived:false, user_id: ["officer", "supervisor"].includes(r.kind) ? clean(r.user_id, 120) : "", kind: r.kind, title: clean(r.title, 110), caption: clean(r.caption, 240), image_url: image, video_url: r.kind === "video" ? video : "", month: ["photo", "video"].includes(r.kind) ? "" : month, active: r.active !== false, sort_order: Math.min(9999, Math.max(0, Number(r.sort_order) || 0)), updated_by: me.email || me.id };
       phase = "save record";
       if (["officer", "supervisor"].includes(value.kind) && value.active) {
         const existing = await db.filter({ kind: value.kind, month: value.month }, "-created_date", 100);
         for (const p of existing) if (p.id !== r.id && p.active) await db.update(p.id, { active: false });
       }
       let id = clean(r.id, 120);
-      if (r.kind === "video" && !id) {
-        const previous = await db.filter({ kind: "video" }, "-created_date", 1);
-        id = previous[0]?.id || "";
+      if(r.builtin===true&&!id){
+        const previous=galleryCatalog(await db.list("-created_date",200)).find(item=>item.builtin&&item.id);
+        id=previous?.id||"";
       }
       const saved = id ? await db.update(id, value) : await db.create(value);
       return json({ success: true, id: saved?.id || id });
@@ -146,7 +151,7 @@ async function entry_default(req) {
       const id = clean(body.id, 120);
       if (!id) return json({ error: "Cannot delete built-in video. Disable it in Edit." }, 400);
       phase = "delete record";
-      await db.delete(id);
+      await db.update(id,{active:false,archived:true});
       return json({ success: true });
     }
     return json({ error: "Unknown operation" }, 400);

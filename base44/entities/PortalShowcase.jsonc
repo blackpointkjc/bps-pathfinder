@@ -40,6 +40,14 @@
     "user_id": {
       "type": "string",
       "description": "Existing employee selected for monthly recognition"
+    },
+    "builtin": {
+      "type": "boolean",
+      "description": "Identifies the original fleet gallery item so other videos remain independent"
+    },
+    "archived": {
+      "type": "boolean",
+      "description": "Hidden from the gallery without permanently deleting the saved media record"
     }
   },
   "required": [

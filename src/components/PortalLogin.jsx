@@ -1,3 +1,4 @@
+import LoginGalleryMedia from '@/components/LoginGalleryMedia';
 import {publicBase44} from '@/api/publicClient';
 import {authEntry,assertAuthResponse,requestPasswordReset,completePasswordReset} from '@/lib/portalAuthFlow';
 import {recordLoginActivity} from '@/lib/sessionPolicy';
@@ -19,9 +20,8 @@ export default function PortalLogin(){
   load();const refresh=window.setInterval(load,180000);
   return()=>{alive=false;window.clearInterval(refresh);};
  },[]);
- useEffect(()=>{if(showcase.photos.length<2)return;const timer=window.setInterval(()=>setSlide(previous=>(previous+1)%showcase.photos.length),8500);return()=>window.clearInterval(timer);},[showcase.photos.length]);
  const activePhoto=showcase.photos[slide%Math.max(1,showcase.photos.length)];
- const isVideo= !activePhoto || activePhoto.kind==='video';
+ useEffect(()=>{if(showcase.photos.length<2||activePhoto?.kind==='video')return;const timer=window.setTimeout(()=>setSlide(previous=>(previous+1)%showcase.photos.length),8500);return()=>window.clearTimeout(timer);},[showcase.photos.length,activePhoto?.kind,slide]);
  const change=(key,value)=>setForm(p=>({...p,[key]:value}));
  const switchMode=m=>{if(m==='login')sessionStorage.removeItem('bps:verification-email');setMode(m);setError('');setMessage('');};
  async function enter(){
@@ -70,12 +70,8 @@ export default function PortalLogin(){
   <div className="bp-login-layout">
    <section className="bp-login-hero" aria-label="BlackPoint fleet and mission">
     <div className="bp-login-fleet-stage">
-     <video className="bp-login-fleet-video" autoPlay muted loop playsInline preload="metadata" poster="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg" aria-label="BlackPoint security vehicles" style={!activePhoto?{}:{display:'none'}}>
-      <source src="https://media.base44.com/videos/public/694de31c7e0f5645fb95de52/8b3f7aa83_pathfinder-sign-in-background.mp4" type="video/mp4"/>
-     </video>
-     {activePhoto&&activePhoto.kind==='video'&&<video key={activePhoto.video_url} className="bp-login-fleet-video" autoPlay muted loop playsInline preload="metadata" poster={activePhoto.image_url||undefined}><source src={activePhoto.video_url} type={/\.webm(?:\?|$)/i.test(activePhoto.video_url)?'video/webm':'video/mp4'}/></video>}
-     {activePhoto&&activePhoto.kind==='photo'&&<img className="bp-showcase-photo" src={activePhoto.image_url} alt={activePhoto.title||'BlackPoint fleet and operations'}/>}
-     <div className="bp-showcase-bottom"><div><span className="bp-login-fleet-tag">{activePhoto?.title||'BLACKPOINT · FIELD OPERATIONS'}</span>{activePhoto?.caption&&<p className="bp-showcase-caption">{activePhoto.caption}</p>}</div>{showcase.photos.length>1&&<div className="bp-showcase-controls" aria-label="Gallery controls"><button type="button" onClick={()=>setSlide(n=>(n+showcase.photos.length-1)%showcase.photos.length)} aria-label="Previous gallery photo">‹</button><span>{slide%showcase.photos.length+1} / {showcase.photos.length}</span><button type="button" onClick={()=>setSlide(n=>(n+1)%showcase.photos.length)} aria-label="Next gallery photo">›</button></div>}</div>
+     <LoginGalleryMedia item={activePhoto} multiple={showcase.photos.length>1} onNext={()=>setSlide(previous=>(previous+1)%Math.max(1,showcase.photos.length))}/>
+     <div className="bp-showcase-bottom"><div><span className="bp-login-fleet-tag">{activePhoto?.title||'BLACKPOINT · FIELD OPERATIONS'}</span>{activePhoto?.caption&&<p className="bp-showcase-caption">{activePhoto.caption}</p>}</div>{showcase.photos.length>1&&<div className="bp-showcase-controls" aria-label="Gallery controls"><button type="button" onClick={()=>setSlide(n=>(n+showcase.photos.length-1)%showcase.photos.length)} aria-label="Previous gallery item">‹</button><span>{slide%showcase.photos.length+1} / {showcase.photos.length}</span><button type="button" onClick={()=>setSlide(n=>(n+1)%showcase.photos.length)} aria-label="Next gallery item">›</button></div>}</div>
     </div>
     <div className="bp-login-hero-copy"><span className="bp-login-badge">VIRGINIA DCJS LICENSED · #11-30423</span><h1>One mission. <span>One Pathfinder.</span></h1><p>BlackPoint's secure operations platform for field officers, supervisors, staff, students and clients.</p></div>
     {showcase.recognition.length>0&&<div className="bp-showcase-honors" aria-label="Monthly recognition">{showcase.recognition.map(person=><article key={person.id} className="bp-showcase-honor"><div className="bp-showcase-honor-image">{person.image_url?<img src={person.image_url} alt={person.title}/>:<span aria-hidden="true">★</span>}</div><div><p>{person.kind==='supervisor'?'SUPERVISOR OF THE MONTH':'OFFICER OF THE MONTH'}</p><strong>{person.title}</strong><small>{person.caption||'Recognized for outstanding service'}</small></div></article>)}</div>}
