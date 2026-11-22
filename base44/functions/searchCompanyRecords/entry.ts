@@ -1,7 +1,5 @@
 // base44/functions/searchCompanyRecords/entry.ts
 import { createClientFromRequest } from "npm:@base44/sdk";
-
-// base44/shared/portalLoginGuard.ts
 var PORTAL_REAUTH_AFTER = "2026-11-01T22:38:04.000Z";
 var IDLE_MS = 13 * 60 * 60 * 1e3;
 var delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -49,8 +47,6 @@ async function portalSessionState(request, sdk, user) {
   }
   return { state: "current", row: adopted };
 }
-
-// base44/functions/searchCompanyRecords/entry.ts
 var __portalAppIdentity = (user) => user && String(user.id) === "6a72bbee2842d6338cbae513" && String(user.rank).toLowerCase() === "support staff" ? { ...user, role: "user", additional_roles: ["support"], is_supervisor: false, dispatch_role: "", ps_role: "none" } : user;
 async function __portalLoginIsCurrent(request, sdk, user) {
   return (await portalSessionState(request, sdk, user)).state !== "invalid";
@@ -187,30 +183,28 @@ function matchesTerms(haystack, terms) {
   return terms.every((term) => haystack.includes(term));
 }
 var wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-const CALL_SEARCH_FIELDS = {"DispatchCall": ["call_id", "agency_cad_number", "bps_reference", "cad_number_source", "external_call_id", "incident", "location", "cross_street", "landmark", "geo_confidence", "geo_method", "description", "ai_summary", "priority", "agency", "zone", "status", "caller_name", "caller_phone", "hazards", "time_received", "time_dispatched", "time_enroute", "time_on_scene", "time_cleared", "time_closed", "source", "source_channel", "source_first_seen_at", "public_request_id", "id", "created_by", "created_date", "updated_date"], "CallHistory": ["original_call_id", "call_id", "bps_reference", "agency_cad_number", "external_call_id", "time_received", "incident", "location", "agency", "status", "ai_summary", "archived_date", "id", "created_by", "created_date", "updated_date"]};
-function callCandidateQuery(entityName,terms){
-  const fields=CALL_SEARCH_FIELDS[entityName];
-  if(!fields)return null;
-  // Every true all-term match must contain the longest term. Candidate filtering
-  // avoids transferring the entire CAD archive; the normal matcher still checks
-  // every term and person/vehicle scope before returning a result.
-  const longest=[...terms].sort((a,b)=>b.length-a.length)[0];
-  if(!longest)return null;
-  const accents={a:'[aàáâãäåāăą]',c:'[cçćč]',e:'[eèéêëēėę]',i:'[iìíîïīį]',n:'[nñń]',o:'[oòóôõöøō]',s:'[sśš]',u:'[uùúûüūů]',y:'[yýÿ]',z:'[zźżž]'};
-  const pattern=Array.from(longest).map(ch=>accents[ch]||ch).join('');
-  return {$or:fields.map(field=>({[field]:{$regex:pattern,$options:'i'}}))};
+var CALL_SEARCH_FIELDS = { "DispatchCall": ["call_id", "agency_cad_number", "bps_reference", "cad_number_source", "external_call_id", "incident", "location", "cross_street", "landmark", "geo_confidence", "geo_method", "description", "ai_summary", "priority", "agency", "zone", "status", "caller_name", "caller_phone", "hazards", "time_received", "time_dispatched", "time_enroute", "time_on_scene", "time_cleared", "time_closed", "source", "source_channel", "source_first_seen_at", "public_request_id", "id", "created_by", "created_date", "updated_date"], "CallHistory": ["original_call_id", "call_id", "bps_reference", "agency_cad_number", "external_call_id", "time_received", "incident", "location", "agency", "status", "ai_summary", "archived_date", "id", "created_by", "created_date", "updated_date"] };
+function callCandidateQuery(entityName, terms) {
+  const fields = CALL_SEARCH_FIELDS[entityName];
+  if (!fields) return null;
+  const longest = [...terms].sort((a, b) => b.length - a.length)[0];
+  if (!longest) return null;
+  const accents = { a: "[a\xE0\xE1\xE2\xE3\xE4\xE5\u0101\u0103\u0105]", c: "[c\xE7\u0107\u010D]", e: "[e\xE8\xE9\xEA\xEB\u0113\u0117\u0119]", i: "[i\xEC\xED\xEE\xEF\u012B\u012F]", n: "[n\xF1\u0144]", o: "[o\xF2\xF3\xF4\xF5\xF6\xF8\u014D]", s: "[s\u015B\u0161]", u: "[u\xF9\xFA\xFB\xFC\u016B\u016F]", y: "[y\xFD\xFF]", z: "[z\u017A\u017C\u017E]" };
+  const pattern = Array.from(longest).map((ch) => accents[ch] || ch).join("");
+  return { $or: fields.map((field) => ({ [field]: { $regex: pattern, $options: "i" } })) };
 }
-function transientReadError(error){
- const status=Number(error?.response?.status||error?.status||0);
- return [408,429,500,502,503,504].includes(status)||/rate limit|timeout|timed out|network|fetch failed/i.test(String(error?.message||error));
+function transientReadError(error) {
+  const status = Number(error?.response?.status || error?.status || 0);
+  return [408, 429, 500, 502, 503, 504].includes(status) || /rate limit|timeout|timed out|network|fetch failed/i.test(String(error?.message || error));
 }
-async function listWithRetry(entity,entityName,offset=0,candidateQuery=null) {
-  for(let attempt=0;;attempt++){
-    try{return candidateQuery?await entity.filter(candidateQuery,'id',250,offset):await entity.list('id',250,offset);}
-    catch(error){
-      if(attempt>=1||!transientReadError(error))throw error;
-      const retry=Number(error?.response?.headers?.['retry-after'])||Number(String(error?.message||'').match(/Retry after (\d+)s/i)?.[1])||1;
-      await wait(Math.min(8000,Math.max(1000,retry*1000)));
+async function listWithRetry(entity, entityName, offset = 0, candidateQuery = null) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return candidateQuery ? await entity.filter(candidateQuery, "id", 250, offset) : await entity.list("id", 250, offset);
+    } catch (error) {
+      if (attempt >= 1 || !transientReadError(error)) throw error;
+      const retry = Number(error?.response?.headers?.["retry-after"]) || Number(String(error?.message || "").match(/Retry after (\d+)s/i)?.[1]) || 1;
+      await wait(Math.min(8e3, Math.max(1e3, retry * 1e3)));
     }
   }
 }
@@ -256,18 +250,18 @@ Deno.serve(async (req) => {
     const permittedSources = privileged ? ALL_SOURCES : ALL_SOURCES.filter(([entityName]) => !restrictedEntities.has(entityName));
     const searchableSources = requestedEntities?.size ? permittedSources.filter(([entityName]) => requestedEntities.has(entityName)) : permittedSources;
     const settled = [];
-    const pending = Array.isArray(body?.cursor?.pending) ? body.cursor.pending.filter((p) => Number.isInteger(p.source) && p.source >= 0 && p.source < searchableSources.length && Number.isInteger(p.offset) && p.offset >= 0).map((p) => ({ source: p.source, offset: p.offset, attempts:Math.max(0,Math.min(2,Number(p.attempts)||0)) })) : searchableSources.map((_, source) => ({ source, offset: 0 }));
+    const pending = Array.isArray(body?.cursor?.pending) ? body.cursor.pending.filter((p) => Number.isInteger(p.source) && p.source >= 0 && p.source < searchableSources.length && Number.isInteger(p.offset) && p.offset >= 0).map((p) => ({ source: p.source, offset: p.offset, attempts: Math.max(0, Math.min(2, Number(p.attempts) || 0)) })) : searchableSources.map((_, source) => ({ source, offset: 0 }));
     let pages = 0;
     const failedLabels = [];
-    const batchStartedAt=Date.now();
-    while (pending.length && pages < 5 && Date.now()-batchStartedAt<18000) {
-      const { source: sourceIndex, offset, attempts=0 } = pending.shift();
+    const batchStartedAt = Date.now();
+    while (pending.length && pages < 5 && Date.now() - batchStartedAt < 18e3) {
+      const { source: sourceIndex, offset, attempts = 0 } = pending.shift();
       const [entityName, sourceLabel, page] = searchableSources[sourceIndex];
       const currentOffset = offset;
       let rowCount = 0;
       const batchResults = await Promise.allSettled([(async () => {
         const entity = (operationalNames.has(entityName) ? entityClient : base44.entities)[entityName];
-        const rows = await listWithRetry(entity, entityName, currentOffset, callCandidateQuery(entityName,terms));
+        const rows = await listWithRetry(entity, entityName, currentOffset, callCandidateQuery(entityName, terms));
         rowCount = rows?.length || 0;
         return (rows || []).filter((record) => {
           const allText = normalizeSearchText(JSON.stringify(record));
@@ -331,9 +325,9 @@ Deno.serve(async (req) => {
       })()]);
       settled.push(...batchResults);
       pages++;
-      if(batchResults[0].status==='rejected'){
-        const reason=batchResults[0].reason;
-        if(transientReadError(reason)&&attempts<2)pending.push({source:sourceIndex,offset,attempts:attempts+1});
+      if (batchResults[0].status === "rejected") {
+        const reason = batchResults[0].reason;
+        if (transientReadError(reason) && attempts < 2) pending.push({ source: sourceIndex, offset, attempts: attempts + 1 });
         else failedLabels.push(sourceLabel);
       }
       if (batchResults[0].status === "fulfilled" && rowCount === 250) pending.push({ source: sourceIndex, offset: offset + 250 });
