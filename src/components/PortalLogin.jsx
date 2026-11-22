@@ -12,10 +12,10 @@ export default function PortalLogin(){
  const [mode,setMode]=useState(()=>{try{return entry.mode==='login'&&sessionStorage.getItem('bps:verification-email')?'verify':entry.mode;}catch{return entry.mode;}});
  const [form,setForm]=useState(()=>{let saved={};try{saved=JSON.parse(sessionStorage.getItem('bps:registration-draft')||'{}');}catch{}return {email:entry.email||saved.email||'',password:'',confirm_password:'',first_name:saved.first_name||'',last_name:saved.last_name||'',date_of_birth:saved.date_of_birth||'',requested_type:params.has('type')?entry.requestedType:saved.requested_type||'employee',otp:''};});
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
- const [showcase,setShowcase]=useState({photos:[],recognition:[]}),[slide,setSlide]=useState(0);
+ const [showcase,setShowcase]=useState({photos:[],recognition:[],loaded:false}),[slide,setSlide]=useState(0);
  useEffect(()=>{
   let alive=true;
-  const load=async()=>{try{const response=await publicBase44.functions.invoke('portalShowcase',{action:'public'});if(alive&&response?.data?.photos){setShowcase({photos:response.data.photos||[],recognition:response.data.recognition||[]});}}catch{/* Retain fleet video when the public showcase is unavailable. */}};
+  const load=async()=>{try{const response=await publicBase44.functions.invoke('portalShowcase',{action:'public'});if(alive&&response?.data?.photos){setShowcase({photos:response.data.photos||[],recognition:response.data.recognition||[],loaded:true});}}catch{/* Retain fleet video when the public showcase is unavailable. */}};
   load();const refresh=window.setInterval(load,180000);
   return()=>{alive=false;window.clearInterval(refresh);};
  },[]);
@@ -69,7 +69,7 @@ export default function PortalLogin(){
   <div className="bp-login-layout">
    <section className="bp-login-hero" aria-label="BlackPoint fleet and mission">
     <div className="bp-login-fleet-stage">
-     <LoginGalleryMedia item={activePhoto} multiple={showcase.photos.length>1} onNext={()=>setSlide(previous=>(previous+1)%Math.max(1,showcase.photos.length))}/>
+     <LoginGalleryMedia showDefault={!showcase.loaded} item={activePhoto} multiple={showcase.photos.length>1} onNext={()=>setSlide(previous=>(previous+1)%Math.max(1,showcase.photos.length))}/>
      <div className="bp-showcase-bottom"><div><span className="bp-login-fleet-tag">{activePhoto?.title||'BLACKPOINT · FIELD OPERATIONS'}</span>{activePhoto?.caption&&<p className="bp-showcase-caption">{activePhoto.caption}</p>}</div>{showcase.photos.length>1&&<div className="bp-showcase-controls" aria-label="Gallery controls"><button type="button" onClick={()=>setSlide(n=>(n+showcase.photos.length-1)%showcase.photos.length)} aria-label="Previous gallery item">‹</button><span>{slide%showcase.photos.length+1} / {showcase.photos.length}</span><button type="button" onClick={()=>setSlide(n=>(n+1)%showcase.photos.length)} aria-label="Next gallery item">›</button></div>}</div>
     </div>
     <div className="bp-login-hero-copy"><span className="bp-login-badge">VIRGINIA DCJS LICENSED · #11-30423</span><h1>One mission. <span>One Pathfinder.</span></h1><p>BlackPoint's secure operations platform for field officers, supervisors, staff, students and clients.</p></div>
