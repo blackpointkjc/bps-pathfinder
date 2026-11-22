@@ -68,6 +68,13 @@
     "active_source_snapshot_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "last_server_poll_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_server_poll_duration_ms": {
+      "type": "number"
     }
   },
   "required": [

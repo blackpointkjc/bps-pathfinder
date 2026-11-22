@@ -129,7 +129,7 @@ export default function AccountingInvoices() {
       const response=await base44.functions.invoke('generateWeeklyInvoices',{action:'send_ready_drafts'});
       const data=response?.data||response||{};
       if(data.error)throw new Error(data.error);
-      setBillingRunIssues((data.results||[]).filter(row=>row.status!=='sent').map(row=>({...row,invoice_number:row.invoice_number||row.invoice,status:row.status,error:row.error||row.status})));
+      setBillingRunIssues([...new Map((data.results||[]).filter(row=>!['sent','already_billed','duplicate_reconciled','draft_reconciled'].includes(row.status)).map(row=>({...row,invoice_number:row.invoice_number||row.invoice,status:row.status,error:row.error||row.status})).map(row=>[[row.site,row.invoice_number,row.status].join('|'),row])).values()]);
       setBillingStatus(`Historical invoicing: ${data.sent||0} verified invoices emailed; ${data.held||0} held/skipped without sending; ${data.failed||0} send failures; ${data.due_dates_updated||0} due dates corrected.${data.email_provider_cooldown?' Provider email limit reached; remaining sends were skipped.':''}`);
       await syncInvoiceData();
     }catch(error){setBillingStatus(`Historical invoice processing failed: ${error?.response?.data?.error||error?.message||'Server failure'}`);}
@@ -145,7 +145,7 @@ export default function AccountingInvoices() {
       const data=response?.data||response||{};
       if(data.error) throw new Error(data.error);
       setBillingStatus(`Billing ${data.period_start}–${data.period_end}: ${data.created || 0} created, ${data.updated || 0} updated, ${data.sent || 0} email request(s) accepted, ${data.held || 0} held to prevent overlapping invoices, ${data.delivery_failed || 0} delivery failure(s), ${data.processing_failed || 0} site processing failure(s).`);
-      setBillingRunIssues((data.results || []).filter(item => ['overlap_requires_review','legacy_delivery_unconfirmed','processing_failed','delivery_failed'].includes(String(item.status))));
+      setBillingRunIssues([...new Map((data.results||[]).filter(item=>['overlap_requires_review','legacy_delivery_unconfirmed','processing_failed','delivery_failed'].includes(String(item.status))).map(item=>[[item.site,item.invoice_number,item.status].join('|'),item])).values()]);
       await syncInvoiceData();
     } catch(error) { setBillingStatus(`Invoice run failed: ${error?.response?.data?.error || error?.message || 'Unknown server error'}`); }
     finally { setGenerating(false); }

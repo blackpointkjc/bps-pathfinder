@@ -1524,6 +1524,7 @@ export async function handleGracIngestion(req) {
       await recordSourcePoll(base44, lease, {
         last_source_poll_at: sourceObservedAt,
         last_source_poll_status: 'success',
+        ...(scheduledRun?{last_server_poll_at:new Date().toISOString(),last_server_poll_duration_ms:Date.now()-startedAt}:{}),
         last_website_row_count: websiteIncoming.length,
         last_api_row_count: apiIncoming.length,
         ...(latestWebsiteReceived ? { last_website_latest_received: latestWebsiteReceived } : {}),
