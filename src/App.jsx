@@ -203,29 +203,6 @@ const readForcedSignOutNotice = () => {
   }
 };
 
-const playForcedSignOutLoginBeep = () => {
-  try {
-    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextCtor) return;
-    const context = new AudioContextCtor();
-    [880, 660].forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const start = context.currentTime + (index * 0.28);
-      oscillator.type = 'square';
-      oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.16, start + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(start);
-      oscillator.stop(start + 0.2);
-    });
-    window.setTimeout(() => context.close().catch(() => null), 900);
-  } catch (_) {}
-};
-
 const AuthenticatedApp = () => {
   const location = useLocation();
   const [forcedSignOutNotice, setForcedSignOutNotice] = useState(() => readForcedSignOutNotice());
@@ -258,10 +235,6 @@ const AuthenticatedApp = () => {
       || authError?.type === 'microsoft_session_expired'
       || (!authError && !isAuthenticated));
 
-  useEffect(() => {
-    if (!needsLogin || !forcedSignOutNotice) return;
-    playForcedSignOutLoginBeep();
-  }, [needsLogin, forcedSignOutNotice]);
 
   const publicEntry=['/iaform','/publicprofessionalstandards','/helpme'].includes(location.pathname.toLowerCase())||authEntry(location).isEntry;
   const [preparedUserId,setPreparedUserId]=useState('');
