@@ -11,7 +11,7 @@ assert.equal(mediaItems([image])[0].url,image,'a base64 comma is part of the ima
 assert.equal(mediaItems(JSON.stringify([{url:'https://example.test/report.jpg',caption:'Vehicle photograph'}]))[0].label,'Vehicle photograph');
 assert.equal(mediaItems('javascript:alert(1)').length,0);
 assert.equal(officerDisplay({issued_by_id:'6a72bbee2842d6338cbae513'}),'Not recorded');
-const compiled=await build({entryPoints:['src/components/records/OfficerRecordReport.jsx'],bundle:true,write:false,format:'cjs',platform:'node',packages:'external',jsx:'automatic',loader:{'.css':'empty'}});
+const compiled=await build({entryPoints:['src/components/records/OfficerRecordReport.jsx'],bundle:true,write:false,format:'cjs',platform:'node',external:['react','react/jsx-runtime'],mainFields:['module','main'],jsx:'automatic',loader:{'.css':'empty'}});
 const mod={exports:{}};Function('require','module','exports',compiled.outputFiles[0].text)(require,mod,mod.exports);
 const fixture={report_number:'IR-2026-00123',issued_by_id:'6a72bbee2842d6338cbae513',issued_by_name:'Officer Example Smith',incident_date:'2026-11-21',location:'Example Property',subject_name:'Example Person',photo_urls:[image],facts_basis:'Example factual statement for the written report.',parties:[{name:'Example Witness',role:'Witness',person_id:'6a72bbee2842d6338cbae513'}],status:'submitted'};
 const markup=renderToStaticMarkup(React.createElement(mod.exports.default,{record:fixture,source:'Incident Report'}));
