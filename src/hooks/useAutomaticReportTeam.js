@@ -7,10 +7,10 @@ export default function useAutomaticReportTeam(entity,data,active=true){
  const key=JSON.stringify(safe);
  useEffect(()=>{
   if(!active)return;
-  let disposed=false,workId=null;
-  const cancel=id=>base44.functions.invoke('prepareReportTeam',{action:'cancel',entity,work_id:id}).catch(()=>{});
+  let disposed=false,workId=null;const workToken=crypto.randomUUID();
+  const cancel=id=>base44.functions.invoke('prepareReportTeam',{action:'cancel',entity,work_id:id,work_token:workToken}).catch(()=>{});
   const timer=setTimeout(()=>{
-   base44.functions.invoke('prepareReportTeam',{action:'start',entity,data:JSON.parse(key)}).then(r=>{
+   base44.functions.invoke('prepareReportTeam',{action:'start',entity,data:JSON.parse(key),work_token:workToken}).then(r=>{
     if(r.data?.error)throw Error(r.data.error);
     workId=r.data?.work_id||null;
     if(disposed&&workId)void cancel(workId);

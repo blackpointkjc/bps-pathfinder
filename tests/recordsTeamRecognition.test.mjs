@@ -51,7 +51,9 @@ const credit=calculateJobDutyCompliance(duty);
 assert.ok(credit.dailyActivity.completed>0,'scheduled partner receives started DAR obligation credit');
 const noCredit=calculateJobDutyCompliance({...duty,officer:c,timeEntries:duty.timeEntries.map(t=>({...t,officer_email:c.email}))});
 assert.equal(noCredit.dailyActivity.completed,0,'unrelated officer is not credited');
-console.log('PASS duty obligation: started scheduled partner credit, no unrelated-officer credit');
+const overnightCredit=calculateJobDutyCompliance({...duty,dailyReports:[{...duty.dailyReports[0],...team,report_date:'2026-11-20'}]});
+assert.equal(overnightCredit.dailyActivity.completed,1,'overnight partners are credited across operational dates');
+console.log('PASS duty obligation: started scheduled partner credit, overnight credit, no unrelated-officer credit');
 for(const file of ['src/pages/RecordsAssistant.jsx','src/components/admin/LoginShowcaseManager.jsx','src/pages/DailyActivityReports.jsx','src/pages/IncidentReports.jsx','src/pages/ShiftReports.jsx','src/pages/ShiftHandover.jsx','src/pages/ConfidentialReport.jsx','src/pages/MaintenanceReports.jsx','src/pages/OpenDoorReports.jsx','src/pages/ExpenseReports.jsx','src/pages/ParkingRecords.jsx','src/api/base44Client.js','src/hooks/useAutomaticReportTeam.js','base44/functions/prepareReportTeam/entry.ts','base44/functions/portalShowcase/entry.ts']){
  await transform(fs.readFileSync(file,'utf8'),{loader:file.endsWith('.jsx')?'jsx':file.endsWith('.ts')?'ts':'js'});
 }

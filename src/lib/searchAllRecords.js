@@ -14,5 +14,7 @@ export async function searchAllRecords(payload,{onProgress,isCurrent=()=>true}={
   onProgress?.({results:[...records.values()],source:cursor?.source??sources,total_sources:sources});
  }while(cursor);
  if(!successfulPages)throw Error('No authorized record sources could be searched. Please retry.');
- return {results:[...records.values()],total_matches:records.size,partial:failures.size>0,failed_source_labels:[...failures],warrant_matches:warrants};
+ const order={reference:0,person:1,vehicle:2,location:3,'report text':4};
+ const sorted=[...records.values()].sort((a,b)=>(order[a.match_context]??5)-(order[b.match_context]??5)||String(b.date||'').localeCompare(String(a.date||'')));
+ return {results:sorted,total_matches:records.size,partial:failures.size>0,failed_source_labels:[...failures],warrant_matches:warrants};
 }

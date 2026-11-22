@@ -79,6 +79,9 @@
     "team_window_end": {
       "type": "string",
       "format": "date-time"
+    },
+    "work_token": {
+      "type": "string"
     }
   },
   "required": [
