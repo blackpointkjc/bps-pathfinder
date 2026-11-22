@@ -4,7 +4,7 @@ const clean=(v:any,n=180)=>String(v??'').trim().slice(0,n);
 const json=(data:any,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 const VIDEO='https://media.base44.com/videos/public/694de31c7e0f5645fb95de52/8b3f7aa83_pathfinder-sign-in-background.mp4';
 const POSTER='https://media.base44.com/images/public/694de31c7e0f5645fb95de52/a30c3100c_pathfinder_login_video_preview.jpg';
-const activePerson=(u:any)=>!u.disabled&&!u.termination_date&&!['terminated','suspended','denied'].includes(String(u.employment_status||u.account_status||'').toLowerCase());
+const activePerson=(u:any)=>!u.disabled&&!u.termination_date&&!['terminated','suspended','denied'].includes(String(u.employment_status||'').toLowerCase())&&!['terminated','suspended','denied','disabled'].includes(String(u.account_status||'').toLowerCase());
 const hasRole=(u:any,role:string)=>activePerson(u)&&[u.role,...(u.additional_roles||[])].some(v=>String(v).toLowerCase()===role);
 const personName=(u:any)=>[u.first_name,u.last_name].filter(Boolean).join(' ').trim()||u.full_name||u.email;
 async function roster(sdk:any){const rows=[];for(let skip=0;;skip+=500){const page=await sdk.asServiceRole.entities.User.list('id',500,skip);rows.push(...page);if(page.length<500)return rows;}}

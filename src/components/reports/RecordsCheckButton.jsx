@@ -2,7 +2,7 @@ import {searchAllRecords} from '@/lib/searchAllRecords';
 import {useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {announceRecordSearch,announceVoice} from '@/utils/voiceAnnouncer';
-import {Search,Users,MapPin,ShieldCheck,CarFront,AlertTriangle} from 'lucide-react';
+import {Search,Users,MapPin,ShieldCheck,AlertTriangle} from 'lucide-react';
 
 const leaseLabel=value=>({active:'Active',pending:'Pending',former:'Former'}[String(value||'').toLowerCase()]||String(value||'Not recorded'));
 const leaseClass=value=>String(value||'').toLowerCase()==='active'?'border-emerald-700/50 bg-emerald-950/30 text-emerald-300':String(value||'').toLowerCase()==='former'?'border-slate-600 bg-slate-800 text-slate-300':'border-amber-700/40 bg-amber-950/30 text-amber-200';

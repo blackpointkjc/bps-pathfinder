@@ -90,7 +90,7 @@ export default function RecordsAssistant(){
   }else problems.push(settled[0].reason?.response?.data?.error||settled[0].reason?.message||'Company record search failed');
   if(settled[1].status==='fulfilled'){
    const d=settled[1].value?.data||settled[1].value||{};
-   if(d.error)problems.push(d.error);else{ok++;people=d.matches||[];if(d.partial)problems.push('Property registry exceeded the safe search limit');}
+   if(d.error)problems.push(d.error);else{ok++;people=(d.matches||[]).filter(row=>row.entity!=='PropertyVehicle');const registryCars=(d.matches||[]).filter(row=>row.entity==='PropertyVehicle');company.push(...registryCars);matched+=registryCars.length;if(d.partial)problems.push('Property registry exceeded the safe search limit');}
   }else problems.push(settled[1].reason?.response?.data?.error||settled[1].reason?.message||'Resident registry search failed');
   setResults(company);setResidents(people);setCount(matched+people.length);setProgress('');
   if(ok)announceRecordSearch([...people,...company],{searchType:'all',partial:problems.length>0});
@@ -100,6 +100,7 @@ export default function RecordsAssistant(){
  };
  const openRecord=async item=>{
    const seq=++detailSequence.current;setSelected(item);setDetail(null);setDetailError('');
+   if(item.source==='Property vehicle registry'){announceVoice([item.source,item.label,item.location,item.status].filter(Boolean).join('. '),{force:true,dedupeMs:1000});setDetail(item);setDetailLoading(false);return;}
    if(item.source==='Property resident registry'){announceVoice([item.full_name,item.address||item.unit_number,item.site_name,item.lease_status&&item.lease_status+' lease'].filter(Boolean).join('. '),{force:true,dedupeMs:1000});setDetail(item);setDetailLoading(false);return;}
    setDetailLoading(true);
    announceVoice([item.source,recordTitle(item),item.person,item.location,item.status,item.summary?.slice(0,180)].filter(Boolean).join('. '),{force:true,dedupeMs:1000});

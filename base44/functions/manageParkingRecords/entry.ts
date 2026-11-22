@@ -262,8 +262,11 @@ Deno.serve(async req => {
         return tokens.every(token=>fields.some(value=>value.includes(token)));
       }).map((p:any)=>({id:p.id,entity:'PropertyResident',source:'Property resident registry',
         ...publicResident(p),address:clean(p.unit_number),vehicles:(carsByResident.get(p.id)||[]).map(publicVehicle)}));
-      return Response.json({success:true,matches,total_matches:matches.length,source:'Authorized property registry',
-        partial:false});
+      const vehicleMatches=vehicles.filter((v:any)=>{
+        const fields=[v.plate,v.vin,v.make,v.model,v.year,v.color,v.permit_number,v.site_name,v.unit_number].map(value=>clean(value,240).toLowerCase());
+        return tokens.every(token=>fields.some(value=>value.includes(token)));
+      }).map((v:any)=>({...publicVehicle(v),entity:'PropertyVehicle',source:'Property vehicle registry',label:[v.plate,v.state,v.year,v.make,v.model].filter(Boolean).join(' '),vehicle_plate:v.plate,vehicle_state:v.state,vehicle_vin:v.vin,location:v.site_name,status:v.vehicle_status}));
+      return Response.json({success:true,matches:[...matches,...vehicleMatches],total_matches:matches.length+vehicleMatches.length,source:'Authorized property registry',partial:false});
     }
     if(action==='import_verify'){
       if(!client&&!admin)return fail('Rent roll verification requires client or administrator access',403);
