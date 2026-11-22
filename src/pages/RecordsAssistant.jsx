@@ -1,3 +1,4 @@
+import OfficerRecordReport from '@/components/records/OfficerRecordReport';
 import {searchAllRecords} from '@/lib/searchAllRecords';
 import {announceRecordSearch,announceVoice,installVoiceUnlockListeners} from '@/utils/voiceAnnouncer';
 import {useEffect,useRef,useState} from 'react';
@@ -14,11 +15,6 @@ const dateLabel=value=>{if(!value)return '';const date=new Date(value);return Nu
 const recordTitle=item=>clean(item?.label||item?.citation_number||item?.call_number||item?.report_number||item?.id)||'Company record';
 const badgeClass='rounded-md border border-[#35556b] bg-[#122f43] px-2 py-1 text-[10px] font-bold text-cyan-200';
 const leaseBadge=status=>lower(status)==='active'?'border-emerald-700/50 bg-emerald-950/30 text-emerald-300':lower(status)==='former'?'border-slate-600 bg-slate-800 text-slate-300':'border-amber-700/50 bg-amber-950/30 text-amber-300';
-const hiddenDetails=new Set(['id','updated_by','created_by_id','created_by','app_id','_id','_rev']);
-const importantFields=['report_number','case_number','citation_number','call_number','call_id','incident','call_type','status','priority','date','incident_date','violation_date','time_received','location','site_name','property_name','unit_number','building','lease_status','resident_type','phone','email','subject_name','person_name','full_name','vehicle_plate','license_plate','vehicle_state','vehicle_vin','vin','officer_name','assigned_to','supervisor_review_status','client_review_status'];
-const longFields=new Set(['narrative','description','summary','statement_of_facts','facts_basis','details','report_text','notes','incident_summary','ai_summary','violation_description','disposition','findings']);
-const printable=v=>v===null||v===undefined||v===''?'Not recorded':Array.isArray(v)?v.map(x=>typeof x==='object'?JSON.stringify(x,null,2):String(x)).join('\n'):typeof v==='object'?JSON.stringify(v,null,2):typeof v==='boolean'?(v?'Yes':'No'):String(v);
-
 function ResidentResult({item,onOpen}){
  return <button type="button" onClick={()=>onOpen(item)} className="group flex w-full flex-col gap-2 rounded-xl border border-[#2c485e] bg-[#0c2335] p-4 text-left transition hover:border-cyan-500/70 hover:bg-[#112b40]">
    <div className="flex flex-wrap items-center justify-between gap-3"><strong className="flex items-center gap-2 text-sm text-white"><UserRound size={16} className="text-cyan-400"/>{item.full_name||'Name not recorded'}</strong><span className={`rounded-md border px-2 py-1 text-[10px] font-bold capitalize ${leaseBadge(item.lease_status)}`}>{item.lease_status||'Unknown'} lease</span></div>
@@ -38,19 +34,7 @@ function ReportResult({item,onOpen}){
 function ReportDetail({item,record,loading,error}){
  if(loading)return <div role="status" className="flex items-center gap-2 py-8 text-sm text-cyan-200"><Loader2 className="animate-spin" size={17}/>Loading the source report…</div>;
  if(error)return <div className="space-y-3"><div role="alert" className="rounded-lg border border-amber-700/50 bg-amber-950/20 p-4 text-sm text-amber-200">Full source report could not load: {error}. The matching record summary is shown below.</div><div className="rounded-lg border border-[#29445a] p-4"><p className="text-sm font-bold text-white">{recordTitle(item)}</p><p className="mt-2 text-xs text-slate-300">{item?.summary||item?.location||'No further summary was returned.'}</p></div></div>;
- const r=record||item;
- if(!r)return null;
- const primary=importantFields.filter(key=>r[key]!==undefined&&r[key]!==null&&r[key]!=='');
- const narrative=Object.keys(r).filter(key=>longFields.has(key)&&r[key]);
- const remaining=Object.keys(r).filter(key=>!hiddenDetails.has(key)&&!primary.includes(key)&&!narrative.includes(key)&&r[key]!==undefined&&r[key]!==null&&r[key]!=='');
- return <div className="space-y-5">
-   {item?.source==='Property resident registry'&&<div className="flex flex-wrap gap-2 text-xs"><span className={badgeClass}>Property: {item.site_name}</span><span className={`rounded-md border px-2 py-1 font-semibold capitalize ${leaseBadge(item.lease_status)}`}>{item.lease_status||'Unknown'} lease</span></div>}
-   {item?.warrant_issued&&<p className="rounded-lg border border-amber-600/40 bg-amber-950/20 p-3 text-xs text-amber-200">This report contains a historical warrant reference. It does not confirm the warrant is currently active.</p>}
-   <div className="grid gap-2 sm:grid-cols-2">{primary.map(key=><div key={key} className="rounded-lg border border-[#2a4357] bg-[#0b1929] p-3"><p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{formatLabel(key)}</p><p className="whitespace-pre-wrap break-words text-sm text-slate-100">{printable(r[key])}</p></div>)}</div>
-   {narrative.map(key=><section key={key} className="rounded-xl border border-[#2a4357] bg-[#0a1a2a] p-4"><h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-cyan-300">{formatLabel(key)}</h4><p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{printable(r[key])}</p></section>)}
-   {remaining.length>0&&<details className="rounded-xl border border-[#2a4357] bg-[#0b1929] p-3"><summary className="cursor-pointer text-xs font-bold text-cyan-300">Additional report fields ({remaining.length})</summary><div className="mt-3 grid gap-2 sm:grid-cols-2">{remaining.map(key=><div key={key} className="min-w-0 rounded-lg border border-[#24394d] bg-[#0c2030] p-3"><p className="mb-1 text-[10px] uppercase text-slate-500">{formatLabel(key)}</p><pre className="whitespace-pre-wrap break-words font-sans text-xs text-slate-200">{printable(r[key])}</pre></div>)}</div></details>}
-   <p className="text-[11px] text-slate-500">Internal Pathfinder source record. Verify current facts, legal status, and identifiers before taking enforcement action.</p>
- </div>;
+ return <OfficerRecordReport record={record||item} source={item?.source||'Officer report'}/>;
 }
 
 export default function RecordsAssistant(){
@@ -104,7 +88,7 @@ export default function RecordsAssistant(){
    if(item.source==='Property vehicle registry'){announceVoice([item.source,item.label,item.location,item.status].filter(Boolean).join('. '),{force:true,dedupeMs:1000});setDetail(item);setDetailLoading(false);return;}
    if(item.source==='Property resident registry'){announceVoice([item.full_name,item.address||item.unit_number,item.site_name,item.lease_status&&item.lease_status+' lease'].filter(Boolean).join('. '),{force:true,dedupeMs:1000});setDetail(item);setDetailLoading(false);return;}
    setDetailLoading(true);
-   announceVoice([item.source,recordTitle(item),item.person,item.location,item.status,item.summary?.slice(0,180)].filter(Boolean).join('. '),{force:true,dedupeMs:1000});
+   announceVoice([item.source,recordTitle(item),item.person,item.location,item.status].filter(Boolean).join('. '),{force:true,dedupeMs:1000});
    try{
     const response=await base44.functions.invoke('searchCompanyRecords',{action:'get',entity:item.entity,id:item.id});
     const d=response?.data||response||{};
