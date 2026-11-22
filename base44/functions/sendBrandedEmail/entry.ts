@@ -1,57 +1,82 @@
-import {sendCreditFreeEmail} from './creditFreeEmail.ts';
-const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
-import { createClientFromRequest } from 'npm:@base44/sdk';
-
-const LOGO_URL = 'https://bpspf.blackpointkjc.com/black-point-shield.webp';
-const PORTAL_URL = 'https://bpspf.blackpointkjc.com/';
-const smsGatewayPattern = /@(txt\.att\.net|vtext\.com|tmomail\.net|messaging\.sprintpcs\.com|vmobl\.com|mmst5\.tracfone\.com)$/i;
-const safe = (v: unknown) => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-
-function normalizeBody(body: unknown) {
-  const value = String(body ?? '');
-  if (!/<\/?[a-z][\s\S]*>/i.test(value)) return value.split(/\n{2,}/).map(block => `<p style="margin:0 0 16px;color:#d7d7d7;font-size:16px;line-height:1.65;">${safe(block).replace(/\n/g,'<br>')}</p>`).join('');
-  let html = value;
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i); if (bodyMatch) html = bodyMatch[1];
-  return html.replace(/<!doctype[^>]*>/gi,'').replace(/<\/?html[^>]*>/gi,'').replace(/<head[\s\S]*?<\/head>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'').replace(/\sstyle=("[^"]*"|'[^']*')/gi,'').replace(/\sclass=("[^"]*"|'[^']*')/gi,'')
-    .replace(/<p([^>]*)>/gi,'<p$1 style="margin:0 0 16px;color:#d7d7d7;font-size:16px;line-height:1.65;">')
-    .replace(/<strong([^>]*)>/gi,'<strong$1 style="color:#fff;font-weight:700;">')
-    .replace(/<table([^>]*)>/gi,'<table$1 style="width:100%;border-collapse:collapse;margin:16px 0;background:#202020;">')
-    .replace(/<th([^>]*)>/gi,'<th$1 style="padding:10px 12px;border:1px solid #3a3a3a;color:#fff;text-align:left;font-size:14px;">')
-    .replace(/<td([^>]*)>/gi,'<td$1 style="padding:10px 12px;border:1px solid #3a3a3a;color:#d7d7d7;font-size:14px;line-height:1.5;">');
+// base44/shared/companyGraph.ts
+var GRAPH = "https://graph.microsoft.com/v1.0";
+var env = (name) => Deno.env.get(name) || "";
+var cached = null;
+function companyGraphConfig() {
+  return {
+    tenant: env("GRAPH_TENANT_ID") || env("MICROSOFT_TENANT_ID") || env("IA_GRAPH_TENANT_ID") || "07f32330-fc73-4d73-a835-e9c47ba798c7",
+    client: env("GRAPH_CLIENT_ID") || env("MICROSOFT_CLIENT_ID") || env("IA_GRAPH_CLIENT_ID"),
+    secret: env("GRAPH_CLIENT_SECRET") || env("MICROSOFT_CLIENT_SECRET") || env("IA_GRAPH_CLIENT_SECRET"),
+    sender: env("GRAPH_SENDER_EMAIL") || "management@blackpointkjc.com"
+  };
+}
+function rolesFromToken(token) {
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part)).roles || [];
+  } catch {
+    return [];
+  }
+}
+async function getCompanyGraphAuthorization() {
+  if (cached && cached.expires > Date.now() + 12e4) return cached;
+  const cfg = companyGraphConfig();
+  if (!cfg.client || !cfg.secret) throw Error("Company Graph application credentials are missing. Configure GRAPH_CLIENT_ID and GRAPH_CLIENT_SECRET (or the existing IA_GRAPH credentials).");
+  const response = await fetch("https://login.microsoftonline.com/" + encodeURIComponent(cfg.tenant) + "/oauth2/v2.0/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: cfg.client, client_secret: cfg.secret, grant_type: "client_credentials", scope: "https://graph.microsoft.com/.default" }), signal: AbortSignal.timeout(12e3) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) throw Error("Company Microsoft Graph application authorization failed: " + String(data.error || response.status) + ". Check the company app credential and tenant.");
+  cached = { token: String(data.access_token), roles: rolesFromToken(data.access_token), expires: Date.now() + Number(data.expires_in || 3600) * 1e3 };
+  return cached;
+}
+async function getCompanyGraphToken() {
+  const auth = await getCompanyGraphAuthorization();
+  if (!auth.roles.includes("Mail.Send")) throw Error("The company Graph application needs the Mail.Send APPLICATION permission with administrator consent. Personal Outlook connections are not used.");
+  return auth.token;
+}
+async function sendCompanyEmail({ to, subject, body, html = false, from, replyTo }) {
+  const cfg = companyGraphConfig(), sender = from || cfg.sender;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to || ""))) throw Error("A valid email recipient is required.");
+  const token = await getCompanyGraphToken();
+  const response = await fetch(GRAPH + "/users/" + encodeURIComponent(sender) + "/sendMail", { method: "POST", headers: { Authorization: "Bearer " + token, "content-type": "application/json" }, signal: AbortSignal.timeout(15e3), body: JSON.stringify({ message: { subject: String(subject || "Pathfinder notification").slice(0, 250), body: { contentType: html ? "HTML" : "Text", content: String(body || "") }, from: { emailAddress: { address: sender, name: "BlackPoint Pathfinder" } }, replyTo: [{ emailAddress: { address: replyTo || sender } }], toRecipients: [{ emailAddress: { address: String(to).trim() } }] }, saveToSentItems: true }) });
+  if (response.status !== 202) {
+    const data = await response.json().catch(() => ({}));
+    throw Error("Company Graph email was not accepted (" + response.status + "): " + String(data?.error?.code || "sendMail failed") + ".");
+  }
+  return { accepted: true, provider: "microsoft_graph", request_id: response.headers.get("request-id") || "" };
 }
 
-function branded(payload: any) {
-  const subject = String(payload.subject || 'Black Point Notification');
-  const actionUrlRaw = String(payload.action_url || PORTAL_URL);
-  const actionUrl = actionUrlRaw.startsWith('/') ? `${PORTAL_URL.replace(/\/$/,'')}${actionUrlRaw}` : actionUrlRaw;
-  let actionLabel = payload.action_label || 'View in Black Point Portal';
-  if (!payload.action_label && /schedule|shift/i.test(subject)) actionLabel = 'View Schedule';
-  else if (!payload.action_label && /training/i.test(subject)) actionLabel = 'Open Training Portal';
-  else if (!payload.action_label && /invoice/i.test(subject)) actionLabel = 'View Invoice';
-  else if (!payload.action_label && /report/i.test(subject)) actionLabel = 'View Report';
-  const inner = normalizeBody(payload.body || payload.html || '');
-  const year = new Date().getFullYear();
-  const { action_url, action_label, html, ...rest } = payload;
-  return { ...rest, from_name:'Black Point Protection', subject, body:`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(subject)}</title></head><body style="margin:0;padding:0;background:#0b0b0b;font-family:Arial,Helvetica,sans-serif;color:#f4f4f4;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0b0b0b;"><tr><td align="center" style="padding:28px 12px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#151515;border:1px solid #caa72d;border-radius:14px;overflow:hidden;"><tr><td align="center" style="padding:30px 24px 20px;background:#050505;"><img src="${LOGO_URL}" alt="Black Point" width="210" style="display:block;width:210px;max-width:75%;height:auto;border:0;"></td></tr><tr><td style="height:5px;background:#d4af37;font-size:0;line-height:5px;">&nbsp;</td></tr><tr><td style="padding:34px 38px 12px;"><h1 style="margin:0 0 22px;color:#fff;font-size:28px;line-height:1.25;text-align:center;">${safe(subject)}</h1><div style="color:#d7d7d7;font-size:16px;line-height:1.65;">${inner}</div></td></tr><tr><td align="center" style="padding:10px 38px 8px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto 22px;"><tr><td bgcolor="#d4af37" style="border-radius:6px;"><a href="${safe(actionUrl)}" target="_blank" style="display:inline-block;padding:15px 30px;color:#090909;font-size:16px;font-weight:bold;text-decoration:none;">${safe(actionLabel)}</a></td></tr></table></td></tr><tr><td style="padding:24px 38px 34px;"><p style="margin:0 0 6px;color:#fff;font-size:16px;font-weight:bold;">Black Point</p><p style="margin:0;color:#bdbdbd;font-size:14px;line-height:1.6;">701 E Franklin St, Suite 105 1052<br>Richmond, Virginia 23219<br><a href="mailto:info@blackpointkjc.com" style="color:#e5c75b;text-decoration:none;">info@blackpointkjc.com</a><br><a href="tel:+18558277911" style="color:#e5c75b;text-decoration:none;">(855) 8BPS911</a></p></td></tr><tr><td align="center" style="padding:22px 24px;background:#050505;border-top:1px solid #292929;"><a href="https://home.blackpointkjc.com/" style="color:#d4af37;font-size:13px;">home.blackpointkjc.com</a><p style="margin:14px 0 0;color:#666;font-size:11px;">© ${year} Black Point. All rights reserved.</p></td></tr></table></td></tr></table></body></html>` };
+// base44/functions/sendBrandedEmail/graphDelivery.ts
+async function sendManagementEmail(base44, to, subject, body, html = false) {
+  return sendCompanyEmail({ to, subject, body, html, from: "management@blackpointkjc.com" });
 }
 
+// base44/functions/sendBrandedEmail/creditFreeEmail.ts
+async function sendCreditFreeEmail(base44, payload) {
+  const to = String(payload?.to || "").trim(), subject = String(payload?.subject || "").trim(), body = String(payload?.body || payload?.html || "");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || !subject || !body) throw Error("Valid email recipient, subject and content are required.");
+  return sendManagementEmail(base44, to, subject, body, /<[a-z][\s\S]*>/i.test(body));
+}
+
+// base44/functions/sendBrandedEmail/entry.ts
+import { createClientFromRequest } from "npm:@base44/sdk";
+var __portalAppIdentity = (user) => user && String(user.id) === "6a72bbee2842d6338cbae513" && String(user.rank).toLowerCase() === "support staff" ? { ...user, role: "user", additional_roles: ["support"], is_supervisor: false, dispatch_role: "", ps_role: "none" } : user;
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const actor = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
-    if (!actor) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if(actor.role!=='admin'&&!(actor.additional_roles||[]).some(r=>['hr','trainer'].includes(r)))return Response.json({error:'Account administrator access required.'},{status:403});
+    if (!actor) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (actor.role !== "admin" && !(actor.additional_roles || []).some((r) => ["hr", "trainer"].includes(r))) return Response.json({ error: "Account administrator access required." }, { status: 403 });
     const payload = await req.json();
-    const recipient = String(payload?.to || '').trim();
-    if (!recipient) return Response.json({ error: 'Recipient is required' }, { status: 400 });
-    const subject=String(payload?.subject||'BlackPoint Pathfinder notification').slice(0,250);
-    const body=String(payload?.body||payload?.message||'');
-    if(!body)return Response.json({error:'Email content is required.'},{status:400});
-    const sent=await sendCreditFreeEmail(base44,{to:recipient,subject,body,from_name:'BlackPoint Pathfinder'});
-    if(sent?.error||sent?.success===false)throw new Error('No-reply provider rejected delivery.');
-    return Response.json({success:true,to:recipient,delivered:'accepted_by_provider'});
+    const recipient = String(payload?.to || "").trim();
+    if (!recipient) return Response.json({ error: "Recipient is required" }, { status: 400 });
+    const subject = String(payload?.subject || "BlackPoint Pathfinder notification").slice(0, 250);
+    const body = String(payload?.body || payload?.message || "");
+    if (!body) return Response.json({ error: "Email content is required." }, { status: 400 });
+    const sent = await sendCreditFreeEmail(base44, { to: recipient, subject, body, from_name: "BlackPoint Pathfinder" });
+    if (sent?.error || sent?.success === false) throw new Error("No-reply provider rejected delivery.");
+    return Response.json({ success: true, to: recipient, delivered: "accepted_by_provider" });
   } catch (error) {
-    console.error('sendBrandedEmail failed', error);
-    return Response.json({ error: error?.message || 'Unable to send email' }, { status: 500 });
+    console.error("sendBrandedEmail failed", error);
+    return Response.json({ error: error?.message || "Unable to send email" }, { status: 500 });
   }
 });
