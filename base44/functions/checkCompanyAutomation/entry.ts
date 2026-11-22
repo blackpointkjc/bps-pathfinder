@@ -1,7 +1,5 @@
 // base44/functions/checkCompanyAutomation/entry.ts
 import { createClientFromRequest } from "npm:@base44/sdk";
-
-// base44/shared/companyGraph.ts
 var env = (name) => Deno.env.get(name) || "";
 var cached = null;
 function companyGraphConfig() {
@@ -40,8 +38,6 @@ async function getCompanyGraphAuthorization() {
   cached = { token: String(data.access_token), roles: rolesFromToken(data.access_token), expires: Date.now() + Number(data.expires_in || 3600) * 1e3 };
   return cached;
 }
-
-// base44/functions/checkCompanyAutomation/entry.ts
 async function entry_default(req) {
   const sdk = createClientFromRequest(req), user = await sdk.auth.me().catch(() => null);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
