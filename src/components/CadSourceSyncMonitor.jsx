@@ -22,9 +22,7 @@ export default function CadSourceSyncMonitor({ user }) {
       // Continue a conservative best-effort sync while minimized. Browsers may
       // suspend an entire hidden tab, so server scheduling still owns 24/7 work.
       if (!active || running || !navigator.onLine) return;
-      const page = window.location.pathname + window.location.search;
-      const onCommandScreen = /Navigation|CADCenter|DispatchCenter|CommandDashboard|OfficerCAD|SupervisorCenter|SupervisorOverview|SupervisorCommandBoard|SupervisorFieldOversight|admin_center=(cad|supervisor)/i.test(page);
-      const minimumInterval = document.visibilityState === 'visible' && onCommandScreen ? 5_000 : 20_000;
+      const minimumInterval = 60_000;
       if (Date.now() - lastSyncAttemptAt < minimumInterval) return;
       // The CAD source has an independent backoff and a server lease.
       // An unrelated background 429 must NEVER postpone checking GRAC;
@@ -51,7 +49,7 @@ export default function CadSourceSyncMonitor({ user }) {
     // On returning from a suspended tab, recover promptly rather than waiting
     // for the next scheduled interval.
     const first = window.setTimeout(sync, 1200);
-    const timer = window.setInterval(sync, 5_000);
+    const timer = window.setInterval(sync, 15_000);
     const resume = () => {
       if (!navigator.onLine || document.visibilityState !== 'visible') return;
       if (Date.now() - lastResumeAt < 5_000) return;
