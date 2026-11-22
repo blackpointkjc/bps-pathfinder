@@ -1,7 +1,5 @@
 // base44/functions/scheduledGracSync/entry.ts
 import { createClientFromRequest as createClientFromRequest2 } from "npm:@base44/sdk";
-
-// base44/functions/ingestGractivecalls/entry.ts
 import { waitUntil } from "base44:runtime";
 import { createClientFromRequest } from "npm:@base44/sdk";
 var __portalAppIdentity = (user) => user && String(user.id) === "6a72bbee2842d6338cbae513" && String(user.rank).toLowerCase() === "support staff" ? { ...user, role: "user", additional_roles: ["support"], is_supervisor: false, dispatch_role: "", ps_role: "none" } : user;
@@ -1229,7 +1227,7 @@ async function handleGracIngestion(req) {
     const base44 = createClientFromRequest(req);
     const jobInput = await req.clone().json().catch(() => ({}));
     const platformScheduledAdmin = jobInput.scheduled === true;
-    const __portalCaller = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).then(__limitFullAccess).catch(() => null);
+    const __portalCaller = await base44.auth.me().then((user2) => platformScheduledAdmin && user2?.role === "admin" ? user2 : __portalAppIdentity(user2)).then(__limitFullAccess).catch(() => null);
     if (__portalCaller && !__portalCaller.is_service && !(__portalCaller.role === "admin" && platformScheduledAdmin) && !await __portalLoginIsCurrent(req, base44, __portalCaller)) return Response.json({ error: "Your Pathfinder session ended. Please sign in again.", code: "SESSION_REAUTH_REQUIRED" }, { status: 401 });
     let __portalService = false;
     if (!__portalCaller && req.headers.get("Authorization")) {
@@ -1243,7 +1241,7 @@ async function handleGracIngestion(req) {
     base44.auth.me = async () => __portalCaller;
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const scheduledRun = body?.scheduled === true;
-    const user = __portalService ? { id: "scheduled-cad-ingestion", role: "dispatch", additional_roles: ["cad_access"], is_service: true } : await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).then(__limitFullAccess).catch(() => null);
+    const user = __portalService ? { id: "scheduled-cad-ingestion", role: "dispatch", additional_roles: ["cad_access"], is_service: true } : await base44.auth.me().then((user2) => platformScheduledAdmin && user2?.role === "admin" ? user2 : __portalAppIdentity(user2)).then(__limitFullAccess).catch(() => null);
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((role) => String(role).trim().toLowerCase()));
     const primaryRole = String(user.role || "").trim().toLowerCase();
@@ -1538,14 +1536,10 @@ async function handleGracIngestion(req) {
     return Response.json({ success: false, error: error?.message || "GRAC ingestion failed" }, { status: 500 });
   }
 }
-
-// base44/functions/scheduledGracSync/entry.ts
 async function entry_default(req) {
   const sdk = createClientFromRequest2(req), user = await sdk.auth.me().catch(() => null);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   if (user.role !== "admin" || user.disabled || user.termination_date) return Response.json({ error: "Server administrator access required" }, { status: 403 });
   return handleGracIngestion(new Request(req.url, { method: "POST", headers: req.headers, body: JSON.stringify({ scheduled: true, fast_sync: true }) }));
 }
-
-// <stdin>
 Deno.serve(entry_default);
