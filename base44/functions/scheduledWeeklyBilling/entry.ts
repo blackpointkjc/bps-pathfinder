@@ -1,7 +1,6 @@
 // base44/functions/scheduledWeeklyBilling/entry.ts
 import { createClientFromRequest as createClientFromRequest2 } from "npm:@base44/sdk";
-
-// base44/shared/companyGraph.ts
+import { createClientFromRequest } from "npm:@base44/sdk";
 var GRAPH = "https://graph.microsoft.com/v1.0";
 var env = (name) => Deno.env.get(name) || "";
 var cached = null;
@@ -47,21 +46,14 @@ async function sendCompanyEmail({ to, subject, body, html = false, from, replyTo
   }
   return { accepted: true, provider: "microsoft_graph", request_id: response.headers.get("request-id") || "" };
 }
-
-// base44/functions/generateWeeklyInvoices/graphDelivery.ts
 async function sendManagementEmail(base44, to, subject, body, html = false) {
   return sendCompanyEmail({ to, subject, body, html, from: "management@blackpointkjc.com" });
 }
-
-// base44/functions/generateWeeklyInvoices/creditFreeEmail.ts
 async function sendCreditFreeEmail(base44, payload) {
   const to = String(payload?.to || "").trim(), subject = String(payload?.subject || "").trim(), body = String(payload?.body || payload?.html || "");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || !subject || !body) throw Error("Valid email recipient, subject and content are required.");
   return sendManagementEmail(base44, to, subject, body, /<[a-z][\s\S]*>/i.test(body));
 }
-
-// base44/functions/generateWeeklyInvoices/entry.ts
-import { createClientFromRequest } from "npm:@base44/sdk";
 var __portalAppIdentity = (user) => user && String(user.id) === "6a72bbee2842d6338cbae513" && String(user.rank).toLowerCase() === "support staff" ? { ...user, role: "user", additional_roles: ["support"], is_supervisor: false, dispatch_role: "", ps_role: "none" } : user;
 var __portalReauthAfter = "2026-11-01T22:38:04.000Z";
 async function __portalLoginIsCurrent(request, sdk, user) {
@@ -144,7 +136,7 @@ async function handleWeeklyBilling(req) {
     const base44 = createClientFromRequest(req);
     const jobInput = await req.clone().json().catch(() => ({}));
     const platformScheduledAdmin = jobInput.scheduled === true;
-    const __portalCaller = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).catch(() => null);
+    const __portalCaller = await base44.auth.me().then((user) => platformScheduledAdmin && user?.role === "admin" ? user : __portalAppIdentity(user)).catch(() => null);
     if (__portalCaller && !__portalCaller.is_service && !(__portalCaller.role === "admin" && platformScheduledAdmin) && !await __portalLoginIsCurrent(req, base44, __portalCaller)) return Response.json({ error: "Your Pathfinder session ended. Please sign in again.", code: "SESSION_REAUTH_REQUIRED" }, { status: 401 });
     let __portalService = false;
     if (!__portalCaller && req.headers.get("Authorization")) {
@@ -156,14 +148,14 @@ async function handleWeeklyBilling(req) {
     }
     if (!__portalCaller && !__portalService || __portalCaller && ((__portalCaller.additional_roles || []).includes("visitor") || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status || "").toLowerCase() === "terminated" || !__portalCaller.is_service && __portalCaller.role !== "admin" && !(__portalCaller.additional_roles || []).length && !["investigator", "reviewer"].includes(__portalCaller.ps_role))) return Response.json({ error: "Approved portal access required" }, { status: 403 });
     base44.auth.me = async () => __portalCaller;
-    const requestingUser = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).catch(() => null);
+    const requestingUser = await base44.auth.me().then((user) => platformScheduledAdmin && user?.role === "admin" ? user : __portalAppIdentity(user)).catch(() => null);
     if (requestingUser && !(requestingUser.role === "admin" && platformScheduledAdmin) && String(requestingUser.id) !== "6ae7d733d4b1a647cd3e6f38") return Response.json({ error: "Accounting access required" }, { status: 403 });
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const action = String(body?.action || "scheduled").toLowerCase();
     if (!["scheduled", "run_now", "backfill_drafts", "send_existing", "approve_historical_rate", "create_draft", "create_invoice", "send_ready_drafts"].includes(action)) return Response.json({ error: "Unsupported invoice operation" }, { status: 400 });
     const manual = action !== "scheduled" && !(platformScheduledAdmin && requestingUser?.role === "admin" && action === "send_ready_drafts");
     if (manual) {
-      const caller = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user)).catch(() => null);
+      const caller = await base44.auth.me().then((user) => platformScheduledAdmin && user?.role === "admin" ? user : __portalAppIdentity(user)).catch(() => null);
       const roles = new Set((caller?.additional_roles || []).map((role) => String(role).toLowerCase()));
       if (!caller || String(caller.id) !== "6ae7d733d4b1a647cd3e6f38") return Response.json({ error: "Accounting access required" }, { status: 403 });
     }
@@ -192,7 +184,7 @@ async function handleWeeklyBilling(req) {
         total += amount;
         return { ...item, rate: verifiedRate.toFixed(2), amount: amount.toFixed(2) };
       });
-      const actor = await base44.auth.me().then(user=>platformScheduledAdmin&&user?.role==='admin'?user:__portalAppIdentity(user));
+      const actor = await base44.auth.me().then((user) => platformScheduledAdmin && user?.role === "admin" ? user : __portalAppIdentity(user));
       const locations2 = await base44.asServiceRole.entities.Location.list("site_name", 2e3);
       const location = (locations2 || []).find((site) => siteOf(site.site_name).toLowerCase() === siteOf(invoice.site_name).toLowerCase());
       if (!location) return Response.json({ error: "Site missing: cannot apply approved rate to company billing records" }, { status: 409 });
@@ -576,8 +568,6 @@ async function handleWeeklyBilling(req) {
     return Response.json({ error: throttled ? "Base44 request allowance temporarily exhausted. Historical invoice sending was stopped; retry after API traffic recovers." : message, rate_limited: throttled, retry_after_seconds: throttled ? 60 : void 0 }, { status: throttled ? 429 : 500 });
   }
 }
-
-// base44/functions/scheduledWeeklyBilling/entry.ts
 async function entry_default(req) {
   const sdk = createClientFromRequest2(req), user = await sdk.auth.me().catch(() => null);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -588,6 +578,4 @@ async function entry_default(req) {
   await sdk.asServiceRole.entities.AccountingAutomationRun.create({ job: "weekly_client_invoices", mode: "server_workflow", started_at: started, completed_at: (/* @__PURE__ */ new Date()).toISOString(), status: result.error ? "failed" : result.skipped === true ? "skipped" : "completed", created_count: Number(result.created) || 0, sent_count: Number(result.sent) || 0, failed_count: Number(result.delivery_failed) || 0, held_count: Number(result.held) || 0, reason: String(result.reason || result.error || "") });
   return response;
 }
-
-// <stdin>
 Deno.serve(entry_default);
