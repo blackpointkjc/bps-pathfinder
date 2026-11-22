@@ -58,3 +58,25 @@ for(const file of ['src/pages/RecordsAssistant.jsx','src/components/admin/LoginS
  await transform(fs.readFileSync(file,'utf8'),{loader:file.endsWith('.jsx')?'jsx':file.endsWith('.ts')?'ts':'js'});
 }
 console.log('PASS syntax checks for all changed frontend flows and new backend handlers');
+
+const helperSource=fs.readFileSync('src/lib/searchAllRecords.js','utf8').replace(/^import .*;$/m,'const base44=globalThis.__searchSdk;');
+let helperCalls=0;
+globalThis.__searchSdk={functions:{invoke:async(_name,body)=>{helperCalls++;return {data:body.cursor?{results:[{id:'older',entity:'IncidentReport',match_context:'reference',date:'2020-01-01'}],searched_sources:1,total_sources:2}:{results:[{id:'new',entity:'IncidentReport',match_context:'report text',date:'2026-01-01'}],searched_sources:1,total_sources:2,next_cursor:{source:1,offset:0}}};}}};
+const searchModule=await import('data:text/javascript;base64,'+Buffer.from(helperSource).toString('base64'));
+const merged=await searchModule.searchAllRecords({query:'example'});
+assert.equal(helperCalls,2);assert.equal(merged.results.length,2);assert.equal(merged.results[0].id,'older');
+assert.equal((await searchModule.searchAllRecords({query:'x'},{isCurrent:()=>false})).cancelled,true);
+const voiceSource=fs.readFileSync('src/utils/voiceAnnouncer.js','utf8');
+const voiceFn=voiceSource.slice(voiceSource.indexOf('export function announceRecordSearch('));
+const voiceModule=await import('data:text/javascript;base64,'+Buffer.from('const announceVoice=(text)=>text;\n'+voiceFn).toString('base64'));
+const spoken=voiceModule.announceRecordSearch([{source:'Incident Reports',label:'IR-42',person:'Example Person',location:'Alpha',status:'submitted',warrant_issued:true}],{partial:true});
+assert.match(spoken,/Partial records response/);assert.match(spoken,/IR-42/);assert.match(spoken,/Example Person/);assert.match(spoken,/Current status unverified/);
+assert.match(voiceModule.announceRecordSearch([]),/No matching records/);
+console.log('PASS paginated client merge, relevance order, cancellation and spoken result content');
+for(const path of ['base44/shared/reportTeam.ts','base44/shared/reportWork.ts','base44/functions/manageParkingRecords/entry.ts','base44/functions/getMyPerformanceData/performanceData.ts','base44/functions/getCompanyPerformanceData/entry.ts','base44/functions/syncSupervisorOperationalTasks/entry.ts','base44/functions/sendDailyCompanySummary/entry.ts']){
+ await transform(fs.readFileSync(path,'utf8'),{loader:'ts'});
+}
+for(const name of ['TeamReportWork','PortalShowcase','DailyActivityReport','IncidentReport','ShiftReport','ShiftHandover','ConfidentialReport','ExpenseReport','QRScanEvent','ParkingViolation','MaintenanceReport','OpenDoorReport']){
+ const schema=JSON.parse(fs.readFileSync('base44/entities/'+name+'.jsonc','utf8'));assert.equal(schema.name,name);
+}
+console.log('PASS dependent backend syntax and persisted entity schemas');
