@@ -97,7 +97,9 @@ export default function MissingReportsCheck({ schedules: _schedules, allUsers = 
           if (String(report?.status || '').toLowerCase() === 'rejected') return false;
           if (report.shift_id && entryIds.has(String(report.shift_id))) return true;
           const reportDate = String(report.report_date || report.shift_date || '').slice(0, 10);
-          const sameDate = session.dates.has(reportDate);
+          const teamWindowMatch=report.team_credit_source==='schedule'&&Date.parse(report.team_window_start)<session.endMs&&Date.parse(report.team_window_end)>session.startMs;
+          const sameDate = teamWindowMatch || session.dates.has(reportDate);
+          if(report.team_credit_source==='schedule'&&report.team_window_start&&!teamWindowMatch)return false;
           const sameSite = session.sites.has(normalizeSite(report.location));
           if (!sameDate || !sameSite) return false;
 

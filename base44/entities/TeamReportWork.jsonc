@@ -71,6 +71,14 @@
     },
     "report_id": {
       "type": "string"
+    },
+    "team_window_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "team_window_end": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

@@ -74,7 +74,7 @@ const TRACE_MAX = 300;
 const READ_METHODS = new Set(['list', 'filter', 'get']);
 const WRITE_METHODS = new Set(['create', 'update', 'delete', 'bulkCreate', 'importEntities']);
 const PERFORMANCE_ENTITY_NAMES = new Set([
-  'TimeEntry', 'Schedule', 'DailyActivityReport', 'ShiftReport', 'IncidentReport', 'CallOut',
+  'TeamReportWork', 'TimeEntry', 'Schedule', 'DailyActivityReport', 'ShiftReport', 'IncidentReport', 'CallOut',
   'QRScanEvent', 'QRPatrolReport', 'CallAssignment', 'TrainingAssignment', 'TrainingCompletion', 'TrainingModule',
   'ShiftBid', 'PerformanceReview', 'ClientFeedback', 'Commendation', 'Complaint',
   'JobDutyRule', 'PropertyAlert', 'DispatchCall', 'CallHistory', 'CallPerformanceDecision',
@@ -522,7 +522,7 @@ function protectedWrite(key, task, meta = {}) {
         outcome: 'success',
         duration_ms: Date.now() - startedAt,
       });
-      if (meta?.kind === 'entity' && PERFORMANCE_ENTITY_NAMES.has(meta?.name)) {
+      if ((meta?.kind === 'entity' && PERFORMANCE_ENTITY_NAMES.has(meta?.name)) || (meta?.kind==='function'&&meta?.name==='prepareReportTeam')) {
         try { window.dispatchEvent(new CustomEvent('bps-performance-refresh', { detail: { entity: meta.name, method: meta.method } })); } catch {}
       }
       // Every successful write announces its domain to the app. This is the

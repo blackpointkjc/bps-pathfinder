@@ -207,6 +207,14 @@
     "team_date": {
       "type": "string",
       "format": "date"
+    },
+    "team_window_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "team_window_end": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

@@ -756,7 +756,9 @@ export function calculateJobDutyCompliance({
 
         const reportSite = siteKey(report?.location);
         const reportDate = String(report?.report_date || '').slice(0, 10);
-        const siteDateMatch = session.sites.has(reportSite) && session.dates.has(reportDate);
+        const teamWindowMatch=report.team_credit_source==='schedule'&&Date.parse(report.team_window_start)<session.end_ms&&Date.parse(report.team_window_end)>session.start_ms;
+        const siteDateMatch = session.sites.has(reportSite) && (teamWindowMatch || session.dates.has(reportDate));
+        if(report.team_credit_source==='schedule'&&report.team_window_start&&!teamWindowMatch)return false;
         if (!siteDateMatch) return false;
 
         // A team DAR submitted by any officer working this post/session satisfies

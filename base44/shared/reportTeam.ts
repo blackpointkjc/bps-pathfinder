@@ -14,6 +14,7 @@ export function interval(row){
  if(end<=start)end+=86400000;
  return [start,end];
 }
+const realIso=wall=>{let value=wall+5*3600000;for(let i=0;i<3;i++)value+=wall-easternWall(value);return new Date(value).toISOString();};
 const active=row=>!row.archived&&!row.is_open&&!['called_out','sent_home','reassigned'].includes(norm(row.attendance_status))&&!['open','unassigned',''].includes(norm(row.officer_email));
 export function scheduledTeam({user,data={},schedules=[],users=[],now=Date.now()}){
  const reportDate=String(data.report_date||data.shift_date||data.incident_date||data.violation_date||data.scanned_date||'').slice(0,10);
@@ -38,7 +39,7 @@ export function scheduledTeam({user,data={},schedules=[],users=[],now=Date.now()
  const emails=new Set(peers.map(row=>norm(row.officer_email)));
  if(shift.partner_officer_email)emails.add(norm(shift.partner_officer_email));
  const people=users.filter(person=>emails.has(norm(person.email))&&!person.disabled&&!person.termination_date&&!['terminated','suspended'].includes(norm(person.employment_status))&&[person.role,...(person.additional_roles||[])].some(role=>['officer','supervisor'].includes(norm(role))));
- return {attached_officer_ids:people.map(p=>String(p.id)),attached_officer_emails:people.map(p=>norm(p.email)),attached_officer_names:people.map(p=>[p.rank,p.first_name,p.last_name].filter(Boolean).join(' ')||p.full_name||p.email),team_schedule_ids:[shift.id,...peers.filter(r=>people.some(p=>norm(p.email)===norm(r.officer_email))).map(r=>r.id)].map(String),team_credit_source:'schedule',team_location:shift.location,team_date:shift.shift_date};
+ return {attached_officer_ids:people.map(p=>String(p.id)),attached_officer_emails:people.map(p=>norm(p.email)),attached_officer_names:people.map(p=>[p.rank,p.first_name,p.last_name].filter(Boolean).join(' ')||p.full_name||p.email),team_schedule_ids:[shift.id,...peers.filter(r=>people.some(p=>norm(p.email)===norm(r.officer_email))).map(r=>r.id)].map(String),team_credit_source:'schedule',team_location:shift.location,team_date:shift.shift_date,team_window_start:realIso(start),team_window_end:realIso(end)};
 }
 async function all(entity,query){
  const rows=[];for(let skip=0;;skip+=500){const page=await entity.filter(query,'id',500,skip);rows.push(...page);if(page.length<500)return rows;}

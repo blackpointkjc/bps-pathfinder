@@ -258,7 +258,9 @@ Deno.serve(async (req) => {
         const reportDate = clean(report.report_date || report.shift_date);
         const reportSite = lower(siteNameFrom(report.location));
         const credited=lower(report.officer_email)===session.officer_email||(report.attached_officer_emails||[]).map(lower).includes(session.officer_email);
-        return session.dates.has(reportDate) && session.sites.has(reportSite) && (report.team_credit_source!=='schedule'||credited);
+        const windowMatch=report.team_credit_source==='schedule'&&Date.parse(report.team_window_start)<session.end_ms&&Date.parse(report.team_window_end)>session.start_ms;
+        if(report.team_credit_source==='schedule'&&report.team_window_start&&!windowMatch)return false;
+        return (windowMatch||session.dates.has(reportDate)) && session.sites.has(reportSite) && (report.team_credit_source!=='schedule'||credited);
       });
       if (covered) continue;
       const first = session.entries[0];
