@@ -1,4 +1,6 @@
-import {useRef,useState} from 'react';
+import {searchAllRecords} from '@/lib/searchAllRecords';
+import {announceRecordSearch,announceVoice} from '@/utils/voiceAnnouncer';
+import {useEffect,useRef,useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {Search,UserRound,CarFront,FileText,MapPin,CalendarDays,ArrowUpRight,AlertTriangle,Loader2,Shield,X,ChevronDown,Clock3} from 'lucide-react';
@@ -67,6 +69,8 @@ export default function RecordsAssistant(){
  const [sourceFilter,setSourceFilter]=useState('all');
  const latest=useRef(0);
  const detailSequence=useRef(0);
+ const [progress,setProgress]=useState('');
+ useEffect(()=>()=>{++latest.current;},[]);
  const runSearch=async event=>{
   event?.preventDefault();const term=clean(query);if(term.length<2)return;
   const seq=++latest.current;
@@ -74,7 +78,7 @@ export default function RecordsAssistant(){
   // Both searches run concurrently. The property registry is scoped to the
   // employee's authorized operational sites by the backend, with no dropdown.
   const settled=await Promise.allSettled([
-   base44.functions.invoke('searchCompanyRecords',{query:term,search_type:'all'}),
+   searchAllRecords({query:term,search_type:'all'},{isCurrent:()=>seq===latest.current,onProgress:d=>{setResults(d.results);setProgress('Searching authorized app records · '+d.source+' / '+d.total_sources+' sources');}}),
    base44.functions.invoke('manageParkingRecords',{action:'search_all',query:term}),
   ]);
   if(seq!==latest.current)return;
@@ -87,7 +91,9 @@ export default function RecordsAssistant(){
    const d=settled[1].value?.data||settled[1].value||{};
    if(d.error)problems.push(d.error);else{ok++;people=d.matches||[];if(d.partial)problems.push('Property registry exceeded the safe search limit');}
   }else problems.push(settled[1].reason?.response?.data?.error||settled[1].reason?.message||'Resident registry search failed');
-  setResults(company);setResidents(people);setCount(matched+people.length);
+  setResults(company);setResidents(people);setCount(matched+people.length);setProgress('');
+  if(ok)announceRecordSearch([...people,...company],{searchType:'all',partial:problems.length>0});
+  else announceVoice('Records search could not complete. Please review the error and try again.',{force:true});
   if(!ok)setError(problems.join(' · ')||'Records search unavailable');else if(problems.length)setPartial(problems.join(' · '));
   setSearchedText(term);setSearched(true);setSearching(false);
  };
@@ -95,6 +101,7 @@ export default function RecordsAssistant(){
    const seq=++detailSequence.current;setSelected(item);setDetail(null);setDetailError('');
    if(item.source==='Property resident registry'){setDetail(item);setDetailLoading(false);return;}
    setDetailLoading(true);
+   announceVoice([item.source,recordTitle(item),item.person,item.location,item.status,item.summary?.slice(0,180)].filter(Boolean).join('. '),{force:true,dedupeMs:1000});
    try{
     const response=await base44.functions.invoke('searchCompanyRecords',{action:'get',entity:item.entity,id:item.id});
     const d=response?.data||response||{};
@@ -106,8 +113,10 @@ export default function RecordsAssistant(){
  const sources=[...new Set(results.map(r=>r.source).filter(Boolean))];
  const filtered=sourceFilter==='all'?results:results.filter(r=>r.source===sourceFilter);
  return <div className="bps-records-workspace min-h-full"><div className="bps-records-inner space-y-4">
-   <header className="bps-records-hero p-5 sm:p-6"><div className="flex items-center gap-3"><div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3 text-cyan-300"><Search size={22}/></div><div><p className="bps-records-eyebrow">Pathfinder / Intelligence</p><h1 className="bps-records-heading">Records AI</h1><p className="mt-1 text-xs text-slate-400">One search for company reports, CAD calls, parking notices, vehicles, and residents.</p></div></div></header>
+   <header className="bps-records-hero p-5 sm:p-6"><div className="flex items-center gap-3"><div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3 text-cyan-300"><Search size={22}/></div><div><p className="bps-records-eyebrow">Pathfinder / Intelligence</p><h1 className="bps-records-heading">Search App Records</h1><p className="mt-1 text-xs text-slate-400">Search authorized records across the app, including older records, reports, calls, vehicles and residents. Results are announced aloud.</p></div></div></header>
    <form onSubmit={runSearch} className="bps-records-card space-y-3 p-4 sm:p-5"><label className="block text-xs font-bold text-slate-400">Search all authorized records<div className="mt-2 flex flex-col gap-2 sm:flex-row"><div className="relative min-w-0 flex-1"><Search size={17} className="absolute left-3 top-3.5 text-slate-500"/><input autoComplete="off" className="bps-records-input !min-h-12 !pl-10" placeholder="Name, apartment, address, plate, CAD call or report number…" value={query} onChange={e=>setQuery(e.target.value)} aria-label="Search all Pathfinder records"/></div><button disabled={searching||clean(query).length<2} className="bps-records-button bps-records-button-primary !min-h-12 !min-w-[115px]" type="submit">{searching?<Loader2 size={16} className="animate-spin"/>:<Search size={16}/>}Search</button></div></label></form>
+   {searching&&<p role="status" className="px-1 text-sm text-cyan-200">{progress||'Searching records…'}</p>}
+   {searched&&!error&&<button type="button" className="bps-records-button" onClick={()=>announceRecordSearch([...residents,...results],{searchType:'all',partial:!!partial})}>Read results aloud</button>}
    {error&&<div role="alert" className="rounded-xl border border-amber-700/50 bg-amber-950/20 p-3 text-sm text-amber-200">{error}</div>}
    {partial&&<div role="status" className="rounded-xl border border-amber-700/50 bg-amber-950/20 p-3 text-xs text-amber-200">Some results may be missing: {partial}.</div>}
    {searched&&!error&&<div className="flex flex-wrap items-center gap-2 px-1 text-sm text-slate-300"><strong className="text-lg text-white">{count}</strong> {count===1?'result':'results'} for <strong className="text-white">{searchedText}</strong></div>}

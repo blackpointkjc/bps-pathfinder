@@ -1,3 +1,4 @@
+import {searchAllRecords} from '@/lib/searchAllRecords';
 import {useState} from 'react';
 import {base44} from '@/api/base44Client';
 import {announceRecordSearch,announceVoice} from '@/utils/voiceAnnouncer';
@@ -13,7 +14,7 @@ export default function RecordsCheckButton({name='',plate='',site='',compact=fal
   setChecking(true);setError('');setReport(null);
   // The resident registry is a separate, property-scoped source. A temporary
   // general records outage must not erase a successful resident lookup.
-  const tasks=[base44.functions.invoke('searchCompanyRecords',{query,search_type:plate?'vehicle':'person',entities:['ParkingViolation','TrespassingNotice','MDTrespassNotice','IncidentReport','BOLOAlert']})];
+  const tasks=[searchAllRecords({query,search_type:plate?'vehicle':'person'})];
   if(site)tasks.push(base44.functions.invoke('manageParkingRecords',{action:'records_check',site_name:site,query}));
   try{
    const [companyResult,registryResult]=await Promise.allSettled(tasks);

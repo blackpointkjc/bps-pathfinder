@@ -99,7 +99,7 @@ const CENTER_CONFIG = {
         ['Daily Activity', 'DailyActivityReports', ClipboardList],
         ['Incident Report', 'IncidentReports', AlertTriangle],
         ['Parking Tickets', 'ParkingRecords', Car],
-        ['Records AI (People & Vehicles)', 'RecordsAssistant', Bot],
+        ['Search App Records', 'RecordsAssistant', Bot],
         ['Maintenance', 'MaintenanceReports', Wrench],
         ['Open Door', 'OpenDoorReports', DoorOpen],
 

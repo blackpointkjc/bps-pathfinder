@@ -519,24 +519,15 @@ export function announceDistressSignalAsync({ unit, name, eventId }) {
 }
 
 export function announceRecordSearch(results = [], metadata = {}) {
-  const isPersonSearch = metadata.searchType === 'person';
-  const warrantText = isPersonSearch
-    ? (metadata.warrantMatches > 0
-      ? `${metadata.warrantMatches} warrant record${metadata.warrantMatches === 1 ? '' : 's'} located in Pathfinder.`
-      : 'No warrant records located in Pathfinder.')
-    : '';
-
-  if (!results.length) {
-    announceVoice(`CAD records response. No matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 3000, rate: 0.82, pitch: 0.68, force: true });
-    return;
-  }
-  const linked = results.find(item => item.linked_call_number || item.call_number || item.call_type || item.incident_type || item.call_incident || item.linked_call_type);
-  if (linked) {
-    const callType = linked.linked_call_type || linked.call_type || linked.incident_type || linked.call_incident || 'related call';
-    const callNumber = linked.linked_call_number || linked.call_number || '';
-    const location = linked.linked_call_location || linked.location || '';
-    announceVoice(`CAD records response. ${results.length} matches located. Related call, ${callType}${callNumber ? `. Call number ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68, force: true });
-  } else {
-    announceVoice(`CAD records response. ${results.length} matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68, force: true });
-  }
+ const prefix=metadata.partial?'Partial records response. Some sources were unavailable.':'Pathfinder records response.';
+ const sources=[...new Set(results.map(r=>r.source).filter(Boolean))];
+ const details=results.slice(0,5).map((r,i)=>[
+  'Result '+(i+1),r.source,r.label||r.full_name||r.citation_number||r.vehicle_plate||'Record',
+  r.person,r.location||r.address||r.site_name,r.status||r.lease_status,
+  r.warrant_issued?'Historical warrant reference. Current status unverified.':''
+ ].filter(Boolean).join('. ')).join('. ');
+ const message=results.length
+  ?prefix+' '+results.length+' matching records located across '+sources.length+' sources. '+details+(results.length>5?'. More results are available on screen. Open a record to hear its details.':'')
+  :prefix+' No matching records located.';
+ return announceVoice(message,{force:true,dedupeMs:1000});
 }

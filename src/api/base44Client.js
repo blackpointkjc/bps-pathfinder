@@ -174,6 +174,7 @@ const readPriority = meta => {
   return 72;
 };
 const readTimeoutMs = meta => {
+  if(meta?.kind==='function'&&meta?.name==='searchCompanyRecords')return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'routeNavigation') return 10_000;
   if (meta?.kind === "function" && ["getAddressCallHistory", "getCallOutShifts", "getNavigationLocations", "getOfflineStreetArea"].includes(meta?.name)) return 30_000;
   if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 60_000;
