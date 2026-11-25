@@ -1,8 +1,8 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, ShieldAlert, Siren, HeartPulse } from 'lucide-react';
+import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, ShieldAlert, Siren, HeartPulse, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,7 @@ export default function OfficerDispatchQueue() {
   const queryClient = useQueryClient();
 
 
-  const { data: payload = {}, isLoading, error, refetch } = useQuery({
+  const { data: payload = {}, isLoading, isFetching:queueFetching, dataUpdatedAt:queueUpdatedAt, error, refetch } = useQuery({
     queryKey: ['myDispatchQueue'],
     queryFn: async () => {
       const response = await base44.functions.invoke('getMyDispatchQueue', {});
@@ -47,7 +47,7 @@ export default function OfficerDispatchQueue() {
 
   // Shared notes are a dedicated query. They refresh on note events without
   // touching local officer status or refetching the whole dispatch queue.
-  const {data:sharedNotes=[],refetch:refetchNotes}=useQuery({
+  const {data:sharedNotes=[],isFetching:notesFetching,error:notesError,dataUpdatedAt:notesUpdatedAt,refetch:refetchNotes}=useQuery({
     queryKey:['sharedCadTimeline',selectedId],
     enabled:!!selectedId,
     queryFn:async()=>{
@@ -72,6 +72,21 @@ export default function OfficerDispatchQueue() {
   },[selectedId,refetchNotes]);
 
   const selected = useMemo(() => queue.find(call => call.id === selectedId) || queue[0] || null, [queue, selectedId]);
+
+  const refreshQueue = async () => {
+    if (working || queueFetching) return;
+    clearBase44ReadCacheMatching('function:getMyDispatchQueue:');
+    const result = await refetch({cancelRefetch:false});
+    if (result.isError) toast.error('Queue refresh failed. Please retry.');
+  };
+  const refreshNotes = async () => {
+    if (working || notesFetching || !selectedId) return;
+    clearBase44ReadCacheMatching('function:sharedCadTimeline:');
+    const result = await refetchNotes({cancelRefetch:false});
+    if (result.isError) toast.error('CAD notes refresh failed. Please retry.');
+  };
+  const queueRefreshButton = <Button type="button" variant="outline" disabled={working || queueFetching} onClick={refreshQueue} className="min-h-11 border-cyan-500 bg-slate-900 text-cyan-100 hover:bg-slate-800"><RefreshCw className={`mr-2 h-4 w-4 ${queueFetching?'animate-spin':''}`}/>{queueFetching?'Refreshing…':'Refresh queue'}</Button>;
+  const updatedLabel = timestamp => timestamp ? new Date(timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : 'Not synced yet';
 
   const changeStatus = async status => {
     if (!selected || working || actionLock.current) return;
@@ -161,15 +176,18 @@ export default function OfficerDispatchQueue() {
     window.location.href = `${createPageUrl(page)}?${params.toString()}`;
   };
 
-  if (isLoading) return <div className="p-8 text-center text-slate-500">Loading dispatch queue…</div>;
-  if (error && !payload.queue) return <div className="p-6"><div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">Dispatch queue could not load: {error.message}</div></div>;
+  if (isLoading || (error && !payload.queue)) return <div className="p-6 text-slate-200"><div className="rounded-xl border border-slate-600 bg-slate-900 p-4 space-y-3"><p role="status">{isLoading?'Loading dispatch queue…':'Dispatch queue could not load: '+error.message}</p>{queueRefreshButton}</div></div>;
 
   return <div className="min-h-screen bg-[#050a12] p-3 text-white md:p-5">
     <div className="mx-auto max-w-7xl space-y-4">
       <WorkspaceHeader eyebrow="CAD / Field operations" title="Officer Dispatch Queue" description="Your assigned calls, with response controls, welfare checks and the shared CAD timeline." metrics={[
         {label:'Assigned calls',value:queue.length},{label:'Critical / high',value:queue.filter(c=>['critical','high'].includes(String(c.priority).toLowerCase())).length},{label:'Current call',value:queue[0]?.agency_cad_number||queue[0]?.bps_reference||queue[0]?.call_id||'None'}
-      ]}><Button variant="outline" onClick={()=>refetch()}>Refresh queue</Button></WorkspaceHeader>
+      ]}>{queueRefreshButton}</WorkspaceHeader>
 
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-900 p-3">
+        <div className="text-xs text-slate-300" role="status">{queueFetching?'Updating assigned calls…':error?'Refresh failed — showing last received calls.':`Queue updated: ${updatedLabel(queueUpdatedAt)}`}</div>
+        {queueRefreshButton}
+      </div>
       {!queue.length ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-400"/><h2 className="text-lg font-black">Queue clear</h2><p className="text-sm text-slate-400">No active calls are assigned to you.</p></div> : <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
         <aside className="space-y-3"><Input aria-label="Find an assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Find reference, incident or location" className="border-slate-600 bg-slate-900"/>{!visibleQueue.length&&<p className="p-4 text-sm text-slate-400">No matching assigned calls.</p>}
           {visibleQueue.map((call)=><button key={call.id} disabled={working} onClick={()=>{setSelectedId(call.id);setDisposition('');setNote('');}} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
@@ -195,7 +213,7 @@ export default function OfficerDispatchQueue() {
           </section>
 
           {!!selected.assigned_officers?.length&&<section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><h3 className="mb-2 font-black text-cyan-300">ASSIGNED UNITS · LIVE STATUS</h3><div className="flex flex-wrap gap-2">{selected.assigned_officers.map((officer,index)=><div key={`${officer.unit_id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs"><div className="font-bold">{officer.officer_name}</div><div className="mt-1 text-slate-400"><span className={officer.role==='primary'?'font-black text-emerald-300':'font-bold text-cyan-300'}>{officer.role==='primary'?'PRIMARY UNIT':'ADDITIONAL UNIT'}</span> · {statusLabel(officer.status)}</div></div>)}</div></section>}
-          <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 font-black"><MessageSquare className="h-4 w-4 text-cyan-300"/>Shared call notes and activity</h3><span className="text-[10px] text-slate-500">Notes, acknowledgments, en route, on scene, welfare and unit clearances</span></div><div className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-slate-950/60 p-2">{!sharedNotes.length?<div className="p-4 text-center text-xs text-slate-500">No notes yet.</div>:sharedNotes.slice().reverse().map(n=><div key={n.id} className="rounded-lg border border-slate-800 bg-[#0b1623] p-2"><div className="text-[10px] font-black text-cyan-300">{n.author_name || 'CAD USER'}</div><div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">{n.note}</div><div className="mt-1 text-[10px] text-slate-500">{n.created_date?new Date(n.created_date).toLocaleString():''}{n.kind==='activity'?' · CAD ACTIVITY':''}</div></div>)}</div><div className="mt-3 flex gap-2"><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Add note for dispatch and other assigned units…" rows={2}/><Button onClick={addNote} disabled={working || !note.trim()}><MessageSquare className="h-4 w-4"/></Button></div></section>
+          <section className="rounded-2xl border border-slate-700 bg-[#08111d] p-4"><div className="mb-3 flex items-center justify-between"><h3 className="flex items-center gap-2 font-black"><MessageSquare className="h-4 w-4 text-cyan-300"/>Shared call notes and activity</h3><Button type="button" variant="outline" disabled={working || notesFetching} onClick={refreshNotes} className="min-h-10 border-cyan-500 bg-slate-900 text-cyan-100 hover:bg-slate-800"><RefreshCw className={`mr-2 h-4 w-4 ${notesFetching?'animate-spin':''}`}/>{notesFetching?'Refreshing…':'Refresh notes'}</Button></div><p role="status" className="mb-2 text-xs text-slate-400">{notesFetching?'Updating CAD notes…':notesError?'Notes refresh failed — retry above.':`Notes updated: ${updatedLabel(notesUpdatedAt)}`}</p><div className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-slate-950/60 p-2">{!sharedNotes.length?<div className="p-4 text-center text-xs text-slate-500">No notes yet.</div>:sharedNotes.slice().reverse().map(n=><div key={n.id} className="rounded-lg border border-slate-800 bg-[#0b1623] p-2"><div className="text-[10px] font-black text-cyan-300">{n.author_name || 'CAD USER'}</div><div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">{n.note}</div><div className="mt-1 text-[10px] text-slate-500">{n.created_date?new Date(n.created_date).toLocaleString():''}{n.kind==='activity'?' · CAD ACTIVITY':''}</div></div>)}</div><div className="mt-3 flex gap-2"><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Add note for dispatch and other assigned units…" rows={2}/><Button onClick={addNote} disabled={working || !note.trim()}><MessageSquare className="h-4 w-4"/></Button></div></section>
 
           <section className="grid gap-2 sm:grid-cols-3"><Button onClick={()=>openReport('IncidentReports')} variant="outline"><ClipboardList className="mr-2 h-4 w-4"/>Incident report</Button><Button onClick={()=>openReport('DailyActivityReports')} variant="outline"><ClipboardList className="mr-2 h-4 w-4"/>DAR</Button><Button onClick={requestSupervisor} disabled={working} className="bg-purple-700 hover:bg-purple-600"><ShieldAlert className="mr-2 h-4 w-4"/>Request supervisor</Button></section>
 
