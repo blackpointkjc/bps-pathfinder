@@ -1,7 +1,7 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, ShieldAlert, Siren, HeartPulse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,8 @@ export default function OfficerDispatchQueue() {
   const [note, setNote] = useState('');
   const [disposition, setDisposition] = useState('');
   const [working, setWorking] = useState(false);
+  const actionLock = useRef(false);
+  const queryClient = useQueryClient();
 
 
   const { data: payload = {}, isLoading, error, refetch } = useQuery({
@@ -31,9 +33,9 @@ export default function OfficerDispatchQueue() {
     },
     refetchInterval: 30000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    staleTime: 5000,
+    staleTime: 15000,
   });
 
   const queue = payload.queue || [];
@@ -72,22 +74,32 @@ export default function OfficerDispatchQueue() {
   const selected = useMemo(() => queue.find(call => call.id === selectedId) || queue[0] || null, [queue, selectedId]);
 
   const changeStatus = async status => {
-    if (!selected || working) return;
+    if (!selected || working || actionLock.current) return;
     if (status === 'Cleared' && !disposition.trim()) return toast.error('Enter a disposition before clearing this call.');
+    actionLock.current = true;
     setWorking(true);
+    const callId = selected.id;
     try {
       const response = await base44.functions.invoke('updateMyFieldCallStatus', { call_id:selected.id, status, disposition:status === 'Cleared' ? disposition.trim() : '' });
       const data = response?.data || response || {};
-      if (data.error) throw new Error(data.error);
-      if (status === 'Cleared') setDisposition('');
-      await Promise.all([refetch(),refetchNotes()]);
+      if (!data.success || data.error) throw new Error(data.error || 'Call status was not saved');
+      const savedStatus = data.status || status;
+      const assignmentStatus = {Acknowledged:'accepted',Enroute:'enroute','On Scene':'on_scene',Cleared:'cleared'}[savedStatus];
+      await queryClient.cancelQueries({queryKey:['myDispatchQueue']});
+      queryClient.setQueryData(['myDispatchQueue'], old => {
+        const rows = (old?.queue || []).filter(c => savedStatus !== 'Cleared' || c.id !== callId).map(c => c.id === callId ? {...c,assignment:{...c.assignment,status:assignmentStatus}} : c);
+        return {...old,queue:rows,count:rows.length,current_call_id:rows[0]?.id || ''};
+      });
+      if (savedStatus === 'Cleared') {setDisposition('');setSelectedId(data.next_call_id || '');}
+      else void refetchNotes();
+      void queryClient.invalidateQueries({queryKey:['myDispatchQueue']});
       if (status === 'Cleared') {
         toast.success(data.next_call_number ? `Call cleared. Next call: ${data.next_call_number}.` : 'Call cleared. Your dispatch queue is clear.');
       } else {
-        toast.success(`${status} recorded.`);
+        toast.success(`${savedStatus} recorded.`);
       }
     } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Unable to update call status'); }
-    finally { setWorking(false); }
+    finally { actionLock.current = false; setWorking(false); }
   };
 
   const addNote = async () => {
@@ -150,7 +162,7 @@ export default function OfficerDispatchQueue() {
   };
 
   if (isLoading) return <div className="p-8 text-center text-slate-500">Loading dispatch queue…</div>;
-  if (error) return <div className="p-6"><div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">Dispatch queue could not load: {error.message}</div></div>;
+  if (error && !payload.queue) return <div className="p-6"><div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">Dispatch queue could not load: {error.message}</div></div>;
 
   return <div className="min-h-screen bg-[#050a12] p-3 text-white md:p-5">
     <div className="mx-auto max-w-7xl space-y-4">
@@ -160,7 +172,7 @@ export default function OfficerDispatchQueue() {
 
       {!queue.length ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-400"/><h2 className="text-lg font-black">Queue clear</h2><p className="text-sm text-slate-400">No active calls are assigned to you.</p></div> : <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
         <aside className="space-y-3"><Input aria-label="Find an assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Find reference, incident or location" className="border-slate-600 bg-slate-900"/>{!visibleQueue.length&&<p className="p-4 text-sm text-slate-400">No matching assigned calls.</p>}
-          {visibleQueue.map((call)=><button key={call.id} onClick={()=>setSelectedId(call.id)} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
+          {visibleQueue.map((call)=><button key={call.id} disabled={working} onClick={()=>{setSelectedId(call.id);setDisposition('');setNote('');}} className={`w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
             <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-black text-slate-400">#{queue.indexOf(call)+1} IN QUEUE</div><Badge className={priorityClass(call.priority)}>{String(call.priority||'medium').toUpperCase()}</Badge></div>
             <div className="mt-2 font-black">{call.agency_cad_number || call.bps_reference || call.call_id || call.id}</div><div className="text-sm text-slate-200">{call.incident || 'Call for service'}</div><div className="mt-1 text-xs text-slate-400">{call.location || 'Location pending'}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">YOUR STATUS: {statusLabel(call.assignment?.status)} · {call.assigned_officers?.find(u=>u.role==='primary')?.officer_name||'Primary pending'} (PRIMARY)</div>
           </button>)}
@@ -176,7 +188,7 @@ export default function OfficerDispatchQueue() {
           <section className="rounded-2xl border border-cyan-500/30 bg-[#08111d] p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-black text-cyan-200">Officer welfare status</div><p className="mt-1 text-xs text-slate-400">Transmit a verified welfare OK to dispatch at any time while assigned.</p></div><Button disabled={working} onClick={()=>respondWelfare('ok')} className="bg-emerald-700 hover:bg-emerald-600"><HeartPulse className="mr-2 h-4 w-4"/>Send welfare OK</Button></div></section>
 
           <section className="grid gap-2 sm:grid-cols-4">
-            <Button disabled={working || selected.assignment?.status==='accepted'} onClick={()=>changeStatus('Acknowledged')} className="bg-indigo-700 hover:bg-indigo-600">Acknowledge</Button>
+            <Button disabled={working || ['accepted','enroute','on_scene'].includes(selected.assignment?.status)} onClick={()=>changeStatus('Acknowledged')} className="bg-indigo-700 hover:bg-indigo-600"><CheckCircle2 className="mr-2 h-4 w-4"/>{['accepted','enroute','on_scene'].includes(selected.assignment?.status)?'Acknowledged':'Acknowledge call'}</Button>
             <Button disabled={working} onClick={()=>changeStatus('Enroute')} className="bg-blue-700 hover:bg-blue-600"><Navigation className="mr-2 h-4 w-4"/>En route</Button>
             <Button disabled={working} onClick={()=>changeStatus('On Scene')} className="bg-amber-700 hover:bg-amber-600">On scene</Button>
             <Button disabled={working} onClick={directions} variant="outline" className="border-cyan-500 text-cyan-300"><MapPinned className="mr-2 h-4 w-4"/>Directions</Button>

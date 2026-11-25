@@ -151,7 +151,7 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return meta.action === 'list' ? 40 : 96;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 90;
-  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits'].includes(meta?.name)) return 95;
+  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits','getMyDispatchQueue'].includes(meta?.name)) return 95;
   if (meta?.kind === 'function' && meta?.name === 'getRoadSpeedLimit') return 86;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
@@ -412,7 +412,7 @@ function queuedRead(key, task, meta = {}) {
     // Live CAD and road data must report a loading failure promptly rather than
     // leaving the officer staring at an apparently infinite spinner for two
     // minutes. Background/administrative reads retain their full allowance.
-    const foregroundTimeout = meta?.kind === 'function' && ['getActiveDispatchCalls', 'getOnDutyUnits', 'getRoadSpeedLimit', 'routeNavigation'].includes(meta?.name)
+    const foregroundTimeout = meta?.kind === 'function' && ['getActiveDispatchCalls', 'getOnDutyUnits', 'getRoadSpeedLimit', 'routeNavigation', 'getMyDispatchQueue'].includes(meta?.name)
       ? (meta?.name === 'routeNavigation' ? 10_000 : 35_000) : READ_QUEUE_TIMEOUT_MS;
     job.totalQueueTimeoutMs = foregroundTimeout;
     armQueueTimeout(foregroundTimeout);
@@ -459,6 +459,7 @@ function invalidateReadCacheForWrite(meta = {}) {
 
   if (meta?.kind === 'function') {
     const name = String(meta.name || '');
+    if (['updateMyFieldCallStatus','updateMyCallAssignment','manageCadUnitAssignment','updateCadCallStatus','createDispatchCall'].includes(name)) {addFunction('getMyDispatchQueue');addFunction('sharedCadTimeline');addFunction('getActiveDispatchCalls');addEntity('CallAssignment');addEntity('DispatchCall');}
     if (name === 'recordSupervisorCallOut') { addFunction('getMyScheduleData'); addEntity('CallOut'); addEntity('Schedule'); }
     if (['logLocation','manageLiveLocationPrivacy','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
       // Routine GPS/heartbeats are applied by the realtime location hub. Only
