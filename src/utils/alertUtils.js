@@ -154,6 +154,12 @@ const getMasterCtx = () => {
   return masterCtx;
 };
 
+// Prime the existing Web Audio context on a real operator gesture. Voice and
+// Web Audio have independent browser autoplay policies.
+export const unlockPropertyAudio = async () => {
+  try {const ctx=getMasterCtx();if(ctx.state==='suspended')await ctx.resume();return ctx.state==='running';}catch{return false;}
+};
+
 export const stopDispatchAlert = () => {
   alertGeneration += 1;
   alertRunning = false;

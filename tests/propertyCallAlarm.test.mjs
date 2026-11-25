@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { isClockedInAtProperty, getActiveTimeEntry } from '../src/lib/clockedPropertyAlarm.js';
+import { isClockedInAtProperty, getActiveTimeEntry, mayReceivePropertyAlarm } from '../src/lib/clockedPropertyAlarm.js';
 
 const now = Date.now();
 const property = { id: 'site-a', site_name: 'Oak Court', address: '10 Main St', active: true, property_monitoring_enabled: true };
@@ -24,6 +24,7 @@ const preludeSource = banner.slice(banner.indexOf('    const propertyHornPrelude
 let entries = [punch], horns = 0, lookups = 0;
 const fakeClient = {
   entities: {
+    Schedule: {filter:async()=>[]},
     PropertyAlert: { filter: async () => [{ callId: 'call-a', propertyId: 'site-a' }] },
     Location: { get: async id => { assert.equal(id, 'site-a'); return property; } },
   },
@@ -34,14 +35,14 @@ const fakeClient = {
     return { data: { entries } };
   } },
 };
-const makePrelude = new Function('active', 'base44', 'isClockedInAtProperty', 'playPropertyHorn', 'normalized', 'getActiveTimeEntry',
+const makePrelude = new Function('active', 'base44', 'mayReceivePropertyAlarm', 'playPropertyHorn', 'normalized', 'getActiveTimeEntry','user',
   preludeSource + '; return propertyHornPrelude;');
-const prelude = makePrelude(true, fakeClient, isClockedInAtProperty, async () => { horns++; }, value => String(value || '').trim().toLowerCase(), getActiveTimeEntry);
+const prelude = makePrelude(true, fakeClient, mayReceivePropertyAlarm, async () => { horns++; }, value => String(value || '').trim().toLowerCase(), getActiveTimeEntry,{email:'test@example.test'});
 await prelude({ propertyId: 'site-a' })(() => true);
 await prelude({ callId: 'call-a' })(() => true);
 assert.equal(horns, 2); // Both raw PropertyAlert and durable CallStatusLog resolve the same post.
 entries = [{ ...punch, clock_out: new Date().toISOString() }];
-assert.equal(await prelude({ propertyId: 'site-a' })(() => true), false);
+assert.equal(await prelude({ propertyId: 'site-a' })(() => true), true);
 assert.equal(horns, 2);
 assert.equal(await prelude({ propertyId: 'site-a' })(() => false), false);
 assert.equal(lookups, 3);
@@ -51,7 +52,7 @@ entries = [{ ...punch, location: 'Another Post - 99 Main St' }];
 assert.equal(await prelude({ propertyId: 'site-a' })(() => true), true);
 assert.equal(horns, 2);
 entries = [];
-assert.equal(await prelude({ propertyId: 'site-a' })(() => true), false);
+assert.equal(await prelude({ propertyId: 'site-a' })(() => true), true);
 
 // Actual voice queue: dedupe occurs before the prelude and speech awaits it.
 const storage = new Map();
@@ -109,7 +110,7 @@ await flush();
 entries = [{ ...punch, clock_out: new Date().toISOString() }];
 voice.retryVoiceAnnouncement();
 await flush();
-assert.equal(events.filter(item => item === 'speech:Clock out during retry.').length, 1);
+assert.equal(events.filter(item => item === 'speech:Clock out during retry.').length, 2);
 
 // A hard duty mismatch suppresses speech too, and does not stall later speech.
 voice.announceVoice('Wrong property call.', { eventId: 'call:wrong:initial', beforeSpeech: async () => false });

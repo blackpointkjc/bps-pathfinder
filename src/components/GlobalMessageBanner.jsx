@@ -6,7 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { announceVoice, announceVoiceAsync, isVoiceEnabled, retryVoiceAnnouncement, setVoiceEnabled, setVoiceRuntimeConfig, stopVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
-import { playPropertyHorn } from '@/utils/alertUtils';
+import { playPropertyHorn, unlockPropertyAudio } from '@/utils/alertUtils';
 import { propertyAlertWasTimely, parseCadUtcTime } from '@/lib/propertyAlertFreshness';
 import { mayReceivePropertyAlarm } from '@/lib/clockedPropertyAlarm';
 import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from '@/lib/announcementReadState';
@@ -37,6 +37,7 @@ const hasSupervisorAccess = user => {
 
 const canHearPropertyAlerts = user => {
   const roles=lowerRoles(user);
+  if(['client','student','visitor'].includes(normalized(user?.user_type))||['client','student','visitor'].some(role=>roles.has(role)))return false;
   return ['admin','officer','supervisor','dispatch'].includes(normalized(user?.role))
     || ['officer','supervisor','dispatch','cad_access','full_access'].some(role=>roles.has(role))
     || Boolean(user?.dispatch_role) || user?.is_supervisor===true;
@@ -247,9 +248,14 @@ export default function GlobalMessageBanner({ user }) {
   useEffect(() => {
     const onVoiceBlocked = event => setVoiceWarning(event?.detail?.reason || 'Audio playback was blocked by this browser.');
     const onVoiceStarted = () => setVoiceWarning(null);
+    const unlock=()=>{void unlockPropertyAudio();};
+    window.addEventListener('pointerdown',unlock,true);
+    window.addEventListener('keydown',unlock,true);
     window.addEventListener('bps-voice-blocked', onVoiceBlocked);
     window.addEventListener('bps-voice-started', onVoiceStarted);
     return () => {
+      window.removeEventListener('pointerdown',unlock,true);
+      window.removeEventListener('keydown',unlock,true);
       window.removeEventListener('bps-voice-blocked', onVoiceBlocked);
       window.removeEventListener('bps-voice-started', onVoiceStarted);
     };
@@ -508,7 +514,7 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     const showPropertyCall = async (record, options = {}) => {
-      const allowAudio = options.allowAudio !== false && isLiveAudioEvent(record) && canHearPropertyAlerts(user);
+      const allowAudio = options.allowAudio !== false && (isLiveAudioEvent(record) || options.recovery===true) && canHearPropertyAlerts(user);
       if (!record?.id) return;
       if (record?.is_test === true || ['resolved', 'false_alarm', 'test', 'inactive', 'closed'].includes(normalized(record.lifecycle_status))) return;
       const key = `PropertyAlert:${record.id}`;
@@ -534,7 +540,7 @@ export default function GlobalMessageBanner({ user }) {
       // that verified snapshot immediately instead of blocking speech on several
       // follow-up network reads. Recovery/update events keep the conservative
       // lookup path below so stale history can never replay as a live call.
-      const realtimeCreate = options.realtimeCreate === true;
+      const realtimeCreate = options.realtimeCreate === true || options.recovery===true;
       if (realtimeCreate && record.callId && record.propertyId && record.propertyName && record.callIncident) {
         const callKey = String(record.callId);
         const currentStatus = callStatusKey(record.callStatus || 'new');
@@ -551,6 +557,10 @@ export default function GlobalMessageBanner({ user }) {
 
         // The verified live alert already grants visibility. Duty lookups only
         // control the optional on-post horn, never the spoken alert.
+        if(options.recovery===true && user.email){
+          const prior=await base44.entities.PropertyAlertReceipt.filter({call_id:callKey,user_email:normalized(user.email)},'-dismissed_at',10).catch(()=>null);
+          if(!prior||prior.some(row=>String(row.property_id)===String(record.propertyId)))return;
+        }
         if (allowAudio && !announcedPropertySpeech.current.has(propertyEventKey)) {
           const settings = audioSettings.current;
           const enabledTypes = Array.isArray(settings.enabled_event_types) ? settings.enabled_event_types : [];
@@ -790,7 +800,7 @@ export default function GlobalMessageBanner({ user }) {
         // Await the speech engine's actual completion. Previously the synchronous
         // enqueue return value was falsely marked 'played' even for silent audio.
         const accepted = await announceVoiceAsync(announcementText, {
-          beforeSpeech: (initial || initialClaim?.claimed)
+          beforeSpeech: (record.event_type==='property_alert' || initialClaim?.claimed)
             ? propertyHornPrelude({ callId: record.call_id }) : undefined,
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,
           eventId: record.event_key,
@@ -856,7 +866,7 @@ export default function GlobalMessageBanner({ user }) {
       base44.entities.CallStatusLog.list('-created_date', 150).then(records => {
         (records || []).slice().reverse().forEach(record => {
           if (!record?.event_key) return;
-          const age=Date.now()-new Date(record.created_date||0).getTime();
+          const age=Date.now()-parseCadUtcTime(record.created_date);
           if(['property_alert','new_call','priority_call','unit_dispatched','additional_unit'].includes(record.event_type)&&age>=0&&age<=90_000&&record.audio_enabled!==false){
             void showCadAnnouncementEvent(record);
           }else{
@@ -884,7 +894,7 @@ export default function GlobalMessageBanner({ user }) {
             if (Number.isFinite(created) && created >= propertyCutoff) {
               // A verified property alert arriving during connection is still
               // actionable for a short interval. Claim once, never replay later.
-              void showPropertyCall(record, { allowAudio: Date.now()-created <= 90_000 });
+              void showPropertyCall(record, { allowAudio: Date.now()-created <= LIVE_PROPERTY_ALERT_MAX_AGE_MS, recovery:true });
             } else {
               // Old alerts stay available in history but are never replayed as a
               // new live voice/banner event.
@@ -898,12 +908,14 @@ export default function GlobalMessageBanner({ user }) {
       // recovery after every five-second GRAC heartbeat and exhaust Base44.
       let lastPropertyRecoveryAt=Date.now();
       const onCadIngestFinished = () => {
-        if (Date.now()-lastPropertyRecoveryAt<60_000) return;
+        if (Date.now()-lastPropertyRecoveryAt<30_000) return;
         lastPropertyRecoveryAt=Date.now();
         void recoverRecentPropertyCalls();
       };
+      const recoveryTimer=window.setInterval(onCadIngestFinished,30000);
+      window.addEventListener('online',onCadIngestFinished);
       window.addEventListener('bps-cad-ingest-finished', onCadIngestFinished);
-      unsubscribers.push(() => window.removeEventListener('bps-cad-ingest-finished', onCadIngestFinished));
+      unsubscribers.push(() => {window.clearInterval(recoveryTimer);window.removeEventListener('online',onCadIngestFinished);window.removeEventListener('bps-cad-ingest-finished',onCadIngestFinished);});
 
       const boloUnsubscribe = base44.entities.BOLOAlert.subscribe(event => {
         if (!['create', 'update'].includes(event?.type) || !event.data?.id) return;
