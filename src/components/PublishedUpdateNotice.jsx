@@ -71,8 +71,13 @@ export default function PublishedUpdateNotice() {
       document.removeEventListener('visibilitychange', onResume);
     };
   }, []);
+  useEffect(()=>{
+    window.__pathfinderUpdateAvailable=available;
+    window.dispatchEvent(new CustomEvent('pathfinder:update-available',{detail:available}));
+  },[available]);
   if (!available) return null;
   return <aside role="status" aria-live="polite" className="fixed inset-x-3 bottom-4 z-[100200] mx-auto flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-700/70 bg-[#0c1720] px-4 py-3 text-white shadow-2xl">
     <div><strong className="block text-sm">{refreshing ? 'Updating Pathfinder…' : 'New Pathfinder update detected'}</strong><p className="text-xs text-slate-300">{deferred ? 'Update will load automatically when you finish your current work or leave navigation.' : 'The latest changes will load automatically when it is safe.'}</p></div>
+    <button type="button" disabled={refreshing} onClick={()=>{if(window.confirm('Refresh Pathfinder now? Save unfinished work first.')){setRefreshing(true);refreshUrl();}}} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Update now</button>
   </aside>;
 }

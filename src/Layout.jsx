@@ -4,6 +4,7 @@ import {hasIAAccess,hasWholeAppAccess} from '@/lib/portalAccess';
 import '@/components/map/mapWorkspace.css';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import HeaderClock from '@/components/HeaderClock';
+import GlobalAppRefresh from '@/components/GlobalAppRefresh';
 import { isOperationalOutage } from '@/lib/operationalOutages';
 import { canAccessAccounting } from '@/lib/accountingAccess';
 import { useFleetScheduling } from '@/hooks/useFleetScheduling';
@@ -1630,6 +1631,7 @@ export default function Layout({ children, currentPageName }) {
           </div>}
         </div>
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10px] text-[#7791aa]">
+          <GlobalAppRefresh />
           <DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
           <button
             type="button"

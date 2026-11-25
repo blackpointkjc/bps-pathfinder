@@ -5,14 +5,14 @@ const source=fs.readFileSync('src/components/PublishedUpdateNotice.jsx','utf8').
 const code=transformSync(source,{loader:'jsx',define:{'import.meta.env.PROD':'true','import.meta.env.VITE_PATHFINDER_BUILD_ID':'"running-build"'}}).code;
 let cleanup,check,available=false,body={app:'pathfinder',buildId:'running-build'},json=true,fail=false;
 const events=new Map();
-const target={addEventListener:(name,fn)=>events.set(name,fn),removeEventListener:name=>events.delete(name)};
+const target={dispatchEvent:()=>{},addEventListener:(name,fn)=>events.set(name,fn),removeEventListener:name=>events.delete(name)};
 let index=0;
-new Function('useEffect','useState','window','document','navigator','fetch','setTimeout','clearTimeout','setInterval','clearInterval',code+';PublishedUpdateNotice();')(
-fn=>{cleanup=fn();},
+new Function('useEffect','useState','window','document','navigator','fetch','setTimeout','clearTimeout','setInterval','clearInterval','CustomEvent',code+';PublishedUpdateNotice();')(
+fn=>{const dispose=fn();if(dispose)cleanup=dispose;},
 ()=>{const i=index++;return[false,value=>{if(i===0)available=value;}]},
 target,{...target,visibilityState:'visible'},{onLine:true},
 async()=>{if(fail)throw Error('offline');return{ok:true,headers:{get:()=>json?'application/json':'text/html'},json:async()=>body};},
-()=>1,()=>{},fn=>{check=fn;return 2;},()=>{});
+()=>1,()=>{},(fn,ms)=>{if(ms===45000)check=fn;return 2;},()=>{},class CustomEvent {constructor(name,options){this.type=name;this.detail=options.detail;}});
 await check();assert.equal(available,false,'same build has no notice');
 body={app:'pathfinder',buildId:'new-release'};await check();assert.equal(available,true,'new release prompts refresh');
 body={app:'pathfinder',buildId:'running-build'};await check();assert.equal(available,false,'rollback to loaded version clears notice');
