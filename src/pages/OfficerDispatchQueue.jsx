@@ -38,6 +38,12 @@ export default function OfficerDispatchQueue() {
     staleTime: 15000,
   });
 
+  useEffect(()=>{
+    const refresh=()=>{void queryClient.invalidateQueries({queryKey:['myDispatchQueue']});};
+    window.addEventListener('officer-distress-cleared',refresh);
+    let unsubscribe;try{unsubscribe=base44.entities.CallAssignment.subscribe(refresh);}catch{}
+    return()=>{window.removeEventListener('officer-distress-cleared',refresh);unsubscribe?.();};
+  },[queryClient]);
   const queue = payload.queue || [];
   const visibleQueue=queue.filter(call=>[call.agency_cad_number,call.bps_reference,call.call_id,call.incident,call.location].join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
   useEffect(() => {

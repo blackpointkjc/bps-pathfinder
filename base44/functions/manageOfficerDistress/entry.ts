@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
     const isSelf = officerId === user.id;
 
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
+    if(roles.has('client')||roles.has('student')||roles.has('visitor')||['client','student'].includes(String(user.user_type||'').toLowerCase()))return Response.json({error:'Officer access required'},{status:403});
     const authorized =
       isSelf ||
       user.role === 'admin' ||
@@ -52,6 +53,17 @@ Deno.serve(async (req) => {
     const db=base44.asServiceRole.entities;
     const activeStates=['active','acknowledged','responders_enroute'];
     const valid=(lat:any,lon:any)=>lat!=null&&lon!=null&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180&&!(Number(lat)===0&&Number(lon)===0);
+    const privateLocation=await isLiveLocationHidden(base44,officer);
+    const locationPatch=(loc:any)=>valid(loc?.lat,loc?.lon)&&!privateLocation?{current_latitude:Number(loc.lat),current_longitude:Number(loc.lon),location_description:`${Number(loc.lat).toFixed(5)}, ${Number(loc.lon).toFixed(5)}`}:{};
+    if(action==='location'){
+      if(!isSelf)return Response.json({error:'Only the officer can send live coordinates'},{status:403});
+      const row=body.distress_id?await db.OfficerDistress.get(body.distress_id).catch(()=>null):null;
+      if(!row||row.officer_id!==officer.id||!activeStates.includes(row.status))return Response.json({success:true,active:false});
+      const patch=locationPatch(body.location);
+      if(!Object.keys(patch).length)return Response.json({success:true,active:true,location_saved:false});
+      await db.OfficerDistress.update(row.id,{...patch,...(!valid(row.latitude,row.longitude)?{latitude:patch.current_latitude,longitude:patch.current_longitude}:{})});
+      return Response.json({success:true,active:true,location_saved:true});
+    }
     const [units,sessions,alerts]=await Promise.all([
       db.Unit.filter({user_id:officer.id},'-last_update_at',30),
       db.ActiveOfficer.filter({officer_email:officer.email},'-last_update',15),
@@ -68,17 +80,6 @@ Deno.serve(async (req) => {
         ...liveSessions.map((u:any)=>db.ActiveOfficer.update(u.id,{status,last_update:now,...callPatch}))
       ]);
     };
-    const privateLocation=await isLiveLocationHidden(base44,officer);
-    const locationPatch=(loc:any)=>valid(loc?.lat,loc?.lon)&&!privateLocation?{current_latitude:Number(loc.lat),current_longitude:Number(loc.lon),location_description:`${Number(loc.lat).toFixed(5)}, ${Number(loc.lon).toFixed(5)}`}:{};
-    if(action==='location'){
-      if(!isSelf)return Response.json({error:'Only the officer can send live coordinates'},{status:403});
-      const row=open.find((a:any)=>String(a.id)===String(body.distress_id));
-      if(!row)return Response.json({success:true,active:false});
-      const patch=locationPatch(body.location);
-      if(!Object.keys(patch).length)return Response.json({success:true,active:true,location_saved:false});
-      await db.OfficerDistress.update(row.id,{...patch,...(!valid(row.latitude,row.longitude)?{latitude:patch.current_latitude,longitude:patch.current_longitude}:{})});
-      return Response.json({success:true,active:true,location_saved:true});
-    }
     if(action==='acknowledge'||action==='responders_enroute'){
       if(isSelf && user.role!=='admin' && user.role!=='dispatch' && !roles.has('dispatch')&&!roles.has('supervisor')&&!roles.has('full_access'))return Response.json({error:'Dispatch authorization required'},{status:403});
       const row=open.find((a:any)=>String(a.id)===String(body.distress_id));
@@ -102,10 +103,7 @@ Deno.serve(async (req) => {
         unit_number: officer.unit_number || '???',
         rank: officer.rank || '',
         last_name: officer.last_name || String(officer.full_name || '').split(' ').pop() || '',
-        latitude: lat,
-        longitude: lon,
-        current_latitude: lat,
-        current_longitude: lon,
+        ...(valid(lat,lon)?{latitude:lat,longitude:lon,current_latitude:lat,current_longitude:lon}:{}),
         location_description: valid(lat,lon) ? `${Number(lat).toFixed(5)}, ${Number(lon).toFixed(5)}` : (privateLocation ? 'Live location hidden' : 'GPS unavailable — awaiting location'),
         status: 'active',
         activated_at: now,
@@ -136,6 +134,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, status: 'Distress', distress_id: created?.id || null, alert:created });
     }
 
+    if(!open.length)return Response.json({success:true,status:officer.status,cleared:0,next_call_id:officer.current_call_id||''});
     // Resolve only the distress incident. Ordinary assignments remain intact.
     const groups=await Promise.all(aliases.map(id=>db.CallAssignment.filter({unit_id:id},'-assigned_at',300)));
     const assignments=[...new Map(groups.flat().map((row:any)=>[row.id,row])).values()].filter((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
@@ -146,7 +145,7 @@ Deno.serve(async (req) => {
     const weights:any={critical:0,high:1,medium:2,low:3};
     candidates.sort((a:any,b:any)=>(weights[String(a.call.priority).toLowerCase()]??2)-(weights[String(b.call.priority).toLowerCase()]??2)||Date.parse(a.assignment.assigned_at)-Date.parse(b.assignment.assigned_at));
     const next=candidates[0];
-    const status=next?({on_scene:'On Scene',enroute:'Enroute'} as any)[next.assignment.status]||'Dispatched':liveSessions.length?'Available':'Off Duty';
+    const status=next?({on_scene:'On Scene',enroute:'Enroute'} as any)[next.assignment.status]||'Dispatched':liveSessions.length?'Available':'Out of Service';
     await Promise.all(open.map((row:any)=>db.OfficerDistress.update(row.id,{status:'cleared',cleared_at:now,cleared_by:user.id,cleared_by_name:user.full_name||user.email,notes:isSelf?'Officer cancelled':'Cleared by dispatch'})));
     await syncStatus(status,next?.call.id||'',next?`${next.call.incident||'Call for service'} · ${next.call.location||''}`:'');
     return Response.json({success:true,status,cleared:open.length,next_call_id:next?.call.id||'',next_call_number:next?(next.call.agency_cad_number||next.call.bps_reference||next.call.call_id||next.call.id):''});

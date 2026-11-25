@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import useActiveDistress,{distressPosition} from '@/lib/useActiveDistress';
 import { AlertTriangle, MapPin, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { stopDispatchAlert } from '@/utils/alertUtils';
 
 function timeStr(iso) {
@@ -22,7 +24,7 @@ async function reverseGeocode(lat, lon) {
 }
 
 export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin = false }) {
-    const [alerts, setAlerts] = useState([]);
+    const alerts=useActiveDistress();
     const [dismissed, setDismissed] = useState(new Set());
     const [addresses, setAddresses] = useState({});  // alertId -> address string
     const geocodedRef = useRef(new Set());
@@ -33,76 +35,39 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
     // announcement path. The distress banner stays visual-only so it never
     // starts a repeating siren or a second AudioContext.
 
-    const fetchAlerts = () => {
-        base44.entities.OfficerDistress.list('-activated_at', 20)
-            .then(all => {
-                const active = all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status));
-                if (active.length) stopDispatchAlert();
-                setAlerts(active);
-                // Reverse geocode any alert we haven't geocoded yet
-                active.forEach(alert => {
-                    const lat = alert.current_latitude || alert.latitude;
-                    const lon = alert.current_longitude || alert.longitude;
-                    if (lat && lon && !geocodedRef.current.has(alert.id)) {
-                        geocodedRef.current.add(alert.id);
-                        reverseGeocode(lat, lon).then(addr => {
-                            if (addr) setAddresses(prev => ({ ...prev, [alert.id]: addr }));
-                        });
-                    }
-                });
-            })
-            .catch(() => {});
-    };
-
-    useEffect(() => {
-        fetchAlerts();
-        let refreshTimer;
-        const handler = () => {
-            window.clearTimeout(refreshTimer);
-            refreshTimer = window.setTimeout(fetchAlerts, 200);
-        };
-        let unsubscribe;
-        try { unsubscribe = base44.entities.OfficerDistress.subscribe(handler); } catch {}
-        // Realtime events are primary; this poll only repairs a dropped subscription.
-        const interval = setInterval(fetchAlerts, 60_000);
-        window.addEventListener('officer-distress-activated', handler);
-        window.addEventListener('officer-distress-cleared', handler);
-        return () => {
-            clearInterval(interval);
-            window.clearTimeout(refreshTimer);
-            if (typeof unsubscribe === 'function') unsubscribe();
-            window.removeEventListener('officer-distress-activated', handler);
-            window.removeEventListener('officer-distress-cleared', handler);
-        };
-    }, []);
+    useEffect(()=>{
+      if(activeAlerts.length)stopDispatchAlert();
+      activeAlerts.forEach(alert=>{const pos=distressPosition(alert);if(pos&&!geocodedRef.current.has(alert.id)){geocodedRef.current.add(alert.id);reverseGeocode(...pos).then(addr=>{if(addr)setAddresses(prev=>({...prev,[alert.id]:addr}));});}});
+    },[alerts]);
 
     const handleAcknowledge = async (alert) => {
         if (!currentUser || !isDispatchOrAdmin) return;
         try {
-            await base44.entities.OfficerDistress.update(alert.id, {
-                status: 'acknowledged',
-                acknowledged_at: new Date().toISOString(),
-                acknowledged_by: currentUser.id,
-                acknowledged_by_name: `${currentUser.rank ? `${currentUser.rank} ` : ''}${currentUser.last_name || currentUser.full_name || 'Dispatch'}`.trim(),
-            });
-            fetchAlerts();
-        } catch (e) {}
+            const res=await base44.functions.invoke('manageOfficerDistress',{action:'acknowledge',officer_id:alert.officer_id,distress_id:alert.id});
+            if(!(res?.data||res)?.success)throw Error('Acknowledgment not saved');
+
+        } catch (e) {toast.error(e?.message||'Distress action failed — retry');}
     };
 
     const handleResponders = async (alert) => {
         if (!currentUser || !isDispatchOrAdmin) return;
         try {
-            await base44.entities.OfficerDistress.update(alert.id, { status: 'responders_enroute' });
-            fetchAlerts();
-        } catch (e) {}
+            const res=await base44.functions.invoke('manageOfficerDistress',{action:'responders_enroute',officer_id:alert.officer_id,distress_id:alert.id});
+            if(!(res?.data||res)?.success)throw Error('Responder status not saved');
+
+        } catch (e) {toast.error(e?.message||'Distress action failed — retry');}
     };
 
     const handleClear = async (alert) => {
         if (!currentUser || !isDispatchOrAdmin) return;
         try {
-            await base44.functions.invoke('manageOfficerDistress', { action: 'clear', officer_id: alert.officer_id });
-            fetchAlerts();
-        } catch (e) {}
+            const res=await base44.functions.invoke('manageOfficerDistress', { action: 'clear', officer_id: alert.officer_id });
+            const payload=res?.data||res;
+            if(!payload?.success)throw Error(payload?.error||'Clearance not saved');
+            window.dispatchEvent(new CustomEvent('officer-distress-cleared',{detail:{officer_id:alert.officer_id}}));
+            toast.success(payload.next_call_number?'Distress cleared. Next call: '+payload.next_call_number:'Distress cleared');
+
+        } catch (e) {toast.error(e?.message||'Distress action failed — retry');}
     };
 
     if (visible.length === 0) return null;
@@ -156,15 +121,16 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
                                     </div>
 
                                     <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-1.5">
-                                        {(alert.latitude || alert.current_latitude) && (
+                                        {distressPosition(alert) && (
                                             <span className="text-red-300 text-xs font-mono flex items-center gap-1">
                                                 <MapPin className="w-3 h-3" />
                                                 {addresses[alert.id]
                                                     ? addresses[alert.id]
-                                                    : `${(alert.current_latitude ?? alert.latitude ?? 0).toFixed(4)}, ${(alert.current_longitude ?? alert.longitude ?? 0).toFixed(4)}`
+                                                    : `${distressPosition(alert)[0].toFixed(4)}, ${distressPosition(alert)[1].toFixed(4)}`
                                                 }
                                             </span>
                                         )}
+                                        {!distressPosition(alert)&&<span className="text-xs text-amber-200">{alert.location_description||"GPS unavailable — awaiting location"}</span>}
                                         <span className="text-red-400 text-xs font-mono flex items-center gap-1">
                                             <Clock className="w-3 h-3" />
                                             ACTIVATED: {timeStr(alert.activated_at)}
