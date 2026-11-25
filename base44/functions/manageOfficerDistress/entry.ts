@@ -42,38 +42,60 @@ Deno.serve(async (req) => {
       roles.has('supervisor') ||
       roles.has('dispatch');
     if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
-    if (!['activate', 'clear'].includes(action)) return Response.json({ error: 'Invalid action' }, { status: 400 });
+    if (!['activate', 'clear', 'location', 'acknowledge', 'responders_enroute'].includes(action)) return Response.json({ error: 'Invalid action' }, { status: 400 });
 
-    const users = await base44.asServiceRole.entities.User.list(undefined, 1000);
-    const officer = (users || []).find((u: any) => u.id === officerId);
+    const officer = await base44.asServiceRole.entities.User.get(officerId).catch(()=>null);
     if (!officer) return Response.json({ error: 'Officer not found' }, { status: 404 });
 
     const now = new Date().toISOString();
 
-    const syncStatus = async (status: string) => {
-      await base44.asServiceRole.entities.User.update(officer.id, {
-        status,
-        last_updated: now,
-        status_since: now,
-      });
-      const units = await base44.asServiceRole.entities.Unit.list(undefined, 500);
-      const linked = (units || []).filter((u: any) =>
-        u.user_id === officer.id ||
-        String(u.user_email || '').toLowerCase() === String(officer.email || '').toLowerCase()
-      );
-      await Promise.all(linked.map((u: any) =>
-        base44.asServiceRole.entities.Unit.update(u.id, {
-          status,
-          last_update_at: now,
-        })
-      ));
+    const db=base44.asServiceRole.entities;
+    const activeStates=['active','acknowledged','responders_enroute'];
+    const valid=(lat:any,lon:any)=>lat!=null&&lon!=null&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180&&!(Number(lat)===0&&Number(lon)===0);
+    const [units,sessions,alerts]=await Promise.all([
+      db.Unit.filter({user_id:officer.id},'-last_update_at',30),
+      db.ActiveOfficer.filter({officer_email:officer.email},'-last_update',15),
+      db.OfficerDistress.filter({officer_id:officer.id},'-activated_at',50)
+    ]);
+    const open=(alerts||[]).filter((row:any)=>activeStates.includes(row.status));
+    const liveSessions=(sessions||[]).filter((row:any)=>row.session_active!==false);
+    const aliases=[...new Set([officer.id,officer.email,...units.map((u:any)=>u.id),...sessions.map((u:any)=>u.id)].filter(Boolean).map(String))];
+    const syncStatus=async(status:string,callId?:string,info?:string)=>{
+      const callPatch=callId===undefined?{}:{current_call_id:callId,current_call_info:info||''};
+      await Promise.all([
+        db.User.update(officer.id,{status,last_updated:now,status_since:now,...callPatch}),
+        ...units.map((u:any)=>db.Unit.update(u.id,{status,last_update_at:now})),
+        ...liveSessions.map((u:any)=>db.ActiveOfficer.update(u.id,{status,last_update:now,...callPatch}))
+      ]);
     };
+    const privateLocation=await isLiveLocationHidden(base44,officer);
+    const locationPatch=(loc:any)=>valid(loc?.lat,loc?.lon)&&!privateLocation?{current_latitude:Number(loc.lat),current_longitude:Number(loc.lon),location_description:`${Number(loc.lat).toFixed(5)}, ${Number(loc.lon).toFixed(5)}`}:{};
+    if(action==='location'){
+      if(!isSelf)return Response.json({error:'Only the officer can send live coordinates'},{status:403});
+      const row=open.find((a:any)=>String(a.id)===String(body.distress_id));
+      if(!row)return Response.json({success:true,active:false});
+      const patch=locationPatch(body.location);
+      if(!Object.keys(patch).length)return Response.json({success:true,active:true,location_saved:false});
+      await db.OfficerDistress.update(row.id,{...patch,...(!valid(row.latitude,row.longitude)?{latitude:patch.current_latitude,longitude:patch.current_longitude}:{})});
+      return Response.json({success:true,active:true,location_saved:true});
+    }
+    if(action==='acknowledge'||action==='responders_enroute'){
+      if(isSelf && user.role!=='admin' && user.role!=='dispatch' && !roles.has('dispatch')&&!roles.has('supervisor')&&!roles.has('full_access'))return Response.json({error:'Dispatch authorization required'},{status:403});
+      const row=open.find((a:any)=>String(a.id)===String(body.distress_id));
+      if(!row)return Response.json({error:'Active distress not found'},{status:404});
+      await db.OfficerDistress.update(row.id,action==='acknowledge'?{status:'acknowledged',acknowledged_at:now,acknowledged_by:user.id,acknowledged_by_name:user.full_name||user.email}:{status:'responders_enroute'});
+      return Response.json({success:true});
+    }
 
     if (action === 'activate') {
-      const privateLocation = await isLiveLocationHidden(base44, officer);
-      const loc = privateLocation ? null : body.location || null;
-      const lat = loc?.lat ?? null;
-      const lon = loc?.lon ?? null;
+      if(open.length){await syncStatus('Distress');return Response.json({success:true,status:'Distress',distress_id:open[0].id,alert:open[0]});}
+      const fallback=liveSessions.flatMap((row:any)=>[
+        {lat:row.reliable_latitude,lon:row.reliable_longitude,at:row.reliable_gps_updated_at},
+        {lat:row.latitude,lon:row.longitude,at:row.gps_updated_at}
+      ]).filter((fix:any)=>valid(fix.lat,fix.lon)&&Date.now()-Date.parse(fix.at)<60000&&Date.parse(fix.at)<=Date.now()+5000).sort((a:any,b:any)=>Date.parse(b.at)-Date.parse(a.at))[0];
+      const supplied=isSelf&&valid(body.location?.lat,body.location?.lon)?body.location:null;
+      const loc=privateLocation?null:supplied||fallback;
+      const lat=loc?Number(loc.lat):null,lon=loc?Number(loc.lon):null;
       const distressData = {
         officer_id: officer.id,
         officer_name: officer.full_name || 'Unknown Officer',
@@ -84,7 +106,7 @@ Deno.serve(async (req) => {
         longitude: lon,
         current_latitude: lat,
         current_longitude: lon,
-        location_description: (lat && lon) ? `${Number(lat).toFixed(5)}, ${Number(lon).toFixed(5)}` : (privateLocation ? 'Live location hidden' : officer.last_known_location || 'Location unavailable'),
+        location_description: valid(lat,lon) ? `${Number(lat).toFixed(5)}, ${Number(lon).toFixed(5)}` : (privateLocation ? 'Live location hidden' : 'GPS unavailable — awaiting location'),
         status: 'active',
         activated_at: now,
         notes: isSelf ? '' : `Triggered by dispatch (${[user.rank, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email})`,
@@ -111,23 +133,23 @@ Deno.serve(async (req) => {
         sensitive: true,
       });
       await syncStatus('Distress');
-      return Response.json({ success: true, status: 'Distress', distress_id: created?.id || null });
+      return Response.json({ success: true, status: 'Distress', distress_id: created?.id || null, alert:created });
     }
 
-    // clear
-    const allAlerts = await base44.asServiceRole.entities.OfficerDistress.filter({ officer_id: officer.id }, '-activated_at', 20);
-    const open = (allAlerts || []).filter((a: any) => a.status !== 'cleared');
-    for (const a of open) {
-      await base44.asServiceRole.entities.OfficerDistress.update(a.id, {
-        status: 'cleared',
-        cleared_at: now,
-        cleared_by: user.id,
-        cleared_by_name: user.full_name,
-        notes: isSelf ? 'Officer cancelled' : 'Cleared by dispatch',
-      });
-    }
-    await syncStatus('Available');
-    return Response.json({ success: true, status: 'Available', cleared: open.length });
+    // Resolve only the distress incident. Ordinary assignments remain intact.
+    const groups=await Promise.all(aliases.map(id=>db.CallAssignment.filter({unit_id:id},'-assigned_at',300)));
+    const assignments=[...new Map(groups.flat().map((row:any)=>[row.id,row])).values()].filter((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
+    const candidates=(await Promise.all([...new Map(assignments.map((row:any)=>[row.call_id,row])).values()].map(async (assignment:any)=>{
+      const call=await db.DispatchCall.get(assignment.call_id).catch(()=>null);
+      return call&&!call.manual_dismissed&&!['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(call.status||'').toLowerCase())?{assignment,call}:null;
+    }))).filter(Boolean);
+    const weights:any={critical:0,high:1,medium:2,low:3};
+    candidates.sort((a:any,b:any)=>(weights[String(a.call.priority).toLowerCase()]??2)-(weights[String(b.call.priority).toLowerCase()]??2)||Date.parse(a.assignment.assigned_at)-Date.parse(b.assignment.assigned_at));
+    const next=candidates[0];
+    const status=next?({on_scene:'On Scene',enroute:'Enroute'} as any)[next.assignment.status]||'Dispatched':liveSessions.length?'Available':'Off Duty';
+    await Promise.all(open.map((row:any)=>db.OfficerDistress.update(row.id,{status:'cleared',cleared_at:now,cleared_by:user.id,cleared_by_name:user.full_name||user.email,notes:isSelf?'Officer cancelled':'Cleared by dispatch'})));
+    await syncStatus(status,next?.call.id||'',next?`${next.call.incident||'Call for service'} · ${next.call.location||''}`:'');
+    return Response.json({success:true,status,cleared:open.length,next_call_id:next?.call.id||'',next_call_number:next?(next.call.agency_cad_number||next.call.bps_reference||next.call.call_id||next.call.id):''});
   } catch (error) {
     console.error('manageOfficerDistress failed', error);
     return Response.json({ error: error?.message || 'Unable to update distress' }, { status: 500 });
