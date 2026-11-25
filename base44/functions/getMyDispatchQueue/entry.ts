@@ -42,21 +42,20 @@ Deno.serve(async (req) => {
     const aliases=[String(me.id),String(me.email||''),...(ownedUnits||[]).map((row:any)=>String(row.id)),...(sessions||[]).map((row:any)=>String(row.id))].filter(Boolean);
     // One bounded roster snapshot per queue refresh, rather than unsupported
     // $in filters plus N+1 reads and side-effect writes for each assigned call.
-    const [allRecentAssignments,allRecentCalls,allRecentLogs,directory]=await Promise.all([
+    const [allRecentAssignments,allRecentCalls,directory,ownedAssignmentGroups,welfareChecks]=await Promise.all([
       base44.asServiceRole.entities.CallAssignment.list('-assigned_at',500),
       base44.asServiceRole.entities.DispatchCall.list('-created_date',600),
-      base44.asServiceRole.entities.CallStatusLog.list('-created_date',650),
       base44.asServiceRole.entities.User.list('-updated_date',350),
+      Promise.all([...new Set(aliases)].map(id => base44.asServiceRole.entities.CallAssignment.filter({unit_id:id},'-assigned_at',300))),
+      base44.asServiceRole.entities.OfficerWelfareCheck.filter({ officer_email: lower(me.email) }, '-requested_at', 100).catch(() => []),
     ]);
-    const ownedAssignmentGroups = await Promise.all(aliases.map(id => base44.asServiceRole.entities.CallAssignment.filter({unit_id:id},'-assigned_at',300)));
     const assignments = [...new Map(ownedAssignmentGroups.flat().map((a:any)=>[String(a.id),a])).values()];
     const linkedRecords=(allRecentCalls||[]).filter((call:any)=>Array.isArray(call.assigned_units)&&call.assigned_units.some((id:any)=>aliases.includes(String(id))));
 
-    const welfareChecks = await base44.asServiceRole.entities.OfficerWelfareCheck.filter({ officer_email: lower(me.email) }, '-requested_at', 100).catch(() => []);
     const activeAssignments=(assignments||[]).filter((a:any)=> !['cleared','cancelled','canceled'].includes(lower(a.status)));
     // CAD's assigned_units is a second explicit assignment source when a
     // legacy dispatcher wrote the call but missed its CallAssignment row.
-    const linkedCalls=(linkedRecords||[]).filter((call:any)=>!isTerminalCall(call));
+    const linkedCalls=(linkedRecords||[]).filter((call:any)=>!isTerminalCall(call)&&(!assignments.some((a:any)=>String(a.call_id)===String(call.id))||activeAssignments.some((a:any)=>String(a.call_id)===String(call.id))));
     const linkedById=new Map(linkedCalls.map((call:any)=>[String(call.id),call]));
     const callIds=[...new Set([...activeAssignments.map((a:any)=>String(a.call_id||'')),...linkedById.keys()].filter(Boolean))];
     const callById=new Map((allRecentCalls||[]).map((call:any)=>[String(call.id),call]));
@@ -80,12 +79,10 @@ Deno.serve(async (req) => {
       // Unit queue data stays independent of the dispatcher call's global
       // status. Notes are loaded separately through sharedCadTimeline, the
       // *only* shared live stream between the two views.
-      const logs=(allRecentLogs||[]).filter((row:any)=>String(row.call_id)===String(call.id));
       const allCallAssignments=(allRecentAssignments||[]).filter((row:any)=>String(row.call_id)===String(call.id));
       const activeForCall=(allCallAssignments||[]).filter((a:any)=>!['cleared','cancelled','canceled'].includes(lower(a.status)));
       const namedPrimary=activeForCall.find((a:any)=>lower(a.role)==='primary')||activeForCall.slice().sort((a:any,b:any)=>Date.parse(a.assigned_at||0)-Date.parse(b.assigned_at||0))[0];
-      const latestOwnEvent=(logs||[]).find((log:any)=>aliases.includes(String(log.unit_id))&&['unit_on_scene','unit_enroute','unit_acknowledged'].includes(String(log.event_type||''))&&Date.parse(log.created_date||'')>=Date.parse(assignment?.assigned_at||call.time_dispatched||call.created_date||''));
-      const ownStatus=latestOwnEvent?.event_type==='unit_on_scene'?'on_scene':latestOwnEvent?.event_type==='unit_enroute'?'enroute':assignment?.status||'pending';
+      const ownStatus=assignment?.status||'pending';
       queue.push({
         ...call,
         assignment:{...(assignment||{assigned_at:call.time_dispatched||call.created_date,unit_id:me.id,call_id:call.id}),status:ownStatus},

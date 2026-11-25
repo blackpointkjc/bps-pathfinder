@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     const hasActiveAssignment=assignmentRows.some((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
     const assigned = Array.isArray(call.assigned_units) ? call.assigned_units : [];
     const assignedIds = assigned.map((id:any) => String(id));
-    if (!assignedIds.some((id:string)=>aliases.includes(id)) && !hasActiveAssignment && user.role !== 'admin') {
+    if (!assignedIds.some((id:string)=>aliases.includes(id)) && !hasActiveAssignment ) {
       return Response.json({ error: 'You must be assigned to this call before changing its status' }, { status: 403 });
     }
 
@@ -68,14 +68,19 @@ Deno.serve(async (req) => {
       || ((ownedSessions||[]).some((session:any)=>String(session.current_call_id||'')===String(call_id)&&String(session.status||'').toLowerCase()==='on scene'));
     if(unitAlreadyOnScene && ['Acknowledged','Enroute'].includes(status))return Response.json({success:true,status:'On Scene',duplicate_transition:true,message:'Your unit is already On Scene. Earlier stages will not overwrite arrival.'});
     const assignments = assignmentRows;
+    if(status==='Acknowledged' && assignmentRows.some((a:any)=>String(a.status).toLowerCase()==='enroute'))return Response.json({success:true,status:'Enroute',duplicate_transition:true});
     const assignmentStatus = status === 'Acknowledged' ? 'accepted' : status === 'Enroute' ? 'enroute' : status === 'On Scene' ? 'on_scene' : 'cleared';
-    for (const assignment of (assignments || []).filter((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()))) {
+    const activeOwn=(assignments || []).filter((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
+    if(!activeOwn.length && assignedIds.some((id:string)=>aliases.includes(id))) {
+      await base44.asServiceRole.entities.CallAssignment.create({call_id,unit_id:user.id,role:(allForCall||[]).some((a:any)=>!aliases.includes(String(a.unit_id))&&!['cleared','cancelled','canceled'].includes(String(a.status).toLowerCase()))?'backup':'primary',assigned_at:call.time_dispatched||call.created_date||now,status:assignmentStatus,...(status==='Acknowledged'?{accepted_at:now}:{}),...(status==='Cleared'?{cleared_at:now,description:String(disposition).trim().slice(0,1000)}:{})});
+    }
+    await Promise.all(activeOwn.map(async (assignment:any) => {
       const patch: Record<string, unknown> = { status: assignmentStatus };
       if (status === 'Acknowledged' && !assignment.accepted_at) patch.accepted_at = now;
       if (status === 'Cleared') patch.cleared_at = now;
       if (status === 'Cleared' && disposition) patch.description = `${assignment.description || ''} Disposition: ${String(disposition).trim()}`.trim().slice(0, 1000);
       await base44.asServiceRole.entities.CallAssignment.update(assignment.id, patch);
-    }
+    }));
 
     // Unit acknowledgement, travel and arrival belong solely to that officer's
     // CallAssignment and officer presence. DispatchCall.status is a *dispatch*
@@ -107,7 +112,7 @@ Deno.serve(async (req) => {
         status_since: now,
         last_updated: now,
       }).catch(() => null);
-      const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []);
+      const sessions = ownedSessions;
       for (const session of sessions || []) {
         if (session.session_active === false) continue;
         await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
@@ -118,7 +123,7 @@ Deno.serve(async (req) => {
           last_update: now,
         }).catch(() => null);
       }
-      const unitRows = await base44.asServiceRole.entities.Unit.filter({ user_id: user.id }, '-last_update_at', 20).catch(() => []);
+      const unitRows = ownedUnits;
       for (const unit of unitRows || []) {
         await base44.asServiceRole.entities.Unit.update(unit.id, {
           status: officerStatus,
@@ -165,15 +170,16 @@ Deno.serve(async (req) => {
     if (status === 'Cleared') {
       // Move the officer directly to the next active queued assignment instead of
       // briefly marking them Available when another dispatched call is waiting.
-      const remainingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ unit_id: user.id }, '-assigned_at', 500).catch(() => []);
-      const activeRemaining = (remainingAssignments || []).filter((a: any) => String(a.call_id) !== String(call_id) && !['cleared','cancelled'].includes(String(a.status || '').toLowerCase()));
+      const remainingGroups=await Promise.all([...new Set(aliases.filter(Boolean))].map(id=>base44.asServiceRole.entities.CallAssignment.filter({unit_id:id},'-assigned_at',300).catch(()=>[])));
+      const remainingAssignments=[...new Map(remainingGroups.flat().map((a:any)=>[a.id,a])).values()];
+      const activeRemaining = (remainingAssignments || []).filter((a: any) => String(a.call_id) !== String(call_id) && !['cleared','cancelled','canceled'].includes(String(a.status || '').toLowerCase()));
       const priorityWeight: Record<string, number> = { critical:0, high:1, medium:2, low:3 };
       const candidates: any[] = [];
-      for (const assignment of activeRemaining) {
+      await Promise.all([...new Map(activeRemaining.map((a:any)=>[a.call_id,a])).values()].map(async (assignment:any) => {
         const queuedCall = await base44.asServiceRole.entities.DispatchCall.get(assignment.call_id).catch(() => null);
-        if (!queuedCall || ['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(queuedCall.status || '').toLowerCase())) continue;
+        if (!queuedCall || queuedCall.manual_dismissed || ['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(queuedCall.status || '').toLowerCase())) return;
         candidates.push({ assignment, call:queuedCall });
-      }
+      }));
       candidates.sort((a,b) => {
         const p = (priorityWeight[String(a.call.priority || '').toLowerCase()] ?? 2) - (priorityWeight[String(b.call.priority || '').toLowerCase()] ?? 2);
         if (p) return p;
@@ -184,8 +190,9 @@ Deno.serve(async (req) => {
       const nextStatus = next ? 'Dispatched' : 'Available';
       const nextInfo = next ? `${next.call.incident || 'Call for service'} · ${next.call.location || ''}`.slice(0, 500) : '';
       await base44.asServiceRole.entities.User.update(user.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, status_since: now, last_updated: now }).catch(() => null);
-      const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []);
+      const sessions = ownedSessions;
       for (const session of sessions || []) if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, show_lights: false, last_update: now }).catch(() => null);
+      await Promise.all((ownedUnits||[]).map((unit:any)=>base44.asServiceRole.entities.Unit.update(unit.id,{status:nextStatus,assigned_call_ids:(unit.assigned_call_ids||[]).filter((id:any)=>String(id)!==String(call_id)),last_update_at:now}).catch(()=>null)));
       if (next) {
         await base44.asServiceRole.entities.CallNote.create({ call_id:next.call.id, author_id:user.id, author_name:officer, note:`[QUEUE] Previous call cleared. This is now the officer's next active call (${nextCad}).`, note_type:'update' }).catch(()=>null);
       }
