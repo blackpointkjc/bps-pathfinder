@@ -165,8 +165,9 @@ Deno.serve(async (req) => {
         if (alert && eventKey === `property-alert:${alert.id}:created`)
           originalEvent = { ...alert, event_key: eventKey };
       }
-      const eventAge = Date.now() - Date.parse(originalEvent?.created_date || "");
-      if (prior.state === "blocked" && originalEvent?.event_key === eventKey && Number.isFinite(eventAge) && eventAge >= 0 && eventAge <= 9e4 && !clean(prior.error).includes("retry_attempted")) {
+      const rawEventDate=String(originalEvent?.created_date||"");
+      const eventAge = Date.now() - Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawEventDate)?rawEventDate:rawEventDate+"Z");
+      if (prior.state === "blocked" && originalEvent?.event_key === eventKey && Number.isFinite(eventAge) && eventAge >= 0 && eventAge <= (clean(body.event_type)==="property_alert"?18e4:9e4) && !clean(prior.error).includes("retry_attempted")) {
         const changed = await base44.asServiceRole.entities.CadAnnouncementReceipt.updateMany(
           { id: prior.id, state: "blocked" },
           { $set: { state: "quiet", error: "retry_attempted", processed_at: (/* @__PURE__ */ new Date()).toISOString() } }

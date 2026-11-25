@@ -576,6 +576,7 @@ export default function GlobalMessageBanner({ user }) {
               if (!claim?.claimed) return;
               announcedPropertySpeech.current.add(propertyEventKey);
               const accepted = await announceVoiceAsync(announcementText, {
+                managedRecovery:true,
                 beforeSpeech: propertyHornPrelude({ propertyId: record.propertyId, callId: record.callId }),
                 dedupeMs: 6000,
                 eventId: propertyEventKey,
@@ -687,7 +688,8 @@ export default function GlobalMessageBanner({ user }) {
         if (claim?.claimed) {
           announcedPropertySpeech.current.add(propertyEventKey);
           const accepted = await announceVoiceAsync(announcementText, {
-            beforeSpeech: propertyHornPrelude({ propertyId: record.propertyId, callId: record.callId }),
+            managedRecovery:true,
+                beforeSpeech: propertyHornPrelude({ propertyId: record.propertyId, callId: record.callId }),
             dedupeMs: 6000,
             eventId: propertyEventKey,
             priority: 'critical',
@@ -800,6 +802,7 @@ export default function GlobalMessageBanner({ user }) {
         // Await the speech engine's actual completion. Previously the synchronous
         // enqueue return value was falsely marked 'played' even for silent audio.
         const accepted = await announceVoiceAsync(announcementText, {
+          managedRecovery: record.event_type==='property_alert',
           beforeSpeech: (record.event_type==='property_alert' || initialClaim?.claimed)
             ? propertyHornPrelude({ callId: record.call_id }) : undefined,
           dedupeMs: record.event_type === 'property_alert' ? 6000 : 4000,

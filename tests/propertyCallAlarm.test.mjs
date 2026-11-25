@@ -81,7 +81,7 @@ globalThis.window = {
 };
 const voiceSource = (await readFile('src/utils/voiceAnnouncer.js', 'utf8'))
   .replace("import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';", 'const formatEasternTime = () => ""; const parseServerTimestamp = value => new Date(value);');
-const voice = await import('data:text/javascript;base64,' + Buffer.from(voiceSource).toString('base64'));
+const voice = await import('data:text/javascript;base64,' + Buffer.from(voiceSource.replace("import { formatCadReferenceForSpeech } from '@/utils/cadSpeechReference';", 'const formatCadReferenceForSpeech = value => value;')).toString('base64'));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 let finishHorn;
 let hornCount = 0;
