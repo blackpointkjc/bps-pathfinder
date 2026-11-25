@@ -64,6 +64,9 @@ export default async function(req:Request):Promise<Response>{
 
     const signed=await api.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
     if(!signed?.id)return Response.json({error:'Sign-in required'},{status:401});
+    const authoritativeUser=await api.asServiceRole.entities.User.get(signed.id);
+    if(!authoritativeUser||lower(authoritativeUser.email)!==lower(signed.email))return Response.json({error:'Employee account not verified'},{status:403});
+    if(lower(signed.role)==='admin'||lower(authoritativeUser.role)==='admin')return Response.json({success:true,exempt:true,reason:'administrator_role'});
     const payload=await req.json().catch(()=>({}));
     const eventId=str(payload.event_id);
     const started=safeDate(payload.started_at),ended=safeDate(payload.ended_at);
@@ -81,7 +84,7 @@ export default async function(req:Request):Promise<Response>{
       ||!/(virginia dot|tomtom|openstreetmap posted)/i.test(source))
       return Response.json({error:'Speed telemetry does not meet the verified reporting thresholds'},{status:400});
     if(ended && (ended<started||ended>Date.now()+10000))return Response.json({error:'Invalid event end time'},{status:400});
-    const officer=await api.asServiceRole.entities.User.get(signed.id);
+    const officer=authoritativeUser;
     if(!officer||lower(officer.email)!==lower(signed.email))return Response.json({error:'Employee account not verified'},{status:403});
     if(officer.user_type==='client'||lower(officer.employment_status)==='terminated')return Response.json({error:'No active patrol permissions'},{status:403});
     const existing=asRows(await api.asServiceRole.entities.PatrolSpeedingEvent.filter({event_id:eventId,officer_id:officer.id},'-created_date',1));

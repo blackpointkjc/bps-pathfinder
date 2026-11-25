@@ -287,7 +287,7 @@ export default function Navigation() {
         estimated:roadSpeedLimitEstimated,
         navVoiceMuted,
     });
-    const speedSignQualified=Boolean(isLiveTracking && gpsQuality?.state==='live'
+    const speedSignQualified=Boolean(currentUser?.id && currentUser?.role!=='admin' && isLiveTracking && gpsQuality?.state==='live'
       && Number(gpsQuality?.accuracy)<=100 && !roadSpeedLimitEstimated
       && roadSpeedLimitAt>0 && Date.now()-roadSpeedLimitAt<70000
       && getLiveLocation(30000));

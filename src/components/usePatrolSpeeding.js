@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { subscribeLiveLocation } from '@/lib/liveLocationService';
-import { announceVoice, isVoiceEnabled } from '@/utils/voiceAnnouncer';
+import { announceVoice, cancelPatrolSpeedVoice } from '@/utils/voiceAnnouncer';
 import { advanceSpeedingEpisode, patrolSample, patrolSpeedLevel, shouldReportSpeeding } from '@/lib/patrolSpeeding';
 
 // Use the existing live GPS stream; no additional GPS polling or map requests.
 export function shouldAnnouncePatrolSpeedWarning({isAdmin=false,quiet=false,navMuted=false}={}) {
-  // Administrator permission is required to silence this particular safety
-  // alert. Officer and non-admin supervisor audio settings do not exempt it.
-  return !isAdmin || !(quiet || navMuted);
+  // Administrators are exempt; non-admin warning audio is mandatory.
+  return !isAdmin;
 }
 export default function usePatrolSpeeding({user,limit,limitAt,road,source,estimated,navVoiceMuted=false}) {
   const [level,setLevel]=useState('unknown');
@@ -22,18 +21,20 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
   const wasCritical=useRef(false);
   useEffect(()=>{
     criteria.current={userId:user?.id,isAdmin:user?.role==='admin',navVoiceMuted,limit,limitAt,road,source,estimated};
+    if (!user?.id || user?.role==='admin') {
+      episode.current=null; latest.current=null; wasCritical.current=false;
+      setLevel('unknown'); setReportStatus(''); cancelPatrolSpeedVoice();
+    }
   },[user?.id,user?.role,navVoiceMuted,limit,limitAt,road,source,estimated]);
 
   const voiceAllowed=()=>{
     const c=criteria.current;
-    return shouldAnnouncePatrolSpeedWarning({
-      isAdmin:c.isAdmin,
-      quiet:!isVoiceEnabled(),
-      navMuted:c.navVoiceMuted || (typeof localStorage !== 'undefined' && localStorage.getItem('bps:navigation-voice-muted') === '1')
-    });
+    return Boolean(c.userId) && shouldAnnouncePatrolSpeedWarning({isAdmin:c.isAdmin});
   };
   const report=(event,completed=false)=>{
-    if(!shouldReportSpeeding(event)||!criteria.current.userId)return;
+    if(!shouldReportSpeeding(event)||!criteria.current.userId||criteria.current.isAdmin)return;
+    const reportUserId=criteria.current.userId;
+    const eligible=()=>criteria.current.userId===reportUserId&&!criteria.current.isAdmin;
     const time=Date.now();
     const snapshot={...event};
     const payload={
@@ -54,21 +55,24 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
       samples:snapshot.samples
     };
     sendQueue.current=sendQueue.current.catch(()=>{}).then(async()=>{
+      if(!eligible())return;
       try {
         await base44.functions.invoke('reportPatrolSpeeding',payload);
+        if(!eligible())return;
         setReportStatus(completed?'Supervisor speed report finalized':'Supervisor speed review task created');
       }catch(error){
         // A transient network error should not silently lose the report.
         // Use one delayed retry only; 429 responses should not be hammered.
         const status=error?.response?.status;
-        if(status!==429 && navigator.onLine){
+        if(status!==429 && eligible() && navigator.onLine){
           await new Promise(resolve=>window.setTimeout(resolve,6000));
+          if(!eligible())return;
           try {
             await base44.functions.invoke('reportPatrolSpeeding',payload);
-            setReportStatus('Supervisor speed report synced');return;
+            if(eligible())setReportStatus('Supervisor speed report synced');return;
           }catch { /* preserve the error state */ }
         }
-        setReportStatus('Speed report could not sync; retry when connected');
+        if(eligible())setReportStatus('Speed report could not sync; retry when connected');
       }
     });
     if(!completed && episode.current?.eventId===event.eventId)
@@ -76,10 +80,11 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
   };
 
   useEffect(()=>{
-    if(!user?.id)return undefined;
+    if(!user?.id||user?.role==='admin')return undefined;
+    const subscribedUserId=user.id;
     const unsub=subscribeLiveLocation(fix=>{
       const c=criteria.current;
-      if(!c.userId)return;
+      if(c.userId!==subscribedUserId||c.isAdmin)return;
       const sample=patrolSample(fix,Number(c.limit),{
         estimated:c.estimated,
         limitAgeMs:Date.now()-Number(c.limitAt||0),
@@ -114,11 +119,12 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
           Date.now()-Number(next.episode.lastReportAt||0)>=45000)
         report(next.episode,false);
     });
-    return()=>{unsub(); if(episode.current && shouldReportSpeeding(episode.current))report(episode.current,true);};
-  },[user?.id]);
+    return()=>{unsub(); if(criteria.current.userId===subscribedUserId&&!criteria.current.isAdmin&&episode.current && shouldReportSpeeding(episode.current))report(episode.current,true); episode.current=null; latest.current=null;};
+  },[user?.id,user?.role]);
 
   // Voice repeats while a trustworthy high-overage fix remains recent.
   useEffect(()=>{
+    if(!user?.id||user?.role==='admin')return undefined;
     const interval=window.setInterval(()=>{
       const fix=latest.current;
       if(fix && Date.now()-fix.timestamp>45000 && episode.current){
@@ -139,6 +145,6 @@ export default function usePatrolSpeeding({user,limit,limitAt,road,source,estima
       lastVoice.current=Date.now();
     },5000);
     return()=>window.clearInterval(interval);
-  },[level,user?.id]);
-  return {level,reportStatus};
+  },[level,user?.id,user?.role]);
+  return user?.role==='admin'||!user?.id ? {level:'unknown',reportStatus:''} : {level,reportStatus};
 }
