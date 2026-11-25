@@ -155,6 +155,7 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getRoadSpeedLimit') return 86;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
+  if (meta?.kind === 'entity' && meta?.name === 'OfficerDistress') return 100;
   if (meta?.kind === 'entity' && meta?.name === 'PropertyAlert') return 97;
   if (meta?.kind === 'entity' && meta?.name === 'PropertyAlertReceipt') return 80;
   if (meta?.kind === 'entity' && ['DispatchCall','ActiveOfficer','TimeEntry'].includes(meta?.name)) return 90;
@@ -460,6 +461,7 @@ function invalidateReadCacheForWrite(meta = {}) {
   if (meta?.kind === 'function') {
     const name = String(meta.name || '');
     if (['updateMyFieldCallStatus','updateMyCallAssignment','manageCadUnitAssignment','updateCadCallStatus','createDispatchCall'].includes(name)) {addFunction('getMyDispatchQueue');addFunction('sharedCadTimeline');addFunction('getActiveDispatchCalls');addEntity('CallAssignment');addEntity('DispatchCall');}
+    if(name==='manageOfficerDistress'){addEntity('OfficerDistress');if(meta.action!=='location'){addEntity('User');addEntity('Unit');addEntity('ActiveOfficer');addFunction('getOnDutyUnits');addFunction('getMyDispatchQueue');prefixes.add('auth:me:');}}
     if (name === 'recordSupervisorCallOut') { addFunction('getMyScheduleData'); addEntity('CallOut'); addEntity('Schedule'); }
     if (['logLocation','manageLiveLocationPrivacy','updateOfficerStatus','enforceOfficerDutyStatus','forceOfficerStatus','forceUserSignOut','updateMyFieldCallStatus'].includes(name)) {
       // Routine GPS/heartbeats are applied by the realtime location hub. Only

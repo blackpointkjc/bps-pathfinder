@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { base44 } from '@/api/base44Client';
+import useActiveDistress,{distressPosition} from '@/lib/useActiveDistress';
 
 async function reverseGeocode(lat, lon) {
     try {
@@ -50,60 +50,24 @@ function AutoCenter({ position }) {
 }
 
 export default function OfficerDistressMarker({ autoCenter = false }) {
-    const [activeAlerts, setActiveAlerts] = useState([]);
+    const activeAlerts=useActiveDistress().filter(a=>distressPosition(a));
     const [addresses, setAddresses] = useState({});
     const geocodedRef = useRef(new Set());
     const icon = createDistressIcon();
 
-    useEffect(() => {
-        const fetchAndGeocode = () => {
-            base44.entities.OfficerDistress.list('-activated_at', 10)
-                .then(all => {
-                    const active = all.filter(a =>
-                        ['active', 'acknowledged', 'responders_enroute'].includes(a.status)
-                        && a.current_latitude && a.current_longitude
-                    );
-                    setActiveAlerts(active);
-                    active.forEach(alert => {
-                        const lat = alert.current_latitude || alert.latitude;
-                        const lon = alert.current_longitude || alert.longitude;
-                        if (lat && lon && !geocodedRef.current.has(alert.id)) {
-                            geocodedRef.current.add(alert.id);
-                            reverseGeocode(lat, lon).then(addr => {
-                                if (addr) setAddresses(prev => ({ ...prev, [alert.id]: addr }));
-                            });
-                        }
-                    });
-                })
-                .catch(() => {});
-        };
-        fetchAndGeocode();
-        let refreshTimer;
-        const scheduleRefresh = () => {
-            window.clearTimeout(refreshTimer);
-            refreshTimer = window.setTimeout(fetchAndGeocode, 250);
-        };
-        let unsubscribe;
-        try { unsubscribe = base44.entities.OfficerDistress.subscribe(scheduleRefresh); } catch {}
-        // Distress events arrive over realtime; polling is only a connection fallback.
-        const interval = setInterval(fetchAndGeocode, 60_000);
-        window.addEventListener('officer-distress-activated', scheduleRefresh);
-        window.addEventListener('officer-distress-cleared', scheduleRefresh);
-        return () => {
-            clearInterval(interval);
-            window.clearTimeout(refreshTimer);
-            if (typeof unsubscribe === 'function') unsubscribe();
-            window.removeEventListener('officer-distress-activated', scheduleRefresh);
-            window.removeEventListener('officer-distress-cleared', scheduleRefresh);
-        };
-    }, []);
+    useEffect(()=>{
+        activeAlerts.forEach(alert=>{
+            const pos=distressPosition(alert);
+            if(pos&&!geocodedRef.current.has(alert.id)){geocodedRef.current.add(alert.id);reverseGeocode(...pos).then(addr=>{if(addr)setAddresses(prev=>({...prev,[alert.id]:addr}));});}
+        });
+    },[activeAlerts]);
 
     if (activeAlerts.length === 0) return null;
 
     return (
         <React.Fragment>
             {activeAlerts.map(alert => {
-                const pos = [alert.current_latitude || alert.latitude, alert.current_longitude || alert.longitude];
+                const pos = distressPosition(alert);
                 return (
                     <React.Fragment key={alert.id}>
                         {autoCenter && <AutoCenter position={pos} />}

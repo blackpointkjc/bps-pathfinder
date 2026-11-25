@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Shield, MapPin, Crosshair, CloudSun } from 'lucide-react';
+import useActiveDistress,{distressPosition} from '@/lib/useActiveDistress';
 import { appParams } from '@/lib/app-params';
 import { getVisibleEmergencyStations } from '@/lib/emergencyStationCatalog';
 import { POLICE_STATIONS } from './PoliceStationMarkers';
@@ -164,7 +165,9 @@ const TOMTOM_CLOSE_PITCH = 30;
 const safeZoom = value => Math.min(TOMTOM_CLOSE_ZOOM, Number(value) || 16);
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,onMapReady,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,onMapReady,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false,showDistress=false,centerDistress=false}) {
+  const distressAlerts=useActiveDistress(showDistress);
+  const centeredDistressRef=useRef(new Set());
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
@@ -177,7 +180,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const onSelectFacilityRef=useRef(onSelectFacility);
   const onMapUnavailableRef=useRef(onMapUnavailable);
   const onMapReadyRef=useRef(onMapReady);
-  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence});
+  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress});
   const layerSnapshotRef=useRef({});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficModulesRef=useRef(null);
@@ -202,7 +205,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   onSelectFacilityRef.current=onSelectFacility;
   onMapUnavailableRef.current=onMapUnavailable;
   onMapReadyRef.current=onMapReady;
-  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence};
+  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress};
   mapClickEnabledRef.current=mapPickEnabled;
   // A traffic style reload creates new sources. Immediately repopulate them
   // from the latest CAD snapshot instead of waiting for the next GPS update.
@@ -220,6 +223,13 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
       callSource?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
       previous.calls=snapshot.activeCalls;
       previous.callSource=callSource;
+    }
+    const distressSource=map.getSource('pathfinder-distress');
+    if(distressSource&&(snapshot.distressAlerts!==previous.distress||distressSource!==previous.distressSource)){
+      const located=snapshot.distressAlerts.map(alert=>({alert,pos:distressPosition(alert)})).filter(row=>row.pos);
+      distressSource.setData(featureCollection(located.map(({alert,pos})=>marker(alert.id,pos[0],pos[1],{label:'SOS · UNIT '+(alert.unit_number||'UNKNOWN')}))));
+      previous.distress=snapshot.distressAlerts;previous.distressSource=distressSource;
+      if(snapshot.centerDistress){const newest=located.find(({alert})=>!centeredDistressRef.current.has(alert.id));if(newest){centeredDistressRef.current.add(newest.alert.id);map.easeTo({center:[newest.pos[1],newest.pos[0]],zoom:Math.max(map.getZoom(),15),duration:350});}}
     }
     const unitSource=map.getSource('pathfinder-units');
     const unitsChanged=snapshot.otherUnits!==previous.units || unitSource!==previous.unitSource;
@@ -435,6 +445,12 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
               if(station)onSelectFacilityRef.current?.({name:station.name,address:station.address||station.name,coords:station.coords,label:'Facility'});
             });
           }
+          if(!map.getSource('pathfinder-distress')){
+            map.addSource('pathfinder-distress',{type:'geojson',data:featureCollection([])});
+            map.addLayer({id:'pathfinder-distress-halo',type:'circle',source:'pathfinder-distress',paint:{'circle-radius':24,'circle-color':'#ef4444','circle-opacity':0.35,'circle-stroke-color':'#ef4444','circle-stroke-width':3}});
+            map.addLayer({id:'pathfinder-distress-pin',type:'circle',source:'pathfinder-distress',paint:{'circle-radius':13,'circle-color':'#b91c1c','circle-stroke-color':'#fff','circle-stroke-width':3}});
+            map.addLayer({id:'pathfinder-distress-label',type:'symbol',source:'pathfinder-distress',layout:{'text-field':['get','label'],'text-size':13,'text-offset':[0,-2],'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':'#fff','text-halo-color':'#991b1b','text-halo-width':3}});
+          }
           syncCadData(map);
           // Driving-style 3D buildings need a pitched camera and sufficiently
           // close zoom; the SDK's style initialization can reset mapLibre pitch.
@@ -579,7 +595,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     if(ready&&map)syncCadData(map);
-  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence]);
+  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress]);
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     const driving=Boolean(navigation) || Number(speedMph)>=5;

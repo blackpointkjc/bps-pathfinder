@@ -1860,7 +1860,7 @@ export default function Navigation() {
             <div className="absolute inset-0">
                 {useTomTomMainMap && isOnline && !tomTomMainMapFailed ? (
                   <Suspense fallback={<div role="status" className="absolute inset-0 flex items-center justify-center bg-slate-950 text-sm text-white">Loading TomTom live map…</div>}>
-                    <TomTomSdkMapPreview
+                    <TomTomSdkMapPreview showDistress
                       key={'tomtom-gps-'+tomTomRecoveryAttempt}
                       embedded allowBlankMapFallback
                       currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}

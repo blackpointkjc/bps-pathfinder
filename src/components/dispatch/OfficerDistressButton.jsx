@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
-import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { getLiveLocation, subscribeLiveLocation } from '@/lib/liveLocationService';
 
 // Hold for 2 seconds to activate
 const HOLD_MS = 2000;
@@ -15,36 +15,44 @@ export default function OfficerDistressButton({ currentUser, className = '', com
     const progressTimer = useRef(null);
     const startTime = useRef(null);
     const activeAlertIdRef = useRef(null);
+    const sending = useRef(false);
 
     // Check if user already has an active distress alert on mount
     useEffect(() => {
         if (!currentUser?.id) return;
-        base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' })
+        base44.entities.OfficerDistress.filter({ officer_id: currentUser.id })
             .then(results => {
-                if (Array.isArray(results) && results.length > 0) {
-                    activeAlertIdRef.current = results[0].id;
+                const active=(results||[]).find(row=>['active','acknowledged','responders_enroute'].includes(row.status));
+                if (active) {
+                    activeAlertIdRef.current = active.id;
                     setActivated(true);
                 }
             })
             .catch(() => {});
+        const sub=base44.entities.OfficerDistress.subscribe(event=>{
+            const row=event?.data;
+            if(row?.officer_id!==currentUser.id)return;
+            const active=['active','acknowledged','responders_enroute'].includes(row.status)&&event.type!=='delete';
+            activeAlertIdRef.current=active?row.id:null;setActivated(active);
+        });
+        return()=>{sub?.();clearTimeout(holdTimer.current);clearInterval(progressTimer.current);};
     }, [currentUser?.id]);
 
     useEffect(() => {
         if (!activated) return undefined;
         let lastWrite = 0;
         return subscribeLiveLocation((fix) => {
-            if (!activeAlertIdRef.current || Date.now() - lastWrite < 3000) return;
+            if (!activeAlertIdRef.current || Date.now()-fix.timestamp>15000 || Date.now() - lastWrite < 5000) return;
             lastWrite = Date.now();
-            base44.entities.OfficerDistress.update(activeAlertIdRef.current, {
-                current_latitude: fix.latitude,
-                current_longitude: fix.longitude,
-                location_description: `${fix.latitude.toFixed(5)}, ${fix.longitude.toFixed(5)}`,
-            }).catch(() => {});
+            base44.functions.invoke('manageOfficerDistress',{action:'location',distress_id:activeAlertIdRef.current,location:{lat:fix.latitude,lon:fix.longitude}}).then(res=>{
+                const data=res?.data||res||{};
+                if(data.active===false){activeAlertIdRef.current=null;setActivated(false);}
+            }).catch(()=>{});
         });
     }, [activated]);
 
     const startHold = (e) => {
-        if (activated || holding) return;
+        if (activated || holding || sending.current) return;
         e.preventDefault();
         e.currentTarget?.setPointerCapture?.(e.pointerId);
         setHolding(true);
@@ -75,40 +83,41 @@ export default function OfficerDistressButton({ currentUser, className = '', com
         setHolding(false);
         setProgress(0);
 
-        let liveFix = getLiveLocation(10000);
-        if (!liveFix) {
-            try { liveFix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 5000 }); } catch (_) {}
-        }
-        const location = liveFix ? { lat: liveFix.latitude, lon: liveFix.longitude } : null;
+        if(sending.current)return;
+        sending.current=true;
+        const liveFix=getLiveLocation(15000);
+        const location=liveFix?{lat:liveFix.latitude,lon:liveFix.longitude}:null;
 
         try {
             const res = await base44.functions.invoke('manageOfficerDistress', { action: 'activate', location });
             const payload = res?.data || res || {};
-            if (payload.error) throw new Error(payload.error);
+            if (!payload.success || payload.error) throw new Error(payload.error || 'Distress not confirmed');
             activeAlertIdRef.current = payload.distress_id || null;
             setActivated(true);
             toast.error('🚨 OFFICER DISTRESS ACTIVATED — Help is being notified', { duration: 10000 });
-            window.dispatchEvent(new CustomEvent('officer-distress-activated', { detail: { officer_id: currentUser.id, location } }));
+            window.dispatchEvent(new CustomEvent('officer-distress-activated', { detail: { officer_id: currentUser.id, location, alert:payload.alert } }));
             // Ongoing distress coordinates are fed by the one app-wide live-location
             // service; this component never starts a second GPS watcher.
         } catch (err) {
             toast.error('Failed to send distress signal — try again');
             console.error(err);
-        }
+        } finally {sending.current=false;}
     };
 
     const cancelDistress = async () => {
-        if (!currentUser?.id) return;
+        if (!currentUser?.id || sending.current) return;
+        sending.current=true;
         try {
             const res = await base44.functions.invoke('manageOfficerDistress', { action: 'clear' });
             const payload = res?.data || res || {};
             if (payload.error) throw new Error(payload.error);
             activeAlertIdRef.current = null;
             setActivated(false);
-            toast.success('Distress alert cancelled');
+            window.dispatchEvent(new CustomEvent('officer-distress-cleared',{detail:{officer_id:currentUser.id}}));
+            toast.success(payload.next_call_number?'Distress cleared. Next call: '+payload.next_call_number:'Distress alert cleared');
         } catch (err) {
             toast.error('Failed to cancel distress alert');
-        }
+        } finally {sending.current=false;}
     };
 
     if (!currentUser) return null;
