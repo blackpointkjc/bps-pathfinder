@@ -676,7 +676,7 @@ export default function CallHistory() {
                                 onClick={() => expandCall(row)}
                                 className={`flex cursor-pointer flex-col gap-2 border-b border-slate-800/70 px-3 py-3 text-[10px] transition-colors md:flex-row md:items-center md:gap-0 md:py-2
                                     ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
-                                    ${isExpanded ? 'bg-slate-800/60' : ''}`}> 
+                                    ${isExpanded ? 'bg-slate-800/60' : ''}`}>
                                 <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
                                 <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">Date / time</span>{fmtDT(row.time_received || row.created_date)}</div>
                                 <div className="min-w-0 w-full flex-1 md:pr-2">
@@ -747,8 +747,8 @@ export default function CallHistory() {
                                       <PropertyCallLinkControl call={row} onLinked={link=>setRows(current=>current.map(item=>item.id===row.id?{...item,_propertyCall:true,_propertyId:link.property_id,_propertyName:link.property_name,_propertyLinks:[...(item._propertyLinks||[]),link]}:item))}/>
                                       <p className="text-[11px] font-bold text-cyan-200">Reports linked to this call ({activity?.linked_reports?.length||row._linkedReports?.length||0})</p>
                                       {detail.loading&&<p className="text-xs text-cyan-300">Loading linked reports and recorded assignments…</p>}
-                                      
-                                      
+
+
                                       {activity && !activity.linked_reports?.length && !activity.warnings?.length && <p className="mt-1 text-xs text-slate-400">No report links recorded for this call.</p>}
                                       <div className="mt-2 flex flex-wrap gap-2">{(activity?.linked_reports||row._linkedReports||[]).map(link=><button key={link.id} type="button" onClick={event=>{event.stopPropagation();openLinkedReport(link);}} className="rounded-md border border-cyan-700 bg-cyan-950/30 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900/40">Open {sentenceCase(String(link.report_type||'Report').replace(/([a-z])([A-Z])/g,'$1 $2'))} #{link.report_number||link.report_id}</button>)}</div>
                                       {linkingCallId===row.id&&<div className="mt-3 flex flex-wrap gap-2"><input value={existingReportNumber} onChange={e=>setExistingReportNumber(e.target.value)} placeholder="Existing incident report number" className="h-9 flex-1 rounded border border-slate-600 bg-slate-900 px-3 text-xs text-white"/><button disabled={linkBusy} onClick={event=>{event.stopPropagation();linkExistingIncidentReport(row);}} className="rounded bg-emerald-700 px-3 py-2 font-bold text-white">{linkBusy?'Linking…':'Link report'}</button><button onClick={event=>{event.stopPropagation();setLinkingCallId(null);}} className="rounded border border-slate-600 px-3 py-2">Cancel</button></div>}
