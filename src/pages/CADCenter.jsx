@@ -48,7 +48,7 @@ export default function CADCenter({ embedded = false }) {
   return()=>{observer?.disconnect();window.removeEventListener('resize',measure);};
  },[active.id]);
  const select=(section,tool)=>{const next=new URLSearchParams(location.search);next.set(embedded?'cad_section':'section',section);next.set(toolKey,tool);['new','open','call_id','call_number','callId','lat','lng'].forEach(key=>next.delete(key));navigate({pathname:location.pathname,search:'?'+next.toString()},{replace:true});};
- return <main ref={hostRef} className={'cad-console-shell'+(active.id==='dispatch'?' cad-shell-dispatch':active.id==='map'?' cad-shell-map':'')}>
+ return <main ref={hostRef} className={'cad-console-shell'+(active.id==='dispatch'?' cad-shell-dispatch':active.id==='map'?' cad-shell-map':active.id==='command'?' cad-shell-command':'')}>
   <div className="cad-mobile-workstation-picker min-w-0 border-b border-[#34516c] bg-[#0c1929] p-2 xl:hidden">
    <label htmlFor="cad-mobile-workstation-select" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-cyan-200">CAD Workstation</label>
    <select
