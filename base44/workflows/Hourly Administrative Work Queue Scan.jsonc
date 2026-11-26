@@ -1,0 +1,45 @@
+{
+  "name": "Hourly Administrative Work Queue Scan",
+  "description": "Refresh administrative work queue every hour.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "5 * * * *",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "hourly_administrative_work_queue_scan",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_job": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "getRoleWorkQueue",
+            "args": {
+              "scheduled": true,
+              "queue_role": "admin",
+              "hourly_check": true
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
