@@ -378,6 +378,8 @@ Deno.serve(async (req) => {
     });
     return Response.json({
       success: true,
+      property_history_version: 2,
+      call_class: propertyOnly?'PROPERTY':'ALL',
       rows: decorated.sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
       next_cursor: nextCursor,
       has_more: hasMore,

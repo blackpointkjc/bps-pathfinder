@@ -1,3 +1,4 @@
+import {recoverPropertyHistory} from '@/lib/propertyHistoryRecovery';
 import { addressHistoryPattern } from '../../base44/functions/_shared/addressHistoryMatch.js';
 import { isValidCallRecord, isVisibleActiveCall } from '../../base44/functions/_shared/callFeedPolicy.js';
 import { cadReference } from '@/lib/cadReference';
@@ -117,6 +118,7 @@ export default function CallHistory() {
     const intervalRef = useRef(null);
     const realtimeTimerRef = useRef(null);
     const loadInFlightRef = useRef(false);
+    const historyAuthorizedRef=useRef(false);
     const lastServerReadRef=useRef(0);
     const pendingSearchRef=useRef(false);
     const monitoredPropertiesRef = useRef([]);
@@ -132,6 +134,7 @@ export default function CallHistory() {
     useEffect(() => {
       if (!filtersMountedRef.current) { filtersMountedRef.current = true; return; }
       setRefreshing(true);
+      setRows([]);setNextCursor(null);
       void loadAll(true);
     }, [agencyFilter, statusFilter, propertyFilter]);
 
@@ -235,17 +238,19 @@ export default function CallHistory() {
         try {
             const user = await withRequestTimeout(base44.auth.me(), 12000, 'Call history authentication');
             const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+            if (['client','student','visitor'].some(role=>roles.has(role)||String(user.user_type||'').toLowerCase()===role||String(user.role||'').toLowerCase()===role)) {navigate(createPageUrl('CommandDashboard'));return;}
             if (user.role !== 'admin' && user.role !== 'dispatch' && !roles.has('dispatch') && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access')) {
                 toast.error('Access required');
                 navigate(createPageUrl('CommandDashboard'));
                 return;
             }
         } catch { navigate(createPageUrl('CommandDashboard')); return; }
+        historyAuthorizedRef.current=true;
         // After access is verified, show recently confirmed operational calls
         // immediately instead of hiding the whole history screen behind a
         // 10-15 second archive query. Refresh with authoritative history below.
         const recent = readLastGoodCalls().filter(isVisibleActiveCall);
-        if(recent.length){
+        if(recent.length&&filtersRef.current.call_class!=='PROPERTY'){
             setRows(recent.map(call=>({...call,_source:'active',_historyFallback:true})));
             setLoading(false);
             setHistoryWarning('Showing recently saved live CAD calls while the historical archive loads.');
@@ -254,6 +259,7 @@ export default function CallHistory() {
     };
 
     const loadAll = async (force=false, append=false) => {
+        if(!historyAuthorizedRef.current)return;
         if(loadInFlightRef.current){if(force)pendingSearchRef.current=true;return;}
         if (!force && !append && pagesLoadedRef.current > 1) return;
         if (!force && !append && Date.now()-lastServerReadRef.current<45000) return;
@@ -276,15 +282,30 @@ export default function CallHistory() {
                 });
             }
 
-            const result = await withRequestTimeout(
-                base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, include_details:false, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined, page_size:40, cursor:append?cursorRef.current:null}),
-                35000,
-                'Call history request'
-            );
+            const request={search:searchRef.current,include_details:false,...filtersRef.current,since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined,until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined,page_size:40,cursor:append?cursorRef.current:null};
+            const propertyMode=request.call_class==='PROPERTY';
+            const recover=()=>recoverPropertyHistory({entities:base44.entities,...request,cursor:request.cursor?.direct_property?request.cursor:null,pageSize:40});
+            let payload;
+            if(propertyMode&&request.cursor?.direct_property)payload=await recover();
+            else {
+              try {
+                const result=await withRequestTimeout(base44.functions.invoke('getCallHistoryFeed',request),35000,'Call history request');
+                payload=result?.data||result||{};
+                if(!Array.isArray(payload.rows)&&payload?.data&&typeof payload.data==='object')payload=payload.data;
+                if(payload.error)throw Error(payload.error);
+                // A preview may be serving a previous backend implementation.
+                // Never apply the general CAD cursor to the property registry.
+                if(propertyMode&&(payload.property_history_version!==2||payload.call_class!=='PROPERTY'||!Array.isArray(payload.rows)||payload.rows.some(row=>!row._propertyCall)||(!payload.rows.length&&!request.cursor))){
+                  if(request.cursor)throw Error('Property history source changed; refresh the property history.');
+                  payload=await recover();
+                }
+              }catch(error){
+                if(!propertyMode||request.cursor)throw error;
+                payload=await recover();
+              }
+            }
             if(queryKey!==JSON.stringify([searchRef.current,fromDateRef.current,throughDateRef.current,filtersRef.current])){pendingSearchRef.current=true;return;}
-            let payload = result?.data || result || {};
-            if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
-            if (payload.error) throw new Error(payload.error);
+            if(payload.error)throw Error(payload.error);
             let feedRows = Array.isArray(payload.rows) ? payload.rows : [];
             let liveFeedRecovered = false;
             // The archived-history query can return a misleading empty page
@@ -314,7 +335,7 @@ export default function CallHistory() {
             cursorQueryRef.current=queryKey;
             setNextCursor(cursorRef.current);
             pagesLoadedRef.current = append ? pagesLoadedRef.current + 1 : 1;
-            setHistoryWarning(liveFeedRecovered
+            setHistoryWarning(payload.property_recovery?'Showing saved property alerts directly. Status is the saved alert snapshot; refresh for full CAD enrichment.':liveFeedRecovered
                 ? 'Showing verified live CAD calls. The historical archive feed returned no records; archive details may be incomplete.'
                 : (payload.warnings || []).length ? 'Some history sources could not be loaded. Refresh to retry.' : payload.scan_incomplete ? 'More history remains to be searched. Select Load older calls to continue.' : '');
             setLoading(false);
@@ -650,7 +671,7 @@ export default function CallHistory() {
             </div>
 
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
-              <span>Last 90 days · {rows.length} calls loaded · Filters apply to loaded results</span>
+              <span>Last 90 days · {rows.length} {propertyFilter==='PROPERTY'?'property history records':'calls'} loaded</span>
               {nextCursor && <button type="button" disabled={refreshing} onClick={()=>{setRefreshing(true);void loadAll(true,true);}} className="min-h-10 rounded border border-cyan-600 bg-cyan-950 px-4 font-bold text-cyan-100 disabled:opacity-50">{refreshing?'Loading…':'Load older calls'}</button>}
               {historyWarning && <span role="status" className="text-amber-300">{historyWarning}</span>}
             </div>
