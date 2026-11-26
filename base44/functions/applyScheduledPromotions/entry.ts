@@ -95,7 +95,7 @@ async function runOne(entities:any,event:any,clock:any){
 Deno.serve(async req=>{
  try{
   const sdk=createClientFromRequest(req),body=await req.json().catch(()=>({}));
- const job=await req.clone().json().catch(()=>({}));
+ const job=body;
     const rawJobUser=await sdk.auth.me().catch(()=>null);
     const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(Object.keys(job).every(k=>['scheduled','dry_run'].includes(k)));
     if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
