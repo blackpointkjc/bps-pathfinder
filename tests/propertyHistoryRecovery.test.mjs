@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {recoverPropertyHistory} from '../src/lib/propertyHistoryRecovery.js';
+const records=Array.from({length:91},(_,i)=>({id:'alert-'+i,callId:'call-'+i,callTime:new Date(Date.now()-(i+1)*60000).toISOString(),propertyName:i%2?'Armstrong':'Creighton',callIncident:'Service Call',callLocation:'100 Main Street',callStatus:'Enroute'}));
+records[0].is_test=true;
+const entities={PropertyAlert:{filter:async(q,sort,limit,skip)=>records.slice(skip,skip+limit)}};
+let cursor=null,all=[];
+do{const r=await recoverPropertyHistory({entities,cursor,pageSize:40});all.push(...r.rows);cursor=r.next_cursor;}while(cursor);
+assert.equal(all.length,90);
+assert(all.every(x=>x._propertyCall));
+assert.equal(new Set(all.map(x=>x.original_call_id)).size,90);
+const search=await recoverPropertyHistory({entities,search:'Armstrong'});
+assert(search.rows.every(x=>x._propertyName==='Armstrong'));
+assert.equal(search.rows.length,40);
+console.log('PASS: direct registry fallback, 90 valid property alerts across pages, search, test exclusion');
