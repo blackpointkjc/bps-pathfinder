@@ -95,30 +95,21 @@ export default function CallHistory() {
     const [sortField, setSortField] = useState('time');
     const [sortDir, setSortDir] = useState('desc');
     const [expandedId, setExpandedId] = useState(null);
-    const detailsRequestedRef=useRef(new Set());
-    const [detailsLoading,setDetailsLoading]=useState('');
-    const [detailsWarning,setDetailsWarning]=useState('');
-    const expandCall=(row)=>{
-      if(expandedId===row.id){setExpandedId(null);return;}
-      setExpandedId(row.id);
-      if(detailsRequestedRef.current.has(String(row.id)))return;
-      detailsRequestedRef.current.add(String(row.id));
-      setDetailsLoading(String(row.id));setDetailsWarning('');
-      void withRequestTimeout(base44.functions.invoke('getCallHistoryFeed',{
-        action:'call_details',call_id:row.original_call_id||row.id,call_number:cadReference(row),
-      }),10000,'Selected call details').then(response=>{
-        const result=response?.data||response||{};
-        if(result.error)throw Error(result.error);
-        setRows(current=>current.map(item=>String(item.id)===String(row.id)?{
-          ...item,_linkedReports:result.linked_reports||item._linkedReports||[],
-          _assignmentRecords:result.assignments||[],_detailsLoaded:true,
-        }:item));
-        if(result.warnings?.length)setDetailsWarning('Some linked call details are temporarily unavailable.');
-      }).catch(error=>{
-        detailsRequestedRef.current.delete(String(row.id));
-        setDetailsWarning('Linked report/assignment details unavailable: '+(error?.message||'retry by reopening call'));
-      }).finally(()=>setDetailsLoading(''));
+    const [callDetails,setCallDetails]=useState({});
+    const detailRequests=useRef(new Map());
+    const loadDetails=(row,force=false)=>{
+      const key=String(row.id);
+      if(detailRequests.current.has(key))return;
+      if(!force&&callDetails[key]?.data&&!callDetails[key]?.error&&!callDetails[key]?.data?.warnings?.length)return;
+      const request=Symbol();detailRequests.current.set(key,request);
+      setCallDetails(old=>({...old,[key]:{...old[key],loading:true,error:''}}));
+      if(force)clearBase44ReadCacheMatching('function:getCallHistoryFeed:');
+      void withRequestTimeout(base44.functions.invoke('getCallHistoryFeed',{action:'call_details',call_id:row.original_call_id||row.id,call_number:cadReference(row)}),35000,'Selected call activity').then(response=>{
+        const result=response?.data||response||{};if(result.error||!result.success)throw Error(result.error||'Call details unavailable');
+        setCallDetails(old=>({...old,[key]:{loading:false,data:result,error:''}}));
+      }).catch(error=>setCallDetails(old=>({...old,[key]:{...old[key],loading:false,error:error?.message||'Call activity unavailable'}}))).finally(()=>detailRequests.current.delete(key));
     };
+    const expandCall=row=>{if(expandedId===row.id){setExpandedId(null);return;}setExpandedId(row.id);loadDetails(row);};
     const [linkingCallId,setLinkingCallId]=useState(null);
     const [existingReportNumber,setExistingReportNumber]=useState('');
     const [linkBusy,setLinkBusy]=useState(false);
@@ -676,6 +667,7 @@ export default function CallHistory() {
                     const isActive = row._source === 'active' && isVisibleActiveCall(row);
                     const agKey = agencyKey(row.agency);
                     const agCls = AGENCY_COLORS[agKey] || 'bg-slate-700 text-slate-300 border-slate-600';
+                    const detail=callDetails[String(row.id)]||{}; const activity=detail.data;
                     const stCls = STATUS_COLORS[historyCallStatus(row)] || 'bg-slate-700 text-slate-400 border-slate-600';
                     const isExpanded = expandedId === (row.id);
                     return (
@@ -717,17 +709,17 @@ export default function CallHistory() {
                             {/* Expanded detail row */}
                             {isExpanded && (
                                 <div className="grid grid-cols-1 gap-x-6 gap-y-2 border-b border-slate-700 bg-slate-800/40 px-3 py-3 text-[10px] sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
-                                    {row.description && (
+                                    {(activity?.narrative||row.description) && (
                                         <div className="mb-1 sm:col-span-2 lg:col-span-3">
                                             <span className="text-slate-500 tracking-widest">NARRATIVE: </span>
-                                            <span className="text-slate-300">{row.description}</span>
+                                            <span className="text-slate-300">{activity?.narrative||row.description}</span>
                                         </div>
                                     )}
                                     {row.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{row.caller_name}</span></div>}
                                     {row.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{row.caller_phone}</span></div>}
                                     {row.zone && <div><span className="text-slate-500">ZONE: </span><span className="text-white">{row.zone}</span></div>}
                                     {row.cross_street && <div><span className="text-slate-500">CROSS ST: </span><span className="text-white">{row.cross_street}</span></div>}
-                                    <div className="sm:col-span-2 lg:col-span-3"><span className="text-slate-500">ASSIGNED OFFICERS / UNITS: </span><span className="font-bold text-emerald-300">{row._assignedUnitDetails?.length ? row._assignedUnitDetails.map(unit => unit.label + (unit.role ? ' (' + unit.role + ')' : '')).join(', ') : 'No recorded unit assignment'}</span></div>
+                                    <div className="sm:col-span-2 lg:col-span-3"><span className="text-slate-500">ASSIGNED OFFICERS / UNITS: </span><span className="font-bold text-emerald-300">{activity?.assignments?.length ? activity.assignments.map(unit=>unit.label+(unit.role?' ('+unit.role+')':'')).join(', ') : row._assignedUnitDetails?.length ? row._assignedUnitDetails.map(unit => unit.label).join(', ') : detail.loading?'Loading assignments…':'No assignment shown'}</span></div>
                                     {row._propertyCall && <div><span className="text-slate-500">Monitored property: </span><span className="font-bold text-amber-300">{sentenceCase(row._propertyName || row._propertyAlert?.propertyName || 'Monitored property')}</span></div>}
                                     {row._propertyCall && row._propertyLifecycle && <div><span className="text-slate-500">PROPERTY ALERT STATUS: </span><span className="text-white">{String(row._propertyLifecycle).replaceAll('_', ' ')}</span></div>}
                                     {row._propertyCall && Number.isFinite(Number(row._propertyDistanceMeters)) && Number(row._propertyDistanceMeters) > 0 && <div><span className="text-slate-500">BOUNDARY DISTANCE: </span><span className="text-white">{Math.round(Number(row._propertyDistanceMeters) / 0.3048)} ft</span></div>}
@@ -740,14 +732,25 @@ export default function CallHistory() {
                                             <span className="text-slate-300">{row.ai_summary}</span>
                                         </div>
                                     )}
+                                    <section className="sm:col-span-2 lg:col-span-3 rounded-xl border border-cyan-800 bg-[#0a1320] p-4 text-sm">
+                                      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-black text-cyan-100">Call Notes &amp; Activity Timeline</h3><button type="button" disabled={detail.loading} onClick={()=>loadDetails(row,true)} className="rounded border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-100"><RefreshCw className={`mr-1 inline h-3 w-3 ${detail.loading?'animate-spin':''}`}/>Refresh activity</button></div>
+                                      {detail.loading&&<p className="mt-2 text-cyan-300">Loading recorded call activity…</p>}
+                                      {detail.error&&<p role="alert" className="mt-2 text-amber-200">{detail.error}. Select Refresh activity to retry.</p>}
+                                      {activity?.warnings?.map(w=><p key={w} role="status" className="mt-1 text-xs text-amber-300">{w}</p>)}
+                                      {activity&&<><div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-300"><span>{activity.note_count} saved notes</span><span>{activity.log_count} CAD status records</span><span>{activity.assignments?.length||0} assignments</span></div>
+                                      <div className="mt-3 rounded border border-slate-700 p-3"><h4 className="font-bold text-white">Recorded outcome / disposition</h4>{activity.disposition?<p className="mt-1 whitespace-pre-wrap text-slate-200">{activity.disposition}</p>:<p className="mt-1 text-xs text-slate-400">No separate final disposition recorded. Review clearance notes and individual assignments below.</p>}{activity.assignments?.map((a,i)=><div key={i} className="mt-2 border-t border-slate-700 pt-2 text-xs"><b>{a.label}</b> · {a.role} · {a.status}{a.description&&<p className="mt-1 whitespace-pre-wrap text-slate-300">{a.description}</p>}</div>)}</div>
+                                      <div className="mt-4 space-y-2">{activity.timeline?.map(entry=><article key={entry.id} className="border-l-2 border-cyan-700 bg-slate-900/60 p-3"><div className="flex flex-wrap justify-between gap-2"><b className="capitalize text-cyan-100">{entry.title}</b><span className="text-xs text-slate-400">{fmtDT(entry.at)} ET</span></div><p className="mt-1 text-xs font-semibold text-slate-300">{entry.actor}</p>{entry.text&&<p className="mt-1 whitespace-pre-wrap break-words text-slate-200">{entry.text}</p>}</article>)}</div>
+                                      {!activity.timeline?.length&&!activity.warnings?.length&&<p className="mt-3 text-slate-400">No saved activity found for this call.</p>}
+                                      </>}
+                                    </section>
                                     <div className="sm:col-span-2 lg:col-span-3 rounded-lg border border-slate-700 bg-[#0a1320] p-3">
                                       <PropertyCallLinkControl call={row} onLinked={link=>setRows(current=>current.map(item=>item.id===row.id?{...item,_propertyCall:true,_propertyId:link.property_id,_propertyName:link.property_name,_propertyLinks:[...(item._propertyLinks||[]),link]}:item))}/>
-                                      <p className="text-[11px] font-bold text-cyan-200">Reports linked to this call ({row._linkedReports?.length||0})</p>
-                                      {detailsLoading===String(row.id)&&<p className="text-xs text-cyan-300">Loading linked reports and recorded assignments…</p>}
-                                      {expandedId===row.id&&detailsWarning&&<p role="status" className="text-xs text-amber-300">{detailsWarning}</p>}
-                                      {row._assignmentRecords?.length>0&&<p className="mt-1 text-xs text-emerald-300">{row._assignmentRecords.length} recorded CAD assignment(s): {row._assignmentRecords.map(item=>item.unit_id).filter(Boolean).join(', ')}</p>}
-                                      {!row._linkedReports?.length && row._detailsLoaded && <p className="mt-1 text-xs text-slate-400">No report links recorded for this call.</p>}
-                                      <div className="mt-2 flex flex-wrap gap-2">{(row._linkedReports||[]).map(link=><button key={link.id} type="button" onClick={event=>{event.stopPropagation();openLinkedReport(link);}} className="rounded-md border border-cyan-700 bg-cyan-950/30 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900/40">Open {sentenceCase(String(link.report_type||'Report').replace(/([a-z])([A-Z])/g,'$1 $2'))} #{link.report_number||link.report_id}</button>)}</div>
+                                      <p className="text-[11px] font-bold text-cyan-200">Reports linked to this call ({activity?.linked_reports?.length||row._linkedReports?.length||0})</p>
+                                      {detail.loading&&<p className="text-xs text-cyan-300">Loading linked reports and recorded assignments…</p>}
+                                      
+                                      
+                                      {activity && !activity.linked_reports?.length && !activity.warnings?.length && <p className="mt-1 text-xs text-slate-400">No report links recorded for this call.</p>}
+                                      <div className="mt-2 flex flex-wrap gap-2">{(activity?.linked_reports||row._linkedReports||[]).map(link=><button key={link.id} type="button" onClick={event=>{event.stopPropagation();openLinkedReport(link);}} className="rounded-md border border-cyan-700 bg-cyan-950/30 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900/40">Open {sentenceCase(String(link.report_type||'Report').replace(/([a-z])([A-Z])/g,'$1 $2'))} #{link.report_number||link.report_id}</button>)}</div>
                                       {linkingCallId===row.id&&<div className="mt-3 flex flex-wrap gap-2"><input value={existingReportNumber} onChange={e=>setExistingReportNumber(e.target.value)} placeholder="Existing incident report number" className="h-9 flex-1 rounded border border-slate-600 bg-slate-900 px-3 text-xs text-white"/><button disabled={linkBusy} onClick={event=>{event.stopPropagation();linkExistingIncidentReport(row);}} className="rounded bg-emerald-700 px-3 py-2 font-bold text-white">{linkBusy?'Linking…':'Link report'}</button><button onClick={event=>{event.stopPropagation();setLinkingCallId(null);}} className="rounded border border-slate-600 px-3 py-2">Cancel</button></div>}
                                     </div>
                                     <div className="mt-2 flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:flex-wrap lg:col-span-3">

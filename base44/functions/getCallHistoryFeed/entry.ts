@@ -61,16 +61,55 @@ Deno.serve(async (req) => {
       const id=String(input.call_id||'').trim().slice(0,100);
       const number=String(input.call_number||'').trim().slice(0,100);
       if(!id)return Response.json({error:'Call id required'},{status:400});
-      const [links,assignments]=await Promise.all([
-        readWithRetry('Linked reports',()=>base44.asServiceRole.entities.ReportCallLink.filter({call_id:id},'-linked_at',60),[]),
-        readWithRetry('Assigned units',()=>base44.asServiceRole.entities.CallAssignment.filter({call_id:id},'-assigned_at',60),[]),
+      const db=base44.asServiceRole.entities;
+      if(roles.has('client')||roles.has('student')||['client','student'].includes(lower(user.user_type)))return Response.json({error:'CAD access required'},{status:403});
+      const [live,archives,archiveById]=await Promise.all([
+        readWithRetry('Original call',()=>db.DispatchCall.get(id),null),
+        readWithRetry('Archived call',()=>db.CallHistory.filter({original_call_id:id},'-archived_date',10),[]),
+        readWithRetry('Archive record',()=>db.CallHistory.get(id),null)
       ]);
-      const linked=(links.data||[]).filter((row:any)=>String(row.status||'active').toLowerCase()!=='detached')
-        .map((row:any)=>({id:row.id,report_id:row.report_id,report_type:row.report_type,
-          report_number:row.report_number||row.report_id,call_number:row.call_number||number,linked_at:row.linked_at}));
-      return Response.json({success:true,linked_reports:linked,
-        assignments:(assignments.data||[]).map((row:any)=>({unit_id:row.unit_id,role:row.role,status:row.status,assigned_at:row.assigned_at})),
-        warnings:[links.error,assignments.error].filter(Boolean)});
+      const archived=(archives.data||[])[0]||archiveById.data;
+      const call=live.data||archived;
+      if(!call)return Response.json({error:'Original or archived CAD record unavailable'},{status:404});
+      const ids=[...new Set([live.data?.id,archived?.original_call_id,archived?.id].filter(Boolean).map(String))];
+      const filter={call_id:{$in:ids}};
+      const readPages=async(entity:any,sort:string)=>{
+        const out:any[]=[];
+        for(let skip=0;skip<2000;skip+=200){
+          const page=await entity.filter(filter,sort,200,skip);
+          if(!Array.isArray(page))throw Error('Invalid record response');
+          out.push(...page);if(page.length<200)return out;
+        }
+        throw Error('Activity exceeds 2000 records; contact administrator for full export');
+      };
+      const [links,assignments,notes,logs]=await Promise.all([
+        readWithRetry('Linked reports',()=>readPages(db.ReportCallLink,'-linked_at'),[]),
+        readWithRetry('Assigned units',()=>readPages(db.CallAssignment,'-assigned_at'),[]),
+        readWithRetry('Officer and dispatch notes',()=>readPages(db.CallNote,'-created_date'),[]),
+        readWithRetry('CAD status activity',()=>readPages(db.CallStatusLog,'-created_date'),[])
+      ]);
+      const actorIds=[...new Set([...assignments.data.map(a=>a.unit_id),...notes.data.map(n=>n.author_id),...logs.data.map(l=>l.unit_id)].filter(Boolean).map(String))];
+      const [units,sessions]=await Promise.all([
+        readWithRetry('Unit names',()=>actorIds.length?db.Unit.filter({id:{$in:actorIds}},'-last_update_at',500):Promise.resolve([]),[]),
+        readWithRetry('Session names',()=>actorIds.length?db.ActiveOfficer.filter({id:{$in:actorIds}},'-created_date',500):Promise.resolve([]),[])
+      ]);
+      const peopleIds=[...new Set([...actorIds,...units.data.map(u=>u.user_id)].filter(Boolean).map(String))];
+      const emails=[...new Set([...actorIds.filter(id=>id.includes('@')),...sessions.data.map(u=>u.officer_email)].filter(Boolean))];
+      const people=await readWithRetry('Officer names',()=>peopleIds.length?db.User.filter({$or:[{id:{$in:peopleIds}},{email:{$in:emails}}]},'-updated_date',500):Promise.resolve([]),[]);
+      const label=(key:any,fallback='')=>{
+        const unit=units.data.find(u=>String(u.id)===String(key)),session=sessions.data.find(u=>String(u.id)===String(key));
+        const person=people.data.find(u=>String(u.id)===String(unit?.user_id||key)||lower(u.email)===lower(session?.officer_email||key));
+        return fallback||[person?.unit_number?'Unit '+person.unit_number:'',person?.rank,person?.last_name||person?.full_name].filter(Boolean).join(' ')||unit?.label||session?.officer_name||'Officer not identified';
+      };
+      const timestamp=(v:any)=>{const raw=String(v||'');return Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z');};
+      const timeline=[
+        ...notes.data.map(n=>({id:'note-'+n.id,kind:'note',title:n.note_type==='clear'?'Clearance note':'Officer / dispatch note',actor:label(n.author_id,n.author_name),text:n.note,at:n.created_date})),
+        ...logs.data.map(l=>({id:'log-'+l.id,kind:'activity',title:String(l.event_type||l.new_status||'CAD update').replace(/_/g,' '),actor:label(l.unit_id,l.unit_name||(!l.unit_id?'CAD / Dispatch':'')),text:[l.old_status&&l.new_status&&l.old_status!==l.new_status?l.old_status+' → '+l.new_status:'',l.notes,l.announcement_text].filter(Boolean).join(' · '),at:l.created_date})),
+        ...assignments.data.flatMap(a=>[['assigned_at','Assigned'],['accepted_at','Acknowledged'],['cleared_at','Unit cleared']].filter(([field])=>a[field]).map(([field,title])=>({id:'assignment-'+a.id+'-'+field,kind:'assignment',title,actor:label(a.unit_id),text:field==='cleared_at'?a.description||'':a.role||'',at:a[field]}))),
+        ...[['time_received','Call received'],['time_dispatched','Dispatched'],['time_enroute','En route'],['time_on_scene','On scene'],['time_cleared','Call cleared'],['time_closed','Call closed']].filter(([field])=>call[field]).map(([field,title])=>({id:'call-'+field,kind:'record',title,actor:'CAD record',text:'',at:call[field]}))
+      ].sort((a,b)=>(timestamp(a.at)||0)-(timestamp(b.at)||0));
+      const linked=links.data.filter(row=>lower(row.status||'active')!=='detached').map(row=>({id:row.id,report_id:row.report_id,report_type:row.report_type,report_number:row.report_number||row.report_id,call_number:row.call_number||cadRef(call)||number,linked_at:row.linked_at}));
+      return Response.json({success:true,linked_reports:linked,assignments:assignments.data.map(row=>({unit_id:row.unit_id,label:label(row.unit_id),role:row.role,status:row.status,assigned_at:row.assigned_at,accepted_at:row.accepted_at,cleared_at:row.cleared_at,description:row.description})),timeline,disposition:call.disposition||'',narrative:call.description||'',note_count:notes.data.length,log_count:logs.data.length,warnings:[links.error,assignments.error,notes.error,logs.error,units.error,sessions.error,people.error].filter(Boolean)});
     }
     const search=String(input.search||'').trim().slice(0,160);
     const escaped=Array.from(search).map(c=>'\\^$.*+?()[]{}|'.includes(c)?'\\'+c:c).join('');
