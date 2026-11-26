@@ -10,7 +10,7 @@ import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
-import { base44, getBase44RequestHealth } from '@/api/base44Client';
+import { base44, getBase44RequestHealth, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Shield, Radio, Map as MapIcon, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
@@ -762,7 +762,7 @@ export default function DispatchCenter({embedded=false}) {
                 </div>
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
-                    <button type="button" onClick={()=>{void loadActiveCalls(true);void loadUnits(true);if(selectedCall?.id){void loadCallNotes(selectedCall.id);void loadWelfareChecks(selectedCall.id);}}} className="pf-cad-button">Refresh</button>
+                    <button type="button" onClick={()=>{for(const prefix of ['function:getActiveDispatchCalls:','function:getOnDutyUnits:','function:sharedCadTimeline:'])clearBase44ReadCacheMatching(prefix);void loadActiveCalls(true);void loadUnits(true);if(selectedCall?.id){void loadCallNotes(selectedCall.id);void loadWelfareChecks(selectedCall.id);}}} className="pf-cad-button">Refresh</button>
                     <button onClick={() => setShowCreateDialog(true)}
                         className="flex items-center gap-1 rounded-lg border border-blue-700 bg-[#163153] text-white hover:bg-blue-900">
                         <Plus className="w-3 h-3" /> New call
@@ -954,7 +954,7 @@ export default function DispatchCenter({embedded=false}) {
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
                             {selectedCall ? (
-                                <div className="pf-dispatch-detail-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>2 · Incident details</span><span className="text-slate-400">Selected call</span></div>
+                                <div className="pf-dispatch-detail-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>2 · Incident details</span><div className="flex gap-2 xl:hidden"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {isPulsePointCall(selectedCall) ? 'PP · '+(cadReference(selectedCall)||'Reference Pending') : selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}

@@ -1,5 +1,4 @@
 import '@/components/dispatch/cad-workstations.css';
-import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +20,7 @@ export default function OfficerDispatchQueue() {
   const [disposition, setDisposition] = useState('');
   const [working, setWorking] = useState(false);
   const actionLock = useRef(false);
+  const detailPanelRef=useRef(null);
   const queryClient = useQueryClient();
 
 
@@ -195,13 +195,13 @@ export default function OfficerDispatchQueue() {
       </div>
       {!queue.length ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-10 text-center"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-400"/><h2 className="text-lg font-black">Queue clear</h2><p className="text-sm text-slate-400">No active calls are assigned to you.</p></div> : <div className="pf-officer-grid">
         <aside className="pf-cad-panel pf-officer-list"><div className="pf-cad-panel-head"><h2>Assigned calls <span className="pf-cad-count">{queue.length}</span></h2></div><Input aria-label="Find an assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Find reference, incident or location" className="border-slate-600 bg-slate-900"/>{!visibleQueue.length&&<p className="p-4 text-sm text-slate-400">No matching assigned calls.</p>}
-          {visibleQueue.map((call)=><button key={call.id} disabled={working} onClick={()=>{setSelectedId(call.id);setDisposition('');setNote('');}} aria-pressed={selected?.id===call.id} className={`pf-officer-call w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
+          {visibleQueue.map((call)=><button key={call.id} disabled={working} onClick={()=>{setSelectedId(call.id);setDisposition('');setNote('');if(window.innerWidth<701)detailPanelRef.current?.scrollIntoView({block:'start',behavior:'smooth'});}} aria-pressed={selected?.id===call.id} className={`pf-officer-call w-full rounded-xl border p-3 text-left transition ${selected?.id===call.id?'border-cyan-400 bg-cyan-950/40':'border-slate-700 bg-[#08111d] hover:border-slate-500'}`}>
             <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-black text-slate-400">#{queue.indexOf(call)+1} IN QUEUE</div><Badge className={priorityClass(call.priority)}>{String(call.priority||'medium').toUpperCase()}</Badge></div>
             <div className="mt-2 font-black">{call.agency_cad_number || call.bps_reference || call.call_id || call.id}</div><div className="text-sm text-slate-200">{call.incident || 'Call for service'}</div><div className="mt-1 text-xs text-slate-400">{call.location || 'Location pending'}</div><div className="mt-2 text-[10px] font-bold text-cyan-300">YOUR STATUS: {statusLabel(call.assignment?.status)} · {call.assigned_officers?.find(u=>u.role==='primary')?.officer_name||'Primary pending'} (PRIMARY)</div>
           </button>)}
         </aside>
 
-        {selected && <main className="pf-officer-detail min-w-0">
+        {selected && <main ref={detailPanelRef} className="pf-officer-detail min-w-0">
           <section className="pf-cad-panel pf-officer-summary p-4">
             <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-xs font-bold text-cyan-300">CAD {selected.agency_cad_number || selected.bps_reference || selected.call_id || selected.id}</div><h2 className="mt-1 text-2xl font-black">{selected.incident || 'Call for Service'}</h2><div className="mt-2 flex items-start gap-2 text-sm text-slate-300"><MapPinned className="mt-0.5 h-4 w-4 text-cyan-400"/>{selected.location || 'Location unavailable'}{selected.cross_street ? ` · Cross: ${selected.cross_street}` : ''}</div>{selected.description && <p className="mt-3 rounded-lg bg-slate-950 p-3 text-sm text-slate-300">{selected.description}</p>}</div><Badge className={priorityClass(selected.priority)}>{String(selected.priority||'medium').toUpperCase()}</Badge></div>
           </section>

@@ -56,6 +56,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  return <div className="live-command-workspace pf-cad-workspace pf-command-workspace min-h-full min-w-0 text-slate-100">
   <header className="pf-cad-heading"><div><div className="pf-cad-eyebrow">Operations / Command</div><h1>Command Board</h1><p>Monitor incidents and response readiness.</p></div><div className="pf-cad-actions"><button type="button" className="pf-cad-button" onClick={onRefresh}><RefreshCw size={16}/> Refresh</button>{actions}</div></header>
   {critical.length>0&&<div className="pf-cad-alert"><span className="pf-cad-dot pf-cad-dot-danger"/><strong>{critical.length} priority response{critical.length===1?'':'s'} active</strong><button type="button" onClick={()=>setFocus('urgent')}>Review priority incidents <ArrowRight size={15}/></button></div>}
+  {rateLimited&&<p role="status" className="pf-cad-warning">CAD updates temporarily rate limited. Showing last received data.</p>}
   {(error||syncStatus.state==='error'&&syncStatus.error)&&<div role="alert" className="mb-4 rounded-xl border border-red-700 bg-red-950/40 p-4 text-sm text-red-100">{error||syncStatus.error}</div>}
   <div className="pf-cad-metrics">{[
    {id:'all',label:'Active incidents',value:loading&&!allCalls.length?'—':allCalls.length,detail:'All current calls',color:'text-white'},
