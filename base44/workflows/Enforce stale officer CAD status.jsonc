@@ -1,0 +1,44 @@
+{
+  "name": "Enforce stale officer CAD status",
+  "description": "Retire stale presence every 15 minutes without changing clocked-in duty status.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 15,
+      "interval_unit": "minutes",
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "enforceofficerdutystatus",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_job": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "enforceOfficerDutyStatus",
+            "args": {
+              "scheduled": true,
+              "action": "sweep"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
