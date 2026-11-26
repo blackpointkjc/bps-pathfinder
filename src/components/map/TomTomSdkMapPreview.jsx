@@ -57,8 +57,6 @@ const geofenceFeature=(config)=>{
 const callType = call => {
   const incident=String(call.incident||'').toLowerCase();
   const agency=String(call.agency||'').toUpperCase();
-  const channel=String(call.source_channel||call.source||'').toLowerCase();
-  const external=String(call.external_call_id||'').toLowerCase();
   if(/ems|medical|ambulance|unconscious|overdose|stroke|cardiac/.test(incident))return 'ems';
   if(agency.includes('FD')||/fire|smoke|alarm/.test(incident))return 'fire';
   return 'police';
