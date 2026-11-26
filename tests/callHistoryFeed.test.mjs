@@ -104,8 +104,30 @@ const partial=await history({});assert.equal(partial.status,200);assert(partial.
 failSource=''; role='user';officer=true;assert.equal((await history({page_size:25})).status,200);officer=false;role='client';
 assert.equal((await history({})).status,403);
 role='admin';
+// Exercise a filtered-out prefix, cross-page duplicate, property orphan and
+// legacy records without time_received against the actual handler.
+records.DispatchCall=[];records.CallHistory=[];records.PropertyAlert=[];
+const tie=new Date(now-120000).toISOString();
+for(let i=0;i<26;i++)records.CallHistory.push({...live,id:'tie-'+String(i).padStart(2,'0'),original_call_id:i===25?'tie-original-24':'tie-original-'+i,time_received:tie,created_date:tie,call_id:'BPS-202611-'+(1000+i)});
+records.DispatchCall.push({...live,id:'legacy-time',time_received:undefined,created_date:new Date(now-60000).toISOString()});
+records.DispatchCall.push({...live,id:'linked-property',time_received:new Date(now-180000).toISOString(),created_date:new Date(now-180000).toISOString()});
+records.PropertyAlert.push({id:'linked-alert',callId:'linked-property',callTime:new Date(now-180000).toISOString(),callIncident:'Service Call',callLocation:'100 Main Street',propertyName:'Example Property'});
+records.PropertyAlert.push({id:'orphan-alert',callId:'lost-call',callTime:new Date(now-240000).toISOString(),callIncident:'Property Call',callLocation:'100 Main Street',propertyName:'Example Property'});
+let edgeCursor=null,edgeSeen=new Set(),edgeRows=[],edgePages=0;
+do{
+ const page=await history({page_size:25,cursor:edgeCursor});
+ assert.equal(page.status,200);assert(page.data.rows.length<=25);
+ for(const row of page.data.rows){const key=row.original_call_id||row.id;assert(!edgeSeen.has(key),'duplicate '+key);edgeSeen.add(key);edgeRows.push(row);}
+ edgeCursor=page.data.next_cursor;assert(++edgePages<10);
+}while(edgeCursor);
+assert.equal(edgeSeen.size,28);
+assert(edgeSeen.has('legacy-time'));
+assert(edgeRows.find(row=>row.id==='linked-property')._propertyCall);
+assert.equal(edgeRows.find(row=>row.original_call_id==='lost-call')._source,'property');
+const orphanDetail=await history({action:'call_details',call_id:'lost-call'});
+assert.equal(orphanDetail.status,200);assert(orphanDetail.data.warnings.some(w=>w.includes('retained property alert')));
 const addressHistory=await loadHandler('base44/functions/getAddressCallHistory/entry.ts');
-records.DispatchCall=[];records.CallHistory=[];
+records.DispatchCall=[];records.CallHistory=[];records.PropertyAlert=[];
 const prior={...live,id:'prior',original_call_id:'original-prior',time_received:new Date(now-45*86400000).toISOString(),created_date:new Date(now-45*86400000).toISOString(),status:'Cleared'};
 records.CallHistory.push(prior);
 let result=await addressHistory({address:'3000 Griffin Avenue, Richmond, VA 23222'});
