@@ -293,7 +293,7 @@ export default function DispatchCenter({embedded=false}) {
         try {
             const user = await withRequestTimeout(base44.auth.me(), 12000, 'Dispatch authentication');
             setCurrentUser(user);
-            
+
             // Check every supported dispatch/CAD access path consistently.
             const roles = new Set((user.additional_roles || []).map(role => String(role).trim().toLowerCase()));
             const hasDispatchAccess = user.role === 'admin'
@@ -303,7 +303,7 @@ export default function DispatchCenter({embedded=false}) {
                 || roles.has('cad_access')
                 || hasSupervisorAccess(user)
                 || roles.has('full_access');
-            
+
             if (!hasDispatchAccess) {
                 toast.error('Unauthorized - Dispatch access required');
                 navigate(createPageUrl('CommandDashboard'));
@@ -892,7 +892,7 @@ export default function DispatchCenter({embedded=false}) {
                 <div className="dispatch-main pf-dispatch-grid flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
-                    <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}> 
+                    <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}>
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
@@ -950,9 +950,9 @@ export default function DispatchCenter({embedded=false}) {
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
-                    <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} pf-dispatch-detail min-h-0 w-full flex-1 min-w-0 flex-col xl:flex xl:min-h-0`}> 
+                    <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} pf-dispatch-detail min-h-0 w-full flex-1 min-w-0 flex-col xl:flex xl:min-h-0`}>
                         {/* Call Detail */}
-                        <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}> 
+                        <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
                             {selectedCall ? (
                                 <div className="pf-dispatch-detail-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>2 · Incident details</span><span className="text-slate-400">Selected call</span></div>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
@@ -974,7 +974,7 @@ export default function DispatchCenter({embedded=false}) {
                                     </div>
                                     <div className="pf-dispatch-facts px-3 md:px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                                         <h2 className="col-span-full text-xl font-bold text-white">{cleanIncident(selectedCall)}</h2>
-                                        
+
                                         <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
                                         <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{incidentPriority(selectedCall).toUpperCase()}</span></div>
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>

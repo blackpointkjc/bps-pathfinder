@@ -1,0 +1,123 @@
+/* Pathfinder operational workstations. Scoped to CAD pages, not global shell. */
+.pf-cad-workspace{--cad-bg:#09111c;--cad-panel:#111e2d;--cad-line:#2b3c50;--cad-muted:#a0b1c4;--cad-accent:#7ed9ef;background:var(--cad-bg)!important;color:#edf3fa;font-family:Inter,ui-sans-serif,system-ui,sans-serif!important;padding:clamp(10px,1.3vw,20px);font-size:14px;min-width:0}
+.pf-cad-workspace button,.pf-cad-workspace input,.pf-cad-workspace select,.pf-cad-workspace textarea{font-family:inherit}
+.pf-cad-workspace button:focus-visible,.pf-cad-workspace [role=button]:focus-visible{outline:2px solid #7ed9ef;outline-offset:2px}
+.pf-cad-workspace .pf-cad-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:0 0 16px!important;margin:0 0 14px!important;border-bottom:1px solid var(--cad-line)}
+.pf-cad-heading h1,.pf-dispatch-title{font-size:clamp(22px,2vw,29px)!important;line-height:1.15;font-weight:750;letter-spacing:-.035em!important;margin:3px 0;color:#f1f6fc}
+.pf-cad-heading p{font-size:13px;color:var(--cad-muted);margin-top:5px}
+.pf-cad-eyebrow{color:#91b9ce;font-size:11px;font-weight:650;letter-spacing:.055em}
+.pf-cad-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.pf-cad-actions>button,.pf-cad-button,.pf-cad-primary{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;border-radius:8px!important;border:1px solid #41566b;padding:8px 12px;font-weight:650;font-size:12px;line-height:1.2;white-space:normal}
+.pf-cad-button{background:#172637;color:#dce9f5}
+.pf-cad-button:hover{background:#23384c}
+.pf-cad-primary{background:#17627a;color:#fff;border-color:#2688a1}
+.pf-cad-primary:hover{background:#227b93}
+.pf-cad-button:disabled,.pf-cad-primary:disabled{opacity:.45;cursor:not-allowed}
+.pf-cad-alert{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#351f27;border:1px solid #79404b;border-radius:10px;padding:12px 15px;margin-bottom:14px;color:#ffdbdf;font-size:13px}
+.pf-cad-alert button{display:flex;align-items:center;gap:6px;margin-left:auto;font-weight:650;color:#ffd1d7}
+.pf-cad-dot{height:9px;width:9px;border-radius:50%;background:#6bd8a0;flex:none}.pf-cad-dot-danger{background:#f98b97}
+.pf-cad-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.pf-cad-metric{min-width:0;background:#122131;border:1px solid var(--cad-line);border-radius:12px;padding:14px 16px;text-align:left;color:#eaf3fc}
+button.pf-cad-metric:hover,button.pf-cad-metric[aria-pressed=true]{border-color:#6cc4d8;background:#193449}
+.pf-cad-metric>span{display:block;color:var(--cad-muted);font-size:12px;font-weight:550}
+.pf-cad-metric>strong{display:block;font-weight:750;font-size:26px;line-height:1.2;font-variant-numeric:tabular-nums;margin:5px 0}
+.pf-cad-metric>span:last-child{color:#a0b1c4}
+.pf-cad-workspace .pf-cad-panel{background:var(--cad-panel);border:1px solid var(--cad-line);border-radius:12px!important;min-width:0;overflow:hidden}
+.pf-cad-panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;padding:15px 16px;border-bottom:1px solid var(--cad-line)}
+.pf-cad-workspace .pf-cad-panel-head h2{display:flex;align-items:center;gap:8px;font-size:17px!important;letter-spacing:-.015em!important;line-height:1.25;font-weight:700;margin:3px 0}
+.pf-cad-panel-head h2 svg{color:#8bd9eb}
+.pf-cad-count{display:inline-flex;align-items:center;border:1px solid #3b526a;background:#1e3247;color:#c7d9eb;border-radius:6px;padding:4px 7px;font-size:11px;font-weight:650}
+.pf-cad-filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 15px}
+.pf-cad-search{display:flex;align-items:center;gap:8px;min-width:0;flex:1;border:1px solid #3b5066;background:#0b1624;border-radius:8px;padding:0 10px;color:#a6bed1}
+.pf-cad-search input{width:100%;min-width:0;background:transparent;outline:none;color:#edf5fc;min-height:40px;font-size:13px}
+.pf-cad-filter-bar select{background:#0b1624;border:1px solid #3b5066;border-radius:8px;padding:9px;color:#dbe7f3;font-size:13px;min-height:40px}
+.pf-cad-list-caption{padding:4px 16px 11px;color:var(--cad-muted);font-size:11px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pf-command-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(285px,345px);gap:14px;align-items:start}
+.pf-command-stream{display:grid;gap:8px;padding:0 12px 12px;max-height:65dvh;overflow:auto}
+.pf-command-call{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid #35485c;border-left:3px solid #65879f;background:#142334;border-radius:9px;padding:12px}
+.pf-command-call[data-priority=critical]{border-left-color:#f77b89}.pf-command-call[data-priority=high]{border-left-color:#ffa86a}.pf-command-call[data-priority=medium]{border-left-color:#e5bb67}.pf-command-call[data-selected=true]{background:#1b3447;border-color:#70c7df}
+.pf-command-call-main{min-width:0}
+.pf-call-meta,.pf-call-secondary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:#aabdd1}
+.pf-call-meta .cad-priority{border-radius:5px;padding:3px 6px;font-size:10px;white-space:nowrap}
+.pf-call-elapsed{display:inline-flex;align-items:center;gap:4px;color:#eacb88;margin-left:auto;font-variant-numeric:tabular-nums}
+.pf-call-title{display:flex;align-items:center;text-align:left;gap:5px;color:#f4f8fc;font-size:16px;font-weight:750;margin:8px 0 4px;line-height:1.3;overflow-wrap:anywhere}
+.pf-call-title:hover{color:#a9ebff}
+.pf-call-address{display:flex;align-items:flex-start;gap:6px;color:#c8d6e4;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.pf-call-address svg{flex:none;margin-top:2px;color:#8bd9eb}
+.pf-call-secondary{margin-top:8px;gap:10px}
+.pf-call-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px;max-width:215px}
+.pf-call-actions>button{min-height:34px}
+.pf-command-sidebar{display:grid;gap:12px;min-width:0}
+.pf-resource-summary{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--cad-line);border-bottom:1px solid var(--cad-line)}
+.pf-resource-summary>span{background:#142334;padding:13px 15px;color:#b2c2d4;font-size:12px}
+.pf-resource-summary strong{display:block;font-size:25px;color:#e5f0fa;line-height:1.3}
+.pf-resource-list{max-height:43dvh;overflow:auto}
+.pf-resource-row{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #283b4e;font-size:11px}
+.pf-unit-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:9px;background:#21384e;color:#b9e4f2;font-weight:750;font-variant-numeric:tabular-nums}
+.pf-resource-row strong{display:block;font-size:12px;overflow-wrap:anywhere}
+.pf-resource-row small{display:block;font-size:10px;color:#9caec2;margin-top:3px}
+.pf-cad-duty>.pf-cad-button{margin:12px;width:calc(100% - 24px)}
+.pf-cad-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px 12px;text-align:center;color:var(--cad-muted)}
+.pf-cad-warning{padding:10px 14px;color:#ffe1a8;font-size:12px}
+.pf-cad-sync{color:var(--cad-muted);font-size:12px}
+/* Dispatch: three distinct panels, visually continuous with the other workstations. */
+.pf-dispatch-workspace{padding:10px!important;gap:8px}
+.pf-dispatch-heading{padding:10px 12px;background:var(--cad-panel);border:1px solid var(--cad-line);border-radius:11px}
+.pf-dispatch-title{font-size:22px!important}
+.pf-dispatch-heading .dispatch-actions{flex-wrap:wrap!important;overflow:visible!important;min-width:0}
+.pf-dispatch-heading .dispatch-actions button{font-size:11px!important;border-radius:7px!important;min-height:34px}
+.pf-dispatch-workspace .dispatch-kpis{background:transparent!important;gap:7px!important;padding:0!important;border:0;grid-template-columns:repeat(7,minmax(0,1fr))}
+.pf-dispatch-workspace .dispatch-kpis>div{border:1px solid var(--cad-line)!important;border-radius:9px!important;background:#132233!important;padding:9px!important;justify-content:flex-start;box-shadow:none}
+.pf-dispatch-workspace .dispatch-kpis>div>div>div:first-child{font-size:20px!important}
+.pf-dispatch-workspace .dispatch-kpis>div>div>div:last-child{font-size:10px!important;color:#b4c5d5!important;letter-spacing:0!important;white-space:normal!important}
+.pf-dispatch-workspace .cad-queue-controls{background:#111e2d;border:1px solid var(--cad-line);border-radius:9px;padding:7px 10px}
+.pf-dispatch-workspace .cad-queue-controls button{border-radius:6px;font-size:11px!important;min-height:32px;letter-spacing:0}
+.pf-dispatch-workspace .cad-queue-controls input{font-size:12px!important}
+.pf-dispatch-grid{gap:9px;min-width:0}
+.pf-dispatch-list,.pf-dispatch-detail,.pf-dispatch-units{background:var(--cad-panel)!important;border:1px solid var(--cad-line)!important;border-radius:11px;overflow:hidden;min-width:0}
+.pf-dispatch-pane-title,.pf-dispatch-pane-heading{font-weight:700;font-size:13px;color:#d9edf9;letter-spacing:0}
+.pf-dispatch-pane-heading{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:11px 14px;background:#1b3044;border-bottom:1px solid #344b60}
+.pf-dispatch-pane-heading span:last-child{font-size:11px;font-weight:500}
+.pf-dispatch-workspace .pf-dispatch-legacy-head{display:none!important}
+.pf-dispatch-workspace .pf-dispatch-call{grid-template-columns:30px minmax(0,1fr) 71px;gap:6px;padding:11px 9px!important;align-items:start}
+.pf-dispatch-call-info{min-width:0}.pf-dispatch-call-info>div:first-child{white-space:normal;overflow-wrap:anywhere}
+.pf-dispatch-call-time{text-align:right;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+.pf-dispatch-call-time>div:last-child{font-size:9px;color:#a6b7c9}
+.pf-dispatch-priority>span{font-size:11px!important}
+.pf-dispatch-workspace .pf-dispatch-call-info .text-\[11px\]{font-size:13px!important;line-height:1.4}
+.pf-dispatch-workspace .pf-dispatch-call-info .text-\[9px\]{font-size:11px!important;line-height:1.45}
+.pf-dispatch-detail-scroll{font-size:13px;line-height:1.55}
+.pf-dispatch-facts{background:#152537;margin:10px;border:1px solid #34495d;border-radius:9px;font-size:13px}
+.pf-dispatch-facts>div{overflow-wrap:anywhere}
+.pf-dispatch-detail-scroll .text-\[9px\],.pf-dispatch-detail-scroll .text-\[10px\]{font-size:12px!important;line-height:1.45}
+.pf-dispatch-status-actions{margin:9px 10px;padding:12px!important;background:#122335;border:1px solid #30475e;border-radius:8px}
+.pf-dispatch-status-actions button{min-height:35px;border-radius:7px!important}
+.pf-dispatch-note-layout textarea{min-height:85px}
+.pf-dispatch-note-layout button{min-height:36px}
+.pf-dispatch-workspace .cad-bottom-status-wrap{border:1px solid var(--cad-line);border-radius:8px;background:#101d2a}
+@media(min-width:1280px){.pf-dispatch-grid .pf-dispatch-list{width:clamp(265px,25%,370px)}.pf-dispatch-grid .pf-dispatch-units{width:clamp(275px,25%,350px)}.pf-dispatch-grid .pf-dispatch-detail{width:auto;flex:1 1 0%}}
+/* Field queue: assignment list, response steps, communication and clearance. */
+.pf-officer-content{max-width:1500px;margin:auto}
+.pf-officer-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.pf-officer-ref{font-size:clamp(15px,1.5vw,21px)!important;overflow-wrap:anywhere}
+.pf-officer-grid{display:grid;grid-template-columns:minmax(250px,310px) minmax(0,1fr);align-items:start;gap:14px}
+.pf-officer-list{display:grid;gap:8px;padding:10px;position:sticky;top:8px;max-height:78dvh;overflow:auto!important}
+.pf-officer-list .pf-cad-panel-head{padding:6px 3px 12px}
+.pf-officer-call{border-radius:8px!important;padding:12px!important;overflow-wrap:anywhere}
+.pf-officer-call[aria-pressed=true]{border-color:#7bcde2;background:#18384a}
+.pf-officer-detail{display:grid;gap:12px}
+.pf-officer-summary{background:#14273a!important}
+.pf-officer-summary h2{font-weight:750;letter-spacing:-.025em}
+.pf-officer-response .pf-cad-panel-head{border-bottom:0}
+.pf-response-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:0 15px 15px}
+.pf-response-steps>div{display:flex;align-items:center;gap:6px;background:#182737;border:1px solid #34475c;border-radius:7px;padding:10px 8px;color:#aebdd0;font-size:12px;font-weight:650}
+.pf-response-steps>div>span{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#2f455b;color:#d6e5f3;flex:none}
+.pf-response-steps>div[data-step=done]{color:#a7e6c7;border-color:#386b5c}.pf-response-steps>div[data-step=done]>span{background:#265643}
+.pf-response-steps>div[data-step=current]{border-color:#72c9df;background:#1b3a4b;color:#e3f8ff}.pf-response-steps>div[data-step=current]>span{background:#286680}
+.pf-officer-response-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:0 15px 15px}
+.pf-officer-response-buttons button{min-height:48px;height:auto;white-space:normal;line-height:1.3;padding:8px;font-size:13px}
+.pf-officer-section textarea,.pf-officer-clear input{min-height:42px}
+.pf-officer-clear{border-color:#87545d!important;background:#281f2b!important}
+.pf-officer-workspace button{min-height:38px}
+@media(max-width:1050px){.pf-command-grid{grid-template-columns:minmax(0,1fr)}.pf-command-sidebar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pf-command-stream{max-height:none}.pf-resource-list{max-height:280px}.pf-dispatch-workspace .dispatch-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.pf-officer-grid{grid-template-columns:minmax(220px,255px) minmax(0,1fr)}.pf-response-steps,.pf-officer-response-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.pf-cad-workspace{padding:10px}.pf-cad-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.pf-cad-metric{padding:11px}.pf-cad-metric>strong{font-size:22px}.pf-cad-actions{width:100%}.pf-cad-actions>button{flex:1 1 auto;min-height:44px}.pf-command-call{grid-template-columns:minmax(0,1fr);padding:11px}.pf-call-actions{max-width:none;justify-content:stretch}.pf-call-actions>button{flex:1 1 90px;min-height:44px}.pf-command-sidebar{grid-template-columns:minmax(0,1fr)}.pf-officer-grid{grid-template-columns:minmax(0,1fr)}.pf-officer-list{position:static;max-height:38dvh}.pf-officer-metrics>div:last-child{grid-column:1/-1}.pf-officer-response-buttons button{min-height:48px}.pf-dispatch-workspace .dispatch-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.pf-dispatch-heading .dispatch-actions{flex-wrap:nowrap!important;overflow-x:auto!important;width:100%}.pf-dispatch-heading .dispatch-actions button{min-height:40px}.pf-dispatch-workspace .dispatch-kpis>div{padding:7px!important}.pf-dispatch-workspace .dispatch-kpis>div>div>div:first-child{font-size:17px!important}.pf-dispatch-workspace .dispatch-kpis>div>div>div:last-child{font-size:9px!important}.pf-dispatch-workspace .pf-dispatch-call{grid-template-columns:30px minmax(0,1fr) 65px}}
