@@ -165,7 +165,7 @@ const TOMTOM_CLOSE_PITCH = 30;
 const safeZoom = value => Math.min(TOMTOM_CLOSE_ZOOM, Number(value) || 16);
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
-export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,onMapReady,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false,showDistress=false,centerDistress=false}) {
+export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,onMapReady,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false,showDistress=false,centerDistress=false,tacticalCamera=null}) {
   const distressAlerts=useActiveDistress(showDistress);
   const centeredDistressRef=useRef(new Set());
   const elementRef=useRef(null);
@@ -616,6 +616,18 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const map=sdkRef.current?.mapLibreMap;
     if(map && coords(currentLocation))map.flyTo({center:[Number(currentLocation[1]),Number(currentLocation[0])],zoom:16,duration:550});
   },[ready,recenterRevision]);
+  // Explicit tactical map controls. Do not recenter on background GPS updates.
+  useEffect(()=>{
+    const map=sdkRef.current?.mapLibreMap;
+    if(!ready||!map||!tacticalCamera)return;
+    const {mode,points}=tacticalCamera;
+    if(mode==='in'||mode==='out'){map.easeTo({zoom:safeZoom(map.getZoom()+(mode==='in'?1:-1)),duration:200});return;}
+    const valid=(points||[]).filter(p=>mapped(p?.[0],p?.[1])).map(p=>[Number(p[1]),Number(p[0])]);
+    if(!valid.length){if(mode==='overview')map.easeTo({center:[-77.436,37.541],zoom:11.5,pitch:0,bearing:0,duration:300});return;}
+    if(mode==='focus'||valid.every(p=>p[0]===valid[0][0]&&p[1]===valid[0][1])){map.easeTo({center:valid[0],zoom:mode==='focus'?15:13,pitch:0,bearing:0,duration:300});return;}
+    const bounds=valid.reduce((b,p)=>[[Math.min(b[0][0],p[0]),Math.min(b[0][1],p[1])],[Math.max(b[1][0],p[0]),Math.max(b[1][1],p[1])]],[[Infinity,Infinity],[-Infinity,-Infinity]]);
+    map.fitBounds(bounds,{padding:45,maxZoom:13.5,pitch:0,bearing:0,duration:300});
+  },[ready,tacticalCamera]);
   const surface = <div role={embedded ? 'region' : 'dialog'} aria-modal={embedded ? undefined : 'true'} aria-label="TomTom SDK interactive map" className={embedded ? 'absolute inset-0 flex h-full w-full flex-col overflow-hidden bg-[#07101b] text-white' : 'fixed inset-0 z-[2147482900] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#07101b] text-white'} style={embedded ? {height:'100%',minHeight:0,width:'100%'} : {height:'100dvh',minHeight:'100dvh',width:'100vw',paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)'}}>
     {!embedded && <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cyan-900 bg-[#0b1d2b] p-2 sm:flex-nowrap sm:gap-3 sm:p-3">
       <div className="flex min-w-0 items-center gap-2"><Shield className="h-5 w-5 shrink-0 text-cyan-300"/><div className="min-w-0"><h2 className="truncate text-sm font-black">TomTom Maps SDK</h2><p className="truncate text-[10px] text-slate-300">Interactive map preview · CAD remains available underneath</p></div></div>
