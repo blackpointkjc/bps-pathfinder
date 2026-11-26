@@ -1,0 +1,44 @@
+{
+  "name": "Archive Calls \u2014 Verified Server Maintenance",
+  "description": "15-minute server archive maintenance. Initial read-only authorization validation; preserve assigned and open internal requests.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 15,
+      "interval_unit": "minutes",
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "archive_calls_maintenance_v2",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "archiveOldCalls",
+            "args": {
+              "scheduled": true,
+              "dry_run": true
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
