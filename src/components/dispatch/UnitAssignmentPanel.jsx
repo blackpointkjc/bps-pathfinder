@@ -45,8 +45,17 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
       return '';
     };
     const eligibleUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!unavailableReason(u));
+    const distanceFor=unit=>{
+      const lat=Number(unit.latitude),lng=Number(unit.longitude),clat=Number(call?.latitude),clng=Number(call?.longitude);
+      const raw=String(unit.gps_updated_at||unit.last_gps_updated_at||'');
+      const stamp=Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z');
+      if(unit.live_location_hidden||unit.connection_stale||!Number.isFinite(stamp)||Date.now()-stamp>300000||Date.now()-stamp< -60000||[unit.latitude,unit.longitude,call?.latitude,call?.longitude].some(v=>v==null||v==='')||![lat,lng,clat,clng].every(Number.isFinite)||(lat===0&&lng===0)||(clat===0&&clng===0))return null;
+      return calculateDistance(clat,clng,lat,lng);
+    };
     const availableUnits=eligibleUnits.filter(u=>
-      (!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))));
+      (!searchTerm||[u.unit_number,u.last_name,u.rank].some(v=>String(v||'').toLowerCase().includes(searchTerm.toLowerCase()))))
+      .sort((a,b)=>(distanceFor(a)??Infinity)-(distanceFor(b)??Infinity));
+    const nearest=eligibleUnits.filter(u=>distanceFor(u)!=null).sort((a,b)=>distanceFor(a)-distanceFor(b))[0];
     const heldUnits=[...units.filter(u=>isOperationalUnit(u)&&holdOf(u))];
     for(const held of heldRoster){if(!heldUnits.some(u=>String(u.user_id||u.id)===String(held.id)||String(u.email||u.officer_email||'').toLowerCase()===String(held.email||'').toLowerCase()))heldUnits.push(held);} 
     const otherActiveUnits=units.filter(u=>isOperationalUnit(u)&&!isAssigned(u)&&!eligibleUnits.includes(u)&&!heldUnits.includes(u));
@@ -173,7 +182,7 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                             return (
                                 <div key={unit.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-800/40 bg-emerald-950/15 p-2.5">
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-xs font-black text-white">{unitName}</p>
+                                        <p className="truncate text-xs font-black text-white">{unitName}</p>{nearest?.id===unit.id&&<span className="text-[10px] font-bold text-cyan-300">NEAREST VERIFIED GPS</span>}
                                         <span className={roleOf(unit)==='primary'?'text-emerald-300':'text-blue-300'}>{roleOf(unit)==='primary'?'PRIMARY UNIT':roleOf(unit)==='backup'?'ADDITIONAL UNIT':'ROLE NOT YET VERIFIED'}</span>
                                         <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)} · {unit.status||'Duty active'}</p>
                                         <p className="text-[10px] text-emerald-300">{currentCallCount(unit)} active call(s)</p>
@@ -235,19 +244,17 @@ export default function UnitAssignmentPanel({ call, calls = [], units = [], allA
                     ) : (
                         availableUnits.map(unit => {
                             const unitName = displayUnitName(unit);
-                            const distance = call.latitude && call.longitude && unit.latitude && unit.longitude
-                                ? calculateDistance(call.latitude, call.longitude, unit.latitude, unit.longitude)
-                                : null;
+                            const distance=distanceFor(unit);
                             
                             return (
                                 <div key={unit.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#101b29] p-2.5 transition-colors hover:border-blue-700/60 hover:bg-[#142236]">
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-xs font-black text-white">{unitName}</p>
+                                        <p className="truncate text-xs font-black text-white">{unitName}</p>{nearest?.id===unit.id&&<span className="text-[10px] font-bold text-cyan-300">NEAREST VERIFIED GPS</span>}
                                         <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)} · {unit.status||'Duty active'}</p>
                                         <p className="text-[10px] text-emerald-300">{currentCallCount(unit)} active call(s)</p>
                                         <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[9px] font-bold text-blue-300">
                                             {unit.unit_number && <span>UNIT {unit.unit_number}</span>}
-                                            {distance && <span className="text-slate-500">{(distance * 0.621371).toFixed(1)} mi</span>}
+                                            {distance!=null && <span className="text-slate-400">{(distance * 0.621371).toFixed(1)} mi</span>}
                                         </div>
                                     </div>
                                     <Button size="sm" variant="outline" disabled={!!holding} onClick={()=>changeHold(unit,true)} className="mr-1 h-9 border-amber-700 text-amber-300">Hold</Button>

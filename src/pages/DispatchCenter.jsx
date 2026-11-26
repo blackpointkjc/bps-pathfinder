@@ -1,4 +1,6 @@
 import '@/components/dispatch/cad-workstations.css';
+import '@/components/dispatch/tactical-console.css';
+import TacticalCommandMap from '@/components/dispatch/TacticalCommandMap';
 import AIRewriteField from '@/components/AIRewriteField';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import { cadReference } from '@/lib/cadReference';
@@ -71,6 +73,8 @@ export default function DispatchCenter({embedded=false}) {
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(false);
+    const [dockMap,setDockMap]=useState(false);
+    const [detailTab,setDetailTab]=useState('incident');
     const [dispatchTomTomFailed,setDispatchTomTomFailed]=useState(false);
     const [useDispatchTomTom,setUseDispatchTomTom]=useState(true);
     const [mobileView, setMobileView] = useState('calls');
@@ -490,6 +494,7 @@ export default function DispatchCenter({embedded=false}) {
 
     const handleSelectCall = (call) => {
         setSelectedCall(call);
+        setDetailTab('incident');
         selectedNoteCallRef.current=String(call?.id||'');
         setCallNotes([]);
         if (typeof window !== 'undefined' && window.innerWidth < 1280) setMobileView('detail');
@@ -746,15 +751,15 @@ export default function DispatchCenter({embedded=false}) {
 
 
     return (
-        <div ref={workstationRef} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white "+(!embedded?' cad-dispatch-standalone':'')}>
+        <div ref={workstationRef} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white "+(!embedded?' cad-dispatch-standalone':'')}>
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
-            <div className="pf-dispatch-heading flex flex-none flex-wrap items-center gap-3">
+            <div className="pf-dispatch-heading tac-header flex flex-none flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
                     <div className="min-w-0">
-                        <h1 className="pf-dispatch-title">Dispatch Queue</h1>
+                        <h1 className="pf-dispatch-title">Dispatch / Control</h1>
                         <p className="mt-0.5 text-[10px] leading-snug text-slate-300">Coordinate calls, units and response</p>
                     </div>
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
@@ -831,7 +836,7 @@ export default function DispatchCenter({embedded=false}) {
 
             {!showDispatchLog && <>
             {/* ══ COMMAND STATUS STRIP ══ */}
-            <div className="dispatch-kpis pf-dispatch-metrics grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
+            <div className="dispatch-kpis pf-dispatch-metrics tac-dispatch-metrics grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
                     { label: 'PULSEPOINT', value: pulsePointCalls.length, tone: pulsePointCalls.length ? 'text-red-300' : 'text-slate-300', icon: Radio },
@@ -889,7 +894,7 @@ export default function DispatchCenter({embedded=false}) {
                     <CallHistory embedded />
                 </div>
             ) : (
-                <div className="dispatch-main pf-dispatch-grid flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
+                <div className="dispatch-main pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
                     <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}>
@@ -951,6 +956,8 @@ export default function DispatchCenter({embedded=false}) {
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
                     <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} pf-dispatch-detail min-h-0 w-full flex-1 min-w-0 flex-col xl:flex xl:min-h-0`}>
+                        <div className="tac-dispatch-center-tools"><span>INCIDENT WORKSPACE</span><div><button type="button" aria-pressed={dockMap} onClick={()=>setDockMap(x=>!x)}>{dockMap?'Hide map':'Dock tactical map'}</button><button type="button" onClick={()=>setShowMap(true)}>Full map</button></div></div>
+                        {dockMap&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
                             {selectedCall ? (
@@ -972,6 +979,8 @@ export default function DispatchCenter({embedded=false}) {
                                             RECV: {formatEasternDateTime(selectedCall.time_received || selectedCall.created_date)} ET
                                         </span>
                                     </div>
+                                    <div className="tac-segment tac-dispatch-tabs" role="group" aria-label="Incident detail views">{[['incident','Incident'],['activity','CAD log / notes'],['all','All details']].map(([id,label])=><button type="button" key={id} aria-pressed={detailTab===id} onClick={()=>setDetailTab(id)}>{label}</button>)}</div>
+                                    <div hidden={detailTab==='activity'} className="tac-incident-facts"><button type="button" className="tac-log-jump" onClick={()=>setDetailTab('activity')}><History size={15}/> CAD log · {callNotes.length} entries <ChevronRight size={14}/></button>
                                     <div className="pf-dispatch-facts px-3 md:px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                                         <h2 className="col-span-full text-xl font-bold text-white">{cleanIncident(selectedCall)}</h2>
 
@@ -1033,6 +1042,8 @@ export default function DispatchCenter({embedded=false}) {
                                             </div>
                                         </div>
                                     )}
+                                    </div>
+                                    <div hidden={detailTab==='incident'} className="tac-dispatch-activity">
                                     <div className="pf-dispatch-note-layout px-3 md:px-4 pb-3 grid grid-cols-1 gap-3">
                                         <div>
                                             <div className="text-[9px] text-slate-400 mb-1 flex items-center gap-1"><History className="w-3 h-3" /> SHARED CAD TIMELINE · DISPATCH & ASSIGNED OFFICERS</div>
@@ -1054,6 +1065,7 @@ export default function DispatchCenter({embedded=false}) {
                                                 {savingNote ? 'SAVING...' : 'POST TO CAD LOG'}
                                             </button>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
                             ) : (
