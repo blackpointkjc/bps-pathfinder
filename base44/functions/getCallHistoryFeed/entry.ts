@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     const roles = new Set((user.additional_roles || []).map((role: unknown) => lower(role)));
     const allowed = roles.has('officer') || user.role === 'admin' || user.role === 'dispatch' || Boolean(user.dispatch_role) || roles.has('cad_access') || roles.has('full_access') || roles.has('dispatch') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim()));
-    if (!allowed) return Response.json({ error: 'CAD access required' }, { status: 403 });
+    if (!allowed || ['client','student','visitor'].some(role=>roles.has(role)||lower(user.user_type)===role||lower(user.role)===role)) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
     const input=await req.json().catch(()=>({}));
     // Fetch optional linked reports and assignments only for an expanded call.
@@ -112,83 +112,94 @@ Deno.serve(async (req) => {
       return Response.json({success:true,linked_reports:linked,assignments:assignments.data.map(row=>({unit_id:row.unit_id,label:label(row.unit_id),role:row.role,status:row.status,assigned_at:row.assigned_at,accepted_at:row.accepted_at,cleared_at:row.cleared_at,description:row.description})),timeline,disposition:call.disposition||'',narrative:call.description||'',note_count:notes.data.length,log_count:logs.data.length,warnings:[links.error,assignments.error,notes.error,logs.error,units.error,sessions.error,people.error].filter(Boolean)});
     }
     const search=String(input.search||'').trim().slice(0,160);
-    const escaped=Array.from(search).map(c=>'\\^$.*+?()[]{}|'.includes(c)?'\\'+c:c).join('');
-    const addressPattern = addressHistoryPattern(search);
-    const searchQuery=search?{$or:['call_id','bps_reference','agency_cad_number','incident','location','original_call_id'].map(field=>({[field]:{$regex:escaped,$options:'i'}}))}:null;
-
-    if (searchQuery && addressPattern) searchQuery.$or.push({ location: { $regex: addressPattern, $options: 'i' } });
-
-    const pageSize = Math.max(25, Math.min(100, Number(input.page_size) || 75));
-    const cursor = input.cursor || {};
-    const snapshotMs = Math.min(Date.now(), Date.parse(cursor.snapshot_at || '') || Date.now());
-    const snapshot = new Date(snapshotMs).toISOString();
-    const since = new Date(Math.max(snapshotMs - 90 * 86400000, Math.min(snapshotMs, Date.parse(input.since || '') || 0))).toISOString();
-    const until = new Date(Math.min(snapshotMs, Date.parse(input.until || '') || snapshotMs)).toISOString();
-    const offsets = {
-      active: Math.max(0, Math.floor(Number(cursor.active) || 0)),
-      archived: Math.max(0, Math.floor(Number(cursor.archived) || 0)),
+    const addressPattern=addressHistoryPattern(search);
+    const pageSize=Math.max(25,Math.min(100,Math.floor(Number(input.page_size)||75)));
+    const cursor=input.cursor||{};
+    const snapshotMs=Math.min(Date.now(),Date.parse(cursor.snapshot_at||'')||Date.now());
+    const snapshot=new Date(snapshotMs).toISOString();
+    const since=new Date(Math.max(snapshotMs-90*86400000,Math.min(snapshotMs,Date.parse(input.since||'')||0))).toISOString();
+    const until=new Date(Math.min(snapshotMs,Date.parse(input.until||'')||snapshotMs)).toISOString();
+    const db=base44.asServiceRole.entities;
+    const dateRange={$gte:since,$lte:until};
+    const states:any={
+      active:{entity:db.DispatchCall,field:'time_received',offset:Math.max(0,Math.floor(Number(cursor.active)||0)),buffer:[],done:cursor.active_done===true,error:''},
+      archived:{entity:db.CallHistory,field:'time_received',offset:Math.max(0,Math.floor(Number(cursor.archived)||0)),buffer:[],done:cursor.archived_done===true,error:''},
+      property:{entity:db.PropertyAlert,field:'callTime',offset:Math.max(0,Math.floor(Number(cursor.property)||0)),buffer:[],done:cursor.property_done===true,error:''}
     };
-    // Avoid nested $and/$or + regex expressions which Base44 rejects as
-    // malformed query objects. Filter/merge bounded recent records in memory.
-    // Recent agency CAD records can be imported with an older/missing
-    // created_date even though time_received is current. A created-date-only
-    // filter gave Call History zero rows while Live Dispatch held active calls.
-    // Fall back by SOURCE, so one populated archive never hides live calls.
-    const activeMode = cursor.active_mode === 'received' ? 'received' : 'created';
-    const archivedMode = cursor.archived_mode === 'received' ? 'received' : 'created';
-    const activeQuery = { [activeMode === 'received' ? 'time_received' : 'created_date']:{ $gte:since, $lte:until } };
-    const archiveQuery = { [archivedMode === 'received' ? 'time_received' : 'created_date']:{ $gte:since, $lte:until } };
-    let [activeRead, archivedRead] = await Promise.all([
-      readWithRetry('Call records', () => base44.asServiceRole.entities.DispatchCall.filter(activeQuery,'-time_received',pageSize+1,offsets.active), []),
-      readWithRetry('Archived calls', () => base44.asServiceRole.entities.CallHistory.filter(archiveQuery,'-time_received',pageSize+1,offsets.archived), []),
-    ]);
-    // A broken historical archive must never hide healthy live CAD calls.
-    // Keep the available source on screen and identify any incomplete source.
-    // Only fail when both source reads failed; the browser can still recover
-    // verified live calls from its shared Dispatch cache in that case.
-    if (activeRead.error && archivedRead.error) throw new Error('Both active and archived call sources are temporarily unavailable.');
-    // On first page only: if the historical creation-date index has no rows,
-    // retry the call timestamp index once. Stay bounded at one page and carry
-    // the chosen mode in the pagination cursor so subsequent pages align.
-    const sourceMode = {active:activeMode,archived:archivedMode};
-    if (!input.cursor) {
-      const receivedQuery = {time_received:{$gte:since,$lte:until}};
-      const retryTasks:any[] = [];
-      if (!(activeRead.data||[]).length) retryTasks.push(
-        readWithRetry('Recent CAD calls',()=>base44.asServiceRole.entities.DispatchCall.filter(receivedQuery,'-time_received',pageSize+1,0),[])
-          .then(result=>{if(!result.error && result.data.length){activeRead=result;sourceMode.active='received';}}));
-      if (!(archivedRead.data||[]).length) retryTasks.push(
-        readWithRetry('Recently received archived calls',()=>base44.asServiceRole.entities.CallHistory.filter(receivedQuery,'-time_received',pageSize+1,0),[])
-          .then(result=>{if(!result.error && result.data.length){archivedRead=result;sourceMode.archived='received';}}));
-      if(retryTasks.length)await Promise.all(retryTasks);
-    }
-    const matchesFilters = (row:any) => {
-      const timestamp = callTimestamp(row);
-      if(timestamp < Date.parse(since) || timestamp > Date.parse(until)) return false;
-      if (input.agency && input.agency !== 'ALL' && row.agency !== input.agency) return false;
-      if (input.status && input.status !== 'ALL' && row.status !== input.status) return false;
-      if (!search) return true;
-      return ['call_id','bps_reference','agency_cad_number','incident','location','original_call_id']
-        .some(field => String(row[field]||'').toLowerCase().includes(search.toLowerCase()))
-        || (addressPattern && new RegExp(addressPattern,'i').test(String(row.location||'')));
+    // A raw cursor advances for every database row examined, including rows
+    // rejected by search, date/status filters, validation or deduplication.
+    // Buffered, unconsumed rows are fetched again from their exact offset.
+    const asProperty=(alert:any)=>({
+      id:'property-alert:'+alert.id,original_call_id:String(alert.callId||''),call_id:alert.cadNumber||'',
+      bps_reference:/^BPS-/i.test(String(alert.cadNumber||''))?alert.cadNumber:'',
+      incident:alert.callIncident||'Property alert',location:alert.callLocation||'',
+      time_received:alert.callTime||alert.time_received||alert.created_date,agency:'BPS',
+      status:alert.callStatus||alert.lifecycle_status||'Recorded',is_test:alert.is_test,
+      _source:'property',_propertyCall:true,_propertyAlert:alert,_propertyName:alert.propertyName||'',
+      _propertyId:alert.propertyId||'',_propertyLifecycle:alert.lifecycle_status||'',
+      _referenceEntity:'PropertyAlert',_referenceId:String(alert.id)
+    });
+    const matchesFilters=(row:any)=>{
+      const timestamp=callTimestamp(row);
+      if(timestamp<Date.parse(since)||timestamp>Date.parse(until))return false;
+      if(input.agency&&input.agency!=='ALL'&&row.agency!==input.agency)return false;
+      const status=row.time_cleared?'Cleared':row.time_on_scene&&!['cleared','closed','cancelled','canceled','completed','resolved'].includes(lower(row.status))?'On Scene':row.status;
+      if(input.status&&input.status!=='ALL'&&status!==input.status)return false;
+      if(!search)return true;
+      return ['call_id','bps_reference','agency_cad_number','incident','location','original_call_id','agency','_propertyName'].some(field=>lower(row[field]).includes(lower(search)))||Boolean(addressPattern&&new RegExp(addressPattern,'i').test(String(row.location||'')));
     };
-    const candidates = [
-      ...(activeRead.data || []).filter(matchesFilters).map((row:any) => ({row,source:'active'})),
-      ...(archivedRead.data || []).filter(matchesFilters).map((row:any) => ({row,source:'archived'})),
-    ].sort((a,b) => callTimestamp(b.row) - callTimestamp(a.row) || (a.source === b.source ? 0 : a.source === 'active' ? -1 : 1));
-    const selected:any[] = [];
-    const consumed = {active:0,archived:0};
-    const seen = new Set<string>();
-    for (const item of candidates) {
-      if (selected.length >= pageSize) break;
-      consumed[item.source as 'active'|'archived']++;
-      const row = item.row;
-      if (!isValidCallRecord(row)) continue;
-      const identity = String(row.original_call_id || (item.source === 'active' ? row.id : '') || row.external_call_id || row.id);
-      if (seen.has(identity)) continue;
-      seen.add(identity);
-      selected.push(item);
+    const selected:any[]=[];
+    const seen=new Set<string>();
+    let scanned=0,reads=0;
+    const batchSize=pageSize+1;
+    const scanLimit=Math.max(1000,batchSize*12);
+    const warnings:string[]=[];
+    const fill=async(key:string)=>{
+      const state=states[key];
+      if(state.done||state.error||state.buffer.length)return;
+      if(state.end){state.done=true;return;}
+      const result=await readWithRetry(key+' call history',()=>state.entity.filter({[state.field]:dateRange},'-'+state.field,batchSize,state.offset),[]);
+      reads++;
+      if(result.error){state.error=result.error;return;}
+      const raw=result.data||[];
+      state.end=raw.length<batchSize;
+      // Only use a property-alert row as history when neither the live nor
+      // archived original exists anywhere, not merely outside this page.
+      if(key==='property'&&raw.length){
+        const refs=[...new Set(raw.map((r:any)=>String(r.callId||'')).filter(Boolean))];
+        const [live,archived]=await Promise.all([
+          readWithRetry('Property original calls',()=>refs.length?db.DispatchCall.filter({id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[]),
+          readWithRetry('Property archived calls',()=>refs.length?db.CallHistory.filter({original_call_id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[])
+        ]);
+        if(live.error||archived.error){state.error=live.error||archived.error;return;}
+        const linked=new Set([...live.data.map(r=>String(r.id)),...archived.data.map(r=>String(r.original_call_id))]);
+        state.buffer=raw.map((r:any)=>({row:asProperty(r),skip:linked.has(String(r.callId||''))}));
+      }else if(key==='archived'&&raw.length){
+        const refs=[...new Set(raw.map((r:any)=>String(r.original_call_id||'')).filter(Boolean))];
+        const live=await readWithRetry('Archive duplicate check',()=>refs.length?db.DispatchCall.filter({id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[]);
+        if(live.error)warnings.push(live.error);
+        const linked=new Set(live.data.map(r=>String(r.id)));
+        state.buffer=raw.map((r:any)=>({row:r,skip:linked.has(String(r.original_call_id||''))}));
+      }else state.buffer=raw.map((row:any)=>({row,skip:false}));
+      if(!state.buffer.length)state.done=true;
+    };
+    while(selected.length<pageSize&&scanned<scanLimit&&reads<42){
+      await Promise.all(Object.keys(states).map(fill));
+      if(states.active.error&&states.archived.error)throw Error('Both active and archived call sources are temporarily unavailable.');
+      const heads=Object.entries(states).filter(([,v]:any)=>v.buffer.length).map(([source,v]:any)=>({source,...v.buffer[0]}));
+      if(!heads.length)break;
+      heads.sort((a,b)=>callTimestamp(b.row)-callTimestamp(a.row)||['active','archived','property'].indexOf(a.source)-['active','archived','property'].indexOf(b.source));
+      const item=heads[0],state=states[item.source];
+      state.buffer.shift();state.offset++;scanned++;
+      if(!state.buffer.length&&state.end)state.done=true;
+      const row=item.row;
+      if(item.skip||!isValidCallRecord(row)||!matchesFilters(row))continue;
+      const identity=String(row.original_call_id||row.id);
+      if(seen.has(identity))continue;
+      seen.add(identity);selected.push(item);
     }
+    const activeRead={error:states.active.error},archivedRead={error:states.archived.error};
+    const propertyRows=selected.filter(item=>item.source==='property').map(item=>item.row);
     const active:any[] = selected.filter(item=>item.source==='active').map(item=>item.row);
     const archived:any[] = selected.filter(item=>item.source==='archived').map(item=>item.row);
     const ids = [...new Set(selected.flatMap(({row})=>[String(row.id||''),String(row.original_call_id||'')]).filter(Boolean))];
@@ -205,8 +216,8 @@ Deno.serve(async (req) => {
     // The old normal list path set alertRead to [] when include_details=false,
     // making every property call disappear from the Property tab.
     const [alertRead,propertyLinksRead] = await Promise.all([
-      readWithRetry('Property alerts',()=>base44.asServiceRole.entities.PropertyAlert.list('-created_date',300),[]),
-      readWithRetry('Manual property links',()=>base44.asServiceRole.entities.PropertyCallLink.list('-linked_at',200),[])
+      readWithRetry('Property alerts',()=>ids.length?db.PropertyAlert.filter({callId:{$in:ids}},'-created_date',500):Promise.resolve([]),[]),
+      readWithRetry('Manual property links',()=>ids.length?db.PropertyCallLink.filter({$or:[{call_id:{$in:ids}},{archive_id:{$in:ids}}]},'-linked_at',500):Promise.resolve([]),[])
     ]);
     const [assignmentRead,linkedRead] = includeDetails ? await Promise.all([
       readWithRetry('Call assignments',()=>ids.length?base44.asServiceRole.entities.CallAssignment.filter(callFilter,'-assigned_at',300):Promise.resolve([]),[]),
@@ -221,8 +232,8 @@ Deno.serve(async (req) => {
     const userIds = [...new Set([...unitIds,...(unitRead.data||[]).map((row:any)=>String(row.user_id||''))].filter(Boolean))];
     const emails = (unitRead.data||[]).map((row:any)=>String(row.user_email||row.email||'')).filter(Boolean);
     const userRead = includeDetails ? await readWithRetry('Assigned officers',()=>userIds.length?base44.asServiceRole.entities.User.filter({$or:[{id:{$in:userIds}},{email:{$in:emails}}]},'-updated_date',300):Promise.resolve([]),[]) : emptyRead;
-    const hasMore = (activeRead.data||[]).length > consumed.active || (archivedRead.data||[]).length > consumed.archived;
-    const nextCursor = hasMore ? {snapshot_at:snapshot,active:offsets.active+consumed.active,archived:offsets.archived+consumed.archived,active_mode:sourceMode.active,archived_mode:sourceMode.archived} : null;
+    const hasMore=Object.values(states).some((state:any)=>!state.done&&!state.error);
+    const nextCursor=hasMore?{snapshot_at:snapshot,...Object.fromEntries(Object.entries(states).flatMap(([key,state]:any)=>[[key,state.offset],[key+'_done',state.done||!!state.error]]))}:null;
     const linksByCall=new Map<string,any[]>();
     for(const link of linkedRead.data||[]){
       if(String(link.status||'active').toLowerCase()==='detached')continue;
@@ -317,25 +328,9 @@ Deno.serve(async (req) => {
     const activeRows = (active || []).map((row: any) => decorate(row, 'active'));
     const archivedRowsRaw = (archived || []).map((row: any) => decorate(row, 'archived'));
 
-    // Older versions could archive the same upstream call repeatedly when the
-    // source continued reporting it. Collapse those historical duplicates by the
-    // real call timestamp + incident + location so Call History shows one event.
-    const historyFingerprint = (row: any) => [
-      String(row?.time_received || row?.created_date || ''),
-      String(row?.incident || '').trim().toUpperCase(),
-      String(row?.location || '').trim().toUpperCase(),
-      String(row?.agency || '').trim().toUpperCase(),
-    ].join('|');
-    const archivedSeen = new Set<string>();
-    const archivedRows = archivedRowsRaw
-      .sort((a: any, b: any) => new Date(b.archived_date || b.created_date || 0).getTime() - new Date(a.archived_date || a.created_date || 0).getTime())
-      .filter((row: any) => {
-        const key = historyFingerprint(row);
-        if (!key || archivedSeen.has(key)) return false;
-        archivedSeen.add(key);
-        return true;
-      });
-
+    // Do not collapse different calls merely because their timestamp, incident
+    // and street match. Only the canonical original ID is a duplicate key.
+    const archivedRows=archivedRowsRaw;
     const manualLinks:any[]=propertyLinksRead.data||[];
     const allRows=[...activeRows,...archivedRows];
     const decorated=allRows.map(row=>{
@@ -343,26 +338,9 @@ Deno.serve(async (req) => {
       const links=manualLinks.filter(link=>ids.includes(String(link.call_id))||ids.includes(String(link.archive_id||'')));
       return links.length?{...row,_propertyLinks:links,_propertyCall:true,_propertyName:[row._propertyName,...links.map(l=>l.property_name)].filter(Boolean).join(' / '),_propertyId:row._propertyId||links[0].property_id}:row;
     });
-    // Preserve durable property-alert history even after an associated
-    // DispatchCall leaves the active queue or its archived page is not loaded.
-    // These are property alert records, not fabricated cleared CAD calls.
-    const existingCallIds=new Set(decorated.flatMap(row=>[String(row.id||''),String(row.original_call_id||'')]).filter(Boolean));
-    const orphanAlerts=(alerts||[]).filter(alert=>{
-      const stamp=callTimestamp({time_received:alert.callTime||alert.time_received||alert.created_date});
-      return stamp>=Date.parse(since)&&stamp<=Date.parse(until)&&!existingCallIds.has(String(alert.callId||''));
-    }).map(alert=>({
-      id:'property-alert:'+alert.id,original_call_id:String(alert.callId||''),
-      call_id:alert.cadNumber||'',bps_reference:/^BPS-/i.test(String(alert.cadNumber||''))?alert.cadNumber:'',
-      incident:alert.callIncident||'Property alert',location:alert.callLocation||'',
-      time_received:alert.callTime||alert.time_received||alert.created_date,
-      agency:'BPS',status:alert.callStatus||alert.lifecycle_status||'Recorded',
-      _source:'property',_archived:false,_propertyCall:true,_propertyAlert:alert,
-      _propertyName:alert.propertyName||'',_propertyId:alert.propertyId||'',
-      _propertyLifecycle:alert.lifecycle_status||'',_referenceEntity:'PropertyAlert',_referenceId:String(alert.id)
-    }));
     return Response.json({
       success: true,
-      rows: [...decorated,...orphanAlerts].sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
+      rows: [...decorated,...propertyRows].sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
       next_cursor: nextCursor,
       has_more: hasMore,
       days:90, since, snapshot_at:snapshot,
@@ -370,9 +348,9 @@ Deno.serve(async (req) => {
         active: activeRows.length,
         archived: archivedRows.length,
         propertyAlerts: alertByCallId.size,
-        loaded: decorated.length+orphanAlerts.length,
+        loaded: decorated.length+propertyRows.length,
       },
-      warnings: [activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
+      warnings: [...warnings,states.property.error,activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
     });
   } catch (error:any) {
     console.error('getCallHistoryFeed failed:', error);

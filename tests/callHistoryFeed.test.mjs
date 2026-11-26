@@ -91,7 +91,7 @@ do{
 }while(cursor);
 assert.equal(found.size,840);
 assert(!found.has('outside90'));
-assert(reads.filter(r=>['DispatchCall','CallHistory'].includes(r.entity)).every(r=>r.limit===76));
+assert(reads.filter(r=>['DispatchCall','CallHistory'].includes(r.entity)).every(r=>r.limit<=76));
 assert(reads.filter(r=>!['DispatchCall','CallHistory'].includes(r.entity)).every(r=>r.query)); // no global enrichment scans
 const oldSearch=await history({search:'BPS-202610-720'});
 assert.equal(oldSearch.data.rows.length,1);
@@ -100,7 +100,7 @@ const until=new Date(now-10*60*60000).toISOString();
 const dateRange=await history({until});
 assert(dateRange.data.rows.every(row=>callTimestamp(row)<=Date.parse(until)));
 failSource='CallHistory';
-assert.equal((await history({})).status,500);
+const partial=await history({});assert.equal(partial.status,200);assert(partial.data.warnings.some(w=>w.includes('archived')));
 failSource=''; role='user';officer=true;assert.equal((await history({page_size:25})).status,200);officer=false;role='client';
 assert.equal((await history({})).status,403);
 role='admin';
