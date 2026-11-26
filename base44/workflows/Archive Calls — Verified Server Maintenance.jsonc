@@ -1,6 +1,6 @@
 {
   "name": "Archive Calls \u2014 Verified Server Maintenance",
-  "description": "15-minute server archive maintenance. Initial read-only authorization validation; preserve assigned and open internal requests.",
+  "description": "Every 15 minutes, archive eligible external calls and cleared internal calls; preserve active assignments and historical records.",
   "trigger": {
     "condition": null,
     "config": {
@@ -32,8 +32,7 @@
           "with": {
             "function_name": "archiveOldCalls",
             "args": {
-              "scheduled": true,
-              "dry_run": true
+              "scheduled": true
             }
           },
           "then": "end"
