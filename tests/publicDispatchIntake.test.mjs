@@ -4,8 +4,7 @@ const match=(row,q)=>Object.entries(q||{}).every(([k,v])=>k==='$or'?v.some(c=>ma
 const db=new Proxy({}, {get(_,name){tables[name]??=[];return {filter:async(q)=>tables[name].filter(r=>match(r,q)),get:async id=>tables[name].find(r=>r.id===id),create:async p=>{if(name==='DispatchCall'&&fail)throw Error('fixture failure');if(name==='PropertyAlert'&&alertFail)throw Error('fixture alert failure');const row={...p,id:name+(++serial),created_date:new Date().toISOString()};tables[name].push(row);return row;},update:async(id,p)=>Object.assign(tables[name].find(r=>r.id===id),p),updateMany:async(q,p)=>{const rows=tables[name].filter(r=>match(r,q));rows.forEach(r=>Object.assign(r,p.$set));return{updated:rows.length}}};}});
 const sdk={asServiceRole:{entities:db,functions:{invoke:async(name,body)=>{assert.equal(name,'geofenceDispatchAssignment');assert.ok(body.call_id);invocations++;return{data:{success:true}};}}}};
 globalThis.Deno={env:{get:()=>''}};globalThis.fetch=async()=>{throw Error('No network in fixture')};
-const source=fs.readFileSync('base44/functions/publicDispatch/entry.ts','utf8').replace(/^import .*;
-/gm,'').replaceAll('export ','').replace('default async function','async function handle');
+const source=fs.readFileSync('base44/functions/publicDispatch/entry.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export ','').replace('default async function','async function handle');
 const code=(await transform(source,{loader:'ts',format:'esm'})).code;
 const handler=new Function('createClientFromRequest',code+';return handle;')(()=>sdk);
 const valid={request_id:'synthetic-request-1234567890',incident:'Security assistance',location:'100 Test Street, Richmond, VA',description:'Synthetic intake test only.',caller_name:'Test Person',caller_phone:'5551234567',acknowledged:true,selected_units:['must-not-be-trusted'],priority:'critical'};
