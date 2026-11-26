@@ -21,7 +21,8 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
    let frame=0;
    const measure=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
      const bottom=Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight,host?.getBoundingClientRect().bottom||window.innerHeight);
-     const height=Math.floor(bottom-root.getBoundingClientRect().top-3);
+     const top=Math.max(root.getBoundingClientRect().top,host?.getBoundingClientRect().top||0,0);
+     const height=Math.floor(bottom-top-3);
      if(height>0)root.style.setProperty('--command-available-height',height+'px');
    });};
    const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
@@ -37,23 +38,19 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const [districts,setDistricts]=useState({});
  const districtCache=useRef(new Map());
  useEffect(()=>{
+  const call=selectedCall;
+  if(!call||call.district||call.beat||call.zone||call.latitude==null||call.longitude==null)return;
+  const lat=Number(call.latitude),lng=Number(call.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)||(lat===0&&lng===0))return;
+  const key=`${lat.toFixed(5)},${lng.toFixed(5)}`;
+  if(districtCache.current.has(key))return;
   let cancelled=false;
-  const candidates=allCalls.filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude))&&
-    !(Number(c.latitude)===0&&Number(c.longitude)===0));
-  const pending=[...new Map(candidates.map(c=>[`${Number(c.latitude).toFixed(5)},${Number(c.longitude).toFixed(5)}`,c])).entries()]
-    .filter(([key])=>!districtCache.current.has(key)).slice(0,80);
-  // Bound network work on an incident-heavy dispatch screen; never geocode during render.
-  (async()=>{
-   for(let i=0;i<pending.length && !cancelled;i+=4){
-    await Promise.all(pending.slice(i,i+4).map(async([key,c])=>{
-     const value=await lookupDistrict(Number(c.latitude),Number(c.longitude)).catch(()=> '—');
-     if(!cancelled){districtCache.current.set(key,value);setDistricts(old=>({...old,[key]:value}));}
-    }));
-   }
-  })();
+  void lookupDistrict(lat,lng).then(value=>{if(!cancelled){districtCache.current.set(key,value||'District unavailable');setDistricts(old=>({...old,[key]:value||'District unavailable'}));}}).catch(()=>{if(!cancelled)setDistricts(old=>({...old,[key]:'District unavailable'}));});
   return()=>{cancelled=true;};
- },[allCalls.map(c=>`${c.id}:${c.latitude}:${c.longitude}`).join('|')]);
+ },[selectedCall?.id,selectedCall?.latitude,selectedCall?.longitude]);
  const callDistrict=call=>{
+  if(call.district||call.beat||call.zone)return call.district||call.beat||call.zone;
+  if(call.latitude==null||call.longitude==null)return 'District unavailable';
   const lat=Number(call.latitude),lng=Number(call.longitude);
   const key=`${lat.toFixed(5)},${lng.toFixed(5)}`;
   return Number.isFinite(lat)&&Number.isFinite(lng)&&!(lat===0&&lng===0)
