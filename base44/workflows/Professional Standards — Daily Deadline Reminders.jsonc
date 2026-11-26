@@ -31,7 +31,7 @@
           "call": "invoke_backend_function",
           "with": {
             "function_name": "professionalStandardsDeadlines",
-            "args": {}
+            "args": {"scheduled": true}
           },
           "then": "end"
         }

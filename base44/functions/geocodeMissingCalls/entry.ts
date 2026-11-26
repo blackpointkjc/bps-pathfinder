@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { tomtomGeocode } from './tomtomGeocode.ts';
@@ -196,23 +197,18 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
-    let __portalService=false;
-    if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
-    if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
-    base44.auth.me = async () => __portalCaller;
-
-
-        const user = await base44.auth.me().then(__portalAppIdentity);
-        if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-        if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-
-        let body = {};
-        try { body = await req.json(); } catch (e) {}
-        const limit = Math.min(parseInt(body?.limit) || 5, 50);
-        const forceRetry = body?.force_retry === true;
-        const retryRounds = Math.min(Math.max(parseInt(body?.retry_rounds) || 3, 1), 5);
+        const body=await req.json().catch(()=>({}));
+        const rawUser=await base44.auth.me().catch(()=>null);
+        const scheduled=isScheduledPlatformJob(rawUser,body);
+        const user=__portalAppIdentity(rawUser);
+        if(!scheduled){
+          if(!user||user.is_service||!await __portalLoginIsCurrent(req,base44,user))return Response.json({error:'Current authorized portal session required'},{status:401});
+          if((user.additional_roles||[]).some(r=>['visitor','client','student'].includes(String(r).toLowerCase()))||['visitor','client','student'].includes(String(user.user_type||'').toLowerCase()))return Response.json({error:'Operational access required'},{status:403});
+        }
+        if(!scheduled&&user.role!=='admin')return Response.json({error:'Administrator access required'},{status:403});
+        const limit = scheduled?5:Math.min(Math.max(parseInt(body?.limit)||5,1),50);
+        const forceRetry = !scheduled&&body?.force_retry === true;
+        const retryRounds = scheduled?1:Math.min(Math.max(parseInt(body?.retry_rounds)||3,1),5);
 
         const allCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
 
@@ -235,10 +231,14 @@ Deno.serve(async (req) => {
         };
 
         const MAX = limit; // Automation passes 5; manual button can pass up to 50
-        let geocoded = 0;
+        if(body.dry_run===true)return Response.json({success:true,dry_run:true,analytics});
+        const deadline=Date.now()+45000;
+        let geocoded = 0, writeFailed=0, deferred=0;
         let failed = 0;
 
         for (const call of missingCoords.slice(0, MAX)) {
+            if(Date.now()>deadline){deferred++;continue;}
+            if(!String(call.location||'').trim()){deferred++;continue;}
             let result = null;
             for (let round = 1; round <= retryRounds; round++) {
                 result = await smartGeocode(call.location, call.agency);
@@ -249,6 +249,7 @@ Deno.serve(async (req) => {
                 }
             }
 
+            if(scheduled&&!result){failed++;continue;}
             const updateData = result
                 ? {
                     latitude: result.latitude,
@@ -265,31 +266,32 @@ Deno.serve(async (req) => {
 
             if (result) {
                 console.log(`✅ [${result.geo_confidence.toUpperCase()}/${result.geo_method}] ${call.location} -> (${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)})`);
-                geocoded++;
+
             } else {
                 console.log(`🚫 [UNMAPPABLE] ${call.location} [${call.agency}]`);
-                failed++;
+
             }
 
             // Retry once on rate limit
             for (let attempt = 0; attempt < 2; attempt++) {
                 try {
                     await base44.asServiceRole.entities.DispatchCall.update(call.id, updateData);
+                    if(result)geocoded++;else failed++;
                     break;
                 } catch (err) {
-                    if (attempt === 0) await sleep(6000);
+                    if (attempt === 0) await sleep(1500);else writeFailed++;
                 }
             }
 
-            await sleep(4000);
+            await sleep(scheduled?350:4000);
         }
 
         return Response.json({
-            success: true,
+            success: writeFailed===0,
             analytics,
-            batch: { geocoded, failed, skipped: Math.max(0, missingCoords.length - MAX) },
-            message: `Geocoded ${geocoded}, marked ${failed} unmappable after ${retryRounds} retry rounds. ${Math.max(0, missingCoords.length - MAX)} skipped for next run.`
-        });
+            batch: { geocoded, failed, write_failed:writeFailed, deferred, skipped: Math.max(0, missingCoords.length - MAX) },
+            message: `Geocoded ${geocoded}, could not map ${failed} after ${retryRounds} retry rounds. ${Math.max(0, missingCoords.length - MAX)} skipped for next run.`
+        },{status:writeFailed?503:200});
 
     } catch (error) {
         console.error('geocodeMissingCalls failed:', error);

@@ -29,7 +29,7 @@
       {
         "send_daily_case_summary": {
           "call": "invoke_backend_function",
-          "with": {"function_name": "professionalStandardsDailyDigest", "args": {}},
+          "with": {"function_name": "professionalStandardsDailyDigest", "args": {"scheduled": true}},
           "then": "end"
         }
       }

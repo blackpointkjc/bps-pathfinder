@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 import {createClientFromRequest,psRole,notify} from './security.ts';
 import {blackPointEmail} from './blackPointEmail.ts';
 
@@ -16,17 +17,15 @@ const row=(c:any,people:Map<string,any>)=>{
 export default async function(req:Request){
   try{
     const sdk=createClientFromRequest(req),user=await sdk.auth.me().catch(()=>null),db=sdk.asServiceRole.entities;
-    // A scheduled Base44 workflow runs as a service identity. Manual preview
-    // and retry remain reviewer-only; ordinary staff never gain roster access.
-    let scheduled=Boolean(user?.is_service);
-    if(!user&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);scheduled=true;}catch{}}
-    if(!scheduled&&(!user||!safeAdmin(user)))return Response.json({error:'Authorized IA administrator access required.'},{status:403});
     const request=await req.json().catch(()=>({}));
+    const scheduled=isScheduledPlatformJob(user,request);
+    if(!scheduled&&(!user||!safeAdmin(user)))return Response.json({error:'Authorized IA administrator access required.'},{status:403});
     const today=day();
     const [cases,users]=await Promise.all([db.PSCase.list('-updated_date',1000),db.User.list('-created_date',1000)]);
     if(cases.length>=1000)return Response.json({error:'IA case count exceeds digest limit; do not send incomplete report.'},{status:409});
     const people=new Map(users.map((u:any)=>[String(u.id),u]));
     const recipients=[...new Map(users.filter(safeAdmin).map((u:any)=>[String(u.email).toLowerCase(),u])).values()];
+    if(request.dry_run===true)return Response.json({success:true,dry_run:true,recipients:recipients.length,cases:cases.length});
     const subject=`Black Point · Daily IA Case Status · ${today}`;
     const open=cases.filter((c:any)=>c.status!=='closed');
     const recent=cases.filter((c:any)=>String(c.updated_date||c.created_date||'').slice(0,10)>=today);
@@ -41,10 +40,10 @@ export default async function(req:Request){
       const to=String(person.work_email||person.email).trim();
       const earlier=await db.PSNotification.filter({to,subject,status:'sent'},'-created_date',1).catch(()=>[]);
       if(earlier.length){skipped++;outcomes.push({to,status:'already_sent'});continue;}
-      const delivered=await notify(sdk,to,subject,html,user||null,'',true);
+      const delivered=await notify(sdk,to,subject,html,scheduled?null:user||null,'',true);
       if(delivered)sent++;else failed++;
       outcomes.push({to,status:delivered?'accepted':'failed'});
     }
-    return Response.json({success:true,date:today,cases:cases.length,recipients:recipients.length,sent,failed,skipped,outcomes});
+    return Response.json({success:failed===0&&recipients.length>0,date:today,cases:cases.length,recipients:recipients.length,sent,failed,skipped,...(!scheduled?{outcomes}:{})},{status:failed||!recipients.length?503:200});
   }catch(error:any){console.error('IA daily digest failed',String(error?.message||error));return Response.json({error:'Daily Professional Standards case update could not be completed.'},{status:500});}
 }

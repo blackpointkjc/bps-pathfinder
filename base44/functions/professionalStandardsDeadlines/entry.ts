@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClientFromRequest} from 'npm:@base44/sdk';
 import {notify,audit,psRole,manager} from './security.ts';
@@ -15,12 +16,11 @@ async function __portalLoginIsCurrent(request,sdk,user){
 }
 export default async function(req){
  try{
- const sdk=createClientFromRequest(req),u=await sdk.auth.me().then(__portalAppIdentity).catch(()=>null),db=sdk.asServiceRole.entities;
- if(u&&!u.is_service&&!await __portalLoginIsCurrent(req,sdk,u))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
- let service=u?.is_service===true;
- if(!u&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);service=true;}catch{}}
- if(!service&&psRole(u)!=='reviewer')return Response.json({error:'Trusted workflow or main administrator access required'},{status:403});
- if(u){const locks=await db.AccountLock.filter({user_id:u.id,locked:true},'-created_date',1);if(locks.length)return Response.json({error:'Your account is locked.'},{status:403});}
+ const sdk=createClientFromRequest(req),raw=await sdk.auth.me().catch(()=>null),db=sdk.asServiceRole.entities;
+ const body=await req.json().catch(()=>({})),service=isScheduledPlatformJob(raw,body),u=__portalAppIdentity(raw);
+ if(!service&&(!u||!await __portalLoginIsCurrent(req,sdk,u)))return Response.json({error:'Current authorized portal session required'},{status:401});
+ if(!service&&psRole(u)!=='reviewer')return Response.json({error:'Trusted workflow or IA reviewer access required'},{status:403});
+ if(!service&&u){const locks=await db.AccountLock.filter({user_id:u.id,locked:true},'-created_date',1);if(locks.length)return Response.json({error:'Your account is locked.'},{status:403});}
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const next=new Date(day+'T12:00:00Z');next.setUTCDate(next.getUTCDate()+1);const tomorrow=next.toISOString().slice(0,10);
  const [cases,records,users]=await Promise.all([db.PSCase.list('-created_date',1000),db.PSRecord.list('-created_date',2000),db.User.list('-created_date',1000)]);
@@ -29,13 +29,14 @@ export default async function(req){
  const reminders=[];
  for(const c of open.values())if(c.due_date&&c.due_date<=tomorrow&&c.investigator_id&&c.last_reminder_day!==day)reminders.push({entity:'PSCase',item:c,caseInfo:c,user_id:c.investigator_id,reference:c.reference,label:'Case deadline: '+c.due_date});
  for(const r of records)if(['task','corrective_action','interview'].includes(r.kind)&&r.status!=='completed'&&r.due_date&&r.due_date<=tomorrow&&r.assigned_to&&r.last_reminder_day!==day&&open.has(r.case_id))reminders.push({entity:'PSRecord',item:r,caseInfo:open.get(r.case_id),user_id:r.assigned_to,reference:open.get(r.case_id).reference,label:r.title+' · due '+r.due_date});
+ if(body.dry_run===true)return Response.json({success:true,dry_run:true,eligible_reminders:reminders.filter(r=>eligible.has(r.user_id)).length});
  for(const r of reminders.slice(0,100)){
   const person=eligible.get(r.user_id);if(!person)continue;
   const message=iaCaseEmail(r.caseInfo,person,r.entity==='PSCase'?'reminder':'task',{taskTitle:r.entity==='PSRecord'?r.item.title:undefined,taskDue:r.entity==='PSRecord'?r.item.due_date:undefined});
   const sent=await notify(sdk,person.work_email||person.email,message.subject,message.html,null,'',true);
   if(sent){await db[r.entity].update(r.item.id,{last_reminder_day:day});delivered++;}else failed++;
-  await audit(db,u,'deadline_reminder',r.entity==='PSCase'?r.item.id:r.item.case_id,(sent?'accepted for delivery':'delivery failed')+' · '+r.item.id);
+  await audit(db,service?{id:'scheduled-ia-deadlines',full_name:'IA deadline scheduler'}:u,'deadline_reminder',r.entity==='PSCase'?r.item.id:r.item.case_id,(sent?'accepted for delivery':'delivery failed')+' · '+r.item.id);
  }
- return Response.json({success:true,delivered,failed,limited:reminders.length>100,scanned_cases:cases.length,scanned_records:records.length});
+ return Response.json({success:failed===0,delivered,failed,limited:reminders.length>100,scanned_cases:cases.length,scanned_records:records.length},{status:failed?503:200});
  }catch{return Response.json({error:'Deadline reminders could not be completed.'},{status:500});}
 }

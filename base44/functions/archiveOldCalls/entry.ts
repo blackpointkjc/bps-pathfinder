@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -15,7 +16,7 @@ const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a
 
 const ARCHIVE_AFTER_MS = 60 * 60 * 1000;
 const ARCHIVE_SCAN_LIMIT = 1000;
-const ARCHIVE_BATCH_LIMIT = 100;
+const ARCHIVE_BATCH_LIMIT = 20;
 
 function callTimestamp(call: any) {
     const created = call?.created_date ? new Date(call.created_date).getTime() : 0;
@@ -29,20 +30,19 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
-    let __portalService=false;
-    if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
-    if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
-    base44.auth.me = async () => __portalCaller;
-
-        const user = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(() => null);
-        if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        const body=await req.json().catch(()=>({}));
+        const rawUser=await base44.auth.me().catch(()=>null);
+        const scheduled=isScheduledPlatformJob(rawUser,body);
+        const user=__portalAppIdentity(rawUser);
+        if(!scheduled){
+          if(!user||user.is_service||!await __portalLoginIsCurrent(req,base44,user))return Response.json({error:'Current authorized portal session required'},{status:401});
+          if((user.additional_roles||[]).some(r=>['visitor','client','student'].includes(String(r).toLowerCase()))||['visitor','client','student'].includes(String(user.user_type||'').toLowerCase()))return Response.json({error:'Operational access required'},{status:403});
+        }
         const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
         // Any authenticated operational user may trigger the archive pass. The
         // actual archive/delete writes use service role, so normal users never
         // receive direct write access to DispatchCall or CallHistory.
-        const authorized = user.role === 'admin' || user.role === 'dispatch' || user.role === 'supervisor' || user.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
+        const authorized = scheduled || user.role === 'admin' || user.role === 'dispatch' || user.role === 'supervisor' || user.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
         if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
         // Scan a broad oldest-first window. The old newest-only scan could miss
@@ -50,17 +50,24 @@ Deno.serve(async (req) => {
         const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('created_date', ARCHIVE_SCAN_LIMIT);
 
         const now = new Date();
-        let archivedCount = 0;
+        let archivedCount = 0, deferredCount=0, failedCount=0;
 
         const archiveCandidates = (activeCalls || [])
             .map(call => ({ call, stamp: callTimestamp(call) }))
             .filter(item => item.stamp > 0 && now.getTime() - item.stamp >= ARCHIVE_AFTER_MS)
             // Website requests are not external feed events. Never archive
             // open/unassigned Help Me calls on the one-hour timer.
-            .filter(item => item.call.source !== 'public_helpme' || ['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(item.call.status||'').toLowerCase()) || item.call.manual_dismissed === true)
+            .filter(item => {
+              const c=item.call,terminal=['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(c.status||'').toLowerCase())||c.manual_dismissed===true||!!c.time_cleared;
+              // Only external feed events expire by age. Internal/website requests
+              // remain active until explicit clearance, even when unassigned.
+              const external=/^(grac_|pulsepoint)/i.test(String(c.source_channel||''))||/^pulsepoint:/i.test(String(c.external_call_id||''));
+              return terminal||(external&&c.source!=='public_helpme');
+            })
             .sort((a, b) => a.stamp - b.stamp)
             .slice(0, ARCHIVE_BATCH_LIMIT);
 
+        if(body.dry_run===true)return Response.json({success:true,dry_run:true,scanned:activeCalls.length,candidates:archiveCandidates.length});
         for (const { call, stamp } of archiveCandidates) {
             const ageMs = now.getTime() - stamp;
 
@@ -71,7 +78,7 @@ Deno.serve(async (req) => {
             try {
                 assignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: String(call.id) }, '-assigned_at', 1000);
             } catch (error:any) {
-                console.warn('Deferring archive until assignments can be verified', call.id, error?.message || error);
+                deferredCount++;console.warn('Deferring archive until assignments can be verified', error?.message || error);
                 continue;
             }
             if (assignments.some((row:any)=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()))) continue;
@@ -118,6 +125,10 @@ Deno.serve(async (req) => {
                         if(Object.keys(patch).length)await base44.asServiceRole.entities.CallHistory.update(existing[0].id,patch);
                     }
 
+                    const fresh=await base44.asServiceRole.entities.DispatchCall.get(call.id);
+                    if(!fresh||fresh.updated_date!==call.updated_date||(fresh.assigned_units||[]).some((id:any)=>String(id).trim())){deferredCount++;continue;}
+                    const finalAssignments=await base44.asServiceRole.entities.CallAssignment.filter({call_id:String(call.id)},'-assigned_at',1000);
+                    if(finalAssignments.some((r:any)=>!['cleared','cancelled','canceled'].includes(String(r.status||'').toLowerCase()))){deferredCount++;continue;}
                     // Once a call leaves the active CAD queue, any open property alert
                     // for that same call must close with it. Otherwise the shell can keep
                     // presenting a property alert for a call that is already in history.
@@ -137,18 +148,18 @@ Deno.serve(async (req) => {
                     archivedCount++;
                     console.log(`Archived: ${call.incident} @ ${call.location} (age: ${Math.round(ageMs / 60000)}min)`);
                 } catch (error: any) {
-                    console.error(`Failed to archive call ${call.id}:`, error);
+                    failedCount++;console.error('Failed to archive call', error?.message||error);
                 }
             }
         }
 
         return Response.json({
-            success: true,
-            archivedCount,
+            success: failedCount===0,
+            archivedCount, deferredCount, failedCount,
             scanned: Array.isArray(activeCalls) ? activeCalls.length : 0,
             candidates: archiveCandidates.length,
             message: `Archived ${archivedCount} calls at 1 hour elapsed`
-        });
+        },{status:failedCount?503:200});
 
     } catch (error: any) {
         console.error('Error archiving old calls:', error);
