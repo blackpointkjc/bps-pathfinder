@@ -51,7 +51,7 @@ const geofenceFeature=(config)=>{
   return {type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[ring]}};
 };
 // Preserve the CAD symbology from the original Pathfinder map: blue PD calls,
-// red fire/PulsePoint, amber EMS, priority/approximate rings, and officer
+// red fire, amber EMS, priority/approximate rings, and officer
 // patrol shields. MapLibre canvas icons are local and work through private
 // Base44 without an external image host or extra geocoding requests.
 const callType = call => {
@@ -59,7 +59,6 @@ const callType = call => {
   const agency=String(call.agency||'').toUpperCase();
   const channel=String(call.source_channel||call.source||'').toLowerCase();
   const external=String(call.external_call_id||'').toLowerCase();
-  if(channel.includes('pulsepoint')||external.startsWith('pulsepoint:'))return 'pulsepoint';
   if(/ems|medical|ambulance|unconscious|overdose|stroke|cardiac/.test(incident))return 'ems';
   if(agency.includes('FD')||/fire|smoke|alarm/.test(incident))return 'fire';
   return 'police';
@@ -109,13 +108,13 @@ function registerCadIcons(map){
     ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
     ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=width;ctx.strokeStyle=stroke;ctx.stroke();
   };
-  for(const type of ['police','fire','ems','pulsepoint']){
+  for(const type of ['police','fire','ems']){
     for(const approximate of [false,true])for(const priority of [false,true])for(const arrived of [false,true]){
       register(`bps-${type}${approximate?'-approx':''}${priority?'-priority':''}${arrived?'-arrived':''}`,ctx=>{
-        const fill={police:'#1e40af',fire:'#dc2626',ems:'#d97706',pulsepoint:'#b91c1c'}[type];
+        const fill={police:'#1e40af',fire:'#dc2626',ems:'#d97706'}[type];
         circle(ctx,40,40,32,fill,priority?'#ef4444':'#fff',approximate?3:6);
         ctx.fillStyle='#fff';ctx.font=type==='fire'||type==='ems' ? '32px "Apple Color Emoji","Segoe UI Emoji",sans-serif' : '900 27px Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(({police:'PD',fire:'🔥',ems:'🚑',pulsepoint:'PP'})[type],40,42);
+        ctx.fillText(({police:'PD',fire:'🔥',ems:'🚑'})[type],40,42);
         // Active/arrived status dot like the existing CAD markers.
         circle(ctx,64,16,10,arrived?'#10b981':'#ef4444','#fff',3);
         if(approximate){ctx.beginPath();ctx.arc(40,40,36,0,Math.PI*2);ctx.setLineDash([7,5]);ctx.lineWidth=4;ctx.strokeStyle='#fbbf24';ctx.stroke();ctx.setLineDash([]);}

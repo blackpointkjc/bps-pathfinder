@@ -21,13 +21,6 @@ import AdminLiveLocationPrivacy from '@/components/dispatch/AdminLiveLocationPri
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 const DISPATCH_STATUSES = ['Dispatch', 'Available', 'Out of Service'];
 
-function isPulsePointCall(call) {
-    const sourceChannel = String(call?.source_channel || '').toLowerCase();
-    const externalId = String(call?.external_call_id || '').toLowerCase();
-    const source = String(call?.source || '').toLowerCase();
-    return sourceChannel.includes('pulsepoint') || externalId.startsWith('pulsepoint:') || source === 'pulsepoint';
-}
-
 // Display time in ET, 12-hour format
 function fmtTime(dateStr) {
     if (!dateStr) return '----';
@@ -182,7 +175,6 @@ function CommandDashboardInner() {
     };
 
     const getCallIdentifier = (call) => {
-        if (isPulsePointCall(call)) return { value: cadReference(call)||'Reference Pending', type: 'pulsepoint' };
         const official = String(call?.agency_cad_number || (call?.official_cad_verified ? call?.call_id : '') || '').trim();
         const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
         const bps = compactBps(call?.bps_reference);
@@ -214,7 +206,7 @@ function CommandDashboardInner() {
       <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onDispatch={openCallInDispatch} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
-        priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} isExternal={isPulsePointCall}
+        priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor}
         actions={<><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />

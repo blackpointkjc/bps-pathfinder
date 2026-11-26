@@ -712,8 +712,6 @@ export default function DispatchCenter({embedded=false}) {
         return 'bg-slate-600 text-slate-200';
     };
 
-    const isPulsePointCall = (call) => String(call?.source_channel || call?.external_call_id || call?.source || '').toLowerCase().includes('pulsepoint');
-    const pulsePointCalls = activeCalls.filter(isPulsePointCall);
 
     const propertyAlertCalls=activeCalls.filter(call =>
         Boolean(call.property_alert_id||call.property_id||call.matched_property_id||call.property_name||call.property_site)
@@ -840,7 +838,6 @@ export default function DispatchCenter({embedded=false}) {
             <div className="dispatch-kpis pf-dispatch-metrics tac-dispatch-metrics grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
-                    { label: 'PULSEPOINT', value: pulsePointCalls.length, tone: pulsePointCalls.length ? 'text-red-300' : 'text-slate-300', icon: Radio },
                     { label: 'PROPERTY UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
                     { label: 'PROPERTY PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
                     { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
@@ -903,7 +900,6 @@ export default function DispatchCenter({embedded=false}) {
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
                             <span className="pf-dispatch-pane-title">1 · {queueFilter==='agency'?'All active calls':'Company property calls'}</span>
-                            <span className="ml-auto text-[10px] bg-red-500/20 text-red-200 px-2 rounded-full border border-red-500/40">PP {pulsePointCalls.length}</span>
                             <span className="text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
                         </div>
                         {/* Table header */}
@@ -916,13 +912,12 @@ export default function DispatchCenter({embedded=false}) {
                             {allCalls.length === 0 ? (
                                 <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'Loading Current Calls…' : callsLoadWarning ? 'Active call feed unavailable — retrying when the API recovers' : queueSearch ? 'No Calls Match This Search' : queueFilter==='agency' ? 'No Active Calls' : 'No Property Calls Match This Filter'}</div>
                             ) : allCalls.map(call => {
-                                const pulsePoint = isPulsePointCall(call);
                                 return (
                                 <div key={call.id} role="button" tabIndex={0} aria-label={'Open incident '+(call.bps_reference||call.call_id||call.id)} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();handleSelectCall(call);}}} onClick={() => handleSelectCall(call)}
                                     className={`dispatch-call-card pf-dispatch-call group grid cursor-pointer border-b px-2 py-2.5 transition-all ${
                                         selectedCall?.id === call.id
-                                            ? pulsePoint ? 'bg-red-950/70 border-l-2 border-l-red-400 border-red-700/70' : 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6] border-[#172536]'
-                                            : pulsePoint ? 'border-red-900/70 bg-red-950/25 hover:bg-red-900/35' : 'border-[#172536] hover:bg-[#111827]'
+                                            ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6] border-[#172536]'
+                                            : 'border-[#172536] hover:bg-[#111827]'
                                     }`}>
                                     <div className="pf-dispatch-priority">
                                         <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(incidentPriority(call))}`}>
@@ -930,12 +925,12 @@ export default function DispatchCenter({embedded=false}) {
                                         </span>
                                     </div>
                                     <div className="pf-dispatch-call-info">
-                                        <div className={`text-[9px] font-mono font-bold truncate ${pulsePoint ? 'text-red-200' : call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{pulsePoint ? 'PP' : (call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…')}</div>
+                                        <div className={`text-[9px] font-mono font-bold truncate ${call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{(call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…')}</div>
                                         <div className="break-words text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{cleanIncident(call)}</div>
                                         <div className="mt-1 break-words text-[9px] text-slate-400">{call.location}</div>
                                         {propertyCallIds.has(String(call.id))&&<div className="mt-1 text-[9px] font-bold text-cyan-300">PROPERTY STATUS: {propertyCallProgress(call).toUpperCase()}</div>}
-                                        <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wide ${pulsePoint ? 'border border-red-500/40 bg-red-500/20 text-red-100' : 'text-slate-600'}`}>
-                                            {pulsePoint ? 'PULSEPOINT' : (call.agency || 'AGENCY N/A')}
+                                        <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wide ${'text-slate-600'}`}>
+                                            {(call.agency || 'AGENCY N/A')}
                                         </div>
                                     </div>
                                     <div className="pf-dispatch-call-time text-slate-400">
@@ -945,7 +940,7 @@ export default function DispatchCenter({embedded=false}) {
                                                 {callAgeMinutes(call)} MIN AGO · PROPERTY
                                             </div>
                                         ) : (
-                                            <div className={`mt-1 font-bold ${pulsePoint ? 'text-red-200' : 'text-slate-700'}`}>{pulsePoint ? 'PULSEPOINT CALL' : 'AGENCY CALL'}</div>
+                                            <div className={`mt-1 font-bold ${'text-slate-700'}`}>{'AGENCY CALL'}</div>
                                         )}
                                     </div>
                                 </div>
@@ -965,7 +960,7 @@ export default function DispatchCenter({embedded=false}) {
                                 <div className="pf-dispatch-detail-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>2 · Incident details</span><div className="flex gap-2 xl:hidden"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
-                                            {isPulsePointCall(selectedCall) ? 'PP · '+(cadReference(selectedCall)||'Reference Pending') : selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
+                                            {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(incidentPriority(selectedCall))}`}>{incidentPriority(selectedCall).toUpperCase()}</span>
                                         {canEditIncidentPriority(currentUser) && <IncidentPrioritySelect call={selectedCall} priority={incidentPriority(selectedCall)} onSave={async(call,priority)=>{
@@ -975,7 +970,6 @@ export default function DispatchCenter({embedded=false}) {
                                             setSelectedCall(previous=>previous?.id===call.id?{...previous,priority,priority_override:true}:previous);
                                         }}/>}
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
-                                        {isPulsePointCall(selectedCall) && <span className="rounded border border-red-500/50 bg-red-500/20 px-2 py-0.5 text-[9px] font-black text-red-100">PulsePoint</span>}
                                         <span className="w-full md:w-auto md:ml-auto text-[9px] text-slate-500">
                                             RECV: {formatEasternDateTime(selectedCall.time_received || selectedCall.created_date)} ET
                                         </span>

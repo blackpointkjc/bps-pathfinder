@@ -21,7 +21,7 @@ await assert.rejects(readRosterCalls({DispatchCall:{filter:async()=>{throw new E
 
 const {releaseClosedCall}=await load('base44/functions/ingestGractivecalls/releaseClosedCall.ts');
 const source=await readFile('base44/functions/ingestGractivecalls/releaseClosedCall.ts','utf8');
-for(const name of ['ingestPulsePoint','updateCadCallStatus','manageAutoDispatchOversight']){
+for(const name of ['updateCadCallStatus','manageAutoDispatchOversight']){
  assert.equal(await readFile('base44/functions/'+name+'/releaseClosedCall.ts','utf8'),source);
 }
 for(const initialStatus of ['Enroute','Out of Service']){
