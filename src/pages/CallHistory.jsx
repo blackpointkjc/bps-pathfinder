@@ -126,14 +126,14 @@ export default function CallHistory() {
     const [nextCursor, setNextCursor] = useState(null);
     const [historyWarning, setHistoryWarning] = useState('');
     const pagesLoadedRef = useRef(0);
-    const filtersRef = useRef({agency:agencyFilter,status:statusFilter});
-    filtersRef.current = {agency:agencyFilter,status:statusFilter};
+    const filtersRef = useRef({agency:agencyFilter,status:statusFilter,call_class:propertyFilter});
+    filtersRef.current = {agency:agencyFilter,status:statusFilter,call_class:propertyFilter};
     const filtersMountedRef = useRef(false);
     useEffect(() => {
       if (!filtersMountedRef.current) { filtersMountedRef.current = true; return; }
       setRefreshing(true);
       void loadAll(true);
-    }, [agencyFilter, statusFilter]);
+    }, [agencyFilter, statusFilter, propertyFilter]);
 
     const decorateRealtimePropertyMatch = (row) => {
         if (!row) return row;
@@ -162,6 +162,7 @@ export default function CallHistory() {
         if (filtersRef.current.status !== 'ALL' && record.status !== filtersRef.current.status) return;
         if (searchRef.current && ![record.incident,record.location,record.call_id,record.bps_reference,record.agency_cad_number].some(value=>String(value||'').toLowerCase().includes(searchRef.current.toLowerCase()))) return;
         const liveRow = decorateRealtimePropertyMatch({ ...record, _source: 'active' });
+        if(filtersRef.current.call_class==='PROPERTY'&&!liveRow._propertyCall&&!referenceRowsRef.current.some(row=>row._propertyCall&&(row.id===record.id||row.original_call_id===record.id)))return;
         setRows(current => {
             const next = [...current];
             const index = next.findIndex(row => String(row.id || '') === String(record.id || '') || String(row.original_call_id || '') === String(record.id || ''));
@@ -277,9 +278,10 @@ export default function CallHistory() {
 
             const result = await withRequestTimeout(
                 base44.functions.invoke('getCallHistoryFeed', {search:searchRef.current, include_details:false, ...filtersRef.current, since:fromDateRef.current?new Date(fromDateRef.current+'T00:00:00').toISOString():undefined, until:throughDateRef.current?new Date(new Date(throughDateRef.current+'T00:00:00').setDate(new Date(throughDateRef.current+'T00:00:00').getDate()+1)-1).toISOString():undefined, page_size:40, cursor:append?cursorRef.current:null}),
-                15000,
+                35000,
                 'Call history request'
             );
+            if(queryKey!==JSON.stringify([searchRef.current,fromDateRef.current,throughDateRef.current,filtersRef.current])){pendingSearchRef.current=true;return;}
             let payload = result?.data || result || {};
             if (!Array.isArray(payload.rows) && payload?.data && typeof payload.data === 'object') payload = payload.data;
             if (payload.error) throw new Error(payload.error);
@@ -289,7 +291,7 @@ export default function CallHistory() {
             // while the operational CAD board has verified current calls.
             // Recover those calls from the SAME shared feed as Dispatch Center,
             // never invent records or silently claim the archive is complete.
-            if(!append && !feedRows.length && !payload.has_more && !searchRef.current.trim()
+            if(!append && filtersRef.current.call_class!=='PROPERTY' && !feedRows.length && !payload.has_more && !searchRef.current.trim()
                 && filtersRef.current.agency==='ALL' && filtersRef.current.status==='ALL'
                 && !fromDateRef.current && !throughDateRef.current){
               let currentCalls = readLastGoodCalls().filter(isVisibleActiveCall);
@@ -356,7 +358,7 @@ export default function CallHistory() {
               try {recovered=(await withRequestTimeout(loadActiveDispatchCallRows(100),12000,'Verified CAD history fallback')).filter(isVisibleActiveCall);}
               catch(error){console.warn('[HISTORY] Shared CAD fallback unavailable',error?.message||error);}
             }
-            if(recovered.length && !searchRef.current.trim() && filtersRef.current.agency==='ALL' && filtersRef.current.status==='ALL'){
+            if(recovered.length && filtersRef.current.call_class!=='PROPERTY' && !searchRef.current.trim() && filtersRef.current.agency==='ALL' && filtersRef.current.status==='ALL'){
               const current=referenceRowsRef.current;
               const merged=new Map(current.map(item=>[String(item.original_call_id||item.id),item]));
               for(const row of recovered){

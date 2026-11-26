@@ -126,6 +126,7 @@ Deno.serve(async (req) => {
     const until=new Date(Math.min(snapshotMs,Date.parse(input.until||'')||snapshotMs)).toISOString();
     const db=base44.asServiceRole.entities;
     const dateRange={$gte:since,$lte:until};
+    const propertyOnly=input.call_class==='PROPERTY';
     const states:any={
       active:{entity:db.DispatchCall,field:'time_received',offset:Math.max(0,Math.floor(Number(cursor.active)||0)),buffer:[],done:cursor.active_done===true,error:''},
       archived:{entity:db.CallHistory,field:'time_received',offset:Math.max(0,Math.floor(Number(cursor.archived)||0)),buffer:[],done:cursor.archived_done===true,error:''},
@@ -137,6 +138,11 @@ Deno.serve(async (req) => {
       ['property_legacy',db.PropertyAlert,'callTime','time_received']
     ] as any[]){
       states[key]={entity,field,missingField,offset:Math.max(0,Math.floor(Number(cursor[key])||0)),buffer:[],done:cursor[key+'_done']===true,error:''};
+    }
+    if(propertyOnly){
+      for(const key of ['active','archived','active_legacy','archived_legacy'])states[key].done=true;
+      states.manual={entity:db.PropertyCallLink,field:'time_received',offset:Math.max(0,Math.floor(Number(cursor.manual)||0)),buffer:[],done:cursor.manual_done===true,error:''};
+      states.manual_legacy={entity:db.PropertyCallLink,field:'linked_at',missingField:'time_received',offset:Math.max(0,Math.floor(Number(cursor.manual_legacy)||0)),buffer:[],done:cursor.manual_legacy_done===true,error:''};
     }
     const family=(key:string)=>key.replace('_legacy','');
     // A raw cursor advances for every database row examined, including rows
@@ -180,15 +186,27 @@ Deno.serve(async (req) => {
       state.end=raw.length<batchSize;
       // Only use a property-alert row as history when neither the live nor
       // archived original exists anywhere, not merely outside this page.
-      if(family(key)==='property'&&raw.length){
-        const refs=[...new Set(raw.map((r:any)=>String(r.callId||'')).filter(Boolean))];
+      if((family(key)==='property'||family(key)==='manual')&&raw.length){
+        const manual=family(key)==='manual';
+        const refs=[...new Set(raw.map((r:any)=>String(manual?r.call_id||'':r.callId||'')).filter(Boolean))];
         const [live,archived]=await Promise.all([
           readWithRetry('Property original calls',()=>refs.length?db.DispatchCall.filter({id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[]),
           readWithRetry('Property archived calls',()=>refs.length?db.CallHistory.filter({original_call_id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[])
         ]);
-        if(live.error||archived.error){state.error=live.error||archived.error;return;}
-        const linked=new Set([...live.data.map(r=>String(r.id)),...archived.data.map(r=>String(r.original_call_id))]);
-        state.buffer=raw.map((r:any)=>({row:asProperty(r),skip:linked.has(String(r.callId||''))}));
+        if(live.error||archived.error){
+          if(!propertyOnly){state.error=live.error||archived.error;return;}
+          warnings.push(...[live.error,archived.error].filter(Boolean));
+        }
+        const liveById=new Map(live.data.map(r=>[String(r.id),r]));
+        const archiveById=new Map(archived.data.map(r=>[String(r.original_call_id),r]));
+        state.buffer=raw.map((r:any)=>{
+          const id=String(manual?r.call_id||'':r.callId||'');
+          const current=liveById.get(id),prior=archiveById.get(id),original=current||prior;
+          if(!propertyOnly)return {row:asProperty(r),skip:!!original};
+          const fallback=manual?{id:'property-link:'+r.id,original_call_id:id,call_id:r.call_number||'',incident:r.incident||'Property call',location:r.location||'',time_received:r.time_received||r.linked_at,agency:'BPS',status:'Recorded',_source:'property',_referenceEntity:'PropertyCallLink',_referenceId:r.id}:asProperty(r);
+          const row={...fallback,...(original||{}),original_call_id:id||fallback.original_call_id,_source:current?'active':prior?'archived':'property',_propertyCall:true,_propertyName:manual?r.property_name:r.propertyName,_propertyId:manual?r.property_id:r.propertyId,_propertyAlert:manual?null:r,_propertyLinks:manual?[r]:[],_propertyLifecycle:manual?'':r.lifecycle_status||'',_referenceEntity:original?(current?'DispatchCall':'CallHistory'):fallback._referenceEntity,_referenceId:original?.id||fallback._referenceId};
+          return {row,skip:manual?lower(r.status)==='detached':r.is_test===true||lower(r.lifecycle_status)==='test'};
+        });
       }else if(family(key)==='archived'&&raw.length){
         const refs=[...new Set(raw.map((r:any)=>String(r.original_call_id||'')).filter(Boolean))];
         const live=await readWithRetry('Archive duplicate check',()=>refs.length?db.DispatchCall.filter({id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[]);
@@ -200,7 +218,7 @@ Deno.serve(async (req) => {
     };
     while(selected.length<pageSize&&scanned<scanLimit&&reads<42){
       await Promise.all(Object.keys(states).map(fill));
-      if(states.active.error&&states.archived.error)throw Error('Both active and archived call sources are temporarily unavailable.');
+      if(!propertyOnly&&states.active.error&&states.archived.error)throw Error('Both active and archived call sources are temporarily unavailable.');
       const heads=Object.entries(states).filter(([,v]:any)=>v.buffer.length).map(([source,v]:any)=>({source,...v.buffer[0]}));
       if(!heads.length)break;
       heads.sort((a,b)=>callTimestamp(b.row)-callTimestamp(a.row)||['active','archived','property'].indexOf(family(a.source))-['active','archived','property'].indexOf(family(b.source)));
@@ -213,8 +231,9 @@ Deno.serve(async (req) => {
       const stamp=callTimestamp(row);
       if(stamp!==boundaryStamp){boundaryStamp=stamp;boundaryIds=new Set();}
       if(seen.has(identity)||boundaryIds.has(identity))continue;
-      seen.add(identity);boundaryIds.add(identity);selected.push({...item,source:family(item.source)});
+      seen.add(identity);boundaryIds.add(identity);selected.push({...item,source:family(item.source)==='manual'?'property':family(item.source)});
     }
+    if(propertyOnly&&!selected.length&&states.property.error&&states.property_legacy.error&&states.manual.error&&states.manual_legacy.error)throw Error('Property history temporarily unavailable. Retry.');
     const propertyRows=selected.filter(item=>item.source==='property').map(item=>item.row);
     const active:any[] = selected.filter(item=>item.source==='active').map(item=>item.row);
     const archived:any[] = selected.filter(item=>item.source==='archived').map(item=>item.row);
@@ -348,23 +367,26 @@ Deno.serve(async (req) => {
     // and street match. Only the canonical original ID is a duplicate key.
     const archivedRows=archivedRowsRaw;
     const manualLinks:any[]=propertyLinksRead.data||[];
-    const allRows=[...activeRows,...archivedRows];
+    const allRows=[...activeRows,...archivedRows,...propertyRows];
     const decorated=allRows.map(row=>{
       const ids=[String(row.id||''),String(row.original_call_id||'')];
-      const links=manualLinks.filter(link=>ids.includes(String(link.call_id))||ids.includes(String(link.archive_id||'')));
-      return links.length?{...row,_propertyLinks:links,_propertyCall:true,_propertyName:[row._propertyName,...links.map(l=>l.property_name)].filter(Boolean).join(' / '),_propertyId:row._propertyId||links[0].property_id}:row;
+      const links=manualLinks.filter(link=>lower(link.status)!=='detached'&&(ids.includes(String(link.call_id))||ids.includes(String(link.archive_id||''))));
+      const matchingAlerts=alerts.filter(a=>a.is_test!==true&&lower(a.lifecycle_status)!=='test'&&ids.includes(String(a.callId)));
+      const names=[...new Set([row._propertyName,...matchingAlerts.map(a=>a.propertyName),...links.map(l=>l.property_name)].filter(Boolean))];
+      return {...row,_propertyLinks:links.length?links:row._propertyLinks,_propertyCall:!!(row._propertyCall||matchingAlerts.length||links.length),_propertyName:names.join(' / '),_propertyId:row._propertyId||matchingAlerts[0]?.propertyId||links[0]?.property_id||''};
+
     });
     return Response.json({
       success: true,
-      rows: [...decorated,...propertyRows].sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
+      rows: decorated.sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
       next_cursor: nextCursor,
       has_more: hasMore,
       days:90, since, snapshot_at:snapshot, scan_incomplete:hasMore&&selected.length<pageSize,
       counts: {
         active: activeRows.length,
         archived: archivedRows.length,
-        propertyAlerts: decorated.filter(row=>row._propertyCall).length+propertyRows.length,
-        loaded: decorated.length+propertyRows.length,
+        propertyAlerts: decorated.filter(row=>row._propertyCall).length,
+        loaded: decorated.length,
       },
       warnings: [...new Set([...warnings,...Object.values(states).map((state:any)=>state.error)]) , alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
     });
