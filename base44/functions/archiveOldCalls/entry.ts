@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
         const body=await req.json().catch(()=>({}));
         const rawUser=await base44.auth.me().catch(()=>null);
         const scheduled=isScheduledPlatformJob(rawUser,body);
-        const user=__portalAppIdentity(rawUser);
+        const user=__limitFullAccess(__portalAppIdentity(rawUser));
         if(!scheduled){
           if(!user||user.is_service||!await __portalLoginIsCurrent(req,base44,user))return Response.json({error:'Current authorized portal session required'},{status:401});
           if((user.additional_roles||[]).some(r=>['visitor','client','student'].includes(String(r).toLowerCase()))||['visitor','client','student'].includes(String(user.user_type||'').toLowerCase()))return Response.json({error:'Operational access required'},{status:403});
@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
               const external=/^(grac_|pulsepoint)/i.test(String(c.source_channel||''))||/^pulsepoint:/i.test(String(c.external_call_id||''));
               return terminal||(external&&c.source!=='public_helpme');
             })
+            .filter(({call})=>!(call.assigned_units||[]).some((id:any)=>String(id).trim()))
             .sort((a, b) => a.stamp - b.stamp)
             .slice(0, ARCHIVE_BATCH_LIMIT);
 
@@ -85,6 +86,10 @@ Deno.serve(async (req) => {
 
             if (ageMs >= ARCHIVE_AFTER_MS) {
                 try {
+                    const fresh=await base44.asServiceRole.entities.DispatchCall.get(call.id);
+                    if(!fresh||fresh.updated_date!==call.updated_date||(fresh.assigned_units||[]).some((id:any)=>String(id).trim())){deferredCount++;continue;}
+                    const finalAssignments=await base44.asServiceRole.entities.CallAssignment.filter({call_id:String(call.id)},'-assigned_at',1000);
+                    if(finalAssignments.some((r:any)=>!['cleared','cancelled','canceled'].includes(String(r.status||'').toLowerCase()))){deferredCount++;continue;}
                     const existing = await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: call.id }, '-archived_date', 1);
                     const snapshot = {
                             original_call_id: call.id,
@@ -125,10 +130,6 @@ Deno.serve(async (req) => {
                         if(Object.keys(patch).length)await base44.asServiceRole.entities.CallHistory.update(existing[0].id,patch);
                     }
 
-                    const fresh=await base44.asServiceRole.entities.DispatchCall.get(call.id);
-                    if(!fresh||fresh.updated_date!==call.updated_date||(fresh.assigned_units||[]).some((id:any)=>String(id).trim())){deferredCount++;continue;}
-                    const finalAssignments=await base44.asServiceRole.entities.CallAssignment.filter({call_id:String(call.id)},'-assigned_at',1000);
-                    if(finalAssignments.some((r:any)=>!['cleared','cancelled','canceled'].includes(String(r.status||'').toLowerCase()))){deferredCount++;continue;}
                     // Once a call leaves the active CAD queue, any open property alert
                     // for that same call must close with it. Otherwise the shell can keep
                     // presenting a property alert for a call that is already in history.

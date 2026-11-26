@@ -75,10 +75,12 @@
         "street",
         "grac",
         "pulsepoint",
+        "tomtom",
         "none"
       ],
       "description": "Method used to geocode the location"
     },
+    "geo_last_attempt_at": {"type":"string","format":"date-time","description":"Last attempted missing-coordinate repair, used to rotate retries"},
     "geo_approximate": {
       "type": "boolean",
       "default": false,

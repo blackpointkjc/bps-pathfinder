@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
             (!c.latitude || !c.longitude ||
              parseFloat(c.latitude) === 0 || parseFloat(c.longitude) === 0) &&
             (forceRetry || c.geo_confidence !== 'unmappable')
-        );
+        ).sort((a,b)=>(Date.parse(a.geo_last_attempt_at)||0)-(Date.parse(b.geo_last_attempt_at)||0));
 
         console.log(`Found ${missingCoords.length} calls to geocode out of ${allCalls.length} total`);
 
@@ -249,9 +249,10 @@ Deno.serve(async (req) => {
                 }
             }
 
-            if(scheduled&&!result){failed++;continue;}
+            if(scheduled&&!result){try{await base44.asServiceRole.entities.DispatchCall.update(call.id,{geo_last_attempt_at:new Date().toISOString()});failed++;}catch{writeFailed++;}continue;}
             const updateData = result
                 ? {
+                    geo_last_attempt_at:new Date().toISOString(),
                     latitude: result.latitude,
                     longitude: result.longitude,
                     geo_confidence: result.geo_confidence,
