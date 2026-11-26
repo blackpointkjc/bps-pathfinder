@@ -1,4 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { RadioTower, Radio, ClipboardList, Map, Users, AlertTriangle, History, Shield } from 'lucide-react';
+import {CadClock} from '@/components/dispatch/CadTerminal';
+import '@/components/dispatch/cad-center-terminal.css';
 import { useLocation,useNavigate } from 'react-router-dom';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
@@ -11,15 +14,15 @@ import OfficerDispatchQueue from './OfficerDispatchQueue';
 
 const TOOLS = {
   live: [
-    { id: 'command', label: 'Command Board', component: CommandDashboard },
-    { id: 'dispatch', label: 'Dispatch Queue', component: DispatchCenter },
-    { id: 'officerqueue', label: 'Officer Queue', component: OfficerDispatchQueue },
-    { id: 'map', label: 'Live Map', component: Navigation },
-    { id: 'units', label: 'Officer Status', component: UnitStatus },
+    { id: 'command', icon: RadioTower, short: 'Command', label: 'Command Board', component: CommandDashboard },
+    { id: 'dispatch', icon: Radio, short: 'Dispatch', label: 'Dispatch Queue', component: DispatchCenter },
+    { id: 'officerqueue', icon: ClipboardList, short: 'Field MDT', label: 'Officer Queue', component: OfficerDispatchQueue },
+    { id: 'map', icon: Map, short: 'Live map', label: 'Live Map', component: Navigation },
+    { id: 'units', icon: Users, short: 'Units', label: 'Officer Status', component: UnitStatus },
   ],
-  alerts: [{ id: 'bolo', label: 'BOLO / Alerts', component: BOLOAlerts }],
+  alerts: [{ id: 'bolo', icon: AlertTriangle, short: 'BOLO', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
-    { id: 'history', label: 'Call History', component: CallHistory },
+    { id: 'history', icon: History, short: 'Records', label: 'Call History', component: CallHistory },
 
   ],
 };
@@ -34,39 +37,24 @@ export default function CADCenter({ embedded = false }) {
  const active=tools.find(t=>t.id===params.get(toolKey))||tools[0];
  const Component=active.component;
  useEffect(()=>{
-  if(!['dispatch','map'].includes(active.id)||!hostRef.current)return;
+  if(!hostRef.current)return;
   const host=hostRef.current;
   const measure=()=>{
     const viewport=host.closest('main[data-page]');
     const bottom=Math.min(window.innerHeight,viewport?.getBoundingClientRect().bottom||window.innerHeight);
-    host.style.setProperty('--cad-workspace-height',Math.max(160,bottom-Math.max(0,host.getBoundingClientRect().top)-8)+'px');
+    const height=Math.max(0,Math.floor(bottom-Math.max(0,host.getBoundingClientRect().top,viewport?.getBoundingClientRect().top||0)-2));
+    if(height>0)host.style.setProperty('--cad-workspace-height',height+'px');
   };
   measure();
   const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
   if(host.parentElement)observer?.observe(host.parentElement);
-  window.addEventListener('resize',measure);
-  return()=>{observer?.disconnect();window.removeEventListener('resize',measure);};
+  window.addEventListener('resize',measure);window.visualViewport?.addEventListener('resize',measure);
+  return()=>{observer?.disconnect();window.removeEventListener('resize',measure);window.visualViewport?.removeEventListener('resize',measure);};
  },[active.id]);
  const select=(section,tool)=>{const next=new URLSearchParams(location.search);next.set(embedded?'cad_section':'section',section);next.set(toolKey,tool);['new','open','call_id','call_number','callId','lat','lng'].forEach(key=>next.delete(key));navigate({pathname:location.pathname,search:'?'+next.toString()},{replace:true});};
- return <main ref={hostRef} className={'cad-console-shell'+(active.id==='dispatch'?' cad-shell-dispatch':active.id==='map'?' cad-shell-map':active.id==='command'?' cad-shell-command':'')}>
-  <div className="cad-mobile-workstation-picker min-w-0 border-b border-[#34516c] bg-[#0c1929] p-2 xl:hidden">
-   <label htmlFor="cad-mobile-workstation-select" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-cyan-200">CAD Workstation</label>
-   <select
-     id="cad-mobile-workstation-select"
-     aria-label="Choose CAD workstation"
-     value={`${section in TOOLS ? section : 'live'}:${active.id}`}
-     onChange={event=>{
-       const [nextSection,nextTool]=event.target.value.split(':');
-       if(TOOLS[nextSection]?.some(item=>item.id===nextTool))select(nextSection,nextTool);
-     }}
-     className="block min-h-11 w-full min-w-0 rounded-lg border border-[#3a607d] bg-[#12283c] px-3 py-2 text-base font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-   >
-     {Object.entries(TOOLS).map(([group,items])=><optgroup key={group} label={group==='live'?'Live CAD':group==='alerts'?'Alerts':'History & Records'}>
-       {items.map(item=><option key={item.id} value={`${group}:${item.id}`}>{item.label}</option>)}
-     </optgroup>)}
-   </select>
-  </div>
-  <nav className="cad-mode-nav hidden xl:flex" aria-label="CAD workstations">{Object.entries(TOOLS).flatMap(([group,items])=>items.map(item=><button type="button" key={item.id} aria-current={active.id===item.id?'page':undefined} onClick={()=>select(group,item.id)}>{item.label}</button>))}</nav>
-  <div className={'cad-active-screen '+(active.id==='dispatch'?'cad-screen-dispatch':active.id==='map'?'cad-screen-map':'')}><Component embedded /></div>
- </main>;
+ return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-'+active.id} data-workstation={active.id}>
+   <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16}/><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><CadClock/></div>
+   <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(TOOLS).map(([group,items])=><div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item=>{const Icon=item.icon;return <button type="button" key={item.id} aria-current={active.id===item.id?'page':undefined} onClick={()=>select(group,item.id)} title={item.label}><Icon size={17}/><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>})}</div>)}</nav>
+   <div className={'cad-active-screen cad-terminal-screen cad-screen-'+active.id}><Component embedded /></div>
+ </section>;
 }

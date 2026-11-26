@@ -16,7 +16,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const [rightPane,setRightPane]=useState('units');
  const commandRef=useRef(null);
  useEffect(()=>{
-   const root=commandRef.current;if(!root)return;
+   const root=commandRef.current;if(!root||root.closest('.cad-terminal-shell'))return;
    const host=root.closest('main[data-page]');
    let frame=0;
    const measure=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
