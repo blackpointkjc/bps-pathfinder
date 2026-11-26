@@ -1,3 +1,4 @@
+import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
 import '@/components/dispatch/tactical-console.css';
 import TacticalCommandMap from '@/components/dispatch/TacticalCommandMap';

@@ -1,3 +1,4 @@
+import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
 import '@/components/dispatch/tactical-console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -187,7 +188,7 @@ export default function OfficerDispatchQueue() {
 
   if (isLoading || (error && !payload.queue)) return <div className="p-6 text-slate-200"><div className="rounded-xl border border-slate-600 bg-slate-900 p-4 space-y-3"><p role="status">{isLoading?'Loading dispatch queue…':'Dispatch queue could not load: '+error.message}</p>{queueRefreshButton}</div></div>;
 
-  return <div className="tac-console tac-mdt">
+  return <div className="tac-console tac-mdt cad-mdt-terminal">
     <header className="tac-header"><div className="tac-brand"><ShieldAlert size={24}/><div><small>BLACK POINT · MOBILE DATA TERMINAL</small><h1>Field response</h1></div></div><div className="tac-header-actions"><span className="tac-feed-state"><i data-state={error?'warning':queueFetching?'loading':'ready'}/>{queueFetching?'SYNCING':error?'REFRESH FAILED':`UPDATED ${updatedLabel(queueUpdatedAt)}`}</span>{queueRefreshButton}</div></header>
     {!selected?<section className="tac-mdt-idle"><CheckCircle2 size={38}/><h2>Queue clear</h2><p>No active calls are assigned to you.</p></section>:<>
       <div className="tac-mdt-current" ref={detailPanelRef} data-priority={String(selected.priority||'medium').toLowerCase()}><div><small>SELECTED ASSIGNMENT · {queue.indexOf(selected)+1} OF {queue.length}</small><h2>{selected.incident||'Call for service'}</h2><p><MapPinned size={19}/>{selected.location||'Location unavailable'}</p></div><div className="tac-mdt-reference"><Badge className={priorityClass(selected.priority)}>{String(selected.priority||'medium').toUpperCase()}</Badge><strong>{selected.agency_cad_number||selected.bps_reference||selected.call_id||selected.id}</strong><span>{statusLabel(selected.assignment?.status)} · {String(selected.assignment?.role||'role unverified').toUpperCase()}</span></div></div>

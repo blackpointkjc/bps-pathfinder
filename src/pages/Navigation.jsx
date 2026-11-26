@@ -1,6 +1,8 @@
 import MapToolDock from '@/components/map/MapToolDock';
 import MapCallPanel from '@/components/map/MapCallPanel';
 import '@/components/map/mapWorkspace.css';
+import '@/components/dispatch/cad-center-terminal.css';
+import {cadDestination} from '@/lib/cadNavigation';
 import { createPortal } from 'react-dom';
 import { readRecentDestinations, rememberDestination } from '@/lib/recentDestinations';
 import { shouldSetDispatchEnroute } from '@/lib/navigationStatus';
@@ -81,7 +83,7 @@ const MY_STATUSES = [
     { label: 'Out of Service', dot: 'bg-slate-600', shortcode: '10-7' },
 ];
 
-export default function Navigation() {
+export default function Navigation({embedded=false}={}) {
     const navigate = useNavigate();
     const [currentLocation, setCurrentLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
@@ -100,6 +102,7 @@ export default function Navigation() {
     useEffect(() => { const interval = window.setInterval(() => setGpsStatusClock(Date.now()), 5000); return () => window.clearInterval(interval); }, []);
     useEffect(() => subscribeExternalGpsStatus(status => setExternalReceiver(status)), []);
     const [showActiveCalls, setShowActiveCalls] = useState(true);
+    const [cadIndexOpen,setCadIndexOpen]=useState(false),[cadIndexQuery,setCadIndexQuery]=useState(''),[cadIndexMode,setCadIndexMode]=useState('calls'),[cadMapCamera,setCadMapCamera]=useState(null);
     const [heading, setHeading] = useState(null);
     const [speed, setSpeed] = useState(0);
     const [roadSpeedLimit, setRoadSpeedLimit] = useState(null);
@@ -1854,7 +1857,7 @@ export default function Navigation() {
                     ];
 
     const mapContent = (
-        <div style={mapFullscreen ? { position: "fixed", inset: 0, zIndex: 2147483000, height: "100dvh", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } : undefined} className="pf-navigation-workspace relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#07101a]">
+        <div style={mapFullscreen ? { position: "fixed", inset: 0, zIndex: 2147483000, height: "100dvh", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } : undefined} className="pf-navigation-workspace cad-live-map relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#07101a]">
 
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
@@ -1862,7 +1865,7 @@ export default function Navigation() {
                   <Suspense fallback={<div role="status" className="absolute inset-0 flex items-center justify-center bg-slate-950 text-sm text-white">Loading TomTom live map…</div>}>
                     <TomTomSdkMapPreview showDistress
                       key={'tomtom-gps-'+tomTomRecoveryAttempt}
-                      embedded allowBlankMapFallback
+                      embedded allowBlankMapFallback tacticalCamera={!isNavigating?cadMapCamera:null}
                       currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
                       activeCalls={showActiveCalls ? activeCalls : []}
                       otherUnits={mapVisibleUnits}
@@ -1939,7 +1942,7 @@ export default function Navigation() {
 
             <div ref={toolbarRef} className="absolute left-0 right-0 top-0 z-[1010]">
                 <LiveMapToolbar user={currentUser} status={unitStatus} saving={statusSaving} onStatusChange={handleStatusChange}
-                    onBack={() => navigate('/CommandDashboard')} onRecenter={recenter}
+                    onBack={() => navigate(cadDestination('CommandDashboard'))} onToggleIndex={embedded&&!isNavigating&&!mapFullscreen?()=>setCadIndexOpen(v=>!v):undefined} indexOpen={cadIndexOpen} onRecenter={recenter}
                     onRefreshCalls={() => { clearBase44ReadCacheMatching('function:getActiveDispatchCalls:'); clearBase44ReadCacheMatching('entity:DispatchCall:'); clearActiveDispatchCallMemoryCache(); fetchCalls(); }} callsRefreshing={callsRefreshing}
                     callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
                     criticalCount={criticalCalls.length}
@@ -2200,5 +2203,11 @@ export default function Navigation() {
             )}
         </div>
     );
-    return mapFullscreen ? createPortal(mapContent, document.body) : mapContent;
+    if(mapFullscreen)return createPortal(mapContent,document.body);
+    if(!embedded)return mapContent;
+    const indexQuery=cadIndexQuery.trim().toLowerCase();
+    const indexCalls=activeCalls.filter(c=>[c.incident,c.location,c.call_id,c.bps_reference].join(' ').toLowerCase().includes(indexQuery));
+    const indexUnits=mapVisibleUnits.filter(u=>u.live_location_hidden!==true&&[u.unit_number,u.rank,u.last_name,u.status].join(' ').toLowerCase().includes(indexQuery));
+    const focusPoint=(lat,lng)=>{if(!validPosition(lat,lng))return false;setMapCenter([Number(lat),Number(lng)]);setCadMapCamera({mode:'focus',points:[[Number(lat),Number(lng)]]});return true;};
+    return <div className="cad-map-terminal">{cadIndexOpen&&!isNavigating&&<aside className="cad-map-index"><div className="tac-panel-bar"><span>Map index</span><button onClick={()=>setCadIndexOpen(false)}>Close</button></div><div className="tac-segment"><button aria-pressed={cadIndexMode==='calls'} onClick={()=>setCadIndexMode('calls')}>Calls</button><button aria-pressed={cadIndexMode==='units'} onClick={()=>setCadIndexMode('units')}>Units</button></div><div className="cad-terminal-filter"><input value={cadIndexQuery} onChange={e=>setCadIndexQuery(e.target.value)} aria-label="Search map index" placeholder="Search map index"/></div><div className="cad-terminal-scroll">{cadIndexMode==='calls'?indexCalls.map(c=><button type="button" key={c.id} className="cad-history-strip" onClick={()=>{focusPoint(c.latitude,c.longitude);setSelectedCall(c);setShowCallSidebar(true);setShowActiveCalls(true);setCadIndexOpen(false);}}><small>{c.bps_reference||c.call_id||'CAD'}</small><strong>{c.incident}</strong><p>{c.location}</p></button>):indexUnits.map(u=><button type="button" key={u.id||u.email} className="cad-history-strip" disabled={!validPosition(u.latitude,u.longitude)} onClick={()=>{focusPoint(u.latitude,u.longitude);setCadIndexOpen(false);}}><small>UNIT {u.unit_number||'—'}</small><strong>{[u.rank,u.last_name].filter(Boolean).join(' ')||'Officer'}</strong><p>{u.status||'Unknown'} · {validPosition(u.latitude,u.longitude)?'Recorded location':'No mapped fix'}</p></button>)}{!(cadIndexMode==='calls'?indexCalls:indexUnits).length&&<p className="tac-empty">No matching map records</p>}</div></aside>}{mapContent}</div>;
 }
