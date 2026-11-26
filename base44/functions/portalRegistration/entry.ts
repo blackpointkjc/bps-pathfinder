@@ -22,7 +22,7 @@ export default async function(req){
  if(!await __portalLoginIsCurrent(req,base44,me))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  const savedIdentity=await db.User.get(me.id);
  const canonicalRoles=(savedIdentity.additional_roles||[]).filter(r=>r!=='full_access'||me.id==='6ae7d733d4b1a647cd3e6f38');
- if(['investigator','reviewer'].includes(savedIdentity.ps_role)&&!canonicalRoles.includes('ia'))canonicalRoles.push('ia');
+ // A stale IA label is not an authorization grant; only the authorized role editor can grant IA access.
  if(JSON.stringify(canonicalRoles)!==JSON.stringify(savedIdentity.additional_roles||[])){await db.User.update(me.id,{additional_roles:canonicalRoles});me.additional_roles=canonicalRoles;}
  if(me.role==='admin'||me.id==='6ae7d733d4b1a647cd3e6f38'){
   const stale=await db.User.filter({additional_roles:{$in:['full_access']}},'-created_date',1000);

@@ -35,6 +35,7 @@ export default async function(req){
   // guard re-binds the newest token to the account's active session row.
   const sessionState=await portalSessionState(req,sdk,user);
   if(sessionState.state==='invalid')return expired();
+  if(sessionState.state==='unknown'&&(body.action==='sign_out'||body.action==='activity'))return Response.json({error:'Session storage temporarily unavailable. Retry this action.',code:'SESSION_STORE_UNAVAILABLE'},{status:503});
   const row=sessionState.row||{};
   const locks=await db.AccountLock.filter({user_id:user.id,locked:true},'-created_date',1);
   if(locks.length)return expired();

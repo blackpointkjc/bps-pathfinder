@@ -113,13 +113,15 @@ export default async function(req:Request){
  if(b.acknowledged!==true)return invalid('acknowledged','Check the emergency-services acknowledgement.');
  if(!/^[-\w]{20,80}$/.test(key))return invalid('request_id','Your form session has expired. Refresh the page and try again.');
  const previous=await db.PublicDispatchRequest.filter({request_id:key},'-created_date',1);
- if(previous[0]?.reference&&previous[0]?.status==='received')return Response.json({success:true,reference:previous[0].reference});
- if(previous.length){const call=(await db.DispatchCall.filter({public_request_id:key},'-created_date',1))[0];if(call){const reference=call.bps_reference||call.call_id;await db.PublicDispatchRequest.update(previous[0].id,{status:'received',reference,call_id:call.id});return Response.json({success:true,reference});}if(previous[0].status!=='needs_attention')return Response.json({error:'This request is being processed. Please wait before retrying.'},{status:409});}
+
+ const priorCall=previous.length?(await db.DispatchCall.filter({public_request_id:key},'-created_date',1))[0]:null;
+ if(previous[0]?.reference&&previous[0]?.status==='received'&&!priorCall)return Response.json({success:true,reference:previous[0].reference});
+ if(previous.length&&!priorCall&&previous[0].status!=='needs_attention')return Response.json({error:'This request is being processed. Please wait before retrying.'},{status:409});
  const address=req.headers.get('x-forwarded-for')?.split(',')[0]||req.headers.get('cf-connecting-ip')||phone;
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(address)))).map(v=>v.toString(16).padStart(2,'0')).join('');
  const recent=await db.PublicDispatchRequest.filter({source_hash:hash,created_date:{$gte:new Date(Date.now()-15*60*1000).toISOString()}},'-created_date',6);
- if(recent.length>=5)return Response.json({error:'Too many requests. Please call BlackPoint dispatch for assistance.'},{status:429});
- const reservation=previous[0]?.status==='needs_attention'?await db.PublicDispatchRequest.update(previous[0].id,{status:'processing'}):await db.PublicDispatchRequest.create({request_id:key,source_hash:hash,status:'processing'});
+ if(!priorCall&&recent.length>=5)return Response.json({error:'Too many requests. Please call BlackPoint dispatch for assistance.'},{status:429});
+ const reservation=priorCall?previous[0]:previous[0]?.status==='needs_attention'?await db.PublicDispatchRequest.update(previous[0].id,{status:'processing'}):await db.PublicDispatchRequest.create({request_id:key,source_hash:hash,status:'processing'});
  const details=[description,'Incident time: '+clean(b.incident_time,60),'Still happening: '+clean(b.ongoing,10),'People involved / descriptions: '+clean(b.people,1200),'Vehicles: '+clean(b.vehicles,1000),'Injuries / medical needs: '+clean(b.injuries,1000),'Weapons / safety hazards: '+clean(b.hazards,1000),'Safe callback: '+clean(b.safe_callback,20),'Access instructions: '+clean(b.access,1000)].join('\n\n');
  try{
  // A public submission must not pass through staff-authenticated createDispatchCall.
@@ -141,10 +143,12 @@ export default async function(req:Request){
   });
  }
  const reference=call.bps_reference||call.call_id;
+ if(['cleared','closed','cancelled','canceled','completed','resolved'].includes(String(call.status||'').toLowerCase())||call.time_cleared||call.manual_dismissed)return Response.json({success:true,reference});
  await db.PublicDispatchRequest.update(reservation.id,{status:'received',reference,call_id:call.id});
  // Persist a durable dispatch event before invoking the assignment evaluator.
  // This lets the existing monitor retry if an inner function fails or is rate-limited.
  let alert=(await db.PropertyAlert.filter({callId:call.id,propertyId:'public-helpme'},'-created_date',1))[0];
+ const recoveredAlert=!alert;
  if(!alert){
   alert=await db.PropertyAlert.create({callId:call.id,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callPriority:call.priority,callStatus:call.status,cadNumber:reference,callTime:call.time_received,time_received:call.time_received,source_key:'public-helpme:'+call.id,distanceMeters:0,acknowledged:false,lifecycle_status:'active'});
  }
@@ -165,7 +169,7 @@ export default async function(req:Request){
  });
  // Assignment must still respect live dispatcher presence, unit eligibility,
  // verified GPS and operational safety constraints; never fabricate an officer.
- try{
+ if(!priorCall||recoveredAlert||!existingAnnouncement.length)try{
   const evaluated=await sdk.asServiceRole.functions.invoke('geofenceDispatchAssignment',{call_id:call.id,property_alert_id:alert.id,public_fallback:true});
   const result=evaluated?.data||evaluated;
   if(result?.error||result?.skipped)console.error('Public CAD auto-dispatch evaluation deferred',result?.error||result?.reason);

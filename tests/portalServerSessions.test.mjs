@@ -5,15 +5,17 @@ let actor={id:'staff',role:'user',additional_roles:['officer']},failLogin=false,
 const NativeDate=Date;globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}};
 const records=[];
 const db={AccountLock:{filter:async()=>[]},PortalAuthSession:{
- filter:async q=>records.filter(r=>r.token_hash===q.token_hash),
+ filter:async q=>records.filter(r=>Object.entries(q).every(([k,v])=>r[k]===v)),
  create:async r=>{const row={...r,id:'session-'+records.length};records.push(row);return row;},
  update:async(id,p)=>{const row=records.find(r=>r.id===id);Object.assign(row,p);return row;}
 }};
 const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db}};
-const client={auth:{loginViaEmailPassword:async(email,password)=>{if(failLogin||password!=='mock-correct-password')throw Object.assign(Error('invalid'),{status:400});return {access_token:'mock-native-token'};},me:async()=>actor}};
+const client={auth:{loginViaEmailPassword:async(email,password)=>{if(failLogin||password!=='mock-correct-password')throw Object.assign(Error('invalid'),{status:400});return {access_token:'mock-native-token'};},setToken:()=>{},me:async()=>actor}};
 let source=fs.readFileSync('base44/functions/portalSession/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','async function handler(req){');
 source=transformSync(source,{loader:'ts',target:'es2022'}).code;
-const handler=new Function('createClientFromRequest','createClient',source+';return handler;')(()=>sdk,()=>client);
+const guard=transformSync(fs.readFileSync('base44/shared/portalLoginGuard.ts','utf8').replaceAll('export ','') ,{loader:'ts'}).code;
+const portalSessionState=new Function(guard+';return portalSessionState;')();
+const handler=new Function('createClientFromRequest','createClient','portalSessionState',source+';return handler;')(()=>sdk,()=>client,portalSessionState);
 async function call(action,extra={},token='mock-native-token'){
  const response=await handler(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+token},body:JSON.stringify({action,...extra})}));
  return {status:response.status,...await response.json()};
@@ -23,6 +25,7 @@ failLogin=true;assert.equal((await call('sign_in',{email:'test@example.test',pas
 let response=await call('sign_in',{email:'test@example.test',password:'mock-correct-password'});assert.equal(response.access_token,'mock-native-token');assert.equal(records.length,1);
 assert.equal(JSON.stringify(records).includes('mock-native-token'),false);assert.equal(JSON.stringify(records).includes('mock-correct-password'),false);
 assert.equal((await call('check')).success,true);
+assert.equal((await call('check',{},'rotated-provider-token')).success,true);assert.equal(records[0].token_hash,Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('rotated-provider-token'))).toString('hex'));
 const start=records[0].last_activity_at;
 clock+=(13*60-1)*60000;assert.equal((await call('check')).success,true);assert.equal(records[0].last_activity_at,start,'background checks never extend inactivity');
 assert.equal((await call('activity')).success,true);assert.notEqual(records[0].last_activity_at,start);

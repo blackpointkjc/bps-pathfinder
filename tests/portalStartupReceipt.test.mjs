@@ -9,7 +9,7 @@ const loaders=Array.from({length:12},(_,i)=>async()=>{active++;max=Math.max(max,
 const started=Date.now();
 await prepareToolLoaders(loaders,{minimumMs:70,concurrency:3,onProgress:p=>progress.push(p),warmData:async()=>{assert.equal(completed,12);await wait(5);warm=true;}});
 assert.ok(Date.now()-started>=65);assert.ok(max<=3);assert.equal(completed,12);assert.equal(warm,true);assert.equal(progress.at(-1).completed,progress.at(-1).total);
-await assert.rejects(prepareToolLoaders([async()=>{throw Error('network');}],{minimumMs:0}),/could not be prepared/);
+let fallbackWarmed=false;await prepareToolLoaders([async()=>{throw Error('network');}],{minimumMs:0,warmData:async()=>{fallbackWarmed=true;}});assert.equal(fallbackWarmed,true,'failed optional preload must not lock out the operator');
 const waitStarted=Date.now();await waitForWorkspaceIdle(()=>Date.now()-waitStarted>=20,{quietMs:10,pollMs:2,timeoutMs:100});assert.ok(Date.now()-waitStarted>=28);await assert.rejects(waitForWorkspaceIdle(()=>false,{quietMs:2,pollMs:1,timeoutMs:8}),/still loading/);
 const compiled=buildSync({entryPoints:['src/components/ComplaintReceipt.jsx'],bundle:true,write:false,platform:'node',format:'cjs',external:['react','jspdf'],jsx:'automatic'}).outputFiles[0].text;
 const m={exports:{}},require=createRequire(import.meta.url);new Function('module','exports','require',compiled)(m,m.exports,require);

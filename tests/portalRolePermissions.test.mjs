@@ -14,7 +14,7 @@ assert.equal(hasIAAccess({id:'staff',additional_roles:['ia','student']}),false);
 assert.equal(hasIAAccess({id:'staff',additional_roles:['ia'],disabled:true}),false);
 assert.equal(hasWholeAppAccess({id:'other',additional_roles:['full_access']}),false);
 assert.equal(hasWholeAppAccess({id:hiers,additional_roles:['full_access']}),true);
-assert.equal(iaRole({id:hiers,additional_roles:['full_access']}),'reviewer');
+assert.equal(iaRole({id:hiers,additional_roles:['full_access']}),'investigator');assert.equal(iaRole({id:hiers,additional_roles:['full_access'],ps_role:'reviewer'}),'reviewer');
 let actor={id:'admin',role:'admin',additional_roles:[]},handler;
 const rows=[{id:'staff',role:'user',rank:'Support Staff',additional_roles:['support'],ps_role:'none'},{id:hiers,role:'admin',rank:'Colonel',additional_roles:['full_access']}];
 const db=new Proxy({}, {get(_,name){return {
@@ -28,7 +28,7 @@ compile(fs.readFileSync('base44/functions/updateUser/entry.ts','utf8'),{
  notifyPlatoonChange:async()=>{},synchronizeOfficerIdentity:async()=>[],normalizeRank:v=>v,PAY_RANGES:{},RANK_SERIES:{},nextUnitNumber:()=>1,reconcileAbsences:async()=>null,isClientIdentity:()=>false,clientOperationalPatch:()=>({}),autoReportingSelection:()=>({}),reportingFields:()=>({})
 });
 async function update(userId,updates){sdk.auth.me=async()=>actor;const r=await handler(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer test-current-session'},body:JSON.stringify({userId,updates})}));return {status:r.status,...await r.json()};}
-let r=await update('staff',{additional_roles:['support','ia'],ps_role:'reviewer'});assert.equal(r.success,true,JSON.stringify(r));assert.equal(rows[0].ps_role,'reviewer');assert.ok(rows[0].additional_roles.includes('ia'));assert.equal(rows[0].portal_approved,true);
+let r=await update('staff',{additional_roles:['support','ia'],ps_role:'reviewer'});assert.equal(r.status,403,'ordinary platform admin cannot change permissions');actor={id:hiers,role:'admin',additional_roles:['full_access']};r=await update('staff',{additional_roles:['support','ia'],ps_role:'reviewer'});assert.equal(r.success,true,JSON.stringify(r));assert.equal(rows[0].ps_role,'reviewer');assert.ok(rows[0].additional_roles.includes('ia'));assert.equal(rows[0].portal_approved,true);
 r=await update('staff',{additional_roles:['support']});assert.equal(r.success,true);assert.equal(rows[0].ps_role,'none');assert.equal(hasIAAccess(rows[0]),false);
 r=await update('staff',{additional_roles:['support','full_access']});assert.equal(r.status,403);assert.match(r.error,/Colonel Hiers/);assert.equal(rows[0].additional_roles.includes('full_access'),false);
 r=await update(hiers,{additional_roles:['full_access']});assert.equal(r.success,true);
