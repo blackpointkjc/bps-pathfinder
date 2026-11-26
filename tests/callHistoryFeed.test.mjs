@@ -126,6 +126,38 @@ assert(edgeRows.find(row=>row.id==='linked-property')._propertyCall);
 assert.equal(edgeRows.find(row=>row.original_call_id==='lost-call')._source,'property');
 const orphanDetail=await history({action:'call_details',call_id:'lost-call'});
 assert.equal(orphanDetail.status,200);assert(orphanDetail.data.warnings.some(w=>w.includes('retained property alert')));
+// Property-only pages must not require browsing hundreds of unrelated calls.
+records.DispatchCall=[];records.CallHistory=[];records.PropertyAlert=[];records.PropertyCallLink=[];
+for(let i=0;i<350;i++)records.DispatchCall.push({...live,id:'public-'+i,time_received:new Date(now-(i+1)*1000).toISOString()});
+for(let i=0;i<48;i++){
+ const id='property-'+i,stamp=new Date(now-(i+1000)*1000).toISOString();
+ records.CallHistory.push({...live,id:'arch-'+i,original_call_id:id,time_received:stamp,status:'Cleared',call_id:'BPS-202611-'+(2000+i)});
+ records.PropertyAlert.push({id:'alert-'+i,callId:id,callTime:stamp,callIncident:'Service Call',callLocation:live.location,propertyName:i===0?'Armstrong':'Creighton',callStatus:'Enroute'});
+}
+records.PropertyAlert.push({id:'second-site',callId:'property-0',callTime:records.PropertyAlert[0].callTime,propertyName:'Creighton',callIncident:'Service Call',callLocation:live.location});
+records.PropertyCallLink.push({id:'manual',call_id:'manual-original',property_name:'Oliver Crossing',incident:'Check property',location:'200 Main Street',time_received:new Date(now-2000000).toISOString(),status:'active'});
+records.PropertyAlert.push({id:'test-alert',callId:'test-call',callTime:new Date(now-500000).toISOString(),propertyName:'Creighton',callIncident:'Test',callLocation:'100 Main Street',is_test:true});
+let propertyCursor=null,propertyResults=[],propertyPages=0;
+do{
+ const page=await history({page_size:25,call_class:'PROPERTY',cursor:propertyCursor});
+ assert.equal(page.status,200);assert(page.data.rows.every(row=>row._propertyCall));
+ if(propertyPages===0)assert.equal(page.data.rows.length,25);
+ propertyResults.push(...page.data.rows);propertyCursor=page.data.next_cursor;assert(++propertyPages<10);
+}while(propertyCursor);
+assert.equal(propertyResults.length,49);
+assert.equal(new Set(propertyResults.map(row=>row.original_call_id)).size,49);
+assert(propertyResults.find(row=>row.original_call_id==='property-0')._propertyName.includes('Armstrong'));
+assert(propertyResults.find(row=>row.original_call_id==='property-0')._propertyName.includes('Creighton'));
+assert(propertyResults.find(row=>row.original_call_id==='manual-original'));
+assert.equal(propertyResults.find(row=>row.original_call_id==='property-1').status,'Cleared');
+const propertySearch=await history({call_class:'PROPERTY',search:'Armstrong'});
+assert.equal(propertySearch.data.rows.length,1);
+assert.equal(propertySearch.data.rows[0].original_call_id,'property-0');
+failSource='CallHistory';
+const degradedProperty=await history({call_class:'PROPERTY'});
+assert.equal(degradedProperty.status,200);assert(degradedProperty.data.rows.length>0);assert(degradedProperty.data.warnings.length>0);
+failSource='';records.PropertyCallLink=[];
+console.log('PASS: dedicated property history, 49 property calls behind 350 unrelated calls, linked properties, property-name search, manual links, archived status, test exclusion and degraded original lookup.');
 const addressHistory=await loadHandler('base44/functions/getAddressCallHistory/entry.ts');
 records.DispatchCall=[];records.CallHistory=[];records.PropertyAlert=[];
 const prior={...live,id:'prior',original_call_id:'original-prior',time_received:new Date(now-45*86400000).toISOString(),created_date:new Date(now-45*86400000).toISOString(),status:'Cleared'};
