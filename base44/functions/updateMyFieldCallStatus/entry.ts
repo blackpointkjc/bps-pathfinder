@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       new_status: status,
       unit_id: user.id,
       unit_name: officer,
-      notes: 'Verified officer field status transition',
+      notes: status==='Cleared'&&String(disposition).trim()?('Verified officer field status transition. Disposition: '+String(disposition).trim().slice(0,1000)):'Verified officer field status transition',
       latitude: call.latitude,
       longitude: call.longitude,
       event_key: `call:${call_id}:unit:${user.id}:status:${status}:${now}`,

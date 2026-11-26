@@ -286,7 +286,7 @@ export default function CallHistory() {
             // while the operational CAD board has verified current calls.
             // Recover those calls from the SAME shared feed as Dispatch Center,
             // never invent records or silently claim the archive is complete.
-            if(!append && !feedRows.length && !searchRef.current.trim()
+            if(!append && !feedRows.length && !payload.has_more && !searchRef.current.trim()
                 && filtersRef.current.agency==='ALL' && filtersRef.current.status==='ALL'
                 && !fromDateRef.current && !throughDateRef.current){
               let currentCalls = readLastGoodCalls().filter(isVisibleActiveCall);
@@ -310,7 +310,7 @@ export default function CallHistory() {
             pagesLoadedRef.current = append ? pagesLoadedRef.current + 1 : 1;
             setHistoryWarning(liveFeedRecovered
                 ? 'Showing verified live CAD calls. The historical archive feed returned no records; archive details may be incomplete.'
-                : (payload.warnings || []).length ? 'Some related details could not be loaded. Refresh to retry.' : '');
+                : (payload.warnings || []).length ? 'Some history sources could not be loaded. Refresh to retry.' : payload.scan_incomplete ? 'More history remains to be searched. Select Load older calls to continue.' : '');
             setLoading(false);
 
             // Collapse active/archive copies by the original CAD entity id while
@@ -405,6 +405,7 @@ export default function CallHistory() {
             await base44.entities.IncidentReport.update(report.id,{linked_call_id:callId,linked_call_number:callNumber});
             const item={id:`linked-${report.id}`,report_type:'IncidentReport',report_id:report.id,report_number:report.report_number||report.id,call_number:callNumber};
             setRows(rows=>rows.map(candidate=>candidate.id===row.id?{...candidate,_linkedReports:[...(candidate._linkedReports||[]).filter(old=>old.report_id!==report.id),item]}:candidate));
+            setCallDetails(old=>{const key=String(row.id),entry=old[key];return entry?.data?{...old,[key]:{...entry,data:{...entry.data,linked_reports:[...(entry.data.linked_reports||[]).filter(link=>link.report_id!==report.id),item]}}}:old;});
             setLinkingCallId(null);setExistingReportNumber('');
             toast.success(`Incident report ${number} linked to CAD ${callNumber}.`);
         }catch(error){toast.error(error?.response?.data?.error||error?.message||'Report linking failed');}
@@ -547,7 +548,7 @@ export default function CallHistory() {
             r._propertyAlert?.description,
         ].some(value => String(value || '').toLowerCase().includes(q))) return false;
         if (agencyFilter !== 'ALL' && !r.agency?.includes(agencyFilter)) return false;
-        if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+        if (statusFilter !== 'ALL' && historyCallStatus(r) !== statusFilter) return false;
         const isPropertyCall = Boolean(r._propertyCall);
         if (propertyFilter === 'PROPERTY' && !isPropertyCall) return false;
         if (propertyFilter === 'PUBLIC' && isPropertyCall) return false;

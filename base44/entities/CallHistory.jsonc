@@ -58,6 +58,69 @@
       "type": "string",
       "format": "date-time",
       "description": "When the call was archived"
+    },
+    "description": {
+      "type": "string",
+      "description": "Retained original CAD description"
+    },
+    "disposition": {
+      "type": "string",
+      "description": "Retained original CAD disposition"
+    },
+    "cross_street": {
+      "type": "string",
+      "description": "Retained original CAD cross street"
+    },
+    "zone": {
+      "type": "string",
+      "description": "Retained original CAD zone"
+    },
+    "priority": {
+      "type": "string",
+      "description": "Retained original CAD priority"
+    },
+    "caller_name": {
+      "type": "string",
+      "description": "Retained original CAD caller name"
+    },
+    "caller_phone": {
+      "type": "string",
+      "description": "Retained original CAD caller phone"
+    },
+    "hazards": {
+      "type": "string",
+      "description": "Retained original CAD hazards"
+    },
+    "source": {
+      "type": "string",
+      "description": "Retained original CAD source"
+    },
+    "time_dispatched": {
+      "type": "string",
+      "description": "Retained original CAD time dispatched"
+    },
+    "time_enroute": {
+      "type": "string",
+      "description": "Retained original CAD time enroute"
+    },
+    "time_on_scene": {
+      "type": "string",
+      "description": "Retained original CAD time on scene"
+    },
+    "time_cleared": {
+      "type": "string",
+      "description": "Retained original CAD time cleared"
+    },
+    "time_closed": {
+      "type": "string",
+      "description": "Retained original CAD time closed"
+    },
+    "assigned_units": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Retained assigned unit identifiers"
     }
   },
   "required": [

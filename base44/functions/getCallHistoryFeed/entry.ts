@@ -69,9 +69,14 @@ Deno.serve(async (req) => {
         readWithRetry('Archive record',()=>db.CallHistory.get(id),null)
       ]);
       const archived=(archives.data||[])[0]||archiveById.data;
-      const call=live.data||archived;
+      let call=live.data||archived;
+      let propertyFallback=false;
+      if(!call){
+        const alert=await readWithRetry('Property alert reference',()=>db.PropertyAlert.filter({callId:id},'-created_date',1),[]);
+        if(alert.data?.length){const a=alert.data[0];call={id:a.callId,incident:a.callIncident,location:a.callLocation,time_received:a.callTime||a.time_received,description:a.description,status:a.callStatus};propertyFallback=true;}
+      }
       if(!call)return Response.json({error:'Original or archived CAD record unavailable'},{status:404});
-      const ids=[...new Set([live.data?.id,archived?.original_call_id,archived?.id].filter(Boolean).map(String))];
+      const ids=[...new Set([live.data?.id,archived?.original_call_id,archived?.id,propertyFallback?id:null].filter(Boolean).map(String))];
       const filter={call_id:{$in:ids}};
       const readPages=async(entity:any,sort:string)=>{
         const out:any[]=[];
@@ -109,7 +114,7 @@ Deno.serve(async (req) => {
         ...[['time_received','Call received'],['time_dispatched','Dispatched'],['time_enroute','En route'],['time_on_scene','On scene'],['time_cleared','Call cleared'],['time_closed','Call closed']].filter(([field])=>call[field]).map(([field,title])=>({id:'call-'+field,kind:'record',title,actor:'CAD record',text:'',at:call[field]}))
       ].sort((a,b)=>(timestamp(a.at)||0)-(timestamp(b.at)||0));
       const linked=links.data.filter(row=>lower(row.status||'active')!=='detached').map(row=>({id:row.id,report_id:row.report_id,report_type:row.report_type,report_number:row.report_number||row.report_id,call_number:row.call_number||cadRef(call)||number,linked_at:row.linked_at}));
-      return Response.json({success:true,linked_reports:linked,assignments:assignments.data.map(row=>({unit_id:row.unit_id,label:label(row.unit_id),role:row.role,status:row.status,assigned_at:row.assigned_at,accepted_at:row.accepted_at,cleared_at:row.cleared_at,description:row.description})),timeline,disposition:call.disposition||'',narrative:call.description||'',note_count:notes.data.length,log_count:logs.data.length,warnings:[links.error,assignments.error,notes.error,logs.error,units.error,sessions.error,people.error].filter(Boolean)});
+      return Response.json({success:true,linked_reports:linked,assignments:assignments.data.map(row=>({unit_id:row.unit_id,label:label(row.unit_id),role:row.role,status:row.status,assigned_at:row.assigned_at,accepted_at:row.accepted_at,cleared_at:row.cleared_at,description:row.description})),timeline,disposition:call.disposition||'',narrative:call.description||'',note_count:notes.data.length,log_count:logs.data.length,warnings:[propertyFallback?'Original CAD record unavailable; showing retained property alert and saved activity.':'',links.error,assignments.error,notes.error,logs.error,units.error,sessions.error,people.error].filter(Boolean)});
     }
     const search=String(input.search||'').trim().slice(0,160);
     const addressPattern=addressHistoryPattern(search);
@@ -150,6 +155,8 @@ Deno.serve(async (req) => {
     };
     const selected:any[]=[];
     const seen=new Set<string>();
+    let boundaryStamp=Number(cursor.boundary_stamp)||0;
+    let boundaryIds=new Set<string>((Array.isArray(cursor.boundary_ids)?cursor.boundary_ids:[]).slice(0,2000).map(String));
     let scanned=0,reads=0;
     const batchSize=pageSize+1;
     const scanLimit=Math.max(1000,batchSize*12);
@@ -195,8 +202,10 @@ Deno.serve(async (req) => {
       const row=item.row;
       if(item.skip||!isValidCallRecord(row)||!matchesFilters(row))continue;
       const identity=String(row.original_call_id||row.id);
-      if(seen.has(identity))continue;
-      seen.add(identity);selected.push(item);
+      const stamp=callTimestamp(row);
+      if(stamp!==boundaryStamp){boundaryStamp=stamp;boundaryIds=new Set();}
+      if(seen.has(identity)||boundaryIds.has(identity))continue;
+      seen.add(identity);boundaryIds.add(identity);selected.push(item);
     }
     const activeRead={error:states.active.error},archivedRead={error:states.archived.error};
     const propertyRows=selected.filter(item=>item.source==='property').map(item=>item.row);
@@ -233,7 +242,7 @@ Deno.serve(async (req) => {
     const emails = (unitRead.data||[]).map((row:any)=>String(row.user_email||row.email||'')).filter(Boolean);
     const userRead = includeDetails ? await readWithRetry('Assigned officers',()=>userIds.length?base44.asServiceRole.entities.User.filter({$or:[{id:{$in:userIds}},{email:{$in:emails}}]},'-updated_date',300):Promise.resolve([]),[]) : emptyRead;
     const hasMore=Object.values(states).some((state:any)=>!state.done&&!state.error);
-    const nextCursor=hasMore?{snapshot_at:snapshot,...Object.fromEntries(Object.entries(states).flatMap(([key,state]:any)=>[[key,state.offset],[key+'_done',state.done||!!state.error]]))}:null;
+    const nextCursor=hasMore?{snapshot_at:snapshot,boundary_stamp:boundaryStamp,boundary_ids:[...boundaryIds],...Object.fromEntries(Object.entries(states).flatMap(([key,state]:any)=>[[key,state.offset],[key+'_done',state.done||!!state.error]]))}:null;
     const linksByCall=new Map<string,any[]>();
     for(const link of linkedRead.data||[]){
       if(String(link.status||'active').toLowerCase()==='detached')continue;
@@ -343,11 +352,11 @@ Deno.serve(async (req) => {
       rows: [...decorated,...propertyRows].sort((a,b)=>callTimestamp(b)-callTimestamp(a)),
       next_cursor: nextCursor,
       has_more: hasMore,
-      days:90, since, snapshot_at:snapshot,
+      days:90, since, snapshot_at:snapshot, scan_incomplete:hasMore&&selected.length<pageSize,
       counts: {
         active: activeRows.length,
         archived: archivedRows.length,
-        propertyAlerts: alertByCallId.size,
+        propertyAlerts: decorated.filter(row=>row._propertyCall).length+propertyRows.length,
         loaded: decorated.length+propertyRows.length,
       },
       warnings: [...warnings,states.property.error,activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),

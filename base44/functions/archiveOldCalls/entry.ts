@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
                             latitude: call.latitude,
                             longitude: call.longitude,
                             description: call.description,
+                            disposition: call.disposition,
                             ai_summary: call.ai_summary,
                             assigned_units: call.assigned_units || [],
                             caller_name: call.caller_name,

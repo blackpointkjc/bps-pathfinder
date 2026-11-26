@@ -88,6 +88,7 @@
       "type": "string",
       "description": "Detailed description"
     },
+    "disposition": {"type":"string","description":"Recorded final call clearance disposition"},
     "ai_summary": {
       "type": "string",
       "description": "AI-generated summary of call"
