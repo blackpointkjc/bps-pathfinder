@@ -15,13 +15,16 @@ const db=new Proxy({}, {get(_t,name){tables[name]??=[];return {
  list:async(sort,limit=1000,skip=0)=>tables[name].slice(skip,skip+limit).map(r=>({...r})),
  update:async(id,patch)=>{const r=tables[name].find(r=>r.id===id);Object.assign(r,patch);return {...r};}
  };}});
-const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,integrations:{Core:{SendEmail:async p=>{mail.push(p);return{};},UploadPrivateFile:async()=>({file_uri:'private/mock/evidence'}),CreateFileSignedUrl:async()=>({signed_url:'https://example.test/private-signed'})}}}};
-const security=fs.readFileSync('base44/functions/professionalStandards/security.ts','utf8').replace(/^import .*;\n/m,'').replace(/^export \{.*\};?\n?/gm,'').replaceAll('export ','');
+const sdk={auth:{me:async()=>actor},asServiceRole:{entities:db,integrations:{Core:{SendEmail:async p=>{mail.push(p);return{};}}}}};
+const security=fs.readFileSync('base44/functions/professionalStandards/security.ts','utf8').replace(/^import .*;\n/m,'').replace(/^export \{.*\};?\n?/gm,'').replaceAll('export ','').replace("await import('./delivery.ts')","{companyDelivery:async()=>true}");
 const source=fs.readFileSync('base44/functions/professionalStandards/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','return async function(req){');
 const caseTools=fs.readFileSync('base44/functions/professionalStandards/caseTools.ts','utf8').replaceAll('export ','');
 const reportLink=new Function(fs.readFileSync('base44/functions/professionalStandards/reportLink.ts','utf8').replaceAll('export ','')+';return linkSubmittedReport;')();
 const publicPolicy=fs.readFileSync('base44/functions/professionalStandards/publicPolicy.ts','utf8').replaceAll('export ','');
-const handler=new Function('createClientFromRequest','linkSubmittedReport',publicPolicy+'\n'+security+'\n'+caseTools+'\n'+source)(()=>sdk,reportLink);
+const iaCaseEmail=()=>({subject:'Synthetic IA update',html:'Synthetic case update'});
+const evidenceUri='onedrive:mock/evidence';
+const putOneDriveEvidence=async()=>evidenceUri;
+const handler=new Function('createClientFromRequest','linkSubmittedReport','putOneDriveEvidence','iaCaseEmail',publicPolicy+'\n'+security+'\n'+caseTools+'\n'+source)(()=>sdk,reportLink,putOneDriveEvidence,iaCaseEmail);
 let reqNo=0;
 async function call(payload,files=[]){
  tables.PortalAuthSession[0].user_id=actor?.id;
@@ -36,7 +39,8 @@ assert.equal((await call({action:'contact'})).httpStatus,200);
 const receipt=await call({action:'submit',kind:'complaint',anonymous:true,complainant_name:'DO NOT STORE',contact_email:'private@example.test',description:'A synthetic test description without real allegations.',location:'Test-only location',incident_date:'2026-01-01T12:00',officers:'Unknown'},[new File(['evidence'],'test.txt',{type:'text/plain'})]);
 assert.equal(receipt.httpStatus,200);assert.match(receipt.tracking_code,/^[0-9]{4}$/);
 const c=tables.PSCase[0];assert.equal(c.complainant_name,'Anonymous');assert.equal(c.contact_email,'');assert.notEqual(c.tracking_hash,receipt.tracking_code);
-assert.equal(tables.PSRecord[0].file_uri,'private/mock/evidence');
+assert.equal(receipt.evidence_error,'');
+assert.equal(tables.PSRecord[0].file_uri,evidenceUri);
 assert.equal(tables.PSRecord[0].file_hash,await digest('evidence'));
 const tracking=await call({action:'track',reference:receipt.reference,tracking_code:receipt.tracking_code});
 assert.equal(tracking.httpStatus,200);for(const k of ['description','complainant_name','investigator_id','tracking_hash','records'])assert.equal(tracking[k],undefined);
@@ -46,6 +50,7 @@ actor={id:'officer',role:'user',additional_roles:['officer'],email:'officer@exam
 assert.equal((await call({action:'list'})).httpStatus,403);
 const investigator={id:'investigator',role:'user',additional_roles:['ia'],ps_role:'investigator',email:'investigator@example.test',last_name:'Test'};
 const reviewer={id:'reviewer',role:'user',additional_roles:['ia'],ps_role:'reviewer',email:'reviewer@example.test',last_name:'Review'};
+investigator.work_email='investigator@blackpointkjc.com';investigator.profile_photo_url='https://example.invalid/investigator.jpg';investigator.mobile_phone='DO_NOT_RELEASE';
 tables.User=[investigator,reviewer];
 actor=reviewer;
 assert.equal((await call({action:'list'})).httpStatus,200,'IA role opens the staff workspace without a second email code');
@@ -149,7 +154,6 @@ actor=null;
 const publicReceipt=await call({action:'submit',kind:'complaint',anonymous:false,complainant_name:'Synthetic requester',contact_preference:'email',contact_email:'submitter@example.invalid',category:'use_of_force',description:'Synthetic public policy test with no real complaint.',location:'Test only',incident_date:'2026-01-01'});
 assert.equal(publicReceipt.httpStatus,200);
 const publicCase=tables.PSCase.find(v=>v.reference===publicReceipt.reference);assert.equal(publicCase.category,'use_of_force');assert.equal(publicCase.contact_email,'');assert.equal(publicCase.contact_preference,'none');
-investigator.work_email='investigator@blackpointkjc.com';investigator.profile_photo_url='https://example.invalid/investigator.jpg';investigator.mobile_phone='DO_NOT_RELEASE';
 actor=reviewer;
 let update=await call({action:'update',case_id:publicCase.id,version:publicCase.version,patch:{investigator_id:investigator.id},send_notice:true});assert.equal(update.httpStatus,200);assert.equal(publicCase.public_status,'Investigator assigned');assert.ok(tables.PSNotification.some(v=>v.to===investigator.work_email));assert.equal(tables.PSNotification.some(v=>v.to==='submitter@example.invalid'),false);
 actor=investigator;assert.equal((await call({action:'update',case_id:publicCase.id,version:publicCase.version,patch:{status:'investigating'}})).httpStatus,200);assert.equal(publicCase.public_status,'Investigation in progress');
