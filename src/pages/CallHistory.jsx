@@ -9,7 +9,7 @@ import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkContr
 import { useState, useEffect, useRef } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { RefreshCw, MapPin, ChevronDown, ChevronUp, Radio, Archive, Building2, History, Printer } from 'lucide-react';
+import { RefreshCw, History, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
@@ -606,7 +606,7 @@ export default function CallHistory() {
     const propertyCount = sorted.filter(r => r._propertyCall).length;
 
     if (loading) return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="h-full min-h-0 bg-slate-950 flex items-center justify-center">
             <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">Loading call history…</p></div>
         </div>
     );
@@ -616,10 +616,10 @@ export default function CallHistory() {
       const detail=callDetails[String(row.id)]||{},activity=detail.data;
       const isActive=row._source==='active'&&isVisibleActiveCall(row);
       return (<div className="grid grid-cols-1 gap-x-6 gap-y-2 border-b border-slate-700 bg-slate-800/40 px-3 py-3 text-[10px] sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
-                                    {(activity?.narrative||row.description) && (
+                                    {(
                                         <div className="mb-1 sm:col-span-2 lg:col-span-3">
                                             <span className="text-slate-500 tracking-widest">NARRATIVE: </span>
-                                            <span className="text-slate-300">{activity?.narrative||row.description}</span>
+                                            <span className="text-slate-300">{activity?.narrative||row.description||'No narrative recorded.'}</span>
                                         </div>
                                     )}
                                     {row.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{row.caller_name}</span></div>}

@@ -4,10 +4,9 @@ import '@/components/dispatch/tactical-console.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, ShieldAlert, Siren, HeartPulse, RefreshCw } from 'lucide-react';
+import { CheckCircle2, ClipboardList, MapPinned, MessageSquare, Navigation, ShieldAlert, HeartPulse, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { formatEasternTime,formatEasternDateTime } from '@/lib/easternTime';
@@ -201,7 +200,7 @@ export default function OfficerDispatchQueue() {
         <button data-phase="done" disabled={working} onClick={()=>respondWelfare('ok')}><HeartPulse size={22}/><span>Welfare OK</span></button>
         <button disabled={working} onClick={requestSupervisor}><ShieldAlert size={22}/><span>Supervisor</span></button>
       </div>
-      <div className="tac-mdt-grid">
+      <div className="cad-mdt-body"><div className="tac-mdt-grid">
        <div className="tac-mdt-main">
         <section className="tac-mdt-pane"><div className="tac-panel-bar"><span>Incident information</span><span>{selected.agency||'BPS'}</span></div><dl className="tac-mdt-facts">{[['Received',formatEasternDateTime(selected.time_received||selected.created_date)+' ET'],['Cross street',selected.cross_street||'Not recorded'],['District / zone',selected.district||selected.zone||'Not recorded'],['Caller',selected.caller_name||'Not recorded'],['Callback',selected.caller_phone||'Not recorded'],['Assignment',String(selected.assignment?.role||'Not verified')]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{selected.hazards&&<p className="tac-warning">SAFETY ALERT · {selected.hazards}</p>}<div className="tac-mdt-narrative"><small>INCIDENT NARRATIVE</small><p>{selected.description||'No narrative recorded.'}</p></div></section>
         <section className="tac-mdt-pane"><div className="tac-panel-bar"><span>Shared CAD log</span><button disabled={working||notesFetching} onClick={refreshNotes}><RefreshCw size={14}/> Refresh</button></div><div className="tac-log-status" role="status">{notesFetching?'Updating activity…':notesError?'Activity unavailable — retry':`Updated ${updatedLabel(notesUpdatedAt)}`}</div><div className="tac-mdt-log">{sharedNotes.length?sharedNotes.slice().reverse().map(n=><article key={n.id}><div><time>{formatEasternTime(n.created_date)} ET</time><b>{n.author_name||'CAD user'}</b>{n.kind==='activity'&&<span>CAD EVENT</span>}</div><p>{n.note}</p></article>):<p className="tac-empty">{notesError?'Unable to load notes':notesFetching?'Loading notes…':'No recorded notes yet'}</p>}</div><div className="tac-mdt-compose"><Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Enter a field update for dispatch…" rows={3}/><button className="tac-primary" onClick={addNote} disabled={working||!note.trim()}><MessageSquare size={16}/> Post update</button></div></section>
@@ -213,6 +212,7 @@ export default function OfficerDispatchQueue() {
        </aside>
       </div>
       <section className="tac-mdt-pane tac-mdt-queue"><div className="tac-panel-bar"><span>Assignment stack · {queue.length} total</span><span>{Math.max(0,queue.length-1)} other calls</span></div><div className="tac-filters"><input aria-label="Find assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Search assignment stack"/></div><div className="tac-mdt-queue-list">{visibleQueue.map(call=><button key={call.id} data-priority={String(call.priority||'medium').toLowerCase()} aria-pressed={selected.id===call.id} disabled={working} onClick={()=>{if(selected.id===call.id)return;if((note.trim()||disposition.trim())&&!window.confirm('Switch call and discard unsaved note or disposition?'))return;setSelectedId(call.id);setNote('');setDisposition('');detailPanelRef.current?.scrollIntoView({block:'start',behavior:'smooth'});}}><span>#{queue.indexOf(call)+1} · {selected.id===call.id?'SELECTED':statusLabel(call.assignment?.status)}</span><b>{call.incident||'Call for service'}</b><small>{call.location||'Location pending'}</small><small>{call.agency_cad_number||call.bps_reference||call.call_id||call.id}</small></button>)}{!visibleQueue.length&&<p className="tac-empty">No matching assignments</p>}</div></section>
+      </div>
     </>}
   </div>;
 }

@@ -1,6 +1,6 @@
 import { createPageUrl } from '@/utils';
 export function cadDestination(page,search,location=window.location) {
- const routes={CommandDashboard:['live','command'],DispatchCenter:['live','dispatch'],Navigation:['live','map'],UnitStatus:['live','units'],BOLOAlerts:['alerts','bolo'],CallHistory:['history','history']};
+ const routes={CommandDashboard:['live','command'],DispatchCenter:['live','dispatch'],OfficerDispatchQueue:['live','officerqueue'],Navigation:['live','map'],UnitStatus:['live','units'],BOLOAlerts:['alerts','bolo'],CallHistory:['history','history']};
  const target=routes[page],current=new URLSearchParams(location.search||'');
  if(target){
   const inAdmin=/\/AdminCenter\/?$/i.test(location.pathname||'');

@@ -6,7 +6,7 @@ import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from 
 import { useEffect, useRef, useState } from 'react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { Radio, Search, Users, RefreshCw, ArrowRight, MapPin, Clock3, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Radio, Search, Users, RefreshCw } from 'lucide-react';
 
 export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,isExternal,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
  const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');

@@ -763,8 +763,8 @@ export default function DispatchCenter({embedded=false}) {
                         <h1 className="pf-dispatch-title">Dispatch / Control</h1>
                         <p className="mt-0.5 text-[10px] leading-snug text-slate-300">Coordinate calls, units and response</p>
                     </div>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
-                    <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : 'CAD FEED'}</span>
+                    <span className={"w-1.5 h-1.5 rounded-full ml-1 "+(callsLoadWarning?"bg-amber-400":loading?"bg-blue-400":"bg-green-400")} />
+                    <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : callsLoadWarning?'DEGRADED':'CAD FEED'}</span>
                 </div>
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
@@ -817,7 +817,7 @@ export default function DispatchCenter({embedded=false}) {
             </div>
 
             {showDispatchLog && (
-                <section className="relative z-[130] flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden bg-[#060b12]" aria-label="Dispatcher Shift Log">
+                <section className="relative z-[130] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#060b12]" aria-label="Dispatcher Shift Log">
                     <div className="flex flex-none items-center gap-3 border-b border-blue-900/70 bg-[#08111d] px-4 py-3">
                         <ClipboardList className="h-4 w-4 text-blue-300" />
                         <div>

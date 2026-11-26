@@ -2,7 +2,6 @@ import {CadTerminalHeader,CadRefresh,CadPanelBar,CadMetricStrip,CadStatus} from 
 import {Users,Search,X} from 'lucide-react';
 import {formatEasternDateTime} from '@/lib/easternTime';
 import '@/components/dispatch/cad-center-terminal.css';
-import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { useEffect, useState } from 'react';
 import { getAppDirectory } from '@/lib/appDirectory';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
