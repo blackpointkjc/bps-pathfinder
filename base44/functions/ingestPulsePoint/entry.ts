@@ -465,7 +465,7 @@ Deno.serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const approvedFeed = Deno.env.get('PULSEPOINT_FEED_URL') || '';
-    if (!approvedFeed) return Response.json({ success:false, configured:false, skipped:true, reason:'approved_feed_required', source:'pulsepoint', message:'Automatic import is not configured. Use the official PulsePoint live feed view.' });
+    if (!approvedFeed) return Response.json({ success:false, configured:false, skipped:true, reason:'approved_feed_required', source:'pulsepoint', message:'Set an authorized machine-readable incident feed to enable CAD ingestion.' });
     const feedUrl = new URL(approvedFeed);
     if (feedUrl.protocol !== 'https:') return Response.json({ error:'Approved feed must use HTTPS' }, { status:400 });
     const user = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(() => null);
@@ -498,10 +498,21 @@ Deno.serve(async (req) => {
     active = decoded.incidents.active;
     feedSource = 'approved_feed';
 
-    const incoming: any[] = (await Promise.all(active.map(row => {
-      const agencyId = rowAgencyId(row);
-      return normalizeIncident(row, agencyById.get(agencyId) || { agencyId: agencyId || 'PulsePoint', source: 'pulsepoint', area: 'PulsePoint' });
-    }))).filter((row:any) => Boolean(row)) as any[];
+    const selectedRows = active.filter(row => agencyById.has(rowAgencyId(row)));
+    if (active.length && !active.some(row => rowAgencyId(row))) {
+      throw new Error('Approved feed rows are missing agency identifiers');
+    }
+    const normalized = await Promise.all(selectedRows.map(row =>
+      normalizeIncident(row, agencyById.get(rowAgencyId(row)))
+    ));
+    const incomingById = new Map(normalized.filter(row => row !== null).map(row => [row.external_call_id, row]));
+    const incoming = [...incomingById.values()];
+    if (body?.dry_run === true) {
+      return Response.json({
+        success: true, dry_run: true, source: 'pulsepoint', feed_source: feedSource,
+        agency_ids: [...agencyById.keys()], raw_active_rows: active.length, active: incoming.length,
+      });
+    }
 
     const [existingCalls, history] = await Promise.all([
       base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000),
@@ -563,7 +574,7 @@ Deno.serve(async (req) => {
     const recentCutoff = Date.now() - 4 * 60 * 60_000;
     for (const row of existingCalls || []) {
       const key = String(row.external_call_id || '');
-      if (!key.startsWith('pulsepoint:') || incomingKeys.has(key) || ['Cleared', 'Cancelled'].includes(String(row.status || ''))) continue;
+      if (!key.startsWith('pulsepoint:') || !agencyById.has(key.split(':')[1]) || incomingKeys.has(key) || ['Cleared', 'Cancelled'].includes(String(row.status || ''))) continue;
       const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
       if (Number.isFinite(receivedAt) && receivedAt >= recentCutoff) {
         await base44.asServiceRole.entities.DispatchCall.update(row.id, { status: 'Cleared', time_closed: row.time_closed || new Date().toISOString() }).then(() => releaseClosedCall(base44.asServiceRole.entities, { ...row, status: 'Cleared' }));
