@@ -25,7 +25,7 @@ Deno.serve(async req=>{
     const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(!job.action||job.action==='scheduled');
     if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
     if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'applyInvoiceLateFees'});
-    const __portalCaller=scheduledJob?rawJobUser:await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
+    const __portalCaller=scheduledJob?rawJobUser:__portalAppIdentity(rawJobUser);
     if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}

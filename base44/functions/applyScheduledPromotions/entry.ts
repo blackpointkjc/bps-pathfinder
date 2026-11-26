@@ -100,7 +100,7 @@ Deno.serve(async req=>{
     const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(Object.keys(job).every(k=>['scheduled','dry_run'].includes(k)));
     if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
     if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'applyScheduledPromotions'});
-    const __portalCaller=scheduledJob?rawJobUser:await sdk.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
+    const __portalCaller=scheduledJob?rawJobUser:__limitFullAccess(__portalAppIdentity(rawJobUser));
     if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,sdk,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
  if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
