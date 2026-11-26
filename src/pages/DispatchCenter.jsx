@@ -73,7 +73,7 @@ export default function DispatchCenter({embedded=false}) {
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(false);
-    const [dockMap,setDockMap]=useState(false);
+    const [dockMap,setDockMap]=useState(()=>typeof window!=='undefined'&&window.innerWidth>=1440);
     const [detailTab,setDetailTab]=useState('incident');
     const [dispatchTomTomFailed,setDispatchTomTomFailed]=useState(false);
     const [useDispatchTomTom,setUseDispatchTomTom]=useState(true);
@@ -957,7 +957,7 @@ export default function DispatchCenter({embedded=false}) {
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
                     <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} pf-dispatch-detail min-h-0 w-full flex-1 min-w-0 flex-col xl:flex xl:min-h-0`}>
                         <div className="tac-dispatch-center-tools"><span>INCIDENT WORKSPACE</span><div><button type="button" aria-pressed={dockMap} onClick={()=>setDockMap(x=>!x)}>{dockMap?'Hide map':'Dock tactical map'}</button><button type="button" onClick={()=>setShowMap(true)}>Full map</button></div></div>
-                        {dockMap&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
+                        {dockMap&&!showMap&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
                             {selectedCall ? (
