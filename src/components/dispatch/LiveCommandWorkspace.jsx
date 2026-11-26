@@ -1,9 +1,10 @@
+import './cad-workstations.css';
 import IncidentPrioritySelect from './IncidentPrioritySelect';
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from '@/components/ui/dialog';
 import { useEffect, useRef, useState } from 'react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { Radio, Search, Users } from 'lucide-react';
+import { Radio, Search, Users, RefreshCw, ArrowRight, MapPin, Clock3, ChevronRight, ShieldCheck } from 'lucide-react';
 
 export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,isExternal,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
  const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
@@ -52,36 +53,41 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const officers=units.filter(u=>[u.rank,u.last_name,u.unit_number,u.platoon,u.status].join(' ').toLowerCase().includes(unitSearch.toLowerCase())).sort(comparePersonnel);
  const detail=selectedCall?(allCalls.find(call=>call.id===selectedCall.id)||selectedCall):null;
  const run=async(key,task)=>{if(working)return;setWorking(key);setError('');try{await task();}catch(e){setError(e?.response?.data?.error||e.message||'Action could not be saved.');}finally{setWorking('');}};
- return <div className="live-command-workspace min-h-full min-w-0 bg-[#070d16] p-2 font-mono text-slate-100 md:p-3">
-  {critical.length>0&&<div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-700/60 bg-red-950/40 px-4 py-3"><div className="flex items-center gap-3"><span className="h-2.5 w-2.5 rounded-full bg-red-400"/><strong className="text-sm text-red-100">{critical.length} priority response{critical.length===1?'':'s'} active</strong></div><button type="button" onClick={()=>setFocus('urgent')} className="text-sm font-semibold text-red-200 underline underline-offset-4">Review priority incidents</button></div>}
-  <header className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[.2em] text-cyan-300">Black Point / CAD operations</p><h1 className="mt-1 text-xl font-black tracking-widest text-white">Live command / incident board</h1><p className="mt-1 text-xs text-cyan-300">Computer aided dispatch / active incident management</p></div>{actions && <div className="flex items-center gap-2">{actions}</div>}</header>
+ return <div className="live-command-workspace pf-cad-workspace pf-command-workspace min-h-full min-w-0 text-slate-100">
+  <header className="pf-cad-heading"><div><div className="pf-cad-eyebrow">Operations / Command</div><h1>Command Board</h1><p>Monitor incidents and response readiness.</p></div><div className="pf-cad-actions"><button type="button" className="pf-cad-button" onClick={onRefresh}><RefreshCw size={16}/> Refresh</button>{actions}</div></header>
+  {critical.length>0&&<div className="pf-cad-alert"><span className="pf-cad-dot pf-cad-dot-danger"/><strong>{critical.length} priority response{critical.length===1?'':'s'} active</strong><button type="button" onClick={()=>setFocus('urgent')}>Review priority incidents <ArrowRight size={15}/></button></div>}
   {(error||syncStatus.state==='error'&&syncStatus.error)&&<div role="alert" className="mb-4 rounded-xl border border-red-700 bg-red-950/40 p-4 text-sm text-red-100">{error||syncStatus.error}</div>}
-  <div className="mb-3 grid grid-cols-2 gap-1.5 xl:grid-cols-4">{[
+  <div className="pf-cad-metrics">{[
    {id:'all',label:'Active incidents',value:loading&&!allCalls.length?'—':allCalls.length,detail:'All current calls',color:'text-white'},
    {id:'unassigned',label:'Needs dispatch',value:allCalls.filter(needsDispatch).length,detail:'No assigned unit',color:'text-amber-300'},
    {id:'urgent',label:'Priority response',value:critical.length,detail:'Critical and high priority',color:'text-red-300'},
    {id:'resources',label:'Available officers',value:available.length,detail:'Online and ready',color:'text-emerald-300'}
-  ].map(metric=><button type="button" key={metric.id} onClick={()=>metric.id==='resources'?setUtilityPanel('resources'):setFocus(metric.id)} aria-pressed={metric.id!=='resources'&&focus===metric.id} className="rounded-sm border-l-4 border-y border-r border-slate-700 border-l-cyan-700 bg-[#101e2d] px-3 py-2 text-left transition hover:border-slate-500 aria-pressed:border-cyan-600 aria-pressed:bg-cyan-950/20"><span className="text-xs font-medium text-slate-400">{metric.label}</span><strong className={'mt-1 block text-2xl font-black '+metric.color}>{metric.value}</strong><span className="mt-1 block text-xs text-slate-500">{metric.detail}</span></button>)}</div>
-  <nav aria-label="Command Board tools" className="mb-3 flex flex-wrap gap-2">
-   <button type="button" onClick={()=>setUtilityPanel('duty')} className="min-h-11 rounded-lg border border-cyan-700 bg-slate-900 px-4 py-2 text-sm font-semibold">My duty &amp; location</button>
-  </nav>
-  <div className="grid min-w-0 grid-cols-1 gap-2">
-   <section className="min-w-0 overflow-hidden rounded-sm border border-cyan-900/70 bg-[#0a1421]" aria-label="Live incident queue">
-    <div className="border-b border-slate-700 p-4"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-lg font-semibold"><Radio className="h-5 w-5 text-cyan-300"/>Active calls for service <span className="ml-1 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300">{visible.length}</span></h2></div>
-     <div className="flex flex-wrap gap-2"><label className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3"><Search className="h-4 w-4 text-slate-500"/><input aria-label="Search live incidents" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search incident, address or reference" className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-white outline-none"/></label><select aria-label="Filter live command by agency" value={agency} onChange={e=>setAgency(e.target.value)} className="min-h-11 rounded-lg border border-slate-600 bg-slate-950 px-3 text-sm"><option value="all">All agencies</option>{[...new Set(allCalls.map(c=>c.agency).filter(Boolean))].sort().map(a=><option key={a}>{a}</option>)}{allCalls.some(isExternal)&&<option value="external">PulsePoint</option>}</select></div>
+  ].map(metric=><button type="button" key={metric.id} onClick={()=>metric.id==='resources'?setUtilityPanel('resources'):setFocus(metric.id)} aria-pressed={metric.id!=='resources'&&focus===metric.id} className="pf-cad-metric"><span className="text-xs font-medium text-slate-400">{metric.label}</span><strong className={'mt-1 block text-2xl font-black '+metric.color}>{metric.value}</strong><span className="mt-1 block text-xs text-slate-500">{metric.detail}</span></button>)}</div>
+  <div className="pf-command-grid">
+   <section className="pf-cad-panel pf-command-incidents" aria-label="Live incident queue">
+    <div className="pf-cad-panel-head"><div><div className="pf-cad-eyebrow">Incident stream</div><h2><Radio size={19}/> Active calls <span className="pf-cad-count">{visible.length}</span></h2></div><button type="button" className="pf-cad-button" onClick={()=>{setFocus('all');setAgency('all');setQuery('');}}>Reset filters</button></div>
+    <div className="pf-cad-filter-bar"><label className="pf-cad-search"><Search size={17}/><input aria-label="Search live incidents" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search incident, address or reference"/></label><select aria-label="Filter live command by agency" value={agency} onChange={e=>setAgency(e.target.value)}><option value="all">All agencies</option>{[...new Set(allCalls.map(c=>c.agency).filter(Boolean))].sort().map(a=><option key={a}>{a}</option>)}{allCalls.some(isExternal)&&<option value="external">PulsePoint</option>}</select></div>
+    <div className="pf-cad-list-caption"><span>Newest first · shortest elapsed</span><span>{focus==='urgent'?'Priority incidents':focus==='unassigned'?'Unassigned calls':'All active incidents'}</span></div>
+    <div className="pf-command-stream">
+    {visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;return <article key={call.id} className="pf-command-call" data-priority={priorityOf(call)} data-selected={detail?.id===call.id}>
+     <div className="pf-command-call-main"><div className="pf-call-meta"><span className={'cad-priority border '+p.style}>{p.label}</span><span>{identifierOf(call).value}</span><span>{call.agency||'BPS'}</span>{isExternal(call)&&<span className="text-red-300">PulsePoint</span>}<span className="pf-call-elapsed"><Clock3 size={14}/> {elapsedOf(call)||'—'}</span></div>
+      <button type="button" className="pf-call-title" onClick={()=>onOpen(call)}>{incidentOf(call)} <ChevronRight size={16}/></button>
+      <p className="pf-call-address"><MapPin size={15}/>{call.location||'Location pending'}{call.cross_street?' / '+call.cross_street:''}</p>
+      <div className="pf-call-secondary"><span>{timeOf(call.time_received||call.created_date)} ET</span><span>{callDistrict(call)}</span><span>{(call.assigned_units||[]).length} assigned</span><span>{call.status||'Active'}</span></div>
+     </div><div className="pf-call-actions"><button type="button" onClick={()=>onDispatch?.(call)} className="pf-cad-primary">Dispatch <ArrowRight size={15}/></button><button type="button" onClick={()=>onMap(call)} className="pf-cad-button">Map</button><button type="button" onClick={()=>onOpen(call)} className="pf-cad-button">Details</button>{canChangePriority&&<IncidentPrioritySelect call={call} priority={priorityOf(call)} onSave={onPriority} disabled={!!working}/>}</div>
+    </article>;})}
+    {!visible.length&&<div className="pf-cad-empty"><Radio size={28}/><strong>{loading?'Loading incidents…':allCalls.length?'No matching incidents':'No active incidents'}</strong></div>}
     </div>
-    <div className="px-4 py-2 text-xs text-slate-400">Sorted by elapsed time: shortest first → oldest last. Priority remains visible but does not affect row order.</div>
-    <div className="cad-incident-scroll"><table role="table" aria-label="Active calls for service" className="cad-incident-table"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">PRI</th><th role="columnheader" scope="col">CAD / received</th><th role="columnheader" scope="col">Incident / location</th><th role="columnheader" scope="col">District / beat</th><th role="columnheader" scope="col">Elapsed</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">
-    {visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;return <tr role="row" key={call.id} data-priority={priorityOf(call)} aria-selected={detail?.id===call.id}>
-     <td role="cell" data-label="Priority"><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span></td>
-     <td role="cell" data-label="CAD / received"><button type="button" onClick={()=>onOpen(call)} className="font-bold text-cyan-200">{identifierOf(call).value}</button><small>{timeOf(call.time_received||call.created_date)} ET · {call.agency||'BPS'}</small></td>
-     <td role="cell" data-label="Incident / location"><button type="button" onClick={()=>onOpen(call)} className="text-left font-bold uppercase text-white">{incidentOf(call)}</button><small>{call.location||'Location pending'}{call.cross_street?' / '+call.cross_street:''}</small>{isExternal(call)&&<small className="text-red-300">PulsePoint</small>}</td>
-     <td role="cell" data-label="District / beat"><strong className="text-cyan-200">{callDistrict(call)}</strong></td>
-     <td role="cell" data-label="Elapsed" className="whitespace-nowrap text-amber-200">{elapsedOf(call)}</td>
-     <td role="cell" data-label="Actions"><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>onDispatch?.(call)} className="cad-row-action">Dispatch / assign</button><button type="button" onClick={()=>onMap(call)} className="cad-row-action">Map</button><button type="button" onClick={()=>onOpen(call)} className="cad-row-action">Detail</button>{canChangePriority&&<IncidentPrioritySelect call={call} priority={priorityOf(call)} onSave={onPriority} disabled={!!working}/>}</div></td>
-    </tr>;})}</tbody></table>{!visible.length&&<p role="status" className="p-10 text-center text-slate-400">{loading?'Loading incidents…':allCalls.length?'No incidents match these filters':'No active incidents'}</p>}</div>
    </section>
-
+   <aside className="pf-command-sidebar">
+    <section className="pf-cad-panel"><div className="pf-cad-panel-head"><div><div className="pf-cad-eyebrow">Field resources</div><h2><Users size={18}/> Unit readiness</h2></div><button type="button" onClick={()=>setUtilityPanel('resources')} className="pf-cad-button">View all</button></div>
+      <div className="pf-resource-summary"><span><strong className="text-emerald-300">{available.length}</strong> Available</span><span><strong>{units.length}</strong> Roster</span></div>
+      {rosterError&&<p role="alert" className="pf-cad-warning">{rosterError}</p>}
+      <div className="pf-cad-filter-bar"><label className="pf-cad-search"><Search size={16}/><input aria-label="Find field officer" placeholder="Find officer or unit" value={unitSearch} onChange={e=>setUnitSearch(e.target.value)}/></label><button type="button" className="pf-cad-button" disabled={rosterLoading} onClick={onRetryRoster} aria-label="Refresh officers"><RefreshCw size={16}/></button></div>
+      <div className="pf-resource-list">{officers.slice(0,12).map(unit=><div className="pf-resource-row" key={unit.id||unit.email}><span className="pf-unit-avatar">{unit.unit_number||'—'}</span><div><strong>{[unit.rank,unit.last_name].filter(Boolean).join(' ')||'Officer'}</strong><small>{unit.connection_stale?'Connection stale':unit.presence_online||unit.session_active?'Online':'Offline'}{unit.platoon?' · '+unit.platoon:''}</small></div><span className={unit.status==='Available'?'text-emerald-300':unit.status==='Distress'?'text-red-300':'text-slate-300'}>{unit.status||'Unknown'}</span></div>)}{!officers.length&&<p className="pf-cad-empty">{rosterLoading?'Loading roster…':'No officers to display'}</p>}</div>
+    </section>
+    <section className="pf-cad-panel pf-cad-duty"><div className="pf-cad-panel-head"><h2><ShieldCheck size={18}/> My duty & location</h2></div><button type="button" className="pf-cad-button" onClick={()=>setUtilityPanel('duty')}>Manage duty settings <ChevronRight size={16}/></button></section>
+   </aside>
   </div>
   <Dialog open={!!utilityPanel} onOpenChange={open=>{if(!open)setUtilityPanel(null);}}>
    <DialogContent className="max-w-3xl border-slate-700 bg-slate-900 text-white">
