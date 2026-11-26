@@ -1,3 +1,5 @@
+import {CadTerminalHeader,CadRefresh,CadPanelBar,CadMetricStrip,CadStatus} from '@/components/dispatch/CadTerminal';
+import '@/components/dispatch/cad-center-terminal.css';
 import AIRewriteField from '@/components/AIRewriteField';
 import { useNavigate } from 'react-router-dom';
 import { hasSupervisorAccess } from '@/lib/supervisorAccess';
@@ -34,6 +36,7 @@ export default function BOLOAlerts() {
   const [view, setView] = useState('active');
   const [typeFilter, setTypeFilter] = useState('all');
   const [modal, setModal] = useState(null);
+  const [selectedId,setSelectedId]=useState(null);
   const { user, isLoadingAuth } = useAuth();
   const [resolving, setResolving] = useState(null);
   const [resolutionDialog, setResolutionDialog] = useState(null);
@@ -163,65 +166,19 @@ export default function BOLOAlerts() {
     }
   };
 
+  const selected=filtered.find(b=>b.id===selectedId);
+  const party=selected?primaryParty(selected):null,vehicle=selected?primaryVehicle(selected):null;
+  const switchView=(next,type='all')=>{setView(next);setTypeFilter(type);setSelectedId(null);};
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#050a11] font-sans text-white">
-      <div className="flex-none border-b border-[#24354c] bg-[#0a1220] px-4 py-2.5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <AlertOctagon className="h-5 w-5 text-red-400" />
-            <div><div className="text-xl font-bold tracking-tight">BOLO / INTELLIGENCE BOARD</div><div className="mt-1 text-xs text-slate-400">BE ON THE LOOKOUT · OFFICER SAFETY · WANTED / MISSING · VEHICLE INTELLIGENCE</div></div>
-          </div>
-          <div className="flex-1" />
-          <div className="relative w-full min-w-0 sm:w-auto sm:min-w-[240px]">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH BOLO, SUBJECT, PLATE, CASE..." className="h-10 w-full rounded-lg border border-[#2b405a] bg-[#0f1928] pl-8 pr-3 text-sm text-white outline-none focus:border-blue-500" />
-          </div>
-          {canCreate && <button onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-400 bg-red-700 px-4 text-[10px] font-black shadow-[0_0_18px_rgba(220,38,38,.25)] hover:bg-red-600 sm:h-9 sm:w-auto"><Plus className="h-4 w-4" />NEW BOLO</button>}
-        </div>
+    <div className="tac-console cad-terminal-page cad-bolo-terminal">
+      <CadTerminalHeader title="BOLO / intelligence" icon={AlertOctagon} subtitle="Officer safety, subjects, vehicles and watch notices"><CadRefresh busy={loading} onClick={load}/>{canCreate&&<button className="tac-primary" onClick={()=>setModal({mode:'create',bolo:{alert_type:'wanted_person',priority:'medium',status:'active'}})}><Plus size={15}/> New BOLO</button>}</CadTerminalHeader>
+      <CadMetricStrip items={[{label:'Active',value:activeCount,tone:'ready',selected:view==='active'&&typeFilter==='all',onClick:()=>switchView('active')},{label:'Drafts',value:draftCount,tone:'warning',selected:view==='drafts',onClick:()=>switchView('drafts')},{label:'Officer safety / critical',value:criticalSafetyCount,tone:'danger',selected:typeFilter==='critical_safety',onClick:()=>switchView('active','critical_safety')},{label:'Resolved / past',value:historyCount,selected:view==='history',onClick:()=>switchView('history')}]}/>
+      {pageError&&<p className="tac-warning" role="alert">{pageError} <button onClick={load}>Retry</button></p>}
+      <div className="cad-terminal-filter"><label><Search size={15}/><input aria-label="Find intelligence record" value={search} onChange={e=>setSearch(e.target.value)} placeholder="BOLO / subject / plate / case"/></label><select aria-label="Alert type" value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}><option value="all">All types</option><option value="critical_safety">Critical / officer safety</option>{Object.entries(TYPE_CONFIG).map(([key,cfg])=><option key={key} value={key}>{cfg.label}</option>)}</select><button onClick={()=>{setSearch('');setTypeFilter('all')}}>Reset</button></div>
+      <div className="cad-terminal-split cad-bolo-split" data-detail={!!selected}>
+       <section className="cad-terminal-panel"><CadPanelBar title={'Intelligence queue · '+filtered.length}/><div className="cad-terminal-scroll">{filtered.map(bolo=>{const cfg=TYPE_CONFIG[bolo.alert_type]||TYPE_CONFIG.watch_notice;return <button key={bolo.id} className="cad-bolo-strip" data-priority={bolo.priority} aria-pressed={selectedId===bolo.id} onClick={()=>setSelectedId(bolo.id)}><div><small>{bolo.bolo_number||'Reference pending'}</small><span className={'cad-status-chip '+(PRIORITY_STYLE[bolo.priority]||PRIORITY_STYLE.medium)}>{String(bolo.priority||'medium').toUpperCase()}</span></div><strong>{titleCase(bolo.title)||'Untitled notice'}</strong><p>{cfg.label} · {primaryParty(bolo)?.name||primaryVehicle(bolo)?.plate||'General information'}</p><div><CadStatus value={bolo.status}/><small>{fmt(bolo.created_date)}</small></div></button>})}{!filtered.length&&<p className="tac-empty">{loading?'Loading intelligence records…':'No records match this view.'}</p>}</div></section>
+       <section className="cad-terminal-panel cad-bolo-detail"><CadPanelBar title="Selected intelligence record">{selected&&<button onClick={()=>setSelectedId(null)}>Close</button>}</CadPanelBar><div className="cad-terminal-scroll">{selected?<><div className="cad-terminal-record-title"><small>{selected.bolo_number||'Reference pending'}</small><h2>{titleCase(selected.title)}</h2><CadStatus value={selected.status}/><p>{(TYPE_CONFIG[selected.alert_type]||TYPE_CONFIG.watch_notice).label}</p></div>{selected.photo_urls?.length>0&&<div className="cad-bolo-photos">{selected.photo_urls.map(url=><img key={url} src={url} alt="Recorded BOLO reference"/>)}</div>}<dl className="cad-terminal-fields">{[['Subject',party?.name],['Vehicle',vehicle&&[vehicle.year,vehicle.color,vehicle.make,vehicle.model].filter(Boolean).join(' ')],['Plate',vehicle?.plate],['Last known location',selected.last_known_location],['Linked CAD',selected.linked_call_number],['Case number',selected.case_number],['Issued by',selected.issued_by],['Recorded',fmt(selected.created_date)],['Resolution',selected.resolution]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v||'Not recorded'}</dd></div>)}</dl><div className="tac-detail-block"><h3>Intelligence narrative</h3><p>{selected.description||'No narrative recorded.'}</p></div></>:<p className="tac-empty">Select a BOLO to inspect recorded intelligence.</p>}</div>{selected&&<footer className="cad-terminal-actions"><button onClick={()=>setModal({mode:selected.status==='draft'?'edit':'view',bolo:selected})}>{selected.status==='draft'?'Continue draft':'Open complete record'}</button>{canEditRecord(selected)&&selected.status==='active'&&<><button onClick={()=>setModal({mode:'edit',bolo:{...selected}})}>Edit</button><button className="tac-primary" disabled={resolving===selected.id} onClick={e=>openResolveDialog(selected,e)}>Resolve notice</button></>}</footer>}</section>
       </div>
-
-      {pageError && <div role="alert" className="flex flex-none items-center justify-between gap-3 border-b border-red-700 bg-red-950/60 px-4 py-3 text-sm text-red-100"><span>{pageError}</span><button type="button" onClick={() => load()} className="rounded border border-red-500 px-3 py-1.5 text-xs font-semibold hover:bg-red-900">Retry</button></div>}
-
-      <div className="grid flex-none grid-cols-2 border-b border-[#24354c] bg-[#08111c] sm:grid-cols-4">
-        <button type="button" onClick={() => { setView('active'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'active' && typeFilter === 'all'}><div className="text-2xl font-bold text-green-400">{activeCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Active BOLOs</div></button>
-        <button type="button" onClick={() => { setView('drafts'); setTypeFilter('all'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'drafts'}><div className="text-2xl font-bold text-amber-300">{draftCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Saved drafts</div></button>
-        <button type="button" onClick={() => { setView('active'); setTypeFilter('critical_safety'); }} className="min-h-20 border-r border-[#24354c] px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'active' && typeFilter === 'critical_safety'}><div className="text-2xl font-bold text-red-400">{criticalSafetyCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Critical / officer safety</div></button>
-        <button type="button" onClick={() => { setView('history'); setTypeFilter('all'); }} className="min-h-20 px-4 py-3 text-left hover:bg-[#101b2b]" aria-pressed={view === 'history'}><div className="text-2xl font-bold text-blue-300">{historyCount}</div><div className="mt-1 text-[11px] font-semibold tracking-wide text-slate-300">Past / resolved</div></button>
-      </div>
-
-      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-[#24354c] bg-[#0b1320] px-3 py-2">
-        <button type="button" aria-pressed={view === 'active'} onClick={() => { setView('active'); setTypeFilter('all'); }} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[11px] font-black ${view === 'active' ? 'border-green-500/60 bg-green-950/40 text-green-300' : 'border-slate-700 text-slate-500'}`}><Radio className="h-3 w-3" />ACTIVE ({activeCount})</button>
-        <button type="button" aria-pressed={view === 'drafts'} onClick={() => { setView('drafts'); setTypeFilter('all'); }} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[11px] font-black ${view === 'drafts' ? 'border-amber-500/60 bg-amber-950/40 text-amber-200' : 'border-slate-700 text-slate-500'}`}><Edit2 className="h-3 w-3" />DRAFTS ({draftCount})</button>
-        <button type="button" aria-pressed={view === 'history'} onClick={() => { setView('history'); setTypeFilter('all'); }} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[11px] font-black ${view === 'history' ? 'border-blue-500/60 bg-blue-950/40 text-blue-300' : 'border-slate-700 text-slate-500'}`}><History className="h-3 w-3" />PAST / RESOLVED ({historyCount})</button>
-        <div className="h-5 w-px bg-slate-700" />
-        <button type="button" aria-pressed={typeFilter === 'all'} onClick={() => setTypeFilter('all')} className={`rounded px-2 py-1 text-[11px] ${typeFilter === 'all' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>ALL TYPES</button>
-        {Object.entries(TYPE_CONFIG).map(([key,cfg]) => <button type="button" aria-pressed={typeFilter === key} key={key} onClick={() => setTypeFilter(typeFilter === key ? 'all' : key)} className={`rounded px-2 py-1 text-[11px] ${typeFilter === key ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{cfg.label}</button>)}
-      </div>
-
-      <div className="flex flex-none items-center justify-between border-b border-[#24354c] bg-[#0a1220] px-3 py-2 text-xs text-slate-400"><span>Showing {filtered.length} of {bolos.length} BOLO records</span>{typeFilter !== 'all' && <button type="button" onClick={() => setTypeFilter('all')} className="rounded border border-slate-600 px-2 py-1 font-semibold text-slate-200 hover:bg-slate-800">Clear type filter</button>}</div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {loading ? <div role="status" className="p-10 text-center text-sm text-slate-400">Loading intelligence records…</div> : filtered.length===0 ? <div className="rounded-xl border border-dashed border-slate-600 p-12 text-center text-slate-400"><AlertOctagon className="mx-auto mb-3 h-8 w-8"/><p>No records match this view.</p></div> :
-        <div className="grid items-stretch gap-4 lg:grid-cols-2 2xl:grid-cols-3">{filtered.map(bolo=>{
-          const cfg=TYPE_CONFIG[bolo.alert_type]||TYPE_CONFIG.watch_notice,Icon=cfg.icon;
-          const party=primaryParty(bolo),vehicle=primaryVehicle(bolo);
-          const subject=party?.name?titleCase(party.name):vehicle?[vehicle.year,titleCase(vehicle.color),titleCase(vehicle.make),titleCase(vehicle.model)].filter(Boolean).join(' '):'General information';
-          return <article key={bolo.id} className={'flex min-w-0 flex-col overflow-hidden rounded-xl border bg-slate-900 shadow-lg '+(bolo.priority==='critical'&&bolo.status==='active'?'border-red-500':'border-slate-700')}>
-            <button type="button" onClick={()=>setModal({mode:bolo.status==='draft'?'edit':'view',bolo})} className="flex-1 p-5 text-left hover:bg-slate-800/60">
-              <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-bold text-amber-300">{bolo.bolo_number||'BOLO pending'}</span><span className={'rounded border px-2 py-1 text-xs font-bold '+(PRIORITY_STYLE[bolo.priority]||PRIORITY_STYLE.medium)}>{String(bolo.priority||'medium').toUpperCase()}</span></div>
-              <div className="mt-4 flex gap-4">{bolo.photo_urls?.[0]&&<img src={bolo.photo_urls[0]} alt="BOLO subject" className="h-24 w-24 shrink-0 rounded-lg border border-slate-600 object-cover"/>}<div className="min-w-0"><div className="flex items-center gap-2 text-xs text-cyan-300"><Icon className="h-4 w-4"/>{cfg.label}</div><h2 className="mt-2 break-words text-lg font-semibold text-white">{titleCase(bolo.title)}</h2><p className="mt-1 break-words text-sm text-slate-300">{subject}</p></div></div>
-              {vehicle?.plate&&<span className="mt-3 inline-block rounded border border-amber-500/50 bg-amber-950 px-3 py-1 font-mono text-sm font-bold text-amber-200">{String(vehicle.plate).toUpperCase()}</span>}
-              <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-slate-300">{bolo.description||'Open record for full intelligence details.'}</p>
-              <dl className="mt-4 grid gap-2 border-t border-slate-700 pt-3 text-xs"><div><dt className="text-slate-500">Last known location</dt><dd className="mt-1 text-slate-200">{titleCase(bolo.last_known_location||'Unknown')}</dd></div>{bolo.linked_call_number&&<div><dt className="text-slate-500">Linked CAD call</dt><dd className="mt-1 text-cyan-200">{bolo.linked_call_number}</dd></div>}</dl>
-            </button>
-            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-700 bg-slate-950/60 px-5 py-3"><div className="text-xs"><span className={bolo.status==='active'?'text-emerald-300':'text-slate-300'}>{String(bolo.status||'').toUpperCase()}</span><p className="mt-1 text-slate-500">{fmt(bolo.created_date)}</p></div><div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={()=>setModal({mode:bolo.status==='draft'?'edit':'view',bolo})}>{bolo.status==='draft'?'Continue draft':'Open record'}</Button>
-              {canEditRecord(bolo)&&bolo.status==='active'&&<><button type="button" aria-label={'Edit '+bolo.bolo_number} onClick={()=>setModal({mode:'edit',bolo:{...bolo}})} className="rounded border border-slate-600 px-2 text-slate-300"><Edit2 className="h-4 w-4"/></button><Button size="sm" disabled={resolving===bolo.id} onClick={e=>openResolveDialog(bolo,e)} className="bg-emerald-800 hover:bg-emerald-700">{resolving===bolo.id?'Resolving…':'Resolve'}</Button></>}
-            </div></footer>
-          </article>;
-        })}</div>}
-      </div>
-
       {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onEdit={modal.mode === 'view' && canEditRecord(modal.bolo) ? () => setModal({ mode: 'edit', bolo: { ...modal.bolo } }) : null} onSaved={payload => { if (payload?.record) setBolos(current => mergeBoloRecord(current, payload.record)); setModal(null); }} />}
 
       <Dialog open={!!resolutionDialog} onOpenChange={open => { if (!open && !resolving) { setResolutionDialog(null); setResolutionText(''); } }}>

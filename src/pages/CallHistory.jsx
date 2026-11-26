@@ -1,3 +1,5 @@
+import {CadTerminalHeader,CadMetricStrip,CadPanelBar,CadRefresh} from '@/components/dispatch/CadTerminal';
+import '@/components/dispatch/cad-center-terminal.css';
 import {recoverPropertyHistory} from '@/lib/propertyHistoryRecovery';
 import { addressHistoryPattern } from '../../base44/functions/_shared/addressHistoryMatch.js';
 import { isValidCallRecord, isVisibleActiveCall } from '../../base44/functions/_shared/callFeedPolicy.js';
@@ -609,134 +611,11 @@ export default function CallHistory() {
         </div>
     );
 
-    return (
-        <div className="min-h-full bg-[#07111d] p-2 font-mono text-white md:p-3">
-            <form onSubmit={event=>{event.preventDefault();handleRefresh();}} className="mb-3 flex flex-wrap gap-2"><input aria-label="Search all CAD history" value={search} onChange={e=>setSearch(e.target.value)} placeholder="CAD / BPS number, incident or address" className="min-h-10 min-w-48 flex-1 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/><label className="text-xs text-slate-300">From <input type="date" aria-label="History start date" value={fromDate} onChange={event=>setFromDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><label className="text-xs text-slate-300">Through <input type="date" aria-label="History end date" value={throughDate} onChange={event=>setThroughDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><button type="submit" disabled={refreshing} className="rounded bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">{refreshing?'Searching…':'Search active & archived calls'}</button></form>
-            {/* Header */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-[#2b4258] bg-[#0a1623] p-3 shadow-xl lg:flex-row lg:items-center">
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10"><History className="h-5 w-5 text-cyan-300" /></div>
-                    <div className="min-w-0">
-                        <div className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-400">CAD Records</div>
-                        <h1 className="truncate text-lg font-black tracking-tight text-white">Call History</h1>
-                        <div className="text-[9px] text-slate-500">Active and archived calls in one live record stream</div>
-                    </div>
-                </div>
-                <div className="grid flex-1 grid-cols-2 gap-1.5 sm:grid-cols-4 lg:ml-4">
-                    <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2"><div className="text-[8px] font-black uppercase text-cyan-300">Showing</div><div className="text-lg font-black">{sorted.length}</div></div>
-                    <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-emerald-300"><Radio className="h-3 w-3"/>Active</div><div className="text-lg font-black">{activeCount}</div></div>
-                    <div className="rounded-lg border border-slate-600 bg-slate-900/70 px-3 py-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-slate-400"><Archive className="h-3 w-3"/>Archived</div><div className="text-lg font-black">{archivedCount}</div></div>
-                    <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-amber-300"><Building2 className="h-3 w-3"/>Property</div><div className="text-lg font-black">{propertyCount}</div></div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                    <span className="hidden text-[9px] text-slate-500 sm:inline">UPDATED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
-                    <button onClick={printPropertyAlerts}
-                        className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-500 bg-white px-3 text-[10px] font-black text-slate-900 transition hover:bg-slate-100">
-                        <Printer className="h-3.5 w-3.5" />PRINT PROPERTY PDF
-                    </button>
-                    <button onClick={handleRefresh} disabled={refreshing}
-                        className="flex h-9 items-center gap-1.5 rounded-lg border border-cyan-700/60 bg-cyan-950/30 px-3 text-[10px] font-black text-cyan-100 transition hover:border-cyan-400 hover:bg-cyan-900/40 disabled:opacity-50">
-                        <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
-                    </button>
-                </div>
-            </div>
-
-
-            {/* Filter Bar */}
-            <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[#293f55] bg-[#091522] px-3 py-2 sm:px-4 md:flex-row md:flex-wrap md:items-center">
-                {/* Agency filter */}
-                <span className="text-[9px] text-slate-500 tracking-widest">AGENCY:</span>
-                <div className="flex max-w-full gap-1 overflow-x-auto pb-1 md:overflow-visible md:pb-0">
-                    {agencies.map(a => (
-                        <button key={a} onClick={() => setAgencyFilter(a)}
-                            className={`px-2 py-1 rounded border text-[9px] font-bold transition-all ${agencyFilter === a ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
-                            {a}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="w-px h-5 bg-slate-700" />
-
-                <span className="text-[9px] text-slate-500 tracking-widest">CALL CLASS:</span>
-                <select value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} className="bg-slate-800 border border-slate-700 text-[10px] text-white px-2 py-1.5 rounded focus:outline-none focus:border-gold">
-                    <option value="ALL">All calls</option><option value="PROPERTY">Property calls</option><option value="PUBLIC">Public safety calls</option>
-                </select>
-
-                {/* Status filter */}
-                <span className="text-[9px] text-slate-500 tracking-widest">STATUS:</span>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                    className="bg-slate-800 border border-slate-700 text-[10px] text-white px-2 py-1.5 rounded focus:outline-none focus:border-gold">
-                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
-              <span>Last 90 days · {rows.length} {propertyFilter==='PROPERTY'?'property history records':'calls'} loaded</span>
-              {nextCursor && <button type="button" disabled={refreshing} onClick={()=>{setRefreshing(true);void loadAll(true,true);}} className="min-h-10 rounded border border-cyan-600 bg-cyan-950 px-4 font-bold text-cyan-100 disabled:opacity-50">{refreshing?'Loading…':'Load older calls'}</button>}
-              {historyWarning && <span role="status" className="text-amber-300">{historyWarning}</span>}
-            </div>
-            {/* Table */}
-            <div className="mt-2 max-h-[calc(100dvh-265px)] overflow-auto rounded-t-xl border border-[#293f55] bg-[#08131f]">
-                {/* Column Headers */}
-                <div className="sticky top-0 z-10 hidden items-center border-b-2 border-slate-700 bg-slate-800 px-3 py-1.5 text-[9px] tracking-widest text-slate-500 select-none md:flex">
-                    <div className="w-8 flex-shrink-0">#</div>
-                    <div className="w-36 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('time')}>Date / time <SortIcon field="time" /></div>
-                    <div className="flex-1 cursor-pointer hover:text-slate-300" onClick={() => handleSort('incident')}>Incident type <SortIcon field="incident" /></div>
-                    <div className="w-56 flex-shrink-0">Location</div>
-                    <div className="w-20 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('agency')}>Agency <SortIcon field="agency" /></div>
-                    <div className="w-24 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('status')}>Status <SortIcon field="status" /></div>
-                    <div className="w-16 flex-shrink-0 text-center">Units</div>
-                    <div className="w-8 flex-shrink-0" />
-                </div>
-
-                {sorted.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">{nextCursor ? '— NO MATCHES IN LOADED PAGES · LOAD OLDER CALLS —' : historyWarning ? '— HISTORY MAY BE INCOMPLETE · RETRY —' : '— NO RECORDS MATCH FILTERS —'}</div>
-                ) : sorted.map((row, idx) => {
-                    const isActive = row._source === 'active' && isVisibleActiveCall(row);
-                    const agKey = agencyKey(row.agency);
-                    const agCls = AGENCY_COLORS[agKey] || 'bg-slate-700 text-slate-300 border-slate-600';
-                    const detail=callDetails[String(row.id)]||{}; const activity=detail.data;
-                    const stCls = STATUS_COLORS[historyCallStatus(row)] || 'bg-slate-700 text-slate-400 border-slate-600';
-                    const isExpanded = expandedId === (row.id);
-                    return (
-                        <div key={row.id}>
-                            <div role="button" tabIndex={0} aria-expanded={isExpanded} aria-label={'Open history call '+(cadReference(row)||'Reference Pending')} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();expandCall(row);}}}
-                                onClick={() => expandCall(row)}
-                                className={`flex cursor-pointer flex-col gap-2 border-b border-slate-800/70 px-3 py-3 text-[10px] transition-colors md:flex-row md:items-center md:gap-0 md:py-2
-                                    ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
-                                    ${isExpanded ? 'bg-slate-800/60' : ''}`}>
-                                <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
-                                <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">Date / time</span>{fmtDT(row.time_received || row.created_date)}</div>
-                                <div className="min-w-0 w-full flex-1 md:pr-2">
-                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{sentenceCase(row.incident)}</span><div className="mt-1 text-[10px] font-bold text-cyan-200">CAD / REF: {cadReference(row)||'Assigning CAD Reference…'}</div>
-                                    {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">Active</span>}
-                                    {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">Property call</span>}
-                                    {row._propertyCall && (row._propertyName || row._propertyAlert?.propertyName) && (
-                                        <div className="mt-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-amber-300">
-                                            <Building2 className="h-3 w-3" />{sentenceCase(row._propertyName || row._propertyAlert?.propertyName)}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="w-full break-words text-slate-400 md:w-56 lg:flex-shrink-0 md:truncate md:pr-2">
-                                    <MapPin className="w-2.5 h-2.5 inline mr-1 text-slate-600" />{row.location || '—'}
-                                </div>
-                                <div className="w-full md:w-20 lg:flex-shrink-0">
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${agCls}`}>{row.agency || '—'}</span>
-                                </div>
-                                <div className="w-full md:w-24 lg:flex-shrink-0">
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded border ${stCls}`}>{historyCallStatus(row)}</span>
-                                </div>
-                                <div className="w-full text-left text-slate-500 md:w-16 lg:flex-shrink-0 md:text-center">
-                                    {row._assignedUnitDetails?.length ? <span className="text-green-400 break-words">{row._assignedUnitDetails.map(unit => unit.label).join(', ')}</span> : row.assigned_units?.length ? <span className="text-green-400">{row.assigned_units.length} unit(s)</span> : 'Unassigned'}
-                                </div>
-                                <div className="absolute right-3 mt-0 w-8 flex-shrink-0 text-center text-slate-600 md:static">
-                                    {isExpanded ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />}
-                                </div>
-                            </div>
-
-                            {/* Expanded detail row */}
-                            {isExpanded && (
-                                <div className="grid grid-cols-1 gap-x-6 gap-y-2 border-b border-slate-700 bg-slate-800/40 px-3 py-3 text-[10px] sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
+    const selectedRecord=sorted.find(row=>row.id===expandedId);
+    const renderRecordDetail=(row)=>{
+      const detail=callDetails[String(row.id)]||{},activity=detail.data;
+      const isActive=row._source==='active'&&isVisibleActiveCall(row);
+      return (<div className="grid grid-cols-1 gap-x-6 gap-y-2 border-b border-slate-700 bg-slate-800/40 px-3 py-3 text-[10px] sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
                                     {(activity?.narrative||row.description) && (
                                         <div className="mb-1 sm:col-span-2 lg:col-span-3">
                                             <span className="text-slate-500 tracking-widest">NARRATIVE: </span>
@@ -797,20 +676,61 @@ export default function CallHistory() {
                                         <button type="button" onClick={event=>{event.stopPropagation();setLinkingCallId(row.id);setExistingReportNumber('');}} className="rounded border border-cyan-700 bg-cyan-950/30 px-3 py-1.5 text-[10px] font-bold text-cyan-200">Link existing report</button>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    );
-                })}
+);
+    };
+    return (
+        <div className="tac-console cad-terminal-page cad-history-terminal">
+            <CadTerminalHeader title="Records / call history" icon={History} subtitle="Active, archived and property incident records"><button type="button" onClick={printPropertyAlerts}><Printer size={15}/> Property PDF</button><CadRefresh onClick={handleRefresh} busy={refreshing}/></CadTerminalHeader>
+            <CadMetricStrip items={[{label:'Showing',value:sorted.length},{label:'Active',value:activeCount,tone:'ready'},{label:'Archived',value:archivedCount},{label:'Property',value:propertyCount,tone:'warning'}]}/>
+            <form onSubmit={event=>{event.preventDefault();handleRefresh();}} className="cad-terminal-filter cad-history-search"><input aria-label="Search all CAD history" value={search} onChange={e=>setSearch(e.target.value)} placeholder="CAD / BPS number, incident or address" className="min-h-10 min-w-48 flex-1 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/><label className="text-xs text-slate-300">From <input type="date" aria-label="History start date" value={fromDate} onChange={event=>setFromDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><label className="text-xs text-slate-300">Through <input type="date" aria-label="History end date" value={throughDate} onChange={event=>setThroughDate(event.target.value)} className="min-h-10 rounded border border-slate-500 bg-slate-900 px-3 text-sm text-white"/></label><button type="submit" disabled={refreshing} className="rounded bg-cyan-700 px-4 py-2 font-bold text-white disabled:opacity-50">{refreshing?'Searching…':'Search active & archived calls'}</button></form>
+            {/* Filter Bar */}
+            <div className="cad-terminal-filter cad-history-filters">
+                {/* Agency filter */}
+                <span className="text-[9px] text-slate-500 tracking-widest">AGENCY:</span>
+                <div className="flex max-w-full gap-1 overflow-x-auto pb-1 md:overflow-visible md:pb-0">
+                    {agencies.map(a => (
+                        <button key={a} onClick={() => setAgencyFilter(a)}
+                            className={`px-2 py-1 rounded border text-[9px] font-bold transition-all ${agencyFilter === a ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
+                            {a}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="w-px h-5 bg-slate-700" />
+
+                <span className="text-[9px] text-slate-500 tracking-widest">CALL CLASS:</span>
+                <select value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} className="bg-slate-800 border border-slate-700 text-[10px] text-white px-2 py-1.5 rounded focus:outline-none focus:border-gold">
+                    <option value="ALL">All calls</option><option value="PROPERTY">Property calls</option><option value="PUBLIC">Public safety calls</option>
+                </select>
+
+                {/* Status filter */}
+                <span className="text-[9px] text-slate-500 tracking-widest">STATUS:</span>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 text-[10px] text-white px-2 py-1.5 rounded focus:outline-none focus:border-gold">
+                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
             </div>
 
+            <div className="cad-history-resultbar">
+              <span>Last 90 days · {rows.length} {propertyFilter==='PROPERTY'?'property history records':'calls'} loaded</span>
+              {nextCursor && <button type="button" disabled={refreshing} onClick={()=>{setRefreshing(true);void loadAll(true,true);}} className="min-h-10 rounded border border-cyan-600 bg-cyan-950 px-4 font-bold text-cyan-100 disabled:opacity-50">{refreshing?'Loading…':'Load older calls'}</button>}
+              {historyWarning && <span role="status" className="text-amber-300">{historyWarning}</span>}
+            </div>
+            <div className="cad-terminal-split cad-history-split" data-detail={!!selectedRecord}>
+              <section className="cad-terminal-panel"><CadPanelBar title="Record index"><select aria-label="Sort history records" value={sortField} onChange={e=>handleSort(e.target.value)}><option value="time">Date / time</option><option value="incident">Incident</option><option value="agency">Agency</option><option value="status">Status</option></select><button onClick={()=>handleSort(sortField)}>{sortDir==='asc'?'Ascending':'Descending'}</button></CadPanelBar>
+              <div className="cad-terminal-scroll">
+                {sorted.length===0?<p className="tac-empty">{nextCursor?'No matches in loaded records. Load older calls to continue.':historyWarning?'History may be incomplete. Retry.':'No records match filters.'}</p>:sorted.map(row=><button key={row.id} type="button" className="cad-history-strip" aria-pressed={expandedId===row.id} onClick={()=>expandCall(row)}><div><small>{cadReference(row)||'Reference pending'}</small><time>{fmtDT(row.time_received||row.created_date)}</time></div><strong>{sentenceCase(row.incident)}</strong><p>{row.location||'Location not recorded'}</p><div><span>{row.agency||'—'} · {historyCallStatus(row)}</span>{row._propertyCall&&<span className="text-amber-300">{row._propertyName||row._propertyAlert?.propertyName||'Property call'}</span>}</div></button>)}
+              </div></section>
+              <section className="cad-terminal-panel cad-history-detail"><CadPanelBar title="Selected call record">{selectedRecord&&<button type="button" onClick={()=>setExpandedId(null)}>Close record</button>}</CadPanelBar><div className="cad-terminal-scroll">{selectedRecord?<><div className="cad-terminal-record-title"><small>{cadReference(selectedRecord)||'Reference pending'} · {historyCallStatus(selectedRecord)}</small><h2>{sentenceCase(selectedRecord.incident)}</h2><p>{selectedRecord.location||'Location not recorded'} · {fmtDT(selectedRecord.time_received||selectedRecord.created_date)}</p></div>{renderRecordDetail(selectedRecord)}</>:<p className="tac-empty">Select a call to view its narrative, assignments, timeline, disposition and linked records.</p>}</div></section>
+            </div>
             {/* Status Bar */}
-            <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 rounded-b-xl border border-t-0 border-[#293f55] bg-[#091522] px-3 py-1.5 text-[9px] text-slate-500 sm:px-4">
+            <div className="cad-terminal-footer">
                 <span>LOADED: <span className="text-white">{sorted.length}</span></span>
                 <span>ACTIVE: <span className="text-cyan-300">{activeCount}</span></span>
                 <span>ARCHIVED: <span className="text-slate-300">{archivedCount}</span></span>
                 <span>PROPERTY CALLS: <span className="text-amber-300">{propertyCount}</span></span>
                 <div className="flex-1" />
-                <span className="text-green-500">● LIVE</span>
+                <span className="text-green-500">{refreshing?'SYNCING':historyWarning?'CHECK RECORDS':'RECORDS READY'}</span>
             </div>
         </div>
     );
