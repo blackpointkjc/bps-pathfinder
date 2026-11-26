@@ -122,6 +122,7 @@ export default function CallHistory() {
     const monitoredPropertiesRef = useRef([]);
     const propertyBoundariesReadAtRef = useRef(0);
     const cursorRef = useRef(null);
+    const cursorQueryRef=useRef('');
     const [nextCursor, setNextCursor] = useState(null);
     const [historyWarning, setHistoryWarning] = useState('');
     const pagesLoadedRef = useRef(0);
@@ -255,6 +256,8 @@ export default function CallHistory() {
         if(loadInFlightRef.current){if(force)pendingSearchRef.current=true;return;}
         if (!force && !append && pagesLoadedRef.current > 1) return;
         if (!force && !append && Date.now()-lastServerReadRef.current<45000) return;
+        const queryKey=JSON.stringify([searchRef.current,fromDateRef.current,throughDateRef.current,filtersRef.current]);
+        if(append&&cursorQueryRef.current!==queryKey)append=false;
         if (append && !cursorRef.current) return;
         lastServerReadRef.current=Date.now();
         loadInFlightRef.current = true;
@@ -306,6 +309,7 @@ export default function CallHistory() {
             // persistence is briefly delayed by ingestion or rate limiting.
             feedRows = feedRows.map(row => decorateRealtimePropertyMatch(row));
             cursorRef.current = payload.next_cursor || null;
+            cursorQueryRef.current=queryKey;
             setNextCursor(cursorRef.current);
             pagesLoadedRef.current = append ? pagesLoadedRef.current + 1 : 1;
             setHistoryWarning(liveFeedRecovered
@@ -663,7 +667,7 @@ export default function CallHistory() {
                 </div>
 
                 {sorted.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">{historyWarning ? '— CALL HISTORY UNAVAILABLE —' : '— NO RECORDS MATCH FILTERS —'}</div>
+                    <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">{nextCursor ? '— NO MATCHES IN LOADED PAGES · LOAD OLDER CALLS —' : historyWarning ? '— HISTORY MAY BE INCOMPLETE · RETRY —' : '— NO RECORDS MATCH FILTERS —'}</div>
                 ) : sorted.map((row, idx) => {
                     const isActive = row._source === 'active' && isVisibleActiveCall(row);
                     const agKey = agencyKey(row.agency);

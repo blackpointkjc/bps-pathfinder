@@ -131,6 +131,14 @@ Deno.serve(async (req) => {
       archived:{entity:db.CallHistory,field:'time_received',offset:Math.max(0,Math.floor(Number(cursor.archived)||0)),buffer:[],done:cursor.archived_done===true,error:''},
       property:{entity:db.PropertyAlert,field:'callTime',offset:Math.max(0,Math.floor(Number(cursor.property)||0)),buffer:[],done:cursor.property_done===true,error:''}
     };
+    for(const [key,entity,missingField,field] of [
+      ['active_legacy',db.DispatchCall,'time_received','created_date'],
+      ['archived_legacy',db.CallHistory,'time_received','created_date'],
+      ['property_legacy',db.PropertyAlert,'callTime','time_received']
+    ] as any[]){
+      states[key]={entity,field,missingField,offset:Math.max(0,Math.floor(Number(cursor[key])||0)),buffer:[],done:cursor[key+'_done']===true,error:''};
+    }
+    const family=(key:string)=>key.replace('_legacy','');
     // A raw cursor advances for every database row examined, including rows
     // rejected by search, date/status filters, validation or deduplication.
     // Buffered, unconsumed rows are fetched again from their exact offset.
@@ -165,14 +173,14 @@ Deno.serve(async (req) => {
       const state=states[key];
       if(state.done||state.error||state.buffer.length)return;
       if(state.end){state.done=true;return;}
-      const result=await readWithRetry(key+' call history',()=>state.entity.filter({[state.field]:dateRange},'-'+state.field,batchSize,state.offset),[]);
+      const result=await readWithRetry(key+' call history',()=>state.entity.filter({...{[state.field]:dateRange},...(state.missingField?{$or:[{[state.missingField]:{$exists:false}},{[state.missingField]:null},{[state.missingField]:''}]}:{})},'-'+state.field,batchSize,state.offset),[]);
       reads++;
       if(result.error){state.error=result.error;return;}
       const raw=result.data||[];
       state.end=raw.length<batchSize;
       // Only use a property-alert row as history when neither the live nor
       // archived original exists anywhere, not merely outside this page.
-      if(key==='property'&&raw.length){
+      if(family(key)==='property'&&raw.length){
         const refs=[...new Set(raw.map((r:any)=>String(r.callId||'')).filter(Boolean))];
         const [live,archived]=await Promise.all([
           readWithRetry('Property original calls',()=>refs.length?db.DispatchCall.filter({id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[]),
@@ -181,7 +189,7 @@ Deno.serve(async (req) => {
         if(live.error||archived.error){state.error=live.error||archived.error;return;}
         const linked=new Set([...live.data.map(r=>String(r.id)),...archived.data.map(r=>String(r.original_call_id))]);
         state.buffer=raw.map((r:any)=>({row:asProperty(r),skip:linked.has(String(r.callId||''))}));
-      }else if(key==='archived'&&raw.length){
+      }else if(family(key)==='archived'&&raw.length){
         const refs=[...new Set(raw.map((r:any)=>String(r.original_call_id||'')).filter(Boolean))];
         const live=await readWithRetry('Archive duplicate check',()=>refs.length?db.DispatchCall.filter({id:{$in:refs}},'-time_received',batchSize):Promise.resolve([]),[]);
         if(live.error)warnings.push(live.error);
@@ -195,7 +203,7 @@ Deno.serve(async (req) => {
       if(states.active.error&&states.archived.error)throw Error('Both active and archived call sources are temporarily unavailable.');
       const heads=Object.entries(states).filter(([,v]:any)=>v.buffer.length).map(([source,v]:any)=>({source,...v.buffer[0]}));
       if(!heads.length)break;
-      heads.sort((a,b)=>callTimestamp(b.row)-callTimestamp(a.row)||['active','archived','property'].indexOf(a.source)-['active','archived','property'].indexOf(b.source));
+      heads.sort((a,b)=>callTimestamp(b.row)-callTimestamp(a.row)||['active','archived','property'].indexOf(family(a.source))-['active','archived','property'].indexOf(family(b.source)));
       const item=heads[0],state=states[item.source];
       state.buffer.shift();state.offset++;scanned++;
       if(!state.buffer.length&&state.end)state.done=true;
@@ -205,9 +213,8 @@ Deno.serve(async (req) => {
       const stamp=callTimestamp(row);
       if(stamp!==boundaryStamp){boundaryStamp=stamp;boundaryIds=new Set();}
       if(seen.has(identity)||boundaryIds.has(identity))continue;
-      seen.add(identity);boundaryIds.add(identity);selected.push(item);
+      seen.add(identity);boundaryIds.add(identity);selected.push({...item,source:family(item.source)});
     }
-    const activeRead={error:states.active.error},archivedRead={error:states.archived.error};
     const propertyRows=selected.filter(item=>item.source==='property').map(item=>item.row);
     const active:any[] = selected.filter(item=>item.source==='active').map(item=>item.row);
     const archived:any[] = selected.filter(item=>item.source==='archived').map(item=>item.row);
@@ -359,7 +366,7 @@ Deno.serve(async (req) => {
         propertyAlerts: decorated.filter(row=>row._propertyCall).length+propertyRows.length,
         loaded: decorated.length+propertyRows.length,
       },
-      warnings: [...warnings,states.property.error,activeRead.error, archivedRead.error, alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
+      warnings: [...new Set([...warnings,...Object.values(states).map((state:any)=>state.error)]) , alertRead.error, assignmentRead.error, userRead.error, unitRead.error,linkedRead.error,propertyLinksRead.error].filter(Boolean),
     });
   } catch (error:any) {
     console.error('getCallHistoryFeed failed:', error);

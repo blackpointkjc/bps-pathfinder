@@ -79,8 +79,7 @@ Deno.serve(async (req) => {
             if (ageMs >= ARCHIVE_AFTER_MS) {
                 try {
                     const existing = await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: call.id }, '-archived_date', 1);
-                    if (!existing?.length) {
-                        await base44.asServiceRole.entities.CallHistory.create({
+                    const snapshot = {
                             original_call_id: call.id,
                             call_id: call.call_id,
                             bps_reference: call.bps_reference || (call.call_id && call.call_id.startsWith('BPS-') ? call.call_id : ''),
@@ -110,7 +109,13 @@ Deno.serve(async (req) => {
                             time_closed: call.time_closed,
                             source: call.source,
                             archived_date: now.toISOString()
-                        });
+                    };
+                    if (!existing?.length) await base44.asServiceRole.entities.CallHistory.create(snapshot);
+                    else {
+                        // Recover fields missing from an earlier archival attempt before
+                        // deleting the last live record. Never replace a saved value with blank.
+                        const patch=Object.fromEntries(Object.entries(snapshot).filter(([key,value])=>key!=='archived_date'&&value!==null&&value!==undefined&&value!==''&&(existing[0][key]===null||existing[0][key]===undefined||existing[0][key]==='')));
+                        if(Object.keys(patch).length)await base44.asServiceRole.entities.CallHistory.update(existing[0].id,patch);
                     }
 
                     // Once a call leaves the active CAD queue, any open property alert
