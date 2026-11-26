@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test --test-concurrency=3 tests/*.test.mjs tests/*.test.cjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.63",
