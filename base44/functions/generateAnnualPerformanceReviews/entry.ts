@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts';
@@ -96,8 +97,13 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    const job=await req.clone().json().catch(()=>({}));
+    const rawJobUser=await base44.auth.me().catch(()=>null);
+    const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(Object.keys(job).every(k=>['scheduled','dry_run'].includes(k)));
+    if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
+    if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'generateAnnualPerformanceReviews'});
+    const __portalCaller=scheduledJob?rawJobUser:await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
+    if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -106,7 +112,7 @@ Deno.serve(async (req) => {
     const caller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess);
     if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const callerRoles = new Set((caller.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    if (caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('hr')) {
+    if (!scheduledJob && caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('hr')) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
     // This function is idempotent by annual_review_key, so HR/admin dashboards
@@ -205,7 +211,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({ success: true, date: now.date, created, already_exists: alreadyExists, not_due: notDue, errors });
+    return Response.json({ success: errors.length===0, date: now.date, created, already_exists: alreadyExists, not_due: notDue, errors:scheduledJob?errors.length:errors },{status:errors.length?503:200});
   } catch (error) {
     console.error('generateAnnualPerformanceReviews failed', error);
     return Response.json({ error: error?.message || 'Unable to generate annual performance reviews' }, { status: 500 });

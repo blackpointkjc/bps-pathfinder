@@ -1,3 +1,5 @@
+import {sendCompanyEmail} from '../../shared/companyGraph.ts';
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 import {loadReportWork} from '../../shared/reportWork.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
@@ -389,117 +391,21 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
   return { subject, content, message };
 }
 
-async function managementGraphAccess(base44: any) {
-  const mailboxRows = await base44.asServiceRole.entities.OutlookSharedMailbox.filter({
-    mailbox_email: MANAGEMENT_MAILBOX,
-    active: true,
-  }, '-updated_date', 10).catch(() => []);
-  const mailbox = mailboxRows?.[0];
-  if (!mailbox) throw new Error(`${MANAGEMENT_MAILBOX} is not configured as an active Outlook shared mailbox.`);
-
-  // Reuse the Microsoft 365 authorization already used by Pathfinder OutlookMail.
-  // The shared-mailbox record points to the Pathfinder user whose Microsoft token
-  // owns Send As / Send on Behalf access to management@blackpointkjc.com.
-  const credentialRows = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({
-    user_id: mailbox.user_id,
-    active: true,
-  }, '-last_refreshed_at', 10).catch(() => []);
-  const credential = credentialRows?.[0];
-  const refreshToken = String(credential?.refresh_token || '');
-  if (!credential || !refreshToken) {
-    throw new Error(`The Outlook connection used by Pathfinder for ${mailbox.pathfinder_email || mailbox.user_id} is not available.`);
-  }
-
-  const scope = String(credential.scope || 'Mail.Send Mail.Send.Shared User.Read offline_access');
-  const tokenResponse = await fetch(MICROSOFT_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      // Microsoft marks this Entra app as a SPA. SPA refresh-token redemption
-      // requires a cross-origin token request with the registered Pathfinder
-      // origin present. Without Origin, Entra returns AADSTS9002327 even when the
-      // same credential works correctly in OutlookMail in the browser.
-      Origin: 'https://bpspf.blackpointkjc.com',
-    },
-    body: new URLSearchParams({
-      client_id: PATHFINDER_MICROSOFT_CLIENT_ID,
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      scope,
-    }),
-  });
-  const tokenPayload = await tokenResponse.json().catch(() => ({}));
-  if (!tokenResponse.ok || !tokenPayload?.access_token) {
-    const message = tokenPayload?.error_description || tokenPayload?.error || `Microsoft token refresh failed (${tokenResponse.status}).`;
-    await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
-      last_error: String(message),
-      last_refreshed_at: new Date().toISOString(),
-    }).catch(() => null);
-    throw new Error(message);
-  }
-
-  await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
-    refresh_token: String(tokenPayload.refresh_token || refreshToken),
-    scope: String(tokenPayload.scope || scope),
-    active: true,
-    last_error: '',
-    last_refreshed_at: new Date().toISOString(),
-  }).catch(() => null);
-
-  return { accessToken: String(tokenPayload.access_token), mailbox, credential };
-}
-
-// Sends one INDIVIDUAL email per recipient through Microsoft Graph while
-// explicitly setting management@blackpointkjc.com as the shared From mailbox.
-// It never falls back to the connected user's personal khiers@ mailbox.
-async function sendPersonalizedManagementEmails(base44: any, deliveries: { to: string; subject: string; html: string }[]) {
-  if (!deliveries.length) return { sent: false, sender: MANAGEMENT_MAILBOX, total: 0, sentCount: 0, failedCount: 0 };
-  const { accessToken } = await managementGraphAccess(base44);
-  let sentCount = 0;
-  let failedCount = 0;
-  const failures: string[] = [];
-  const CONCURRENCY = 4;
-  for (let index = 0; index < deliveries.length; index += CONCURRENCY) {
-    const batch = deliveries.slice(index, index + CONCURRENCY);
-    await Promise.all(batch.map(async delivery => {
-      try {
-        const response = await fetch(`${MICROSOFT_GRAPH_ROOT}/users/${encodeURIComponent(MANAGEMENT_MAILBOX)}/sendMail`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: {
-              subject: delivery.subject,
-              body: { contentType: 'HTML', content: delivery.html },
-              from: { emailAddress: { address: MANAGEMENT_MAILBOX, name: 'Black Point Management' } },
-              toRecipients: [{ emailAddress: { address: delivery.to } }],
-            },
-            saveToSentItems: true,
-          }),
-        });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.error?.message || `Microsoft Graph returned ${response.status}`);
-        }
-        sentCount += 1;
-      } catch (error) {
-        failedCount += 1;
-        const message = (error as any)?.message || String(error);
-        failures.push(`${delivery.to}: ${message}`);
-        console.warn('Daily summary management mailbox email failed:', delivery.to, message);
-      }
-    }));
-  }
-  return {
-    sent: sentCount > 0,
-    sender: MANAGEMENT_MAILBOX,
-    total: deliveries.length,
-    sentCount,
-    failedCount,
-    error: failures.join(' | '),
-  };
+async function sendPersonalizedManagementEmails(base44:any,deliveries:{to:string;subject:string;html:string}[],deliveryId:string){
+    const db=base44.asServiceRole.entities;
+    const sentRows=await db.AuditLog.filter({entity_type:'DailyCompanySummaryRecipient',entity_id:deliveryId},'-timestamp',5000);
+    const sentKeys=new Set((sentRows||[]).map(r=>String(r.after_value||'')));
+    let sentCount=0,failedCount=0,alreadySent=0;
+    for(const delivery of deliveries){
+      const key=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(delivery.to.toLowerCase())))).map(v=>v.toString(16).padStart(2,'0')).join('');
+      if(sentKeys.has(key)){alreadySent++;continue;}
+      try{
+        await sendCompanyEmail({to:delivery.to,subject:delivery.subject,body:delivery.html,html:true,from:MANAGEMENT_MAILBOX});
+        await db.AuditLog.create({entity_type:'DailyCompanySummaryRecipient',entity_id:deliveryId,action:'create',actor_id:'system',actor_name:'Daily summary scheduler',after_value:key,timestamp:new Date().toISOString(),description:'Graph accepted daily summary'});
+        sentKeys.add(key);sentCount++;
+      }catch(error){failedCount++;console.warn('Daily summary delivery failed',String(error?.message||error).slice(0,200));}
+    }
+    return {sent:sentCount+alreadySent>0,sender:MANAGEMENT_MAILBOX,total:deliveries.length,sentCount,failedCount,alreadySent};
 }
 
 // Creates one Notification per recipient using a PER-USER title/message
@@ -532,8 +438,13 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    const job=await req.clone().json().catch(()=>({}));
+    const rawJobUser=await base44.auth.me().catch(()=>null);
+    const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(!job.action||job.action==='scheduled');
+    if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
+    if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'sendDailyCompanySummary'});
+    const __portalCaller=scheduledJob?rawJobUser:await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
+    if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -800,7 +711,7 @@ Your personnel certification file: DCJS core ${activeCertificationExpiry(user,'d
     let emailResult: any = { sent: false, sentCount: 0, failedCount: 0, total: deliveries.length };
     let emailError = '';
     try {
-      emailResult = await sendPersonalizedManagementEmails(base44, deliveries);
+      emailResult = await sendPersonalizedManagementEmails(base44, deliveries, deliveryId);
     } catch (error) {
       emailError = error?.message || String(error);
       console.error('Daily company Base44 email failed:', emailError);
@@ -824,7 +735,7 @@ Your personnel certification file: DCJS core ${activeCertificationExpiry(user,'d
         email_sent: Boolean(emailResult.sent),
         email_sender: emailResult.sender || '',
         email_error: emailError,
-        email_transport: 'microsoft_graph_shared_mailbox',
+        email_transport: 'microsoft_graph_application',
         // Internal record only -- never included in any recipient-facing
         // email or notification.
         company_overall_internal: companyOverall,
@@ -835,7 +746,7 @@ Your personnel certification file: DCJS core ${activeCertificationExpiry(user,'d
     });
 
     return json({
-      success: Boolean(emailResult.sent),
+      success: status==='completed',
       partial: status === 'partial',
       date: now.date,
       delivery_id: deliveryId,
@@ -853,9 +764,9 @@ Your personnel certification file: DCJS core ${activeCertificationExpiry(user,'d
       email_sent: Boolean(emailResult.sent),
       email_sender: emailResult.sender || '',
       email_error: emailError,
-      email_transport: 'microsoft_graph_shared_mailbox',
+      email_transport: 'microsoft_graph_application',
       in_app_delivered: notificationsCreated > 0,
-    }, emailResult.sent ? 200 : 207);
+    }, status==='completed'?200:503);
   } catch (error) {
     console.error('sendDailyCompanySummary failed', error);
     return json({ error: error?.message || 'Unable to prepare the daily company summary' }, 500);

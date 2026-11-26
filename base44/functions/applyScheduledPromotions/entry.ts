@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClientFromRequest} from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -94,8 +95,13 @@ async function runOne(entities:any,event:any,clock:any){
 Deno.serve(async req=>{
  try{
   const sdk=createClientFromRequest(req),body=await req.json().catch(()=>({}));
- const __portalCaller=await sdk.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,sdk,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+ const job=await req.clone().json().catch(()=>({}));
+    const rawJobUser=await sdk.auth.me().catch(()=>null);
+    const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(Object.keys(job).every(k=>['scheduled','dry_run'].includes(k)));
+    if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
+    if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'applyScheduledPromotions'});
+    const __portalCaller=scheduledJob?rawJobUser:await sdk.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
+    if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,sdk,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
  let __portalService=false;if(!__portalCaller&&req.headers.get('Authorization')){try{await sdk.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
  if((!__portalCaller&&!__portalService)||(__portalCaller&&((__portalCaller.additional_roles||[]).includes('visitor')||__portalCaller.disabled||__portalCaller.termination_date||String(__portalCaller.employment_status||'').toLowerCase()==='terminated'||(!__portalCaller.is_service&&__portalCaller.role!=='admin'&&!(__portalCaller.additional_roles||[]).length&&!['investigator','reviewer'].includes(__portalCaller.ps_role)))))return Response.json({error:'Approved portal access required'},{status:403});
  sdk.auth.me=async()=>__portalCaller;
@@ -105,7 +111,7 @@ Deno.serve(async req=>{
   // The recurring automation has no interactive account. A manual call needs
   // actual administrator authorization. A spoofed scheduled=true flag cannot
   // activate anything before the Eastern 10 AM server-side boundary.
-  if(actor&&!roleSet.has('admin')&&!roleSet.has('full_access'))return fail('Administrator access required',403);
+  if(!scheduledJob&&actor&&!roleSet.has('admin')&&!roleSet.has('full_access'))return fail('Administrator access required',403);
   if(!actor&&body.scheduled!==true)return fail('Scheduled execution or admin authorization required',403);
   const clock=easternNow();
   if(clock.hour<10)return Response.json({success:true,deferred:true,reason:'It is before 10 AM Eastern',checked_at:clock});

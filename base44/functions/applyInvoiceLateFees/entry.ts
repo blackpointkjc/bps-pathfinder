@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 import {sendCreditFreeEmail} from './creditFreeEmail.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClientFromRequest} from 'npm:@base44/sdk';
@@ -19,15 +20,20 @@ Deno.serve(async req=>{
   try{
     const base44=createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    const job=await req.clone().json().catch(()=>({}));
+    const rawJobUser=await base44.auth.me().catch(()=>null);
+    const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(!job.action||job.action==='scheduled');
+    if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
+    if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'applyInvoiceLateFees'});
+    const __portalCaller=scheduledJob?rawJobUser:await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
+    if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
     const requestingUser = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
-    if(requestingUser && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
+    if(!scheduledJob&&requestingUser && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
     const body=req.method==='POST'?await req.json().catch(()=>({})):{};
     const manual=['run_now','preview'].includes(String(body.action||''));
     if(manual){const user=await base44.auth.me().then(__portalAppIdentity).catch(()=>null);const roles=new Set((user?.additional_roles||[]).map((v:string)=>v.toLowerCase()));if(!user||String(user.id)!=='6ae7d733d4b1a647cd3e6f38')return Response.json({error:'Accounting access required'},{status:403});}
@@ -87,6 +93,6 @@ Deno.serve(async req=>{
         await base44.asServiceRole.entities.Invoice.update(original.id,{late_notice_status:'accepted',late_notice_sent_at:now});notified++;
       }catch(error:any){await base44.asServiceRole.entities.Invoice.update(original.id,{late_notice_status:'failed'}).catch(()=>null);failed++;results.push({invoice:original.invoice_number,error:'Late notice email failed: '+String(error?.message||error)});}
     }
-    return Response.json({success:failed===0,overdue,fees_assessed:assessed,emails_accepted:notified,failed,summary,results,as_of:new Date().toISOString()});
+    return Response.json({success:failed===0,overdue,fees_assessed:assessed,emails_accepted:notified,failed,summary,...(!scheduledJob?{results}:{}),as_of:new Date().toISOString()},{status:failed?503:200});
   }catch(error:any){return Response.json({error:error?.message||'Overdue invoice job failed'},{status:500});}
 });

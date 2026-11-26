@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import { createClientFromRequest } from 'npm:@base44/sdk';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -123,15 +124,20 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    const job=await req.clone().json().catch(()=>({}));
+    const rawJobUser=await base44.auth.me().catch(()=>null);
+    const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(!job.force&&!job.period_id&&(!job.action||job.action==='scheduled'));
+    if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
+    if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'generateScheduledPayroll'});
+    const __portalCaller=scheduledJob?rawJobUser:await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
+    if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
     const requestingUser = await base44.auth.me().then(__portalAppIdentity).catch(() => null);
-    if(requestingUser && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
+    if(!scheduledJob&&requestingUser && String(requestingUser.id)!=='6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Accounting access required'},{status:403});
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const manualRun = body.force === true || Boolean(body.period_id) || ['run_now', 'preview'].includes(String(body.action || '').toLowerCase());
     if (manualRun) {
@@ -392,7 +398,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, updated, duplicates, adjustment_required: skippedNoRate });
+    return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, updated, duplicates, adjustment_required: scheduledJob?skippedNoRate.length:skippedNoRate });
   } catch (error:any) {
     console.error('generateScheduledPayroll failed', error);
     return Response.json({ error: error?.message || 'Unable to generate scheduled payroll' }, { status: 500 });

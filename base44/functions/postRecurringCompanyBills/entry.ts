@@ -1,3 +1,4 @@
+import {isScheduledPlatformJob} from './scheduledPlatformJob.ts';
 const __portalAppIdentity=(user)=>user&&String(user.id)==='6a72bbee2842d6338cbae513'&&String(user.rank).toLowerCase()==='support staff'?{...user,role:'user',additional_roles:['support'],is_supervisor:false,dispatch_role:'',ps_role:'none'}:user;
 import {createClientFromRequest} from 'npm:@base44/sdk';
 import {postRecurringBills} from './recurring.ts';
@@ -16,8 +17,13 @@ Deno.serve(async(req)=>{
   try{
     const base44=createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
-    if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+    const job=await req.clone().json().catch(()=>({}));
+    const rawJobUser=await base44.auth.me().catch(()=>null);
+    const scheduledJob=isScheduledPlatformJob(rawJobUser,job)&&(Object.keys(job).every(k=>['scheduled','dry_run'].includes(k)));
+    if(job.scheduled===true&&!scheduledJob)return Response.json({error:'Unauthorized scheduled operation'},{status:403});
+    if(scheduledJob&&job.dry_run===true)return Response.json({success:true,dry_run:true,job:'postRecurringCompanyBills'});
+    const __portalCaller=scheduledJob?rawJobUser:await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
+    if(!scheduledJob&&__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
     if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
@@ -25,7 +31,7 @@ Deno.serve(async(req)=>{
 
     const caller=await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
     let trusted=false;if(!caller&&req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);trusted=true;}catch{}}
-    if(!trusted&&(!caller||(!caller.is_service&&caller.role!=='admin')))return Response.json({error:'Unauthorized'},{status:403});
+    if(!scheduledJob&&!trusted&&(!caller||(!caller.is_service&&caller.role!=='admin')))return Response.json({error:'Unauthorized'},{status:403});
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const now=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'}).format(new Date());
     if(Number(now)!==8)return Response.json({success:true,skipped:true,reason:'Recurring bills post at 8 AM Eastern'});
