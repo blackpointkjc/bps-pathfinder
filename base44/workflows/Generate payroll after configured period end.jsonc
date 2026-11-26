@@ -1,0 +1,43 @@
+{
+  "name": "Generate payroll after configured period end",
+  "description": "Hourly check for ended configured payroll periods; no manual forced run.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 * * * *",
+      "one_time_date": null,
+      "timezone": "America/New_York",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "generate_payroll_after_configured_period_end",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_job": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "generateScheduledPayroll",
+            "args": {
+              "scheduled": true
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
