@@ -67,7 +67,7 @@ export async function portalSessionState(request: any, sdk: any, user: any) {
 
   const adopted = { ...active, token_hash: tokenHash };
   try {
-    await db.PortalAuthSession.update(active.id, { token_hash: tokenHash, last_activity_at: new Date().toISOString() });
+    await db.PortalAuthSession.update(active.id, { token_hash: tokenHash });
   } catch {
     return { state: 'unknown', row: adopted };
   }

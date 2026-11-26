@@ -15,7 +15,11 @@ const db=new Proxy({}, {get(_,name){tables[name]??=[];return {
  list:async()=>tables[name].map(v=>({...v}))
  };}});
 const sdk={auth:{me:async()=>actor},users:{inviteUser:async(email,role)=>{if(!nativeAvailable)throw Error('native unavailable');nativeInvites.push({email,role});await db.User.create({email,role,additional_roles:[]});return{success:true};}},asServiceRole:{entities:db,integrations:{Core:{SendEmail:async p=>{if(!coreAvailable)throw Error('provider unavailable');deliveries.push(p);}}}}};
-function load(name){let source=fs.readFileSync('base44/functions/'+name+'/entry.ts','utf8').replace(/^import .*;\n/gm,'').replace('export default async function(req){','async function handler(req){');source=transformSync(source,{loader:'ts',target:'es2022'}).code;return new Function('createClientFromRequest','companyDelivery',source+';return handler;')(()=>sdk,async(_sdk,to,subject,body)=>{if(!companyAvailable)throw Error('company unavailable');deliveries.push({to,subject,body});return true;});}
+let registered;
+globalThis.Deno={env:{get:name=>({IA_GRAPH_CLIENT_ID:'test-client',IA_GRAPH_CLIENT_SECRET:'test-secret'}[name]||'')},serve:fn=>{registered=fn;}};
+globalThis.fetch=async(url,opts)=>{if(!companyAvailable)throw Error('company unavailable');if(String(url).includes('/token'))return Response.json({access_token:'x.'+Buffer.from(JSON.stringify({roles:['Mail.Send']})).toString('base64url')+'.x',expires_in:3600});if(String(url).endsWith('/sendMail')){deliveries.push(JSON.parse(opts.body));return new Response(null,{status:202});}throw Error('Network forbidden in fixture');};
+function load(name){registered=null;let source=fs.readFileSync('base44/functions/'+name+'/entry.ts','utf8').replace(/^import .*;
+/gm,'').replace('export default async function(req){','async function handler(req){');source=transformSync(source,{loader:'ts',target:'es2022'}).code;return new Function('createClientFromRequest',source+';return typeof handler==="function"?handler:entry_default;')(()=>sdk);}
 const register=load('portalRegistration'),invite=load('createPortalAccount');
 async function call(fn,payload){tables.PortalAuthSession[0].user_id=actor?.id;const r=await fn(new Request('https://test.invalid',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer test-current-session'},body:JSON.stringify(payload)}));return {httpStatus:r.status,...await r.json()};}
 actor=await db.User.create({email:'new@example.test',role:'user',additional_roles:[]});

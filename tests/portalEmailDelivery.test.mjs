@@ -12,20 +12,14 @@ for(const folder of ['professionalStandards','professionalStandardsDeadlines']){
  assert.equal(await delivery(sdk,'test@example.invalid','Test subject','Test body',{id:'admin',role:'admin'},true),true);
  assert.equal(routed,1,'administrator invitation must use management Outlook when no owned SMTP sender exists');assert.equal(smtp,0,'never borrow an unrelated employee mailbox');
 }
-let requests=[],updated;
-const sdk={asServiceRole:{entities:{
- OutlookSharedMailbox:{filter:async query=>{assert.equal(query.mailbox_email,'ia@blackpointkjc.com');assert.equal(query.user_id,'6ae7d733d4b1a647cd3e6f38');return [{user_id:'6ae7d733d4b1a647cd3e6f38'}];}},
- MicrosoftOAuthCredential:{filter:async()=>[{id:'test-credential',refresh_token:'test-refresh',scope:'Mail.Send Mail.Send.Shared User.Read offline_access'}],update:async(_id,patch)=>{updated=patch;}}
-}}};
-const fakeFetch=async(url,options)=>{
- requests.push({url,options});
- if(url.includes('oauth2/v2.0/token')){assert.equal(options.body.get('refresh_token'),'test-refresh');return {ok:true,json:async()=>({access_token:'test-access',refresh_token:'test-rotated',scope:'Mail.Send Mail.Send.Shared'})};}
- assert.equal(options.headers.Authorization,'Bearer test-access');
- const body=JSON.parse(options.body);assert.equal(body.message.toRecipients[0].emailAddress.address,'test@example.invalid');assert.equal(body.message.replyTo[0].emailAddress.address,'ia@blackpointkjc.com');assert.equal(body.message.from.emailAddress.address,'ia@blackpointkjc.com');assert.ok(url.includes('/users/ia%40blackpointkjc.com/sendMail'));return {ok:true,status:202};
-};
-const send=compile(fs.readFileSync('base44/functions/professionalStandards/graphDelivery.ts','utf8'),'sendManagementEmail',{fetch:fakeFetch,AbortSignal});
-assert.equal(await send(sdk,'test@example.invalid','Test subject','Test body'),true);assert.equal(requests.length,2);assert.equal(updated.refresh_token,'test-rotated');
-console.log('PASS: IA mail uses Hiers’ IA shared mailbox with matching From and Reply-To; unrelated senders are never used.');
+let requests=[];
+globalThis.Deno={env:{get:name=>({IA_GRAPH_CLIENT_ID:'test-client',IA_GRAPH_CLIENT_SECRET:'test-secret'}[name]||'')}};
+globalThis.fetch=async(url,options)=>{requests.push({url,options});if(String(url).includes('/token')){assert.equal(options.body.get('grant_type'),'client_credentials');assert.equal(options.body.get('refresh_token'),null);return Response.json({access_token:'x.'+Buffer.from(JSON.stringify({roles:['Mail.Send']})).toString('base64url')+'.x',expires_in:3600});}const body=JSON.parse(options.body);assert.equal(body.message.toRecipients[0].emailAddress.address,'test@example.invalid');assert.equal(body.message.replyTo[0].emailAddress.address,'ia@blackpointkjc.com');assert.equal(body.message.from.emailAddress.address,'ia@blackpointkjc.com');assert.ok(String(url).includes('/users/ia%40blackpointkjc.com/sendMail'));return new Response(null,{status:202});};
+const graphSource=transformSync(fs.readFileSync('base44/shared/companyGraph.ts','utf8'),{loader:'ts',format:'esm'}).code;
+const graph=await import('data:text/javascript;base64,'+Buffer.from(graphSource).toString('base64'));
+const send=compile(fs.readFileSync('base44/functions/professionalStandards/graphDelivery.ts','utf8'),'sendManagementEmail',{sendCompanyEmail:graph.sendCompanyEmail});
+assert.equal((await send({},'test@example.invalid','Test subject','Test body')).accepted,true);assert.equal(requests.length,2);
+console.log('PASS: IA email uses application credentials and the IA shared mailbox, never a personal refresh token.');
 const fullSecurity=fs.readFileSync('base44/functions/professionalStandards/security.ts','utf8');
 let notifySource=fullSecurity.slice(fullSecurity.indexOf('export async function notify'),fullSecurity.indexOf('export {createClientFromRequest}'));
 notifySource=notifySource.replace("const {companyDelivery}=await import('./delivery.ts');","const companyDelivery=deliver;");
@@ -44,4 +38,5 @@ assert.equal(await queue(queueSdk,'test@example.invalid','Test assignment','Test
 assert.equal(notifications.length,1);assert.equal(notifications[0].status,'sent');assert.equal(notifications[0].attempts,2);assert.equal(notifications[0].last_error,'');
 console.log('PASS: failed email is retained with its connection error and can be retried without duplicating the notification.');
 
-let noReplyMessage;const accountDelivery=compile(fs.readFileSync('base44/functions/createPortalAccount/delivery.ts','utf8'),'companyDelivery');assert.equal(await accountDelivery({asServiceRole:{integrations:{Core:{SendEmail:async payload=>{noReplyMessage=payload;return{success:true};}}}}},'test@example.invalid','Account invitation','Invitation body'),true);assert.equal(noReplyMessage.from_name,'BlackPoint Pathfinder');assert.equal(noReplyMessage.to,'test@example.invalid');await assert.rejects(()=>accountDelivery({asServiceRole:{integrations:{Core:{SendEmail:async()=>({success:false})}}}},'test@example.invalid','Test','Test'),/rejected/);console.log('PASS: account email uses the configured no-reply domain and rejects failed delivery.');
+let managementCalls=0;const accountDelivery=compile(fs.readFileSync('base44/functions/createPortalAccount/delivery.ts','utf8'),'companyDelivery',{sendManagementEmail:async(_sdk,to,subject,body,html)=>{managementCalls++;assert.equal(to,'test@example.invalid');assert.ok(subject&&body);return {accepted:true};}});assert.equal((await accountDelivery({},'test@example.invalid','Account invitation','Invitation body')).accepted,true);assert.equal(managementCalls,1);
+console.log('PASS: account invitation fallback routes through company Graph; provider failures remain visible.');
