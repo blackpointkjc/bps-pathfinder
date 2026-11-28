@@ -5,7 +5,6 @@ import { accessLabel } from '@/utils/accountLabels';
 import { isOutOfOffice } from '@/utils/outOfOffice';
 import AdminOutOfOffice from '@/components/AdminOutOfOffice';
 import { getPayRangeForRank, nextUnitNumber, previewRankChange, canAssignSubstation } from '@/utils/rankPolicy';
-import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";

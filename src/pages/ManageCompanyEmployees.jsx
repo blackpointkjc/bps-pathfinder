@@ -5,7 +5,6 @@ import { isClientAccount } from '@/lib/directoryUtils';
 import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
 import CommandRankTiers from '@/components/CommandRankTiers';
 import { reportingLabel } from '@/utils/commandReporting';
-import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
