@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     if (!allowed || ['client','student','visitor'].some(role=>roles.has(role)||lower(user.user_type)===role||lower(user.role)===role)) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
     const input=await req.json().catch(()=>({}));
-    if(input.action==='recent_property_incidents')return Response.json({success:true,calls:await recentPropertyIncidents(base44.asServiceRole.entities),window_hours:12,fetched_at:new Date().toISOString()});
+    if(input.action==='recent_property_incidents'){if(user.portal_approved===false||['pending','support','support_staff'].some(r=>lower(user.user_type)===r||lower(user.role)===r))return Response.json({error:'Approved CAD access required'},{status:403});return Response.json({success:true,calls:await recentPropertyIncidents(base44.asServiceRole.entities),window_hours:12,fetched_at:new Date().toISOString()});}
     if(user.role!=='admin'&&input.action!=='call_details')return Response.json({error:'Administrator access required for full CAD history'},{status:403});
     // Fetch optional linked reports and assignments only for an expanded call.
     // The history table itself no longer needs six expensive enrichment reads.

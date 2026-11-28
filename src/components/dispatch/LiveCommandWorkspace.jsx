@@ -88,7 +88,9 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
   return bt-at||String(a.id||'').localeCompare(String(b.id||''));
  });
  const officers=units.filter(u=>(unitFilter==='all'||String(u.status||'').toLowerCase()===unitFilter)&&[u.rank,u.last_name,u.unit_number,u.platoon,u.status].join(' ').toLowerCase().includes(unitSearch.toLowerCase())).sort(comparePersonnel);
- const detail=selectedCall?((propertyRows||[]).find(call=>call.id===selectedCall.id)||allCalls.find(call=>call.id===selectedCall.id)||selectedCall):null;
+ const selectedProperty=selectedCall&&(propertyRows||[]).find(call=>call.id===selectedCall.id);
+ const selectedLive=selectedCall&&allCalls.find(call=>call.id===selectedCall.id);
+ const detail=selectedCall?(selectedProperty?{...(selectedLive||{}),...selectedProperty}:selectedLive||selectedCall):null;
  const openIncident=call=>{onOpen(call);setRightPane('incident');setScreen('incident');setExpandedMap(false);};
  const closeIncident=()=>{onClose?.();setRightPane('units');setScreen('operations');};
  const showUnits=()=>{setRightPane('units');setScreen('units');setExpandedMap(false);};

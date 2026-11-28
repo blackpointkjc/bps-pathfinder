@@ -69,6 +69,6 @@ test('property log displays closed and assigned incidents oldest first, with off
  assert.match(html,/Property calls · Last 12 hours \(2\)/);
  assert.match(html,/Closed · Cleared/);assert.match(html,/Unit 100 Officer Example/);
  assert.match(html,/Read-only property incident record/);assert.ok(!html.includes('Monitor closed'));assert.ok(!html.includes('Monitor old'));
- assert.ok(html.indexOf('Closed · Cleared')<html.indexOf('Unit 100 Officer Example (on_scene)'));
+ assert.ok(html.indexOf('Closed · Cleared')<html.indexOf('Unit 100 Officer Example (On Scene)'));
  assert.match(html,/Other live incidents \(1\)/);
 });
