@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
               { $and: [{ $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] }, { created_date: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString() } }] },
               {source:{$in:['public_helpme','dispatch_manual','field_initiated','CAD clone']}},
               {$and:[{agency:'BPS'},{cad_number_source:'bps_internal'}]},
-              {$and:[{source:{$nin:['richmond','henrico','chesterfield']}},{'assigned_units.0':{$exists:true}}]},
+              {$and:[{source:{$nin:['richmond','henrico','chesterfield']}},{$or:[{'assigned_units.0':{$exists:true}},{status:{$in:['Dispatched','Enroute','On Scene']}}]}]},
             ],
             manual_dismissed: {$ne:true},
             status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
