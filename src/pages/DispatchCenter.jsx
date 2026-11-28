@@ -177,7 +177,7 @@ function DispatchWorkspace({embedded=false}) {
             setActiveCalls(current => {
                 const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 500 });
                 try {
-                    saveLastGoodCalls(next,getActiveDispatchCallReadTime()||Date.now());
+                    if(getActiveDispatchCallReadTime())saveLastGoodCalls(next,getActiveDispatchCallReadTime());
                 } catch {}
                 return next;
             });
@@ -440,7 +440,7 @@ function DispatchWorkspace({embedded=false}) {
             // Don't leave an incident assignable after it clears or leaves the live queue.
             setSelectedCall(current => current ? (recentCalls.find(call => call.id === current.id) || null) : null);
             try {
-                saveLastGoodCalls(recentCalls,getActiveDispatchCallReadTime()||Date.now());
+                if(getActiveDispatchCallReadTime())saveLastGoodCalls(recentCalls,getActiveDispatchCallReadTime());
             } catch {
                 // Last-good cache is only a recovery aid; live Base44 data remains authoritative.
             }

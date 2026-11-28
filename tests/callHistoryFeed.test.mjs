@@ -252,3 +252,12 @@ assert.equal(recovered.find(c=>c.id==='000000000000000000000010').property_assig
 assert.equal(recovered.filter(c=>c.id==='000000000000000000000012').length,1);
 assert.ok(!recovered.some(c=>c.id==='000000000000000000000013'));
 assert.ok(recovered.every((c,i)=>i===0||Date.parse(recovered[i-1].time_received)>=Date.parse(c.time_received)));
+
+const closureRecord={...live,id:'map-closure-regression',latitude:37.54,longitude:-77.43,updated_date:new Date(now-1000).toISOString()};
+assert.equal(browserFeed.dedupeOperationalCalls([closureRecord]).length,1);
+browserFeed.recordCadRealtimeEvent({type:'update',id:closureRecord.id,data:{...closureRecord,status:'Cleared',updated_date:new Date(now).toISOString()}});
+assert.equal(browserFeed.dedupeOperationalCalls([closureRecord]).length,0,'stale snapshot must not resurrect a cleared marker');
+browserFeed.recordCadRealtimeEvent({type:'update',id:closureRecord.id,data:closureRecord});
+assert.equal(browserFeed.dedupeOperationalCalls([closureRecord]).length,0,'out-of-order older update cannot resurrect the marker');
+browserFeed.recordCadRealtimeEvent({type:'delete',id:closureRecord.id});
+assert.equal(browserFeed.dedupeOperationalCalls([closureRecord]).length,0);

@@ -106,7 +106,7 @@ export function DashboardDataProvider({ children }) {
             // slower roster request while still allowing units to populate moments later.
             setCalls(active);
             try {
-                saveLastGoodCalls(active,getActiveDispatchCallReadTime()||Date.now());
+                if(getActiveDispatchCallReadTime())saveLastGoodCalls(active,getActiveDispatchCallReadTime());
             } catch {
                 // Cache is only a fast first paint; the live entity query remains authoritative.
             }
@@ -225,7 +225,7 @@ export function DashboardDataProvider({ children }) {
             setCalls(current => {
                 const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 500 });
                 try {
-                    saveLastGoodCalls(next,getActiveDispatchCallReadTime()||Date.now());
+                    if(getActiveDispatchCallReadTime())saveLastGoodCalls(next,getActiveDispatchCallReadTime());
                 } catch {}
                 return next;
             });

@@ -13,10 +13,10 @@ export function recordCadRealtimeEvent(event){
  const id=String(event?.data?.id||event?.id||'');if(!id)return;
  const row=event?.data||{};
  const closed=event.type==='delete'||rowClosed(row);
- if(closed){closedEvents.set(id,{at:Date.now(),version:eventStamp(row)});}
- else if(event.type==='create'||event.type==='update'&&row.status&&eventStamp(row)>0&&eventStamp(row)>(closedEvents.get(id)?.version||0)){closedEvents.delete(id);}
+ if(closed){closedEvents.set(id,{at:Date.now(),version:eventStamp(row)||Date.now(),deleted:event.type==='delete'});}
+ else if(event.type==='create'||event.type==='update'&&!closedEvents.get(id)?.deleted&&row.status&&eventStamp(row)>0&&eventStamp(row)>(closedEvents.get(id)?.version||0)){closedEvents.delete(id);}
  for(const [key,entry] of closedEvents)if(Date.now()-entry.at>CACHE_MAX_AGE_MS)closedEvents.delete(key);
- if(closed){if(Array.isArray(memoryRows))memoryRows=filterKnownClosedCalls(memoryRows);if(Array.isArray(lastGoodRows))lastGoodRows=filterKnownClosedCalls(lastGoodRows);const cached=readLastGoodCalls();saveLastGoodCalls(cached);}
+ if(closed){if(Array.isArray(memoryRows))memoryRows=filterKnownClosedCalls(memoryRows);if(Array.isArray(lastGoodRows))lastGoodRows=filterKnownClosedCalls(lastGoodRows);try{const cached=JSON.parse(window.localStorage.getItem(CACHE_KEY)||'null');if(cached&&Array.isArray(cached.calls))saveLastGoodCalls(filterKnownClosedCalls(cached.calls),cached.savedAt);}catch{}}
 }
 
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
@@ -158,12 +158,12 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       const calls = payload.calls;
       if (!Array.isArray(calls)) throw new Error('Active call feed returned an invalid response.');
       const deduped = dedupeOperationalCalls(calls);
-      saveLastGoodCalls(deduped);
       memoryRows = deduped;
       lastGoodRows=deduped;
       noteCadSourceHealth(payload.source_health);
       const serverReadAt = Date.parse(payload.fetched_at || '');
       memoryRowsAt = Number.isFinite(serverReadAt) ? Math.min(serverReadAt, Date.now()) : Date.now();
+      saveLastGoodCalls(deduped,memoryRowsAt);
       noteCadRead(memoryRowsAt);
       if(payload.warnings?.length)noteCadReadFailure(payload.warnings.join('; '));
       requestBackoffUntil=0;

@@ -23,3 +23,11 @@ export function isVisibleActiveCall(call, now = Date.now()) {
   const retained = call.pathfinder_source_active===true || call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
   return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }
+
+export function isLiveMapCall(call,now=Date.now()){
+ if(!isVisibleActiveCall(call,now)||call.property_closed===true)return false;
+ const lat=call.latitude,lng=call.longitude;
+ if(lat==null||lng==null||String(lat).trim()===''||String(lng).trim()==='')return false;
+ const y=Number(lat),x=Number(lng);
+ return Number.isFinite(y)&&Number.isFinite(x)&&Math.abs(y)<=90&&Math.abs(x)<=180&&!(x===0&&y===0);
+}
