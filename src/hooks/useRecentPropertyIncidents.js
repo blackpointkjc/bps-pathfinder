@@ -1,7 +1,7 @@
 import {useQuery} from '@tanstack/react-query';
 import {base44,clearBase44ReadCacheMatching} from '@/api/base44Client';
-export default function useRecentPropertyIncidents(userId){
- const query=useQuery({queryKey:['recentPropertyIncidents',userId],enabled:!!userId,queryFn:async()=>{
+export default function useRecentPropertyIncidents(userId,enabled=true){
+ const query=useQuery({queryKey:['recentPropertyIncidents',userId],enabled:!!userId&&enabled,queryFn:async()=>{
    const response=await base44.functions.invoke('getCallHistoryFeed',{action:'recent_property_incidents',cached:true});
    const payload=response?.data||response;
    if(!payload?.success||!Array.isArray(payload.calls))throw Error(payload?.error||'Property incident log unavailable');

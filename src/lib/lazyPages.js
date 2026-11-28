@@ -87,20 +87,13 @@ export const pagesConfig = { Pages, mainPage, Layout };
 const prepared=new Map();
 export function prepareWorkspace(user,onProgress){
  if(prepared.has(user.id))return prepared.get(user.id);
- const approved=user.role==='admin'||user.role==='dispatch'||(user.additional_roles||[]).length||['investigator','reviewer'].includes(user.ps_role);
- const selected=approved?[...routes].filter(([name])=>canAccessPage(user,name)):[];
- const loaders=[...new Set(selected.map(([name])=>routeLoaders.get(name)))];
- const exclusive=!approved||(user.additional_roles||[]).some(r=>['visitor','student','client'].includes(r));
- const task=prepareToolLoaders(loaders,{onProgress,minimumMs:700,concurrency:10,warmData:async()=>{
-  // Warm the shared workspace data without making the operator wait for it.
-  // Every screen already renders its own loading state, so these requests can
-  // finish behind the open workspace instead of holding the welcome screen.
+ const requested=String(window.location.pathname||'/').split('/').filter(Boolean)[0]||mainPage;
+ const route=[...routes.keys()].find(name=>name.toLowerCase()===requested.toLowerCase());
+ const load=route&&canAccessPage(user,route)?routeLoaders.get(route):null;
+ // Startup only warms the route being entered. Other authorized pages are
+ // lazy-loaded on selection, keeping the CPU and network free for live CAD.
+ const task=prepareToolLoaders(load?[load]:[],{onProgress,minimumMs:0,concurrency:1,warmData:async()=>{
   queryClientInstance.setQueryData(['currentUser'],user);
-  if(!exclusive&&(user.role==='admin'||(user.additional_roles||[]).length)){
-   import('./appDirectory').then(({getAppDirectory})=>getAppDirectory()).catch(()=>{});
-  }
-  const photo=user.profile_photo_url || user.profile_photo_original_url;
-  if(photo){const image=new Image();image.src=photo;}
  }}).catch(error=>{prepared.delete(user.id);throw error;});
  prepared.set(user.id,task);return task;
 }

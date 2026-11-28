@@ -44,7 +44,7 @@ function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
 }
 
-export function DashboardDataProvider({ children }) {
+export function DashboardDataProvider({ children, loadRoster=true }) {
     const initialCallsRef = useRef(null);
     if (initialCallsRef.current === null) initialCallsRef.current = readCachedActiveCalls();
     const [calls, setCalls]           = useState(initialCallsRef.current);
@@ -132,7 +132,7 @@ export function DashboardDataProvider({ children }) {
 
             // Roster is secondary and must never keep the Active Calls request or
             // dashboard spinner open.
-            if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || !usersCacheRef.current.length) {
+            if (loadRoster&&(Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || !usersCacheRef.current.length)) {
                 setRequestCount(c => c + 1);
                 getOfficerLocationSnapshot().then(payload => {
                     usersCacheRef.current = Array.isArray(payload.units) ? payload.units : (payload.users || []);
@@ -153,7 +153,7 @@ export function DashboardDataProvider({ children }) {
             refreshingRef.current = false;
             setLoading(false);
         }
-    }, []);
+    }, [loadRoster]);
 
     // The layout's single CadSourceSyncMonitor owns upstream ingestion.
     // A dashboard only paints verified reads and reacts to completed source syncs.

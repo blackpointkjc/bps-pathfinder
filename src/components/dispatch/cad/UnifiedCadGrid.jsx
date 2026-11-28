@@ -1,7 +1,7 @@
 import {formatEasternDateTime} from '@/lib/easternTime';
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {lazy,Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import { MessageSquare, Search, X, Plus, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, RefreshCw, Maximize, Minimize, Pin, PinOff} from 'lucide-react';
-import TacticalCommandMap from '../TacticalCommandMap';
+const TacticalCommandMap=lazy(()=>import('../TacticalCommandMap'));
 import CommandIncidentDetails from '../CommandIncidentDetails';
 import CadIncidentComments from './CadIncidentComments';
 import {cadUnitAvailable,cadAgeLabel} from '@/lib/cadOperationalStatus';
@@ -77,7 +77,7 @@ export default function UnifiedCadGrid({calls=[],allCalls=[],units=[],loading,ro
    {selected&&!draftSelected&&!selected.property_read_only&&<div className="cc-editor"><CommandIncidentDetails key={selected.id} call={selected} units={units} allCalls={allCalls} priority={priorities[priorityOf(selected)]||priorities.medium} reference={identifierOf(selected).value} incident={incidentOf(selected)} elapsed={elapsedOf(selected)} district={callDistrict(selected)} onClose={()=>closeTab(selected.id)} onUnits={officerMode?undefined:()=>{setView('units');unitSearchRef.current?.focus();}} onDispatch={officerMode?undefined:onDispatch} onMap={officerMode?undefined:onMap} onPriority={onPriority} onClear={onClear} canChangePriority={!officerMode&&canChangePriority} canClear={!officerMode&&canClear} canManage={dispatchControls} working={working} unified inlineComments selfAttachUser={officerMode?selfAttachUser:null} onChanged={onRefresh} onCloned={open}/><section className="cc-editor-comments" aria-label="Live incident comments"><header><MessageSquare size={13}/> Live comments</header><CadIncidentComments key={selected.id} call={selected}/></section></div>}
    </section>}
    {queue(officerMode?'Other live incidents':'Active incidents',active,'active')}
-   {mapVisible&&<section className="cc-panel cc-map" aria-label="Live map"><header><b>Map</b><button type="button" onClick={toggleMap} title="Hide map"><X size={14}/></button></header><TacticalCommandMap calls={allCalls} units={units} selectedCall={selected} onCallClick={open}/></section>}
+   {mapVisible&&<section className="cc-panel cc-map" aria-label="Live map"><header><b>Map</b><button type="button" onClick={toggleMap} title="Hide map"><X size={14}/></button></header><Suspense fallback={<div role="status" className="cc-empty">Opening map…</div>}><TacticalCommandMap calls={allCalls} units={units} selectedCall={selected} onCallClick={open}/></Suspense></section>}
   </div>
  </div>
 }

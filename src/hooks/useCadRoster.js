@@ -23,12 +23,6 @@ function useLocalCadRoster(enabled=true){
   const request=(async()=>{
    const errors=[];
    // Paint independently: a slow directory never prevents live status from appearing.
-   const directoryRequest=getAppDirectory(force).then(payload=>{
-    if(!mounted.current)return;
-    if(Array.isArray(payload.users)&&payload.users.length)directoryRef.current=payload.users;
-    if(payload.meta?.degraded_sources?.includes('company employees'))errors.push('Officer directory delayed.');
-    setRows(mergeCadRoster(directoryRef.current,liveRef.current));
-   }).catch(()=>errors.push('Officer directory could not refresh.'));
    const statusRequest=getOfficerLocationSnapshot({force}).then(payload=>{
     if(!mounted.current)return;
     const live=Array.isArray(payload.units)?payload.units:payload.users;
@@ -38,7 +32,15 @@ function useLocalCadRoster(enabled=true){
     setRows(mergeCadRoster(directoryRef.current,liveRef.current));
     if(!payload.stale&&payload.verified_at)setLastVerifiedAt(new Date(payload.verified_at));
    }).catch(()=>errors.push('Live status unavailable; retry when connected.'));
-   await Promise.all([directoryRequest,statusRequest]);
+   await statusRequest;
+   if(mounted.current){setError(errors.join(" "));setLoading(false);}
+   await getAppDirectory(force).then(payload=>{
+    if(!mounted.current)return;
+    if(Array.isArray(payload.users)&&payload.users.length)directoryRef.current=payload.users;
+    if(payload.meta?.degraded_sources?.includes('company employees'))errors.push('Officer directory delayed.');
+    setRows(mergeCadRoster(directoryRef.current,liveRef.current));
+   }).catch(()=>errors.push('Officer directory could not refresh.'));
+
    if(mounted.current){setError(errors.join(' '));setLoading(false);}
   })().finally(()=>{if(pending.current===request)pending.current=null;});
   pending.current=request;return request;

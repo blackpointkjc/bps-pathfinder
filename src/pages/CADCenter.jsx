@@ -2,7 +2,7 @@ import usePropertyAssignmentCalls from '@/hooks/usePropertyAssignmentCalls';
 import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter,canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, ClipboardList, History, Map, RadioTower, Shield, Users } from 'lucide-react';
 import { CadClock } from '@/components/dispatch/CadTerminal';
 import '@/components/dispatch/cad-center-terminal.css';
@@ -11,19 +11,19 @@ import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } fro
 import useCadRoster,{CadRosterProvider} from '@/hooks/useCadRoster';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
-import CadCommandPalette from '@/components/dispatch/cad/CadCommandPalette';
-import CadResourceBoard from '@/components/dispatch/cad/CadResourceBoard';
+const CadCommandPalette=lazy(()=>import('@/components/dispatch/cad/CadCommandPalette'));
+const CadResourceBoard=lazy(()=>import('@/components/dispatch/cad/CadResourceBoard'));
 import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
-import CadResponseAnalytics from '@/components/dispatch/cad/CadResponseAnalytics';
+const CadResponseAnalytics=lazy(()=>import('@/components/dispatch/cad/CadResponseAnalytics'));
 import { cadScaleValue, readCadDisplaySettings, writeCadDisplaySettings } from '@/lib/cadDisplaySettings';
 import { createPageUrl } from '@/utils';
 import CommandDashboard from './CommandDashboard';
-import Navigation from './Navigation';
-import UnitStatus from './UnitStatus';
-import BOLOAlerts from './BOLOAlerts';
-import CallHistory from './CallHistory';
+const Navigation=lazy(()=>import('./Navigation'));
+const UnitStatus=lazy(()=>import('./UnitStatus'));
+const BOLOAlerts=lazy(()=>import('./BOLOAlerts'));
+const CallHistory=lazy(()=>import('./CallHistory'));
 
-import OfficerDispatchQueue from './OfficerDispatchQueue';
+const OfficerDispatchQueue=lazy(()=>import('./OfficerDispatchQueue'));
 
 const TOOLS = {
   live: [
@@ -44,6 +44,8 @@ const TOOLS = {
 // Deep-link keys are cleared whenever a workstation is chosen, so a stale
 // filter or selected incident never follows the dispatcher to another screen.
 const TRANSIENT_PARAMS = ['new', 'open', 'call_id', 'call_number', 'callId', 'lat', 'lng', 'cad_focus', 'cad_unit', 'cad_status'];
+
+function CadToolLoading({label}){return <div role="status" className="cc-empty" style={{padding:20}}>Opening {label}… Live CAD continues updating.</div>;}
 
 function CadShell({ embedded = false }) {
   const {user}=useAuth();
@@ -215,7 +217,7 @@ function CadShell({ embedded = false }) {
         <div className="cad-top-display"><CadClock /></div>
       </div>
       <div className="cad-active-screen cad-terminal-screen cad-screen-map">
-        <Navigation embedded />
+        <Suspense fallback={<CadToolLoading label="Live Map"/>}><Navigation embedded /></Suspense>
       </div>
     </section>;
   }
@@ -239,13 +241,13 @@ function CadShell({ embedded = false }) {
       onDetach={active.id==='command'?undefined:openDetachedMap}
     />
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
-      {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'statusboard'
+      <Suspense fallback={<CadToolLoading label={active.label}/>}>{active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'statusboard'
           ? <CadResourceBoard calls={calls} units={units} loading={loading} rosterLoading={rosterLoading} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall} onOpenUnits={() => select('live', 'units')} />
           : active.id === 'response'
           ? <CadResponseAnalytics />
-          : active.id==='command' ? <CommandDashboard embedded/> : Component ? <Component embedded /> : null}
+          : active.id==='command' ? <CommandDashboard embedded/> : Component ? <Component embedded /> : null}</Suspense>
     </div>
-    <CadCommandPalette
+    {paletteOpen&&<Suspense fallback={<CadToolLoading label="Quick find"/>}><CadCommandPalette
       open={paletteOpen}
       onClose={() => setPaletteOpen(false)}
       calls={calls}
@@ -255,7 +257,7 @@ function CadShell({ embedded = false }) {
       onSelectCall={openCall}
       onSelectUnit={unit => select('live', 'units', { cad_unit: unit.unit_number || unit.email || '' })}
       onSelectWorkstation={tool => select(tool.section, tool.id)}
-    />
+    /></Suspense>}
   </section>;
 }
 
@@ -264,5 +266,5 @@ export default function CADCenter({ embedded = false }) {
   // mounting their own provider.
   const existing = useOptionalDashboardData();
   if (existing) return <CadRosterProvider><CadShell embedded={embedded} /></CadRosterProvider>;
-  return <DashboardDataProvider><CadRosterProvider><CadShell embedded={embedded} /></CadRosterProvider></DashboardDataProvider>;
+  return <DashboardDataProvider loadRoster={false}><CadRosterProvider><CadShell embedded={embedded} /></CadRosterProvider></DashboardDataProvider>;
 }
