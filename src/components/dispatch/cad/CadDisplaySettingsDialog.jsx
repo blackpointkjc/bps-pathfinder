@@ -46,14 +46,15 @@ export default function CadDisplaySettingsDialog({ open, onOpenChange, settings,
           >
             <span>
               <b>Incident monitor</b>
-              <small>Keep pending and at-risk incidents visible on every workstation</small>
+              <small>Show an at-risk incident strip outside the unified command board</small>
             </span>
             <i>{settings?.monitor ? 'Shown' : 'Hidden'}</i>
           </button>
+          <button type="button" className="cad-settings-toggle" aria-pressed={settings?.showMap!==false} onClick={()=>update({showMap:settings?.showMap===false})}><span><b>Integrated map</b><small>Keep the tactical map on the command workstation.</small></span><i>{settings?.showMap===false?'Hidden':'Shown'}</i></button>
           <button
             type="button"
             className="cad-settings-reset"
-            onClick={() => onChange?.({ scale: 'standard', monitor: true })}
+            onClick={() => onChange?.({ scale: 'standard', monitor: true, showMap: true })}
           >
             <RotateCcw size={14} /> Restore defaults
           </button>

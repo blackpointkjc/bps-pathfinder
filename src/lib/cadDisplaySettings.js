@@ -12,7 +12,7 @@ export const CAD_SCALES = [
   { id: 'xlarge', label: 'Extra large', value: 1.24, note: 'Maximum readability at a distance' },
 ];
 
-const DEFAULTS = { scale: 'standard', monitor: true };
+const DEFAULTS = { scale: 'standard', monitor: true, showMap: true };
 
 export function readCadDisplaySettings() {
   try {
@@ -22,6 +22,7 @@ export function readCadDisplaySettings() {
     return {
       scale: CAD_SCALES.some(option => option.id === parsed?.scale) ? parsed.scale : DEFAULTS.scale,
       monitor: typeof parsed?.monitor === 'boolean' ? parsed.monitor : DEFAULTS.monitor,
+      showMap: typeof parsed?.showMap === 'boolean' ? parsed.showMap : DEFAULTS.showMap,
     };
   } catch {
     return { ...DEFAULTS };
@@ -32,6 +33,7 @@ export function writeCadDisplaySettings(next) {
   const value = {
     scale: CAD_SCALES.some(option => option.id === next?.scale) ? next.scale : DEFAULTS.scale,
     monitor: typeof next?.monitor === 'boolean' ? next.monitor : DEFAULTS.monitor,
+    showMap: typeof next?.showMap === 'boolean' ? next.showMap : DEFAULTS.showMap,
   };
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));

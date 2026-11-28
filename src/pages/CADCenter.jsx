@@ -192,7 +192,7 @@ function CadShell({ embedded = false }) {
       detail: 'Scaling, incident monitor and workspace layout',
       run: () => setSettingsOpen(true),
     },
-  ], [monitorOpen, display, refreshAll]);
+  ], [monitorOpen, display, refreshAll, location.search]);
 
   if (detached) {
     return <section className="cad-console-shell cad-terminal-shell cad-shell-detached" style={{ '--cad-scale': scale }}>
@@ -240,7 +240,7 @@ function CadShell({ embedded = false }) {
           />
         : active.id === 'response'
           ? <CadResponseAnalytics />
-          : Component ? <Component embedded /> : null}
+          : active.id==='command' ? <CommandDashboard embedded showMap={display.showMap} onMapVisibility={showMap=>updateDisplay({...display,showMap})}/> : Component ? <Component embedded /> : null}
     </div>
     <CadCommandPalette
       open={paletteOpen}

@@ -22,7 +22,7 @@ export default function CadIncidentComments({ call }) {
     queryFn: async () => {
       const response = await base44.functions.invoke('sharedCadTimeline', { action: 'read', call_id: callId });
       const data = response?.data || {};
-      if (data.error) throw new Error(data.error);
+      if (data.error || !data.success) throw new Error(data.error || 'CAD did not confirm the request.');
       return data;
     },
     staleTime: 15000,
@@ -33,17 +33,10 @@ export default function CadIncidentComments({ call }) {
   // Notes posted by another workstation appear immediately, before the next poll.
   useEffect(() => {
     if (!callId) return undefined;
-    let unsubscribe;
-    try {
-      unsubscribe = base44.entities.CallNote.subscribe(event => {
-        const row = event?.data;
-        if (row?.call_id && String(row.call_id) !== String(callId)) return;
-        query.refetch();
-      });
-    } catch {
-      unsubscribe = undefined;
-    }
-    return () => { try { unsubscribe?.(); } catch { /* ignore */ } };
+    const subscriptions=[];
+    const refresh=event=>{if(String(event?.data?.call_id||'')===String(callId))void query.refetch();};
+    for(const entity of [base44.entities.CallNote,base44.entities.CallStatusLog]){try{subscriptions.push(entity.subscribe(refresh));}catch{/* Polling remains active. */}}
+    return()=>subscriptions.forEach(unsubscribe=>{try{unsubscribe?.();}catch{/* ignore */}});
   }, [callId]);
 
   const post = async () => {
@@ -54,7 +47,7 @@ export default function CadIncidentComments({ call }) {
     try {
       const response = await base44.functions.invoke('sharedCadTimeline', { action: 'post', call_id: callId, note });
       const data = response?.data || {};
-      if (data.error) throw new Error(data.error);
+      if (data.error || !data.success) throw new Error(data.error || 'CAD did not confirm the request.');
       setText('');
       await query.refetch();
     } catch (requestError) {
@@ -74,7 +67,7 @@ export default function CadIncidentComments({ call }) {
         </p>
       )}
       <div className="cad-comments-scroll">
-        {notes.length ? notes.slice().reverse().map(entry => (
+        {notes.length ? notes.map(entry => (
           <article key={entry.id} data-kind={entry.kind}>
             <header>
               <b>{entry.author_name || 'Dispatch'}</b>

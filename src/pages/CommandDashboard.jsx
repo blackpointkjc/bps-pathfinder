@@ -48,7 +48,7 @@ function elapsed(call) {
 }
 
 // Inner dashboard — consumes context
-function CommandDashboardInner({embedded=false}) {
+function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
     const location=useLocation();
     const [createSource,setCreateSource]=useState(null);
     const navigate = useNavigate();
@@ -68,7 +68,8 @@ function CommandDashboardInner({embedded=false}) {
     const linkedCallId = useMemo(() => new URLSearchParams(location.search).get('call_id'), [location.search]);
     const linkedCallApplied = useRef(null);
     useEffect(() => {
-        if (!linkedCallId || linkedCallApplied.current===linkedCallId || !calls.length) return;
+        if (!linkedCallId){linkedCallApplied.current=null;return;}
+        if (linkedCallApplied.current===linkedCallId || !calls.length) return;
         const match = calls.find(call => String(call.id) === String(linkedCallId));
         if (!match) return;
         linkedCallApplied.current = linkedCallId;
@@ -218,8 +219,18 @@ function CommandDashboardInner({embedded=false}) {
         : DISPATCH_STATUSES;
 
     const canManage=!!currentUser&&!currentUser.disabled&&!currentUser.termination_date&&String(currentUser.employment_status||'').toLowerCase()!=='terminated'&&!currentRoles.has('visitor')&&(isDispatchOrAdmin||hasDispatchAccess||currentRoles.has('dispatcher')||currentRoles.has('supervisor')||currentRoles.has('cad_access')||['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(currentUser.rank||'').toLowerCase().replace(/\./g,'').trim()));
+    useEffect(()=>{
+        if(!embedded||!canManage)return;
+        const handle=event=>{
+            if(!event.altKey||event.ctrlKey||event.metaKey||event.repeat||event.target?.closest?.('input,textarea,select,[contenteditable=true]'))return;
+            const key=String(event.key||'').toLowerCase();
+            if(key==='n'||key==='f'){event.preventDefault();setCreateSource(key==='f'?'field':'dispatch');}
+        };
+        window.addEventListener('keydown',handle);
+        return()=>window.removeEventListener('keydown',handle);
+    },[embedded,canManage]);
     return <>
-      <LiveCommandWorkspace unified={embedded} canManage={canManage} onCreate={setCreateSource} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
+      <LiveCommandWorkspace unified={embedded} showMap={showMap} onMapVisibility={onMapVisibility} canManage={canManage} onCreate={setCreateSource} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onDispatch={openCallInDispatch} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} initialFocus={cadFocus}
@@ -231,14 +242,14 @@ function CommandDashboardInner({embedded=false}) {
 
 }
 
-export default function CommandDashboard({embedded=false}) {
+export default function CommandDashboard({embedded=false,showMap=true,onMapVisibility}) {
     // The CAD Center shell already owns the live queue; reuse it instead of
     // mounting a second provider and duplicating every CAD read.
     const existing = useOptionalDashboardData();
-    if (existing) return <CommandDashboardInner embedded={embedded} />;
+    if (existing) return <CommandDashboardInner embedded={embedded} showMap={showMap} onMapVisibility={onMapVisibility}/>;
     return (
         <DashboardDataProvider>
-            <CommandDashboardInner embedded={embedded} />
+            <CommandDashboardInner embedded={embedded} showMap={showMap} onMapVisibility={onMapVisibility}/>
         </DashboardDataProvider>
     );
 }

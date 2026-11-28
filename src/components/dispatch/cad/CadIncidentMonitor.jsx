@@ -36,7 +36,7 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
       if (a.pending !== b.pending) return a.pending ? -1 : 1;
       return (b.level.minutes ?? -1) - (a.level.minutes ?? -1);
     })
-    .slice(0, 12), [calls, now]);
+    , [calls, now]);
 
   const pending = rows.filter(row => row.pending).length;
   const overdue = rows.filter(row => row.level.state === 'overdue').length;

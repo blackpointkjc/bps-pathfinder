@@ -15,7 +15,7 @@ const stamp = value => {
 const minutes = (from, to) => {
   const start = stamp(from);
   const end = stamp(to);
-  if (start == null || end == null || end <= start) return null;
+  if (start == null || end == null || end < start) return null;
   return (end - start) / 60000;
 };
 
@@ -41,19 +41,23 @@ export default function CadResponseAnalytics() {
   const query = useQuery({
     queryKey: ['cadResponseAnalytics'],
     queryFn: async () => {
-      const [live, archived, assignments] = await Promise.all([
-        base44.entities.DispatchCall.list('-created_date', 300).catch(() => []),
-        base44.entities.CallHistory.list('-archived_date', 200).catch(() => []),
-        base44.entities.CallAssignment.list('-assigned_at', 300).catch(() => []),
+      const results = await Promise.allSettled([
+        base44.entities.DispatchCall.list('-created_date', 300),
+        base44.entities.CallHistory.list('-archived_date', 200),
+        base44.entities.CallAssignment.list('-assigned_at', 300),
       ]);
+      const labels=['Live calls','Archived calls','Assignments'];
+      const warnings=results.flatMap((result,index)=>result.status==='rejected'?[labels[index]+' unavailable']:[]);
+      if(warnings.length===results.length)throw new Error(warnings.join('; '));
+      const [live,archived,assignments]=results.map(result=>result.status==='fulfilled'?result.value:[]);
       const seen = new Set();
       const calls = [...(live || []), ...(archived || [])].filter(call => {
-        const key = String(call.id || call.original_call_id || '');
+        const key = String(call.original_call_id || call.id || '');
         if (!key || seen.has(key)) return false;
         seen.add(key);
         return true;
       });
-      return { calls, assignments: assignments || [] };
+      return { calls, assignments: assignments || [], warnings };
     },
     staleTime: 60000,
     refetchOnWindowFocus: false,
@@ -127,7 +131,7 @@ export default function CadResponseAnalytics() {
       <header className="cad-analytics-bar">
         <h2><Activity size={16} /> Response analytics</h2>
         <span className="cad-analytics-note">
-          {query.isLoading ? 'Measuring recorded CAD activity…' : `${metrics.sampled} recorded calls · ${metrics.measured} timed · ${metrics.field} field-initiated`}
+          {query.isLoading ? 'Measuring recorded CAD activity…' : `${metrics.sampled} sampled calls · ${metrics.measured} timed · ${metrics.field} field-initiated`}
         </span>
         <button type="button" onClick={() => query.refetch()} disabled={query.isFetching}>
           <RefreshCw size={14} /> {query.isFetching ? 'Refreshing…' : 'Refresh'}
@@ -136,6 +140,7 @@ export default function CadResponseAnalytics() {
 
       {query.isError && <p className="cad-analytics-warning" role="alert">Response records could not be measured. {query.error?.message}</p>}
 
+      {!!query.data?.warnings?.length&&<p className="cad-analytics-warning" role="alert">Partial sample: {query.data.warnings.join('; ')}. Missing data is not counted as zero.</p>}
       <div className="cad-analytics-kpis">
         {kpis.map(kpi => (
           <div key={kpi.key} className="cad-analytics-kpi">
