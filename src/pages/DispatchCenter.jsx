@@ -205,7 +205,7 @@ function DispatchWorkspace({embedded=false}) {
             // for a dropped websocket event or a browser reconnect.
             if(Date.now()-lastActiveCallsLoadRef.current < 4_000)return;
             void loadActiveCalls();
-        }, 5_000);
+        }, 15_000);
 
         // Visible Dispatch Center screens share the guarded upstream sync lock.
         // Repaint immediately after persisted writes complete so the queue does
@@ -754,7 +754,7 @@ function DispatchWorkspace({embedded=false}) {
 
 
     return (
-        <div ref={workstationRef} style={!embedded?{zoom,'--dispatch-zoom':zoom}:undefined} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch dispatch-v3 relative flex h-full min-h-0 flex-col overflow-hidden text-white "+(!embedded?' cad-dispatch-standalone':'')}>
+        <div ref={workstationRef} style={!embedded?{zoom,'--dispatch-zoom':zoom}:undefined} data-high-zoom={!embedded&&zoom>1.24} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch dispatch-v3 relative flex h-full min-h-0 flex-col overflow-hidden text-white "+(!embedded?' cad-dispatch-standalone':'')}>
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}

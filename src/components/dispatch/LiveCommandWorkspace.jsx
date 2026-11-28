@@ -9,7 +9,7 @@ import { lookupDistrict } from '@/utils/districtLookup';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { Radio, Search, Users, RefreshCw } from 'lucide-react';
 
-export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster,initialFocus='all',unified=false,canManage=false,onCreate,showMap=true,onMapVisibility,draft,draftOpen,onCloseDraft}){
+export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster,initialFocus='all',unified=false,canManage=false,onCreate,showMap=true,onMapVisibility,draft,draftOpen,onCloseDraft,standaloneZoom=1}){
  // The CAD status bar and command palette deep-link into the board with a
  // pre-filtered queue, so the requested view is already on screen.
  const startingFocus=['all','urgent','unassigned'].includes(initialFocus)?initialFocus:'all';
@@ -28,7 +28,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
      const bottom=Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight,host?.getBoundingClientRect().bottom||window.innerHeight);
      const top=Math.max(root.getBoundingClientRect().top,host?.getBoundingClientRect().top||0,0);
      const height=Math.floor(bottom-top-3);
-     if(height>0)root.style.setProperty('--command-available-height',height+'px');
+     if(height>0)root.style.setProperty('--command-available-height',(height/standaloneZoom)+'px');
    });};
    const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
    if(host)observer?.observe(host);
@@ -38,7 +38,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
    window.addEventListener('resize',measure);window.visualViewport?.addEventListener('resize',measure);
    measure();
    return()=>{cancelAnimationFrame(frame);observer?.disconnect();window.removeEventListener('resize',measure);window.visualViewport?.removeEventListener('resize',measure);};
- },[]);
+ },[standaloneZoom]);
  const [unitFilter,setUnitFilter]=useState('all');
  const [districts,setDistricts]=useState({});
  const districtCache=useRef(new Map());
@@ -83,7 +83,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const closeIncident=()=>{onClose?.();setRightPane('units');setScreen('operations');};
  const showUnits=()=>{setRightPane('units');setScreen('units');setExpandedMap(false);};
  const run=async(key,task)=>{if(working)return;setWorking(key);setError('');try{await task();}catch(e){setError(e?.response?.data?.error||e.message||'Action could not be saved.');}finally{setWorking('');}};
- return <div ref={commandRef} className={'tac-console tac-command'+(unified?' cc-command-host':'')}>
+ return <div ref={commandRef} style={standaloneZoom!==1?{zoom:standaloneZoom}:undefined} data-high-zoom={standaloneZoom>1.24} className={'tac-console tac-command'+(unified?' cc-command-host':'')}>
   <header className="tac-header"><div className="tac-brand"><Radio size={23}/><div><small>BLACK POINT · OPERATIONS</small><h1>Command / Control</h1></div></div><div className="tac-header-actions"><span className="tac-feed-state"><i data-state={rateLimited||syncStatus.state==='error'?'warning':loading?'loading':'ready'}/>{rateLimited?'RATE LIMITED':loading?'SYNCING':syncStatus.state==='error'?'DEGRADED':'CAD FEED'}</span><button onClick={onRefresh}><RefreshCw size={15}/> Refresh</button>{actions}<button onClick={()=>setUtilityPanel('duty')}>Duty settings</button></div></header>
   <div className="tac-command-strip">{[
     ['ALL INCIDENTS',allCalls.length,'all','normal'],['UNASSIGNED',allCalls.filter(needsDispatch).length,'unassigned','warning'],['P1 / P2',critical.length,'urgent','danger'],['AVAILABLE',available.length,'resources','ready'],['DISTRESS',units.filter(u=>String(u.status).toLowerCase()==='distress').length,'distress','danger']

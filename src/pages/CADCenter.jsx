@@ -204,7 +204,7 @@ function CadShell({ embedded = false }) {
   ], [monitorOpen, display, refreshAll, location.search]);
 
   if (detached) {
-    return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" style={shellStyle}>
+    return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" data-high-zoom={scale>1.24} style={shellStyle}>
       <div className="cad-terminal-systembar">
         <span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>Detached live map</span></span>
         <div className="cad-top-display"><CadZoomControls value={display.scale} onChange={value=>updateDisplay({...display,scale:value})}/><CadClock /></div>
@@ -215,7 +215,7 @@ function CadShell({ embedded = false }) {
     </section>;
   }
 
-  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} style={shellStyle}>
+  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} data-high-zoom={scale>1.24} style={shellStyle}>
     <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><div className="cad-top-display"><CadZoomControls value={display.scale} onChange={value=>updateDisplay({...display,scale:value})}/><CadClock /></div></div>
     <CadStatusBar
       calls={calls}

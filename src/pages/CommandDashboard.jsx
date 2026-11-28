@@ -1,3 +1,5 @@
+import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
+import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
 import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import { cadReference } from '@/lib/cadReference';
 import useCadRoster from '@/hooks/useCadRoster';
@@ -50,6 +52,7 @@ function elapsed(call) {
 
 // Inner dashboard — consumes context
 function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
+    const [localScale,setLocalScale]=useState(()=>readCadDisplaySettings().scale);
     const location=useLocation();
     const [createSource,setCreateSource]=useState(null);
     const navigate = useNavigate();
@@ -231,11 +234,11 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
         return()=>window.removeEventListener('keydown',handle);
     },[canManage]);
     return <>
-      <LiveCommandWorkspace unified={true} showMap={showMap} onMapVisibility={onMapVisibility} canManage={canManage} onCreate={source=>setCreateSource(old=>old||source)} draftOpen={canManage&&!!createSource} onCloseDraft={()=>{if(window.confirm('Discard this unsaved incident draft?'))setCreateSource(null);}} draft={canManage&&createSource?<CreateCallDialog inline units={statusUnits} currentUser={currentUser} source={createSource} onClose={()=>setCreateSource(null)} onCreated={call=>{setCreateSource(null);setSelectedCall(call);manualRefresh();}}/>:null} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
+      <LiveCommandWorkspace standaloneZoom={embedded?1:cadScaleValue(localScale)} unified={true} showMap={showMap} onMapVisibility={onMapVisibility} canManage={canManage} onCreate={source=>setCreateSource(old=>old||source)} draftOpen={canManage&&!!createSource} onCloseDraft={()=>{if(window.confirm('Discard this unsaved incident draft?'))setCreateSource(null);}} draft={canManage&&createSource?<CreateCallDialog inline units={statusUnits} currentUser={currentUser} source={createSource} onClose={()=>setCreateSource(null)} onCreated={call=>{setCreateSource(null);setSelectedCall(call);manualRefresh();}}/>:null} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onDispatch={canAccessDispatchCenter(currentUser)?openCallInDispatch:undefined} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} initialFocus={cadFocus}
-        actions={<><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
+        actions={<>{!embedded&&<CadZoomControls value={localScale} onChange={value=>{setLocalScale(value);writeCadDisplaySettings({...readCadDisplaySettings(),scale:value});}}/>}<button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />
 
