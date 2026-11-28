@@ -1,3 +1,5 @@
+import usePropertyAssignmentCalls from '@/hooks/usePropertyAssignmentCalls';
+import {needsPropertyAssignment} from '@/lib/cadWorkspaceModel';
 import CadCloneIncidentDialog from '@/components/dispatch/cad/CadCloneIncidentDialog';
 import CadRecommendationList from '@/components/dispatch/cad/CadRecommendationList';
 import '@/components/dispatch/cad/unified-cad-grid.css';
@@ -62,6 +64,7 @@ export default function DispatchCenter({embedded=false}) {
 }
 
 function DispatchWorkspace({embedded=false}) {
+    const {ids:verifiedPropertyIds,error:propertyFeedError}=usePropertyAssignmentCalls();
     const [standaloneScale,setStandaloneScale]=useState(()=>readCadDisplaySettings().scale);
     const zoom=embedded?1:cadScaleValue(standaloneScale);
     useEffect(()=>{const sync=()=>setStandaloneScale(readCadDisplaySettings().scale);window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
@@ -98,8 +101,6 @@ function DispatchWorkspace({embedded=false}) {
     const [useDispatchTomTom,setUseDispatchTomTom]=useState(true);
     const [mobileView, setMobileView] = useState('calls');
     const [monitoredProperties, setMonitoredProperties] = useState([]);
-    const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);
-    const [persistedPropertyCallIds,setPersistedPropertyCallIds]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('agency');
     const [toolsOpen,setToolsOpen]=useState(false);
@@ -295,19 +296,6 @@ function DispatchWorkspace({embedded=false}) {
         try {
             const locations = await listDirectoryLocations('site_name');
             setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
-            // Property queue filters must work for ALL active contracted sites,
-            // not only sites which opted into automated property alerts.
-            const everyActiveSite=(locations||[]).filter(row=>row.active!==false).map(row=>({
-                ...row,property_monitoring_enabled:true,
-                property_monitoring_polygon:Array.isArray(row.property_monitoring_polygon)&&row.property_monitoring_polygon.length>=3?row.property_monitoring_polygon:(row.geofence_polygon||[]),
-                property_monitoring_radius_meters:Number(row.property_monitoring_radius_meters||row.geofence_radius_meters||100),
-            }));
-            setCompanyPropertyBoundaries(monitoredPropertiesFromLocations(everyActiveSite));
-            // Prior persisted property links count even when agency GPS has no coordinates.
-            try {
-              const recentAlerts=await base44.entities.PropertyAlert.list('-created_date',450);
-              setPersistedPropertyCallIds([...new Set((recentAlerts||[]).map(a=>String(a.callId||'')).filter(Boolean))]);
-            } catch(error){console.warn('Property-alert link refresh unavailable',error?.message);}
 
         } catch (error) {
             console.error('Error loading monitored properties:', error);
@@ -725,17 +713,14 @@ function DispatchWorkspace({embedded=false}) {
     };
 
 
-    const propertyAlertCalls=activeCalls.filter(call =>
-        Boolean(call.property_alert_id||call.property_id||call.matched_property_id||call.property_name||call.property_site)
-        ||persistedPropertyCallIds.includes(String(call.id))
-        ||Boolean(findPropertyMatch(call,companyPropertyBoundaries)));
-    const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
+    const propertyAlertCalls=activeCalls.filter(call=>verifiedPropertyIds.has(String(call.id)));
+    const propertyCallIds=verifiedPropertyIds;
     const matchesQueue = (call,filter) => {
         if (filter==='agency') return true;
         if(filter==='all')return propertyCallIds.has(String(call.id));
         const activeAssignments=cadAssignmentRows.filter(row=>String(row.call_id)===String(call.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
         if(filter==='assigned')return !!call.assigned_units?.length||!!activeAssignments.length;
-        if(filter==='unassigned')return !call.assigned_units?.length&&!activeAssignments.length;
+        if(filter==='unassigned')return needsPropertyAssignment(call,propertyCallIds,new Set(activeAssignments.length?[String(call.id)]:[]));
         if(filter==='priority')return ['critical','high'].includes(incidentPriority(call));
         const normalize=value=>String(value||'').toLowerCase().replace(/[ _-]/g,'');
         return normalize(call.status)===normalize(filter);
@@ -794,12 +779,12 @@ function DispatchWorkspace({embedded=false}) {
                     </button>
                     <button type="button" aria-expanded={toolsOpen} onClick={()=>setToolsOpen(v=>!v)} className="pf-cad-button">More tools {toolsOpen?'−':'+'}</button>
                     <div className="dispatch-v3-more" hidden={!toolsOpen}>
-                    <button onClick={() => setShowPriorCalls(!showPriorCalls)}
+                    {currentUser?.role==='admin'&&<button onClick={() => setShowPriorCalls(!showPriorCalls)}
                         className={`px-2 py-1 border rounded text-[10px] ${
                             showPriorCalls ? 'border-amber-500/40 text-amber-400' : 'border-slate-600 text-slate-400 hover:text-white'
                         }`}>
                         {showPriorCalls ? 'BACK TO ACTIVE' : 'CALL / PROPERTY HISTORY'}
-                    </button>
+                    </button>}
                     <button onClick={() => setShowDispatchLog(true)} className="flex items-center gap-1 rounded border border-blue-600/60 px-2 py-1 text-[10px] text-blue-300 hover:bg-blue-950/40 hover:text-white"><ClipboardList className="h-2.5 w-2.5" /> Dispatch log</button>
                     <button onClick={() => {
                         const params = new URLSearchParams({ new: '1' });
@@ -851,7 +836,7 @@ function DispatchWorkspace({embedded=false}) {
 
 
             {!showDispatchLog && <>
-            <div className="dispatch-v4-summary"><span><i data-tone="warning"/> Waiting <b>{unassignedCalls.length}</b></span><span>Responding <b>{activeCalls.length-unassignedCalls.length}</b></span><span>Priority <b>{priorityCalls.length}</b></span><span>Available units <b>{availableUnits.length}</b></span>{callsLoadWarning&&<span role="alert">{callsLoadWarning}</span>}</div>
+            <div className="dispatch-v4-summary"><span><i data-tone="warning"/> Waiting <b>{unassignedCalls.length}</b></span><span>Other live <b>{activeCalls.length-unassignedCalls.length}</b></span><span>Priority <b>{priorityCalls.length}</b></span><span>Available units <b>{availableUnits.length}</b></span>{(callsLoadWarning||propertyFeedError)&&<span role="alert">{callsLoadWarning||propertyFeedError}</span>}</div>
 
             <div className="dispatch-v3-mobile flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2">
                 <div className="cad-mobile-view-tabs flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1.5" aria-label="Dispatch mobile panels">
@@ -899,7 +884,7 @@ function DispatchWorkspace({embedded=false}) {
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
                     <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}>
                         <header className="dispatch-v3-panel-head"><b>Incident queue</b><span>{allCalls.length} calls</span></header>
-                        <div className="dispatch-v3-queue-scroll dispatch-v4-queue-lanes">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Assigned / responding',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>{if(showCreateDialog){if(!window.confirm('Discard unsaved draft and open this incident?'))return;setShowCreateDialog(false);}handleSelectCall(call);}}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
+                        <div className="dispatch-v3-queue-scroll dispatch-v4-queue-lanes">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Other live / responding incidents',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>{if(showCreateDialog){if(!window.confirm('Discard unsaved draft and open this incident?'))return;setShowCreateDialog(false);}handleSelectCall(call);}}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
 
                     </div>
 
@@ -1088,7 +1073,7 @@ function DispatchWorkspace({embedded=false}) {
                         <span className="flex shrink-0 items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-slate-300">{loading?'Syncing':callsLoadWarning?'Degraded':'Feed ready'}</span></span>
                         <span className="shrink-0">CALLS: <span className="text-white">{allCalls.length}</span></span>
                         <span className="shrink-0">UNITS ACTIVE: <span className="text-green-400">{activeUnits.length}</span></span>
-                        <span className="shrink-0">UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
+                        <span className="shrink-0">WAITING PROPERTY: <span className="text-yellow-400">{unassignedCalls.length}</span></span>
                         <span className="hidden shrink-0 items-center gap-1 text-slate-400 md:flex lg:ml-auto"><Keyboard className="h-3 w-3" /> N NEW CALL · / SEARCH · M MAP · ESC CLEAR</span>
                         <span className="shrink-0 font-bold text-green-400">{systemTime.toLocaleTimeString('en-US', { hour12: false })} ET</span>
                     </div>

@@ -1,3 +1,5 @@
+import {useAuth as useCadHistoryAuth} from '@/lib/AuthContext';
+import {canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import {CadTerminalHeader,CadMetricStrip,CadPanelBar,CadRefresh} from '@/components/dispatch/CadTerminal';
 import '@/components/dispatch/cad-center-terminal.css';
 import {recoverPropertyHistory} from '@/lib/propertyHistoryRecovery';
@@ -74,7 +76,8 @@ function escapePrintHtml(value) {
         .replaceAll("'", '&#39;');
 }
 
-export default function CallHistory() {
+export default function CallHistory(){const {user,isLoadingAuth}=useCadHistoryAuth();if(isLoadingAuth)return null;return canAccessCadAdminPages(user)?<AdminCallHistory/>:<p role="alert">Administrator access required.</p>;}
+function AdminCallHistory() {
     const navigate = useNavigate();
     const [rows, setRows] = useState([]);
     const referenceRowsRef=useRef(rows); referenceRowsRef.current=rows;

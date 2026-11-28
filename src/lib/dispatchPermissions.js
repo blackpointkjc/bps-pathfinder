@@ -9,3 +9,5 @@ export function canAccessDispatchCenter(user) {
  return roles.has('dispatch')||roles.has('dispatcher')||user.dispatch_role===true;
 }
 export const canEditIncidentPriority=canAccessDispatchCenter;
+
+export const canAccessCadAdminPages=user=>!!user&&user.role==='admin'&&!user.disabled&&!user.termination_date&&user.portal_approved!==false&&!['suspended','denied','terminated','disabled','inactive'].includes(String(user.account_status||'').toLowerCase())&&!['terminated','suspended'].includes(String(user.employment_status||'').toLowerCase())&&!['client','student','visitor'].some(r=>String(user.user_type||'').toLowerCase()===r||(user.additional_roles||[]).map(x=>String(x).toLowerCase()).includes(r));

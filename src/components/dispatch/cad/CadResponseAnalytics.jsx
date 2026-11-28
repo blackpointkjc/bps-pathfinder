@@ -1,3 +1,5 @@
+import {useAuth} from '@/lib/AuthContext';
+import {canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -37,7 +39,8 @@ const duration = value => {
  * DispatchCall, CallHistory and CallAssignment records the board dispatches on.
  * Nothing here is simulated: every figure is measured from stored timestamps.
  */
-export default function CadResponseAnalytics() {
+export default function CadResponseAnalytics(){const {user,isLoadingAuth}=useAuth();if(isLoadingAuth)return null;return canAccessCadAdminPages(user)?<AdminResponseAnalytics/>:<p role="alert">Administrator access required.</p>;}
+function AdminResponseAnalytics() {
   const query = useQuery({
     queryKey: ['cadResponseAnalytics'],
     queryFn: async () => {

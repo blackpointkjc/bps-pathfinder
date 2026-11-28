@@ -1,5 +1,5 @@
 import {useAuth} from '@/lib/AuthContext';
-import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
+import {canAccessDispatchCenter,canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, ClipboardList, History, LayoutGrid, Map, Radio, RadioTower, Shield, Users } from 'lucide-react';
@@ -9,7 +9,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
 import useCadRoster,{CadRosterProvider} from '@/hooks/useCadRoster';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
 import CadCommandPalette from '@/components/dispatch/cad/CadCommandPalette';
 import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
 import CadResponseAnalytics from '@/components/dispatch/cad/CadResponseAnalytics';
@@ -48,7 +47,8 @@ function CadShell({ embedded = false }) {
   const {user}=useAuth();
   const dispatchAllowed=canAccessDispatchCenter(user);
   const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(user?.id||user?.email);
-  const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>item.id!=='dispatch'||dispatchAllowed)])),[dispatchAllowed]);
+  const adminAllowed=canAccessCadAdminPages(user);
+  const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>(item.id!=='dispatch'||dispatchAllowed)&&(!['history','response'].includes(item.id)||adminAllowed))]).filter(([,items])=>items.length)),[dispatchAllowed,adminAllowed]);
   const location = useLocation();
   const navigate = useNavigate();
   const hostRef = useRef(null);
@@ -73,6 +73,7 @@ function CadShell({ embedded = false }) {
 
   const select = (nextSection, tool, extra = {}) => {
     if(tool==='dispatch'&&!dispatchAllowed)return;
+    if(['history','response'].includes(tool)&&!adminAllowed)return;
     const next = new URLSearchParams(location.search);
     next.set(embedded ? 'cad_section' : 'section', nextSection);
     next.set(toolKey, tool==='resources'?'units':tool);
@@ -192,7 +193,7 @@ function CadShell({ embedded = false }) {
       detail: 'Dispatch, acknowledgement, arrival and clearance times',
       run: () => select('analysis', 'response'),
     },
-  ].filter(command=>active.id!=='command'||command.id!=='cmd-detach'), [monitorOpen, display, refreshAll, location.search,active.id]);
+  ].filter(command=>(active.id!=='command'||command.id!=='cmd-detach')&&(command.id!=='cmd-analytics'||adminAllowed)), [monitorOpen, display, refreshAll, location.search,active.id,adminAllowed]);
 
   if (detached) {
     return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" data-high-zoom={scale>1.24} style={shellStyle}>
@@ -207,24 +208,8 @@ function CadShell({ embedded = false }) {
   }
 
   return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} data-high-zoom={scale>1.24} style={shellStyle}>
-    <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><div className="cad-top-display"><CadClock /></div></div>
-    <CadStatusBar
-      calls={calls}
-      units={units}
-      loading={loading}
-      rateLimited={rateLimited}
-      lastRefresh={lastRefresh}
-      rosterError={rosterError}
-      monitorOpen={monitorOpen}
-      onRefresh={refreshAll}
-      onFind={() => setPaletteOpen(true)}
-      onOpen={target => select('live', target.tool, target.params || {})}
-      onToggleMonitor={toggleMonitor}
-      onDetach={active.id==='command'?undefined:openDetachedMap}
-      compact={active.id==='command'}
-    />
     {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
-    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
+    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}<button className="cad-nav-monitor" type="button" aria-pressed={monitorOpen} onClick={toggleMonitor}><RadioTower size={15}/><span>Monitor {monitorOpen?'on':'off'}</span></button>{rateLimited&&<span role="status" className="cad-inline-feed-warning">Feed delayed</span>}</nav>
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
       {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'response'
           ? <CadResponseAnalytics />

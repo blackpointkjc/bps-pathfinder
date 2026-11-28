@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
     if (!allowed || ['client','student','visitor'].some(role=>roles.has(role)||lower(user.user_type)===role||lower(user.role)===role)) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
     const input=await req.json().catch(()=>({}));
+    if(user.role!=='admin'&&input.action!=='call_details')return Response.json({error:'Administrator access required for full CAD history'},{status:403});
     // Fetch optional linked reports and assignments only for an expanded call.
     // The history table itself no longer needs six expensive enrichment reads.
     if(input.action==='call_details'){
@@ -69,6 +70,7 @@ Deno.serve(async (req) => {
         readWithRetry('Archive record',()=>db.CallHistory.get(id),null)
       ]);
       const archived=(archives.data||[])[0]||archiveById.data;
+      if(user.role!=='admin'&&(!live.data||['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(live.data.status))||live.data.manual_dismissed))return Response.json({error:'Administrator access required for historical incident records'},{status:403});
       let call=live.data||archived;
       let propertyFallback=false;
       if(!call){

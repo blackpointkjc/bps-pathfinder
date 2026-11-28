@@ -15,9 +15,10 @@ import {useNavigate} from 'react-router-dom';
 import {ArrowRight,RefreshCw,X,MapPin,Users,Copy,FilePlus2,FileSearch} from 'lucide-react';
 
 const recorded=(value,fallback='Not recorded')=>value==null||String(value).trim()===''?fallback:String(value);
-export default function CommandIncidentDetails({call,units,priority,reference,incident,elapsed,district,onClose,onUnits,onDispatch,onMap,onPriority,onClear,canChangePriority,canClear,working,unified=false,canManage=false,allCalls=[],onChanged,onCloned,inlineComments=false}){
+export default function CommandIncidentDetails({call,units,priority,reference,incident,elapsed,district,onClose,onUnits,onDispatch,onMap,onPriority,onClear,canChangePriority,canClear,working,unified=false,canManage=false,allCalls=[],onChanged,onCloned,inlineComments=false,selfAttachUser}){
  const bodyRef=useRef(null);
  const [tab,setTab]=useState('details');
+ const [joining,setJoining]=useState(false),[joinFeedback,setJoinFeedback]=useState(''),[joined,setJoined]=useState(false);
  const [cloneOpen,setCloneOpen]=useState(false);
  const [recordsOpen,setRecordsOpen]=useState(false);
  const [premiseOpen,setPremiseOpen]=useState(false);
@@ -42,9 +43,13 @@ export default function CommandIncidentDetails({call,units,priority,reference,in
  const unitLabel=id=>{const u=units.find(u=>[u.id,u.user_id,u.officer_id,u.active_officer_id,u.email,u.unit_number].some(v=>v!=null&&String(v)===String(id)));return u?[u.unit_number?'Unit '+u.unit_number:'',u.rank,u.last_name].filter(Boolean).join(' '):'Unresolved unit';};
  const fallbackAssignments=(call.assigned_units||[]).map(id=>({unit_id:id,label:unitLabel(id)}));
  const assigned=recordedAssignments.length?activeAssignments:fallbackAssignments;
+ const mine=joined||[...assigned.map(a=>a.unit_id),...(call.assigned_units||[])].some(id=>String(id)===String(selfAttachUser?.id));
+ const attach=async()=>{if(joining||mine||!selfAttachUser)return;setJoining(true);setJoinFeedback('');try{const response=await base44.functions.invoke('updateMyCallAssignment',{call_id:id,action:'join'});const result=response?.data||response||{};if(!result.success)throw Error(result.error||'Assignment not confirmed');setJoined(true);setJoinFeedback(result.queued?'Attached to your assignment queue; current incident retained.':'Attached. Open Officer Queue to manage your response.');refresh();}catch(error){setJoinFeedback(error?.response?.data?.error||error.message||'Unable to attach');}finally{setJoining(false);}};
+
  return <section className="tac-incident-detail-rail" aria-label="Incident details">
   <div className="tac-panel-bar"><span>Incident details</span><div><button type="button" onClick={refresh} disabled={query.isFetching} aria-label="Refresh incident records"><RefreshCw size={15} className={query.isFetching?'animate-spin':''}/></button>{onUnits&&<button type="button" onClick={onUnits}><Users size={15}/> Units</button>}<button type="button" aria-label="Close incident details" onClick={onClose}><X size={17}/></button></div></div>
   <div className="tac-detail-heading"><small>{reference}</small><div className="tac-detail-title"><h2>{incident}</h2><b data-priority={priority.label.split(' ')[0]}>{priority.label}</b></div><p><MapPin size={16}/>{recorded(call.location,'Location pending')}</p><div className="tac-detail-status"><span>{recorded(call.agency,'Agency pending')}</span><span>{recorded(call.status,'Status unavailable')}</span><span>{recorded(elapsed,'Elapsed unavailable')}</span></div></div>
+  {selfAttachUser&&<div className="cc-self-attach"><button type="button" disabled={mine||joining||selfAttachUser.dispatch_hold_new_calls===true} onClick={attach}>{mine?'Attached to my queue':joining?'Attaching…':'Attach to incident'}</button>{joinFeedback&&<p role="status">{joinFeedback}</p>}</div>}
   <div className="tac-segment"><button type="button" aria-pressed={tab==='details'} onClick={()=>setTab('details')}>Information</button><button type="button" aria-pressed={tab==='activity'} onClick={()=>setTab('activity')}>Notes & activity{data?' ('+(data.timeline?.length||0)+')':''}</button>{!inlineComments&&<button type="button" aria-pressed={tab==='comments'} onClick={()=>setTab('comments')}>Comments</button>}{unified&&canManage&&<button type="button" aria-pressed={tab==='assign'} onClick={()=>setTab('assign')}>Assign units</button>}</div>
   <div className="tac-detail-scroll" ref={bodyRef}>
    {query.isFetching&&!data&&<p className="tac-detail-message" role="status">Loading recorded call details and activity…</p>}

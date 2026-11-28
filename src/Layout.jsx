@@ -1,4 +1,4 @@
-import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
+import {canAccessDispatchCenter,canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import RecordsSearchDialog from '@/components/RecordsSearchDialog';
 import {getRoleHome} from '@/lib/roleHome';
 import {hasIAAccess,hasWholeAppAccess} from '@/lib/portalAccess';
@@ -524,6 +524,7 @@ function defaultPageForUser(user) {
 }
 
 function canAccessPage(user, pageName) {
+  if (['CallHistory','CadResponseAnalytics'].includes(pageName)) return canAccessCadAdminPages(user);
   if (pageName === 'DispatchCenter') return canAccessDispatchCenter(user);
   // Post Orders are an authenticated field reference, never a public/client page.
   if (pageName === 'PostOrders') {
