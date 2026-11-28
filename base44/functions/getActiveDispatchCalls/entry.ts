@@ -41,7 +41,9 @@ async function __portalLoginIsCurrent(request,sdk,user){
  }catch{return false;}
 }
 
-const readCache = new Map<string, { at:number; rows:any[]; source?:any; pending?:Promise<any> }>();
+const readCache = new Map<string, { at:number; rows:any[]; source?:any; warnings?:string[]; pending?:Promise<any> }>();
+// Only Base44 record IDs belong in an id query. Legacy CAD numbers and officer aliases are not record IDs.
+const validRecordId=(value:any)=>/^[a-f0-9]{24}$/i.test(String(value||''));
 const lower = (value: unknown) => String(value || '').trim().toLowerCase();
 Deno.serve(async (req) => {
   try {
@@ -73,18 +75,19 @@ Deno.serve(async (req) => {
           // Keep unresolved verified property calls and active assignments in
           // the feed even when the original agency timestamp is over an hour old.
           const db=base44.asServiceRole.entities;
+          const warnings:string[]=[];
+          const optional=async(label:string,read:()=>Promise<any>)=>{try{return await read();}catch(error:any){warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return null;}};
           const [alerts,assignments,counters]=await Promise.all([
-            db.PropertyAlert.filter({lifecycle_status:{$nin:['resolved','false_alarm','test','inactive','closed']},is_test:{$ne:true}},'-created_date',1000),
-            db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000),
+            optional('Property alert links',()=>db.PropertyAlert.filter({lifecycle_status:{$nin:['resolved','false_alarm','test','inactive','closed']},is_test:{$ne:true}},'-created_date',1000)),
+            optional('Officer attachment links',()=>db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000)),
             db.CadCounter.filter({counter_key:'dispatch_call'},'-updated_date',1).catch(()=>null),
           ]);
           const propertyIds=new Set((alerts||[]).filter(a=>a.callId&&a.propertyId&&a.propertyId!=='public-helpme'&&!TERMINAL.has(lower(a.callStatus))).map(a=>String(a.callId)));
           const assignmentUnits=new Map<string,Set<string>>();
           for(const row of assignments||[]){if(!row.call_id||!row.unit_id||TERMINAL.has(lower(row.status)))continue;const key=String(row.call_id);if(!assignmentUnits.has(key))assignmentUnits.set(key,new Set());assignmentUnits.get(key)!.add(String(row.unit_id));}
-          const retainedIds=[...new Set([...propertyIds,...assignmentUnits.keys()])];
+          const retainedIds=[...new Set([...propertyIds,...assignmentUnits.keys()])].filter(validRecordId);
           const rows = await base44.asServiceRole.entities.DispatchCall.filter({
             $or: [
-              ...(retainedIds.length?[{id:{$in:retainedIds}}]:[]),
               { time_received: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString(), $lte: new Date(Date.now() + 120000).toISOString() } },
               { $and: [{ $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] }, { created_date: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString() } }] },
               {source:{$in:['public_helpme','dispatch_manual','field_initiated','CAD clone']}},
@@ -97,14 +100,16 @@ Deno.serve(async (req) => {
           }, '-created_date', 500);
                     // A separate retained-record query avoids a busy agency feed crowding
           // unresolved property incidents out of the ordinary 500-row window.
-          const retainedRows=retainedIds.length?await db.DispatchCall.filter({id:{$in:retainedIds},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',1000):[];
+          const retainedRows:any[]=[];
+          // Bound the ID query size, and never fail the ordinary feed due to an optional historical attachment lookup.
+          for(let i=0;i<retainedIds.length;i+=100){const batch=await optional('Retained CAD records',()=>db.DispatchCall.filter({id:{$in:retainedIds.slice(i,i+100)},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',100));if(Array.isArray(batch))retainedRows.push(...batch);}
           const counter=counters?.[0];
           const source=counter?{poll_at:counter.last_source_poll_at||null,poll_status:counter.last_source_poll_status||'',last_server_poll_at:counter.last_server_poll_at||null,last_success_at:counter.last_source_success_at||(String(counter.last_source_poll_status||'').startsWith('success')?counter.last_source_poll_at:null),website_rows:counter.last_website_row_count??null,api_rows:counter.last_api_row_count??null,latest_received:counter.last_website_latest_received||null,duration_ms:counter.last_source_poll_duration_ms??null}:null;
-          return {source,rows:[...new Map([...rows||[],...retainedRows||[]].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row))};
+          return {source,warnings,rows:[...new Map([...rows||[],...retainedRows||[]].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row))};
         })() };
         readCache.set(cacheKey, cached);
       }
-      try { const result=await cached.pending!; cached.rows=result.rows; cached.source=result.source; cached.at = Date.now(); cached.pending = undefined; }
+      try { const result=await cached.pending!; cached.rows=result.rows; cached.source=result.source; cached.warnings=result.warnings; cached.at = Date.now(); cached.pending = undefined; }
       catch (error) { readCache.delete(cacheKey); throw error; }
     }
     const rows = cached.rows;
@@ -119,6 +124,7 @@ Deno.serve(async (req) => {
       filtered_out: Math.max(0, (Array.isArray(rows) ? rows.length : 0) - calls.length),
       status_based: true,
       source_health:cached.source||null,
+      warnings:cached.warnings||[],
       fetched_at: new Date(cached.at || Date.now()).toISOString(),
     });
   } catch (error: any) {

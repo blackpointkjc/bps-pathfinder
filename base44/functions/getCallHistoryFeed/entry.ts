@@ -155,6 +155,7 @@ async function recentPropertyIncidents(db:any,now=Date.now()){
  const add=(id:string,a:any)=>{if(!id)return;if(!grouped.has(id))grouped.set(id,[]);grouped.get(id)!.push(a);};
  for(const a of alerts){if(!a.callId||!a.propertyId||a.propertyId==='public-helpme'||a.is_test===true||lower(a.lifecycle_status)==='test')continue;add(String(a.callId),a);}
  const batch=async(entity:any,field:string,ids:string[],sort:string)=>{
+   if(field==='id')ids=ids.filter(id=>/^[a-f0-9]{24}$/i.test(String(id||'')));
    const all:any[]=[];for(let i=0;i<ids.length;i+=100)all.push(...await pages(entity,{[field]:{$in:ids.slice(i,i+100)}},sort));return all;
  };
  const explicitArchiveIds=[...new Set(links.filter(l=>lower(l.status)!=='detached').map(l=>String(l.archive_id||'')).filter(Boolean))];
