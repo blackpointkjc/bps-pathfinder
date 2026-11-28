@@ -199,3 +199,26 @@ assert.deepEqual(new Set(liveResult.data.calls.map(row=>row.id)),new Set(['live'
 assert.equal(liveResult.data.calls.find(c=>c.id==='old-property').pathfinder_property_alert,true);
 assert.deepEqual(Array.from(liveResult.data.calls.find(c=>c.id==='old-assignment-row').pathfinder_assignment_unit_ids),['officer-id']);
 console.log('PASS: 840 calls across 90-day pages; older-call search/date range; bounded enrichment; source failure/access controls; full GPS address -> retained prior call; managed-property lookup; duplicate suppression; live recency.');
+
+// Fixed property-only window available to officers without exposing full history.
+const atHour=h=>new Date(now-h*3600000).toISOString();
+records.DispatchCall.push({...live,id:'prop-open',time_received:atHour(1),status:'On Scene',assigned_units:['p-officer']},{...live,id:'prop-cleared',time_received:atHour(4),status:'Cleared',assigned_units:[]},{...live,id:'prop-too-old',time_received:atHour(13),status:'New'},{...live,id:'outside-agency',time_received:atHour(2),status:'New'});
+records.CallHistory.push({...live,id:'prop-archive-id',original_call_id:'prop-archive',time_received:atHour(8),status:'Closed',assigned_units:['p-officer']});
+records.User.push({id:'p-officer',unit_number:'123',rank:'Officer',last_name:'Example'});
+const makeAlert=(id,h,extra={})=>({id:'alert-'+id,callId:id,propertyId:'property-site',propertyName:'Example Site',callTime:atHour(h),created_date:atHour(h),callIncident:'Service Call',callLocation:'3000 GRIFFIN AVE',callStatus:'New',lifecycle_status:'active',...extra});
+records.PropertyAlert.push(makeAlert('prop-open',1),makeAlert('prop-open',1,{id:'duplicate-alert',propertyId:'site-two',propertyName:'Second Site'}),makeAlert('prop-cleared',4,{lifecycle_status:'resolved'}),makeAlert('prop-archive',8,{lifecycle_status:'resolved'}),makeAlert('prop-too-old',13,{created_date:atHour(1)}),makeAlert('prop-test',2,{is_test:true}),makeAlert('prop-public',2,{propertyId:'public-helpme'}),makeAlert('prop-missing',3,{lifecycle_status:'resolved',callStatus:'New'}));
+records.CallAssignment.push({id:'cleared-officer',call_id:'prop-cleared',unit_id:'p-officer',role:'primary',status:'cleared',assigned_at:atHour(4),cleared_at:atHour(3)},{id:'responding-officer',call_id:'prop-open',unit_id:'p-officer',role:'primary',status:'on_scene',assigned_at:atHour(1)});
+role='user';officer=true;
+const propertyLog=await history({action:'recent_property_incidents',since:oldAt,until:new Date(now+86400000).toISOString()});
+assert.equal(propertyLog.status,200,JSON.stringify(propertyLog.data));
+assert.deepEqual(propertyLog.data.calls.map(c=>c.id),['prop-archive','prop-cleared','prop-missing','prop-open']);
+assert.equal(propertyLog.data.calls[0].property_closed,true);
+assert.equal(propertyLog.data.calls[0].property_read_only,true);
+assert.equal(propertyLog.data.calls[1].property_assignments[0].label,'Unit 123 Officer Example');
+assert.equal(propertyLog.data.calls[1].property_assignments[0].active,false);
+assert.equal(propertyLog.data.calls[2].property_record_available,false);
+assert.equal(propertyLog.data.calls[3].property_assignments[0].active,true);
+assert.equal(propertyLog.data.calls[3].property_names.length,2);
+assert.equal((await history({page_size:25})).status,403);
+role='user';officer=false;assert.equal((await history({action:'recent_property_incidents'})).status,403);
+console.log('PASS: officer-visible rolling property log includes assigned, closed, archived and retained alerts, oldest first, without expanding full-history access.');

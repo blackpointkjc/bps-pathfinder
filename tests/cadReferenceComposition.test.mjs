@@ -60,3 +60,15 @@ test('officer command contains manual call pins, not duplicated filters or toolb
  assert.match(html,/aria-label="Stop monitoring pending"/);assert.match(html,/aria-label="Monitor active"/);
  assert.match(html,/My status/);
 });
+
+test('property log displays closed and assigned incidents oldest first, with officer names and no duplicate active incident',()=>{
+ const now=Date.now(),recent={...active,time_received:new Date(now-3600000).toISOString(),property_log:true,property_closed:false,property_read_only:false,property_record_available:true,property_names:['Example property'],property_assignments:[{unit_id:'u1',label:'Unit 100 Officer Example',status:'on_scene',active:true}]};
+ const closed={...pending,id:'closed',status:'Cleared',time_received:new Date(now-4*3600000).toISOString(),property_log:true,property_closed:true,property_read_only:true,property_record_available:true,property_assignments:[{unit_id:'u1',label:'Unit 100 Officer Example',status:'cleared',active:false}]};
+ const old={...closed,id:'old',time_received:new Date(now-13*3600000).toISOString()};
+ const html=render({officerMode:true,propertyRows:[recent,old,closed],detail:closed,monitoredIds:[],onTogglePin:()=>{}});
+ assert.match(html,/Property calls · Last 12 hours \(2\)/);
+ assert.match(html,/Closed · Cleared/);assert.match(html,/Unit 100 Officer Example/);
+ assert.match(html,/Read-only property incident record/);assert.ok(!html.includes('Monitor closed'));assert.ok(!html.includes('Monitor old'));
+ assert.ok(html.indexOf('Closed · Cleared')<html.indexOf('Unit 100 Officer Example (on_scene)'));
+ assert.match(html,/Other live incidents \(1\)/);
+});
