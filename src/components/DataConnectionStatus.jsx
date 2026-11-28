@@ -1,3 +1,5 @@
+import {isCadWorkspace,cadConnectionProblem} from '@/lib/cadRequestPolicy';
+import {getConfirmedCadRead,getCadReadFailure} from '@/lib/cadSourceHealth';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getBase44RequestHealth } from '@/api/base44Client';
@@ -28,8 +30,12 @@ export default function DataConnectionStatus() {
         && (!query.state.dataUpdatedAt || query.state.dataUpdatedAt<query.state.errorUpdatedAt));
       const waiting=health.queuedReads>0 && queueAge>=60_000;
       const liveThrottle=throttled && recentThrottle>0 && now-recentThrottle<45_000;
-      const persistent=waiting || (liveThrottle && failed.length>=3);
-      setStatus(persistent ? {rateLimited:throttled,failed:failed.length,waiting,queue:health.queuedReads} : null);
+      const page=document.querySelector('main[data-page]')?.dataset?.page;
+      const cad=isCadWorkspace(page);
+      const officerFailure=failed.some(q=>q.queryKey?.[0]==='myDispatchQueue');
+      const cadProblem=cadConnectionProblem({now,confirmedAt:getConfirmedCadRead(),failure:getCadReadFailure(),criticalQueued:health.criticalQueuedReads||0,criticalWait:health.oldestCriticalQueuedReadMs||0,criticalRetryAt:Date.parse(health.criticalRetryAt||'')||0,officerError:officerFailure});
+      const persistent=cad?cadProblem:waiting || (liveThrottle && failed.length>=3);
+      setStatus(persistent ? {cad,rateLimited:throttled,failed:failed.length,waiting,queue:cad?health.criticalQueuedReads:health.queuedReads,retryAt:health.criticalRetryAt} : null);
       // Do not automatically refetch every failing active query in parallel.
       // That turns a single 429 into another rate-limit storm. Individual
       // query owners retry on their own schedule; this banner is read-only.
@@ -41,7 +47,7 @@ export default function DataConnectionStatus() {
   }, [queryClient]);
   if (!status) return null;
   return <div role="status" aria-live="polite" className="fixed bottom-2 right-2 z-[70] flex max-w-xs flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-slate-950/95 p-2 text-xs text-amber-100 shadow-sm">
-    <div><div className="font-bold">{status.waiting ? 'Data is taking longer than expected' : 'Some data is reconnecting'}</div><div className="mt-1 text-[11px]">{status.rateLimited ? 'The server is limiting requests. Pathfinder will retry when it is ready.' : status.waiting ? `${status.queue} request${status.queue === 1 ? '' : 's'} awaiting the data service. You can retry when the queue clears.` : 'Some data could not load. Open the affected screen or retry once the service recovers.'}</div></div>
+    <div><div className="font-bold">{status.cad?'CAD data delayed':status.waiting ? 'Data is taking longer than expected' : 'Some data is reconnecting'}</div><div className="mt-1 text-[11px]">{status.cad?(status.rateLimited?'CAD requests are temporarily throttled. Showing last confirmed records; retrying when permitted.':'Live CAD read is delayed. Check the feed timestamp.'):status.rateLimited ? 'The server is limiting requests. Pathfinder will retry when it is ready.' : status.waiting ? `${status.queue} request${status.queue === 1 ? '' : 's'} awaiting the data service. You can retry when the queue clears.` : 'Some data could not load. Open the affected screen or retry once the service recovers.'}</div></div>
     <span className="rounded-md border border-amber-600/40 px-2 py-1 text-[10px] font-semibold text-amber-200">Automatic recovery</span>
   </div>;
 }

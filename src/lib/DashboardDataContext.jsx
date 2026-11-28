@@ -157,7 +157,7 @@ export function DashboardDataProvider({ children }) {
 
         } catch (err) {
             if (isRateLimitError(err)) {
-                rateLimitedUntil.current = Date.now() + RATE_LIMIT_BACKOFF_MS;
+                rateLimitedUntil.current = Date.now() + Math.max(2000,Number(err?.retry_after_ms)||RATE_LIMIT_BACKOFF_MS);
                 setRateLimited(true);
                 console.warn(`[CAD] 429 Rate limit detected. Waiting ${RATE_LIMIT_BACKOFF_MS / 1000}s before next refresh.`);
             } else {

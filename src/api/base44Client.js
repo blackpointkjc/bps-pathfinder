@@ -1,3 +1,4 @@
+import {cadReadAction,isCriticalCadRead,retryDeadline} from '@/lib/cadRequestPolicy';
 import {isIaRead,iaReadCacheMs} from '@/lib/iaRequestPolicy';
 import {isFullAccessOwner,effectivePortalIdentity} from '@/lib/portalAccess';
 import {offlineIdentity,rememberOfflineIdentity,forgetOfflineIdentity} from '@/lib/offlineSession';
@@ -60,7 +61,8 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsData') return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getWelcomeBriefingData') return 90_000;
-  if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return meta.action==='recent_property_incidents'?10_000:60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return meta.action==='recent_property_incidents'?60_000:60_000;
+  if(meta?.kind==='function'&&meta.name==='sharedCadTimeline')return 15000;
   if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageBolo' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageHRTimeEntries' && meta?.action === 'list') return 60_000;
@@ -71,6 +73,7 @@ const RATE_LIMIT_COOLDOWN_MS = 60_000;
 const CRITICAL_RATE_LIMIT_RECOVERY_MS = 8_000;
 const READ_QUEUE_TIMEOUT_MS = 120_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
+const CRITICAL_RATE_LIMIT_KEY='bps:base44-critical-retry-v2';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v2';
 const TRACE_MAX = 300;
 const READ_METHODS = new Set(['list', 'filter', 'get']);
@@ -154,6 +157,7 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 90;
   if (meta?.kind === 'function' && ['getActiveDispatchCalls','getMyDispatchQueue'].includes(meta?.name)) return 105;
+  if(isCriticalCadRead(meta))return 98;
   if(meta?.kind==='function'&&meta.name==='getOnDutyUnits')return 95;
   if (meta?.kind === 'function' && meta?.name === 'getRoadSpeedLimit') return 86;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
@@ -213,24 +217,20 @@ const sharedRateLimitUntil = () => {
     return Number.isFinite(until) && until <= Date.now() + 24 * 60 * 60_000 ? until : 0;
   } catch { return 0; }
 };
+const sharedCriticalRetryAt=()=>{try{const value=Number(localStorage.getItem(CRITICAL_RATE_LIMIT_KEY)||0);return Number.isFinite(value)&&value<=Date.now()+24*3600000?value:0;}catch{return 0;}};
 const noteRateLimit = error => {
   if (!isRateLimit(error)) return;
-  recentRateLimitAt = Date.now();
-  const headers = error?.response?.headers;
-  const retryAfter = headers?.get?.('retry-after') ?? headers?.['retry-after'];
-  const messageSeconds=Number(String(errorText(error)).match(/retry after\s+(\d+(?:\.\d+)?)\s*s/i)?.[1]);
-  const seconds = Number(retryAfter??(Number.isFinite(messageSeconds)?messageSeconds:null));
-  const retryAt = (retryAfter != null && String(retryAfter).trim() !== '')||Number.isFinite(messageSeconds)
-    ? (Number.isFinite(seconds) ? recentRateLimitAt + Math.max(0, seconds) * 1000 : Date.parse(retryAfter))
-    : 0;
-  const recoveryMs = Number.isFinite(retryAt) && retryAt > recentRateLimitAt
-    ? retryAt - recentRateLimitAt
-    : CRITICAL_RATE_LIMIT_RECOVERY_MS;
-  readRecoveryUntil = Math.max(readRecoveryUntil, recentRateLimitAt + recoveryMs);
-  // Concurrent failures belong to one recovery window, not a new minute each.
-  if (sharedRateLimitUntil() > recentRateLimitAt && !(Number.isFinite(retryAt)&&retryAt>sharedRateLimitUntil())) return;
-  const until = Math.max(recentRateLimitAt + RATE_LIMIT_COOLDOWN_MS, retryAt || 0);
-  try { localStorage.setItem(RATE_LIMIT_KEY, String(until)); } catch {}
+  recentRateLimitAt=Date.now();
+  const headers=error?.response?.headers;
+  const header=headers?.get?.('retry-after')??headers?.['retry-after'];
+  const retryAt=retryDeadline(recentRateLimitAt,header,errorText(error),CRITICAL_RATE_LIMIT_RECOVERY_MS);
+  readRecoveryUntil=Math.max(readRecoveryUntil,retryAt,sharedCriticalRetryAt());
+  // Share the actual provider retry deadline separately from the longer
+  // background cooldown. Don't infer a fake retry time from a 60s banner.
+  try{
+    localStorage.setItem(CRITICAL_RATE_LIMIT_KEY,String(readRecoveryUntil));
+    localStorage.setItem(RATE_LIMIT_KEY,String(Math.max(sharedRateLimitUntil(),recentRateLimitAt+RATE_LIMIT_COOLDOWN_MS,retryAt)));
+  }catch{}
 };
 const schedulePump = delay => {
   window.clearTimeout(wakeTimer);
@@ -239,14 +239,14 @@ const schedulePump = delay => {
 function pumpReads() {
   if (activeReads >= MAX_CONCURRENT_READS || !readQueue.length) return;
   // Authentication always goes first; aging prevents starvation of other screens.
-  const score = job => job.priority + Math.floor((Date.now() - job.queuedAt) / 1000) * 2;
-  readQueue.sort((a, b) => Number(b.meta?.kind === 'auth') - Number(a.meta?.kind === 'auth') || score(b) - score(a) || a.queuedAt - b.queuedAt);
+  const score = job => job.priority + Math.min(20,Math.floor((Date.now() - job.queuedAt) / 1000) * 2);
+  readQueue.sort((a, b) => Number(b.meta?.kind === 'auth') - Number(a.meta?.kind === 'auth') || Number(isCriticalCadRead(b.meta))-Number(isCriticalCadRead(a.meta)) || score(b) - score(a) || a.queuedAt - b.queuedAt);
   const cooldown = sharedRateLimitUntil() - Date.now();
   // All page reads recover after the same quiet window. Keeping ordinary reads
   // frozen for a full minute made every non-CAD screen appear empty. Background
   // telemetry still honors the longer cooldown in the function wrapper below.
-  const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
-  const criticalRecovery = Math.max(0, readRecoveryUntil - Date.now(), cooldown > 0 ? CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt) : 0);
+  
+  const criticalRecovery = Math.max(0,readRecoveryUntil-Date.now(),sharedCriticalRetryAt()-Date.now());
   const waitFor = job => Math.max(0, (job.readyAt || 0) - Date.now(),
     job.meta?.kind === 'entity' && ['list','filter'].includes(job.meta?.method) ? entityListWaitMs() : 0,
     job.meta?.kind === 'auth' ? 0 : criticalRecovery,
@@ -257,12 +257,12 @@ function pumpReads() {
   // A background cooldown never holds the head of the queue ahead of live CAD.
   readQueue.sort((a,b) => Number(waitFor(a) > 0) - Number(waitFor(b) > 0)
     || Number(b.meta?.kind === 'auth') - Number(a.meta?.kind === 'auth')
-    || score(b) - score(a) || a.queuedAt - b.queuedAt);
+    || Number(isCriticalCadRead(b.meta))-Number(isCriticalCadRead(a.meta)) || score(b) - score(a) || a.queuedAt - b.queuedAt);
   // Only defer requests while the backend requests a cooldown. Never synthesize
   // 429 errors for queued reads: the UI interprets them as *new* API throttles,
   // repeatedly failing every briefing/task query and retriggering recovery.
   // Authentication and already-cached data still resolve immediately.
-  const recoveryPending = Math.max(0, readRecoveryUntil - Date.now(), cooldown);
+
   if (!readQueue.length) return;
   const waitForHead = waitFor(readQueue[0]);
   if (waitForHead > 0) {
@@ -397,11 +397,11 @@ function queuedRead(key, task, meta = {}) {
         // times out; without this the whole queue could remain idle until a
         // separate event happened to wake the scheduler.
         pumpReads();
-        const throttleMs = Math.max(0, readRecoveryUntil - Date.now(), sharedRateLimitUntil() - Date.now());
+        const throttleMs = Math.max(0,readRecoveryUntil-Date.now(),sharedCriticalRetryAt()-Date.now(),job.priority<90?sharedRateLimitUntil()-Date.now():0);
         const error = new Error(throttleMs > 0
           ? `Base44 API is temporarily throttled. Retry after ${Math.ceil(throttleMs / 1000)} seconds.`
           : 'This data request could not start in time because the application is busy. Please retry.');
-        if (throttleMs > 0) { error.status = 429; error.retry_after_ms = throttleMs; }
+        if (throttleMs > 0) { error.status = 429; error.retry_after_ms = throttleMs; error.localQueueTimeout=true; }
         recordRequestTrace({
           label: requestLabel(meta),
           kind: meta.kind || 'read',
@@ -579,7 +579,7 @@ function protectedWrite(key, task, meta = {}) {
 function invalidateReadCacheForRealtimeEntity(name) {
   const prefixes = new Set([`entity:${name}:`]);
   if (name === 'DispatchCall') {
-    prefixes.add('function:getActiveDispatchCalls:');
+    // Live feed is directly patched by realtime subscribers and revalidated on its normal interval.
     prefixes.add('function:getCallHistoryFeed:');
     prefixes.add('function:getDispatchCallLinkFeed:');
   }
@@ -662,6 +662,7 @@ const isReadOnlyFunction = (name, payload = {}) => {
   const functionName = String(name || '');
   const action = String(payload?.action || '').toLowerCase();
   if(functionName==='professionalStandards')return isIaRead(payload);
+  if(cadReadAction(functionName,action))return true;
   const readActions = new Set(['list', 'get', 'search', 'status', 'messages', 'folders', 'preview', 'check', 'history', 'summary']);
 
   // An explicit action is authoritative. Management-style functions often expose
@@ -710,9 +711,8 @@ const functions = new Proxy(rawBase44.functions, {
       if (functionName === 'logLocation'
           && payload?.end_session !== true
           && payload?.force_publish !== true
-          && Math.max(readRecoveryUntil, sharedRateLimitUntil() > Date.now()
-            ? sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS + CRITICAL_RATE_LIMIT_RECOVERY_MS : 0) > Date.now()) {
-        const retryAfter = Math.max(readRecoveryUntil, sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS + CRITICAL_RATE_LIMIT_RECOVERY_MS);
+          && Math.max(readRecoveryUntil,sharedCriticalRetryAt()) > Date.now()) {
+        const retryAfter = Math.max(readRecoveryUntil,sharedCriticalRetryAt());
         recordRequestTrace({
           label: requestLabel(meta),
           kind: 'function',
@@ -770,7 +770,12 @@ export function clearBase44ReadCacheMatching(prefix) {
 
 export function getBase44RequestHealth() {
   const until = sharedRateLimitUntil();
+  const critical=readQueue.filter(job=>isCriticalCadRead(job.meta));
+  const criticalRetryAt=Math.max(readRecoveryUntil,sharedCriticalRetryAt());
   return {
+    criticalQueuedReads:critical.length,
+    oldestCriticalQueuedReadMs:critical.length?Math.max(0,Date.now()-Math.min(...critical.map(job=>job.queuedAt))):0,
+    criticalRetryAt:criticalRetryAt>Date.now()?new Date(criticalRetryAt).toISOString():null,
     queuedReads: readQueue.length,
     oldestQueuedReadMs: readQueue.length ? Math.max(0, Date.now() - Math.min(...readQueue.map(job => job.queuedAt))) : 0,
     activeReads,
