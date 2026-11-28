@@ -408,7 +408,6 @@ export function announceVoice(text, options = {}) {
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
   const clean = formatCadReferenceForSpeech(text)
     .replace(/\b(?:1st|first)\s+resp(?:onder)?\b/gi, 'First Responder')
-    .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
     .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
@@ -423,7 +422,6 @@ export function announceVoiceAsync(text, options = {}) {
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
   const clean = formatCadReferenceForSpeech(text)
     .replace(/\b(?:1st|first)\s+resp(?:onder)?\b/gi, 'First Responder')
-    .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
     .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return Promise.resolve(false);
