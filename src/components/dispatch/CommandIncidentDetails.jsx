@@ -4,6 +4,7 @@ import {base44,clearBase44ReadCacheMatching} from '@/api/base44Client';
 import {withRequestTimeout} from '@/lib/requestTimeout';
 import {formatEasternDateTime} from '@/lib/easternTime';
 import IncidentPrioritySelect from './IncidentPrioritySelect';
+import AddressCallHistory from '@/components/map/AddressCallHistory';
 import {ArrowRight,RefreshCw,X,MapPin,Users} from 'lucide-react';
 
 const recorded=(value,fallback='Not recorded')=>value==null||String(value).trim()===''?fallback:String(value);
@@ -42,6 +43,7 @@ export default function CommandIncidentDetails({call,units,priority,reference,in
     <dl className="tac-detail-fields">{[['Received',call.time_received||call.created_date?formatEasternDateTime(call.time_received||call.created_date)+' ET':'Not recorded'],['District / zone',recorded(call.district||call.beat||call.zone||district)],['Cross street',recorded(call.cross_street)],['Source',recorded(call.source||call.source_channel)],['Caller',recorded(call.caller_name)],['Callback',recorded(call.caller_phone)]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     <div className="tac-detail-block"><h3>Safety / hazards</h3><p className={call.hazards?'text-amber-200':''}>{recorded(call.hazards,'No hazards recorded.')}</p></div>
     <div className="tac-detail-block"><h3>Incident narrative</h3><p>{recorded(data?.narrative||call.description,query.isFetching?'Retrieving original narrative…':'No narrative recorded.')}</p></div>
+    {call.location&&<div className="tac-detail-block"><h3>Premise history</h3><AddressCallHistory address={call.location} excludeCallId={call.id}/></div>}
     <div className="tac-detail-block"><h3>Assigned units · {assigned.length}</h3>{assigned.length?assigned.map((u,i)=><div className="tac-detail-assignment" key={u.unit_id+'-'+i}><b>{u.label}</b><small>{recorded(u.role,'Role not recorded')} · {recorded(u.status,'Status not recorded')}</small></div>):<p>{query.isFetching?'Checking assignments…':query.isError||data?.warnings?.length?'Assignment records may be incomplete.':'No assigned units in available records.'}</p>}</div>
     {data?.disposition&&<div className="tac-detail-block"><h3>Disposition</h3><p>{data.disposition}</p></div>}
     <div className="tac-detail-block"><h3>Recorded notes & activity</h3><button className="tac-detail-link" type="button" onClick={()=>setTab('activity')}>View CAD activity {data?'('+ (data.timeline?.length||0)+')':''} <ArrowRight size={14}/></button></div>

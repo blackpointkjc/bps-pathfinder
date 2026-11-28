@@ -8,10 +8,13 @@ import { lookupDistrict } from '@/utils/districtLookup';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { Radio, Search, Users, RefreshCw } from 'lucide-react';
 
-export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
- const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
+export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster,initialFocus='all'}){
+ // The CAD status bar and command palette deep-link into the board with a
+ // pre-filtered queue, so the requested view is already on screen.
+ const startingFocus=['all','urgent','unassigned'].includes(initialFocus)?initialFocus:'all';
+ const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState(startingFocus),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
  const [utilityPanel,setUtilityPanel]=useState(null);
- const [screen,setScreen]=useState('operations');
+ const [screen,setScreen]=useState(startingFocus==='all'?'operations':'incidents');
  const [expandedMap,setExpandedMap]=useState(false);
  const [rightPane,setRightPane]=useState('units');
  const commandRef=useRef(null);

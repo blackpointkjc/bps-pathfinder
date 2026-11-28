@@ -282,3 +282,12 @@ export function useDashboardData() {
     if (!ctx) throw new Error('useDashboardData must be used inside DashboardDataProvider');
     return ctx;
 }
+
+/**
+ * Lets a screen that already owns the live CAD queue (for example the CAD
+ * Center shell) supply it to nested workstations instead of mounting a second
+ * provider and doubling the polling load.
+ */
+export function useOptionalDashboardData() {
+    return useContext(DashboardDataContext);
+}

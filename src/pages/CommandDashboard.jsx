@@ -4,14 +4,14 @@ import { cadDestination } from '@/lib/cadNavigation';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import LiveCommandWorkspace from '@/components/dispatch/LiveCommandWorkspace';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils';
 import { incidentPriority as getCallPriority } from '@/lib/incidentPriority';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
-import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
+import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
@@ -59,6 +59,18 @@ function CommandDashboardInner() {
     const [statusSaving,setStatusSaving] = useState(false);
     const {rows:roster,loading:rosterLoading,error:rosterError,refresh:refreshRoster}=useCadRoster();
     const [, setTick]                           = useState(0);
+    // CAD status bar / command palette deep links: pre-filter the queue and open
+    // the requested incident without changing any other board behaviour.
+    const cadFocus = useMemo(() => new URLSearchParams(window.location.search).get('cad_focus') || 'all', []);
+    const linkedCallId = useMemo(() => new URLSearchParams(window.location.search).get('call_id'), []);
+    const linkedCallApplied = useRef(false);
+    useEffect(() => {
+        if (linkedCallApplied.current || !linkedCallId || !calls.length) return;
+        const match = calls.find(call => String(call.id) === String(linkedCallId));
+        if (!match) return;
+        linkedCallApplied.current = true;
+        setSelectedCall(match);
+    }, [linkedCallId, calls]);
 
     const soundEnabledRef        = useRef(!isDispatchAlertMuted());
 
@@ -206,7 +218,7 @@ function CommandDashboardInner() {
       <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onDispatch={openCallInDispatch} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
-        priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor}
+        priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} initialFocus={cadFocus}
         actions={<><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />
@@ -215,6 +227,10 @@ function CommandDashboardInner() {
 }
 
 export default function CommandDashboard() {
+    // The CAD Center shell already owns the live queue; reuse it instead of
+    // mounting a second provider and duplicating every CAD read.
+    const existing = useOptionalDashboardData();
+    if (existing) return <CommandDashboardInner />;
     return (
         <DashboardDataProvider>
             <CommandDashboardInner />
