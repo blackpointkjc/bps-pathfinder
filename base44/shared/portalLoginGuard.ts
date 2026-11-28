@@ -33,7 +33,7 @@ const readSessions = async (db: any, filter: any, sort: string, limit: number) =
       const rows = await db.PortalAuthSession.filter(filter, sort, limit);
       return { rows: Array.isArray(rows) ? rows : [] };
     } catch (error) {
-      if (attempt === 1) return { error };
+      if (attempt === 1 || Number(error?.status||error?.response?.status)===429 || /rate limit|too many requests/i.test(String(error?.message))) return { error };
       await delay(250);
     }
   }

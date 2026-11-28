@@ -5,6 +5,7 @@ const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 const IDLE_MS=13*60*60*1000;
 const digest=async token=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
 const inactive=user=>!user||user.disabled||(user.termination_date&&Date.parse(user.termination_date)<=Date.now())||['denied','terminated','suspended'].includes(String(user.account_status||user.employment_status||'').toLowerCase());
+const temporarilyUnavailable=()=>Response.json({error:'Secure session service is temporarily unavailable. Retry connection.',code:'SESSION_STORE_UNAVAILABLE'},{status:503,headers:{'Retry-After':'2'}});
 const expired=()=>Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
 export default async function(req){
  try{
@@ -27,7 +28,7 @@ export default async function(req){
    if(existing[0])await db.PortalAuthSession.update(existing[0].id,value);else await db.PortalAuthSession.create(value);
    return Response.json({access_token:result.access_token,user:{id:user.id},session_started_at:now});
   }
-  const user=await sdk.auth.me().then(__portalAppIdentity).catch(()=>null);
+  const user=await sdk.auth.me().then(__portalAppIdentity).catch(error=>{if([401,403].includes(Number(error?.status||error?.response?.status)))return null;throw error;});
   if(inactive(user))return expired();
   const token=String(req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
   if(!token)return expired();
@@ -35,7 +36,7 @@ export default async function(req){
   // guard re-binds the newest token to the account's active session row.
   const sessionState=await portalSessionState(req,sdk,user);
   if(sessionState.state==='invalid')return expired();
-  if(sessionState.state==='unknown'&&(body.action==='sign_out'||body.action==='activity'))return Response.json({error:'Session storage temporarily unavailable. Retry this action.',code:'SESSION_STORE_UNAVAILABLE'},{status:503});
+  if(sessionState.state==='unknown')return temporarilyUnavailable();
   const row=sessionState.row||{};
   const locks=await db.AccountLock.filter({user_id:user.id,locked:true},'-created_date',1);
   if(locks.length)return expired();
@@ -43,8 +44,19 @@ export default async function(req){
    if(row.id)await db.PortalAuthSession.update(row.id,{revoked:true,revoked_at:new Date().toISOString()});
    return Response.json({success:true});
   }
-  if(!['check','activity'].includes(body.action))return Response.json({error:'Unknown session action.'},{status:400});
+  if(!['check','activity','bootstrap'].includes(body.action))return Response.json({error:'Unknown session action.'},{status:400});
   if(body.action==='activity'&&row.id)await db.PortalAuthSession.update(row.id,{last_activity_at:new Date().toISOString()});
+  if(body.action==='bootstrap'){
+   const saved=await db.User.get(user.id);
+   if(!saved||String(saved.id)!==String(user.id))return temporarilyUnavailable();
+   if(inactive(saved))return expired();
+   const profile=__portalAppIdentity({...user,...saved});
+   profile.additional_roles=(profile.additional_roles||[]).filter(role=>String(role).toLowerCase()!=='full_access'||String(profile.id)==='6ae7d733d4b1a647cd3e6f38');
+   const assigned=profile.role==='admin'||profile.additional_roles.length>0||['investigator','reviewer'].includes(profile.ps_role);
+   // Approved users need no invitation search, role cleanup scan or extra
+   // profile round-trip. Pending/mismatched accounts retain onboarding flow.
+   return Response.json({success:true,session_started_at:row.started_at,profile,needs_registration:!assigned||profile.portal_approved!==assigned,inactivity_minutes:780});
+  }
   return Response.json({success:true,session_started_at:row.started_at||'',inactivity_minutes:780});
- }catch{return Response.json({error:'Your session could not be verified. Please sign in again.'},{status:503});}
+ }catch(error){const status=Number(error?.status||error?.response?.status);if(status===429){const seconds=String(error?.message||'').match(/retry after\s+(\d+(?:\.\d+)?)\s*s/i)?.[1]||'2';return Response.json({error:'Secure session verification is temporarily rate limited.',code:'SESSION_STORE_UNAVAILABLE'},{status:429,headers:{'Retry-After':seconds}});}console.warn('Portal verification temporarily unavailable',status||'network');return temporarilyUnavailable();}
 }

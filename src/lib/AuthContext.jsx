@@ -1,6 +1,6 @@
 import {effectivePortalIdentity} from '@/lib/portalAccess';
 import {watchInactivity,requiresFreshLogin,activityKey} from '@/lib/sessionPolicy';
-import {offlineIdentity,forgetOfflineIdentity} from '@/lib/offlineSession';
+import {offlineIdentity,forgetOfflineIdentity,rememberOfflineIdentity} from '@/lib/offlineSession';
 import {queryClientInstance} from '@/lib/query-client';
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { base44, clearBase44ReadCache } from '@/api/base44Client';
@@ -41,6 +41,7 @@ const withTimeout = (promise, milliseconds, label) => {
 
 export const AuthProvider = ({ children }) => {
   const requestSequence = useRef(0);
+  const startupInFlight=useRef(null);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -88,13 +89,15 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = useCallback(async (requestId) => {
     try {
       setIsLoadingAuth(true);
-      let currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
-      const session=await withTimeout(base44.functions.invoke('portalSession',{action:'check'}),12000,'Secure session verification');
-      if(!session.data?.success)throw new Error(session.data?.error||'Unable to verify your session. Please retry.');
-      currentUser.__portal_session_started_at=session.data.session_started_at;
-      const registration = await withTimeout(base44.functions.invoke('portalRegistration', {action:'profile'}),12000,'Account profile verification');
-      if (registration.data?.error) throw new Error(registration.data.error);
-      if (registration.data?.profile) currentUser = {...currentUser,...registration.data.profile};
+      const response=await base44.functions.invoke('portalSession',{action:'bootstrap'});
+      const session=response?.data||response;
+      if(!session?.success||!session.profile?.id||!session.session_started_at)throw new Error(session?.error||'Secure session response was incomplete. Please retry.');
+      let currentUser={...session.profile,__portal_session_started_at:session.session_started_at};
+      if(session.needs_registration){
+        const registration=await base44.functions.invoke('portalRegistration',{action:'profile',startup:true});
+        if(registration.data?.error)throw new Error(registration.data.error);
+        if(registration.data?.profile)currentUser={...currentUser,...registration.data.profile};
+      }
       currentUser=effectivePortalIdentity(currentUser);
       if (requestId !== requestSequence.current) return;
 
@@ -148,23 +151,12 @@ export const AuthProvider = ({ children }) => {
       const operational = roleSet.has('officer') || roleSet.has('cad_access') || roleSet.has('supervisor') || currentUser.is_supervisor === true || fieldRank;
       if (operational) cacheOfficerStatus(currentUser.status || 'Out of Service');
 
+      rememberOfflineIdentity(currentUser);
       setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
 
-      // Authentication is complete at this point. Account-lock verification is
-      // important, but it must not keep the entire app behind the splash screen
-      // when the normal-priority read queue is backing off after an unrelated
-      // rate limit. Resolve it immediately in the background.
-      void base44.entities.AccountLock.filter({ user_id: currentUser.id, locked: true }, '-locked_at', 1)
-        .then(locks => {
-          if (requestId !== requestSequence.current) return;
-          setAccountLock(locks?.[0] || null);
-        })
-        .catch(lockError => {
-          console.warn('[AUTH] Account lock check unavailable:', lockError?.message);
-          if (requestId === requestSequence.current) setAccountLock(null);
-        });
+      setAccountLock(null); // The server bootstrap verified account locks before returning the profile.
       return currentUser;
     } catch (error) {
       if (requestId !== requestSequence.current) return;
@@ -184,7 +176,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         setAuthError({
           type: 'unknown',
-          message: error.message || 'Unable to verify the secure session'
+          message: error?.response?.data?.error || error.message || 'Unable to verify the secure session'
         });
       }
       return null;
@@ -193,7 +185,9 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const checkAppState = useCallback(async () => {
+  const checkAppState = useCallback(() => {
+    if(startupInFlight.current)return startupInFlight.current;
+    const run=async()=>{
     const requestId = ++requestSequence.current;
     if(navigator.onLine===false) {
       const saved=offlineIdentity();
@@ -204,7 +198,7 @@ export const AuthProvider = ({ children }) => {
       requestSequence.current+=1;
       setIsLoadingAuth(false);setIsLoadingPublicSettings(false);
       setAuthError({type:'unknown',message:'Secure connection timed out. Retry connection to verify your account.'});
-    },25000);
+    },75000);
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
@@ -246,7 +240,7 @@ export const AuthProvider = ({ children }) => {
         console.error('App state check failed:', appError);
         const authenticatedUser = appParams.token ? await authPromise.catch(() => null) : null;
         if(requestId!==requestSequence.current)return;
-        if (authenticatedUser) {
+        if (authenticatedUser || appParams.token) {
           // A signed-in session can continue even when the public-settings
           // endpoint is temporarily slow/unavailable. Retry settings later rather
           // than trapping the entire app behind the splash screen.
@@ -298,6 +292,9 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
     } finally {clearTimeout(deadline);}
+    };
+    const pending=run().finally(()=>{if(startupInFlight.current===pending)startupInFlight.current=null;});
+    startupInFlight.current=pending;return pending;
   }, [checkUserAuth]);
 
   useEffect(() => {
@@ -315,6 +312,7 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       requestSequence.current += 1;
+      startupInFlight.current=null;
       window.removeEventListener('online', reconnect);
     };
   }, [checkAppState]);

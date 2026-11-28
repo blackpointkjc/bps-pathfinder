@@ -1,3 +1,4 @@
+import {runSecureSessionRequest} from '@/lib/secureSessionRequest';
 import {cadReadAction,isCriticalCadRead,retryDeadline} from '@/lib/cadRequestPolicy';
 import {isIaRead,iaReadCacheMs} from '@/lib/iaRequestPolicy';
 import {isFullAccessOwner,effectivePortalIdentity} from '@/lib/portalAccess';
@@ -683,6 +684,17 @@ const isReadOnlyFunction = (name, payload = {}) => {
   if (['runSystemAudit','geocodeNavigationDestination','routeNavigation'].includes(functionName)) return true;
   return false;
 };
+const secureSessionInflight=new Map();
+function secureSessionRead(key,task,meta){
+ if(secureSessionInflight.has(key))return secureSessionInflight.get(key);
+ const started=Date.now();
+ const request=runSecureSessionRequest(()=>withRequestTimeout(Promise.resolve().then(task),18000,'Secure session network request'))
+  .then(value=>{recordRequestTrace({label:requestLabel(meta),mode:'security',outcome:'success',duration_ms:Date.now()-started});return value;})
+  .catch(error=>{noteRateLimit(error);recordRequestTrace({label:requestLabel(meta),mode:'security',outcome:'error',duration_ms:Date.now()-started,error:errorText(error).slice(0,700)});throw error;})
+  .finally(()=>secureSessionInflight.delete(key));
+ secureSessionInflight.set(key,request);
+ return request;
+}
 const functions = new Proxy(rawBase44.functions, {
   get(target, property, receiver) {
     const value = Reflect.get(target, property, receiver);
@@ -730,6 +742,10 @@ const functions = new Proxy(rawBase44.functions, {
         });
       }
 
+      if((functionName==='portalSession'&&['check','bootstrap'].includes(meta.action))||(functionName==='portalRegistration'&&meta.action==='profile'&&payload?.startup===true)){
+        // Single-flight per current bearer, fresh server authorization on every check.
+        return secureSessionRead(key+':'+String(appParams.token||''),task,meta);
+      }
       return isReadOnlyFunction(name, payload) ? queuedRead(key, task, meta) : protectedWrite(key, task, meta);
     };
   },

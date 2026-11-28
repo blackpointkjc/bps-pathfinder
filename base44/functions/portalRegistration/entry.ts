@@ -9,7 +9,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
   const rows=await sdk.asServiceRole.entities.PortalAuthSession.filter({token_hash:hash},'-created_date',1),session=rows[0];
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
- }catch{return false;}
+ }catch(error){throw error;}
 }
 const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 const clean=(v,n=250)=>String(v??'').trim().slice(0,n);
@@ -17,18 +17,18 @@ const requestedTypes=['employee','student','visitor','client'];
 export default async function(req){
  try{
  const base44=createClientFromRequest(req),db=base44.asServiceRole.entities;
- const me=await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(()=>null);
+ const me=await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess).catch(error=>{if([401,403].includes(Number(error?.status||error?.response?.status)))return null;throw error;});
  if(!me?.id||me.disabled||me.termination_date)return Response.json({error:'Sign in required'},{status:401});
  if(!await __portalLoginIsCurrent(req,base44,me))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
+ const body=await req.json();
  const savedIdentity=await db.User.get(me.id);
  const canonicalRoles=(savedIdentity.additional_roles||[]).filter(r=>r!=='full_access'||me.id==='6ae7d733d4b1a647cd3e6f38');
  // A stale IA label is not an authorization grant; only the authorized role editor can grant IA access.
  if(JSON.stringify(canonicalRoles)!==JSON.stringify(savedIdentity.additional_roles||[])){await db.User.update(me.id,{additional_roles:canonicalRoles});me.additional_roles=canonicalRoles;}
- if(me.role==='admin'||me.id==='6ae7d733d4b1a647cd3e6f38'){
+ if(body.action!=='profile'&&(me.role==='admin'||me.id==='6ae7d733d4b1a647cd3e6f38')){
   const stale=await db.User.filter({additional_roles:{$in:['full_access']}},'-created_date',1000);
   for(const person of stale){if(person.id!=='6ae7d733d4b1a647cd3e6f38'&&(person.additional_roles||[]).includes('full_access')){await db.User.update(person.id,{additional_roles:person.additional_roles.filter(r=>r!=='full_access')});await db.PSAudit.create({actor_id:me.id,actor_name:me.email,action:'reserved_full_access_removed',details:person.id});}}
  }
- const body=await req.json();
  const manager=me.role==='admin'||(me.additional_roles||[]).includes('full_access');
  if(body.action==='review_account'){
   if(!manager)return Response.json({error:'Account administrator access required'},{status:403});
@@ -79,5 +79,5 @@ export default async function(req){
   return Response.json({success:true,profile:await db.User.get(me.id),pending:!assigned,requested_type:existing[0]?.requested_type||invitation?.account_type||body.requested_type||'employee'});
  }
  return Response.json({error:'Unknown action'},{status:400});
- }catch{return Response.json({error:'Unable to save registration. Please retry.'},{status:500});}
+ }catch(error){const status=Number(error?.status||error?.response?.status);return Response.json({error:'Account profile temporarily unavailable. Please retry.'},{status:status===429?429:503,headers:{'Retry-After':'2'}});}
 }

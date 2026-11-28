@@ -314,6 +314,7 @@ const AuthenticatedApp = () => {
           >
             Retry Connection
           </button>
+          <button type="button" onClick={navigateToLogin} className="ml-3 mt-5 rounded-md border border-slate-500 px-4 py-2 text-sm">Return to sign in</button>
         </div>
       </div>
     );
