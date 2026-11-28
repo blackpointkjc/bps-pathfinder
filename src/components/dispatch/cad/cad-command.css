@@ -85,3 +85,4 @@
   .cad-resource-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
   .cad-resource-summary button{flex:1 1 78px;padding:5px 7px}
 }
+.grac-feed-indicator{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:12px;line-height:1.4;color:#d3e5ee}.grac-feed-indicator i{width:7px;height:7px;border-radius:50%;background:#22c55e;flex:none}.grac-feed-indicator[data-tone=warning] i{background:#facc15}.grac-feed-indicator b{font-weight:600}

@@ -1,3 +1,4 @@
+import {noteCadRead,noteCadReadFailure,noteCadSourceHealth,getConfirmedCadRead} from '@/lib/cadSourceHealth';
 import { callTimestamp, isVisibleActiveCall } from '../../base44/functions/_shared/callFeedPolicy.js';
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -9,6 +10,7 @@ let inFlight = null;
 let memoryRows = null;
 let memoryRowsAt = 0;
 let requestBackoffUntil = 0;
+let lastGoodRows=null;
 const BACKEND_FEED_LIMIT = 500;
 const SEMANTIC_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 function normalizedText(value) {
@@ -115,6 +117,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
   if (Date.now() < requestBackoffUntil) {
     if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows).slice(0, limit);
     const cached = readLastGoodCalls();
+    if (Array.isArray(lastGoodRows))return filterVisibleActiveCalls(lastGoodRows).slice(0,limit);
     if (cached.length) return cached.slice(0, limit);
     throw new Error('Active calls are waiting for the API retry window.');
   }
@@ -141,14 +144,19 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       const deduped = dedupeOperationalCalls(calls);
       saveLastGoodCalls(deduped);
       memoryRows = deduped;
+      lastGoodRows=deduped;
+      noteCadSourceHealth(payload.source_health);
       const serverReadAt = Date.parse(payload.fetched_at || '');
       memoryRowsAt = Number.isFinite(serverReadAt) ? Math.min(serverReadAt, Date.now()) : Date.now();
+      noteCadRead(memoryRowsAt);
+      requestBackoffUntil=0;
       return deduped;
     } catch (error) {
       primaryError = error;
+      noteCadReadFailure(error);
       if (Number(error?.status || error?.response?.status) === 429 || /429|rate limit|too many requests/i.test(String(error?.message || error?.response?.data?.error || ''))) {
-        requestBackoffUntil = Date.now() + 60_000;
-        if (Array.isArray(memoryRows)) return filterVisibleActiveCalls(memoryRows);
+        requestBackoffUntil = Date.now() + Math.min(60000,Math.max(15000,Number(error?.retry_after_ms)||30000));
+        if (Array.isArray(lastGoodRows)) return filterVisibleActiveCalls(lastGoodRows);
         const cached = readLastGoodCalls();
         if (cached.length) return cached;
         throw error;
@@ -157,6 +165,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
 
     // Never fall back to an unverified raw entity list: historical open statuses
     // are exactly what inflated the active board to the 500-row response cap.
+    if(Array.isArray(lastGoodRows))return filterVisibleActiveCalls(lastGoodRows);
     const cached = readLastGoodCalls();
     if (cached.length) return cached;
     throw primaryError;
@@ -174,4 +183,4 @@ export function clearActiveDispatchCallMemoryCache() {
 
 export { readLastGoodCalls };
 
-export const getActiveDispatchCallReadTime = () => memoryRowsAt;
+export const getActiveDispatchCallReadTime = getConfirmedCadRead;

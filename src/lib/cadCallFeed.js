@@ -1,14 +1,15 @@
+import {getCadSourceSnapshot,cadSourceNeedsPoll,noteCadSourceHealth} from '@/lib/cadSourceHealth';
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const STALE_AFTER_MS = 12 * 1000;
+const STALE_AFTER_MS = 75 * 1000;
 const RECOVERY_COOLDOWN_MS = 30 * 1000;
 const RECOVERY_STAMP_KEY = 'bps:cad-ingestion-recovery-at:v2';
 const LIVE_SYNC_STAMP_KEY = 'bps:cad-live-sync-at:v2';
 const LAST_SUCCESSFUL_SOURCE_POLL_KEY = 'bps:cad-last-successful-source-poll-at:v1';
 const BUSY_LEASE_RETRY_MS = 5_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
-const LIVE_SYNC_COOLDOWN_MS = 60 * 1000;
+const LIVE_SYNC_COOLDOWN_MS = 30 * 1000;
 const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 60 * 1000;
 let liveSyncInFlight = null;
 
@@ -40,8 +41,9 @@ export function cadCallFeedIsStale(calls = [], maxAgeMs = STALE_AFTER_MS) {
     try { return Number(localStorage.getItem(LAST_SUCCESSFUL_SOURCE_POLL_KEY) || 0) || 0; }
     catch { return 0; }
   })();
-  const newest = Math.max(newestCadCallTime(calls), lastPoll);
-  return !newest || Date.now() - newest > maxAgeMs;
+  const health=getCadSourceSnapshot();
+  if(health)return cadSourceNeedsPoll(health);
+  return !lastPoll || Date.now()-lastPoll>maxAgeMs;
 }
 
 function lastRecoveryAt() {
@@ -110,6 +112,7 @@ async function performCadLiveSync() {
       'Live CAD source sync',
     );
     const payload = response?.data || response || {};
+    if(payload?.source_health)noteCadSourceHealth(payload.source_health);
     if (payload?.error) throw new Error(payload.error);
     if (payload?.skipped && /already in progress|ingestion_in_progress/i.test(String(payload.reason || ''))) {
       // Another authorized session or scheduled run owns the one global server
@@ -121,6 +124,7 @@ async function performCadLiveSync() {
     }
     if (payload?.success && !payload?.skipped) {
       try { localStorage.setItem(LAST_SUCCESSFUL_SOURCE_POLL_KEY, String(Date.now())); } catch {}
+      if(payload.source_poll_at)noteCadSourceHealth({poll_at:payload.source_poll_at,poll_status:'success',last_success_at:payload.source_poll_at,website_rows:payload.website_rows,api_rows:payload.api_rows,latest_received:payload.latest_received||null,duration_ms:payload.duration_ms});
     }
     clearLiveSyncBackoff();
     return payload;

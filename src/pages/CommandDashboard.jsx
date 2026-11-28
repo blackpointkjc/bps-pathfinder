@@ -115,7 +115,7 @@ function CommandDashboardInner({embedded=false}) {
         // subscriptions. Do not leave the command board saying AWAITING SYNC while
         // a slower ingestion/recovery request finishes in the background.
         if (!loading) {
-            setSyncStatus({ state: 'ok', lastSync: lastRefresh || new Date(), added: 0, updated: 0, total: calls.length, error: null });
+            setSyncStatus({ state: 'ok', lastSync: lastRefresh, added: 0, updated: 0, total: calls.length, error: null });
         }
     }, [lastRefresh, loading, calls.length]);
 

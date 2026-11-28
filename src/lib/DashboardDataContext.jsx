@@ -6,7 +6,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
+import {getCadReadFailure} from '@/lib/cadSourceHealth';
 import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows, getActiveDispatchCallReadTime } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
@@ -64,7 +64,7 @@ export function DashboardDataProvider({ children }) {
     const [calls, setCalls]           = useState(initialCallsRef.current);
     const [users, setUsers]           = useState([]);
     const [loading, setLoading]       = useState(initialCallsRef.current.length === 0);
-    const [lastRefresh, setLastRefresh] = useState(null);
+    const [lastRefresh, setLastRefresh] = useState(()=>getActiveDispatchCallReadTime()?new Date(getActiveDispatchCallReadTime()):null);
     const [rateLimited, setRateLimited] = useState(false);
     const [requestCount, setRequestCount] = useState(0);
 
@@ -106,20 +106,7 @@ export function DashboardDataProvider({ children }) {
             let callsData = [];
             try {
                 callsData = await loadActiveDispatchCallRows(500);
-                if (cadCallFeedIsStale(callsData)) {
-                    // Recovery can involve a full upstream ingestion and must never
-                    // block the current queue from painting. Keep the rows we already
-                    // have on screen, recover in the background, then refresh once.
-                    void refreshCadIngestionIfStale(callsData).then(recovery => {
-                        if (recovery?.skipped || !recovery?.success) return;
-                        window.setTimeout(() => {
-                            lastRefreshTime.current = 0;
-                            loadData(true);
-                        }, 1500);
-                    }).catch(recoveryError => {
-                        console.warn('[CAD] Background stale-feed recovery did not complete', recoveryError?.message || recoveryError);
-                    });
-                }
+
             } catch (callsErr) {
                 console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
                 throw callsErr;
@@ -138,8 +125,8 @@ export function DashboardDataProvider({ children }) {
                 // Cache is only a fast first paint; the live entity query remains authoritative.
             }
             const confirmedReadAt=getActiveDispatchCallReadTime();
-            setLastRefresh(confirmedReadAt?new Date(confirmedReadAt):null);
-            if(confirmedReadAt && Date.now()-confirmedReadAt<30000)setRateLimited(false);
+            if(confirmedReadAt)setLastRefresh(new Date(confirmedReadAt));
+            if(confirmedReadAt && Date.now()-confirmedReadAt<30000&&!getCadReadFailure())setRateLimited(false);
             lastRefreshTime.current = Date.now();
             setLoading(false);
 

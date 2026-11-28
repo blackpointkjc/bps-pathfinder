@@ -1,3 +1,4 @@
+import GracFeedIndicator from '@/components/dispatch/cad/GracFeedIndicator';
 import usePropertyAssignmentCalls from '@/hooks/usePropertyAssignmentCalls';
 import {needsPropertyAssignment,assignedCadUnitIds,isVerifiedPropertyCall} from '@/lib/cadWorkspaceModel';
 import CadCloneIncidentDialog from '@/components/dispatch/cad/CadCloneIncidentDialog';
@@ -759,7 +760,7 @@ function DispatchWorkspace({embedded=false}) {
                         <p className="mt-0.5 text-[10px] leading-snug text-slate-300">Select an incident, review details, assign responding units</p>
                     </div>
                     <span className={"w-1.5 h-1.5 rounded-full ml-1 "+(callsLoadWarning?"bg-amber-400":loading?"bg-blue-400":"bg-green-400")} />
-                    <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : callsLoadWarning?'DEGRADED':'CAD FEED'}</span>
+                    <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : callsLoadWarning?'DEGRADED':'CAD FEED'}</span><GracFeedIndicator/>
                 </div>
                 
                 <div className="flex-1" />

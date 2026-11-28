@@ -1,7 +1,7 @@
+import GracFeedIndicator from './GracFeedIndicator';
 import { useEffect, useMemo, useState } from 'react';
 import { MonitorPlay, RadioTower, RefreshCw, Search, SlidersHorizontal } from 'lucide-react';
 import { cadAgeLabel, cadTelemetry } from '@/lib/cadOperationalStatus';
-import { formatEasternTime } from '@/lib/easternTime';
 import './cad-command.css';
 
 const FEED = {

@@ -460,7 +460,8 @@ async function fetchLiveWebsiteCalls() {
   return Object.assign(calls, { cacheAgeSeconds: result.cacheAgeSeconds });
 }
 async function fetchLiveApiCalls() {
-  const result = await fetchCadSource(GRAC_API_URL, GRAC_API_URL, "application/json");
+  const url=GRAC_API_URL+"?bpspf_live="+Date.now()+"-"+crypto.randomUUID();
+  const result = await fetchCadSource(url, GRAC_API_URL, "application/json");
   const payload = JSON.parse(result.text);
   console.info("CAD API source", JSON.stringify({ cache_age_seconds: result.cacheAgeSeconds, fetched_at: result.fetchedAt }));
   if (!Array.isArray(payload)) throw new Error("Unexpected GRAC API response");
@@ -999,7 +1000,7 @@ async function acquireIngestionLease(base44, serverRun = false) {
     });
   }
   const lastServer = Date.parse(counter.last_server_poll_at || "");
-  if (!serverRun && Number.isFinite(lastServer) && now - lastServer < 75e3) return { skip: true, reason: "server_source_sync_active", retry_after_ms: 75e3 - (now - lastServer) };
+  if (!serverRun && Number.isFinite(lastServer) && now - lastServer < 75e3 && String(counter.last_source_poll_status||'').startsWith('success')) return { skip: true, reason: "server_source_sync_active", retry_after_ms: 75e3 - (now - lastServer),source_health:{poll_at:counter.last_source_poll_at,poll_status:counter.last_source_poll_status,last_success_at:counter.last_source_success_at||counter.last_source_poll_at,website_rows:counter.last_website_row_count,api_rows:counter.last_api_row_count,latest_received:counter.last_website_latest_received} };
   const lastPollAt = new Date(counter.last_source_poll_at || 0).getTime();
   const lastPollSucceeded = String(counter.last_source_poll_status || "").startsWith("success");
   if (lastPollSucceeded && Number.isFinite(lastPollAt) && now - lastPollAt >= 0 && now - lastPollAt < GLOBAL_SOURCE_POLL_MIN_GAP_MS) {
@@ -1304,7 +1305,7 @@ async function handleGracIngestion(req) {
         success: true,
         skipped: true,
         reason: lease.reason,
-        retry_after_ms: lease.retry_after_ms
+        retry_after_ms: lease.retry_after_ms,source_health:lease.source_health||null
       });
     }
     try {
@@ -1364,13 +1365,14 @@ async function handleGracIngestion(req) {
         await recordSourcePoll(base44, lease, {
           last_source_poll_at: sourceObservedAt,
           last_source_poll_status: "success",
+          last_source_success_at:sourceObservedAt,
           ...scheduledRun ? { last_server_poll_at: (/* @__PURE__ */ new Date()).toISOString(), last_server_poll_duration_ms: Date.now() - startedAt } : {},
           last_website_row_count: websiteIncoming.length,
           last_api_row_count: apiIncoming.length,
           ...latestWebsiteReceived ? { last_website_latest_received: latestWebsiteReceived } : {},
           last_source_poll_duration_ms: Date.now() - startedAt
         });
-        return Response.json({ ...result, source_poll_at: sourceObservedAt, website_rows: websiteIncoming.length, api_rows: apiIncoming.length });
+        return Response.json({ ...result, source_poll_at: sourceObservedAt, website_rows: websiteIncoming.length, api_rows: apiIncoming.length,latest_received:latestWebsiteReceived });
       }
       incoming = await geocodeFreshWebsiteOnlyCalls(incoming);
       incoming = await enrichOfficialIdentifiers(incoming);
@@ -1570,14 +1572,18 @@ async function handleGracIngestion(req) {
       await recordSourcePoll(base44, lease, {
         last_source_poll_at: sourceObservedAt,
         last_source_poll_status: "success:full_reconcile",
+        last_source_success_at:sourceObservedAt,
         last_website_row_count: websiteIncoming.length,
         last_api_row_count: apiIncoming.length,
         ...latestWebsiteReceived ? { last_website_latest_received: latestWebsiteReceived } : {},
         last_source_poll_duration_ms: Date.now() - startedAt
       });
       return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, phase_2a_safety: phase2aSafety, source_poll_at: sourceObservedAt, website_rows: websiteIncoming.length, api_rows: apiIncoming.length, synced_at: (/* @__PURE__ */ new Date()).toISOString(), duration_ms: Date.now() - startedAt });
+    } catch(error){
+      await recordSourcePoll(base44,lease,{last_source_poll_at:new Date().toISOString(),last_source_poll_status:("failed:ingestion:"+String(error?.message||error)).slice(0,240),last_source_poll_duration_ms:Date.now()-startedAt});
+      throw error;
     } finally {
-      await releaseIngestionLease(base44, lease);
+      await releaseIngestionLease(base44, lease).catch(error=>console.warn("GRAC lease release deferred",error?.message||error));
     }
   } catch (error) {
     console.error("GRAC ingestion failed:", error);

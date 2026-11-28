@@ -25,6 +25,7 @@
       "format": "date-time",
       "description": "Most recent completed GRAC source poll"
     },
+    "last_source_success_at": {"type":"string","format":"date-time","description":"Last successfully persisted source poll, retained across temporary failures"},
     "last_source_poll_status": {
       "type": "string",
       "description": "Outcome of the most recent GRAC source poll"

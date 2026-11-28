@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import {cadSourceNeedsPoll,getCadSourceSnapshot} from '@/lib/cadSourceHealth';
 import { requestCadLiveSync } from '@/lib/cadCallFeed';
 
 // One app-wide guarded source poll, including when an officer is not on Dispatch Center.
@@ -10,9 +11,9 @@ export default function CadSourceSyncMonitor({ user }) {
     const roles = new Set((user?.additional_roles || []).map(value => String(value).toLowerCase()));
     const type = String(user?.user_type || user?.account_type || '').toLowerCase();
     const internal = user?.email && user?.employment_status !== 'terminated'
-      && !['client', 'student', 'pending'].includes(role)
+      && !user.disabled&&!user.termination_date&&user.portal_approved!==false&&!['client', 'student', 'pending','visitor'].includes(role)
       && !['client', 'student', 'pending'].includes(type)
-      && !roles.has('client') && !roles.has('student') && !roles.has('pending');
+      && !roles.has('client') && !roles.has('student') && !roles.has('pending')&&!roles.has('visitor');
     if (!internal) return undefined;
     let active = true;
     let running = false;
@@ -22,7 +23,8 @@ export default function CadSourceSyncMonitor({ user }) {
       // Continue a conservative best-effort sync while minimized. Browsers may
       // suspend an entire hidden tab, so server scheduling still owns 24/7 work.
       if (!active || running || !navigator.onLine) return;
-      const minimumInterval = 60_000;
+      const minimumInterval = 30_000;
+      if(!cadSourceNeedsPoll(getCadSourceSnapshot()))return;
       if (Date.now() - lastSyncAttemptAt < minimumInterval) return;
       // The CAD source has an independent backoff and a server lease.
       // An unrelated background 429 must NEVER postpone checking GRAC;
