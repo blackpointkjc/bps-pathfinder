@@ -3,7 +3,22 @@ import { callTimestamp, isVisibleActiveCall } from '../../base44/functions/_shar
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const CACHE_KEY = 'bps-cad-active-calls-v6';
+const CACHE_KEY = 'bps-cad-active-calls-v7';
+const terminalStatuses=new Set(['cleared','cancelled','canceled','closed','completed','resolved']);
+const closedEvents=new Map();
+const rowClosed=row=>row?.manual_dismissed===true||Boolean(row?.time_cleared)||terminalStatuses.has(String(row?.status||'').trim().toLowerCase());
+const eventStamp=row=>{const raw=String(row?.updated_date||row?.time_cleared||'');return raw?Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z')||0:0;};
+export function filterKnownClosedCalls(rows){return (rows||[]).filter(row=>!closedEvents.has(String(row?.id||'')));}
+export function recordCadRealtimeEvent(event){
+ const id=String(event?.data?.id||event?.id||'');if(!id)return;
+ const row=event?.data||{};
+ const closed=event.type==='delete'||rowClosed(row);
+ if(closed){closedEvents.set(id,{at:Date.now(),version:eventStamp(row)});}
+ else if(event.type==='create'||event.type==='update'&&row.status&&eventStamp(row)>0&&eventStamp(row)>(closedEvents.get(id)?.version||0)){closedEvents.delete(id);}
+ for(const [key,entry] of closedEvents)if(Date.now()-entry.at>CACHE_MAX_AGE_MS)closedEvents.delete(key);
+ if(closed){if(Array.isArray(memoryRows))memoryRows=filterKnownClosedCalls(memoryRows);if(Array.isArray(lastGoodRows))lastGoodRows=filterKnownClosedCalls(lastGoodRows);const cached=readLastGoodCalls();saveLastGoodCalls(cached);}
+}
+
 const CACHE_MAX_AGE_MS = 65 * 60 * 1000;
 const MEMORY_DEDUPE_MS = 3_000;
 let inFlight = null;
@@ -18,7 +33,7 @@ function normalizedText(value) {
 }
 
 function filterVisibleActiveCalls(rows = []) {
-  return (rows || []).filter(call => isVisibleActiveCall(call));
+  return filterKnownClosedCalls(rows).filter(call => isVisibleActiveCall(call));
 }
 
 function preferCall(current, candidate) {
@@ -93,11 +108,11 @@ function readLastGoodCalls() {
   }
 }
 
-function saveLastGoodCalls(calls) {
+export function saveLastGoodCalls(calls, savedAt=Date.now()) {
   if (!Array.isArray(calls)) return;
   try {
     window.localStorage.setItem(CACHE_KEY, JSON.stringify({
-      savedAt: Date.now(),
+      savedAt,
       calls,
     }));
   } catch {

@@ -7,7 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import {getCadReadFailure} from '@/lib/cadSourceHealth';
-import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows, getActiveDispatchCallReadTime } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows, getActiveDispatchCallReadTime,readLastGoodCalls,saveLastGoodCalls } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 
@@ -16,21 +16,7 @@ const POLL_INTERVAL_MS = 10_000;        // Realtime paints immediately; recover 
 const RATE_LIMIT_BACKOFF_MS = 15_000;   // Brief local pause only; never make CAD appear dead for minutes after one 429
 const MIN_REFRESH_MS = 3_000;           // Keep fallback reads responsive without overlapping realtime updates
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls
-const ACTIVE_CALL_CACHE_KEY = 'bps-cad-verified-calls-v4';
-// Keep the last good queue through a long minimized/idle period. Individual calls
-// are filtered before they are rendered, and the cache version is bumped when that
-// visibility rule changes.
-const ACTIVE_CALL_CACHE_MAX_AGE_MS = 65 * 60_000;
-
-function readCachedActiveCalls() {
-    try {
-        const cached = JSON.parse(window.localStorage.getItem(ACTIVE_CALL_CACHE_KEY) || 'null');
-        if (!cached || Date.now() - Number(cached.savedAt || 0) > ACTIVE_CALL_CACHE_MAX_AGE_MS || !Array.isArray(cached.calls)) return [];
-        return dedupeOperationalCalls(cached.calls.filter(call => !['Cleared', 'Cancelled'].includes(call?.status)));
-    } catch {
-        return [];
-    }
-}
+function readCachedActiveCalls(){return readLastGoodCalls();}
 
 function parseServerTimestamp(value) {
     if (!value) return null;
@@ -120,7 +106,7 @@ export function DashboardDataProvider({ children }) {
             // slower roster request while still allowing units to populate moments later.
             setCalls(active);
             try {
-                window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: active }));
+                saveLastGoodCalls(active,getActiveDispatchCallReadTime()||Date.now());
             } catch {
                 // Cache is only a fast first paint; the live entity query remains authoritative.
             }
@@ -239,7 +225,7 @@ export function DashboardDataProvider({ children }) {
             setCalls(current => {
                 const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 500 });
                 try {
-                    window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
+                    saveLastGoodCalls(next,getActiveDispatchCallReadTime()||Date.now());
                 } catch {}
                 return next;
             });

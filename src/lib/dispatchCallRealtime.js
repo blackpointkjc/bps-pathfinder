@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls,recordCadRealtimeEvent } from '@/lib/activeDispatchCalls';
 
 const listeners = new Set();
 let entityUnsubscribe = null;
@@ -13,6 +13,7 @@ function startEntitySubscription() {
   if (entityUnsubscribe || connectError) return;
   try {
     const unsubscribe = base44.entities.DispatchCall.subscribe(event => {
+      recordCadRealtimeEvent(event);
       clearActiveDispatchCallMemoryCache();
       for (const listener of [...listeners]) {
         try { listener(event); } catch (error) { console.warn('[CAD realtime] listener failed', error); }
@@ -60,7 +61,7 @@ export function subscribeDispatchCallChanges(listener) {
 
 export function applyDispatchCallEvent(currentCalls, event, {
   hideClosed = true,
-  limit = 250,
+  limit = 500,
 } = {}) {
   const current = Array.isArray(currentCalls) ? currentCalls : [];
   const type = String(event?.type || '').toLowerCase();

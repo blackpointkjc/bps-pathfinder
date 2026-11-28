@@ -49,10 +49,9 @@ import PathfinderTileLayer, { MapThemeToggle, usePathfinderMapTheme } from '@/co
 import TomTomSdkMapPreview from '@/components/map/LazyTomTomMap';
 import DispatcherShiftReports from './DispatcherShiftReports';
 import { withRequestTimeout } from '@/lib/requestTimeout';
-import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLastGoodCalls } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, loadActiveDispatchCallRows, readLastGoodCalls,dedupeOperationalCalls,saveLastGoodCalls,getActiveDispatchCallReadTime } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
-const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v4';
 
 function readCachedDispatchCalls() { return readLastGoodCalls(); }
 
@@ -178,7 +177,7 @@ function DispatchWorkspace({embedded=false}) {
             setActiveCalls(current => {
                 const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 500 });
                 try {
-                    window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
+                    saveLastGoodCalls(next,getActiveDispatchCallReadTime()||Date.now());
                 } catch {}
                 return next;
             });
@@ -412,21 +411,7 @@ function DispatchWorkspace({embedded=false}) {
             // Source ingestion is owned by one guarded timer, not triggered by
             // each feed reader; simultaneous retries previously competed for locks.
 
-            // Show one stable row per upstream call. Prefer the record that already has a B-series CAD number.
-            const uniqueCalls = new Map();
-            for (const call of calls || []) {
-                const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
-                const key = ['CAD clone','dispatch_manual','field_initiated'].includes(call.source)?call.id:call.external_call_id || descriptionKey || call.id;
-                const current = uniqueCalls.get(key);
-                const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
-                const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
-                const currentHasOfficialCad = Boolean(current?.official_cad_verified && (current?.agency_cad_number || current?.call_id));
-                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
-                if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
-            }
-            const recentCalls = [...uniqueCalls.values()].filter(call =>
-                !['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(call.status || '').toLowerCase()) && call.manual_dismissed !== true
-            );
+            const recentCalls=dedupeOperationalCalls(calls);
 
             recentCalls.sort((a, b) => {
                 const timeA = parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0;
@@ -455,7 +440,7 @@ function DispatchWorkspace({embedded=false}) {
             // Don't leave an incident assignable after it clears or leaves the live queue.
             setSelectedCall(current => current ? (recentCalls.find(call => call.id === current.id) || null) : null);
             try {
-                window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: recentCalls }));
+                saveLastGoodCalls(recentCalls,getActiveDispatchCallReadTime()||Date.now());
             } catch {
                 // Last-good cache is only a recovery aid; live Base44 data remains authoritative.
             }

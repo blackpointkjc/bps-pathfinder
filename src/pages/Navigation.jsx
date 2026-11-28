@@ -31,9 +31,9 @@ import { usePathfinderMapTheme } from '@/components/map/PathfinderTileLayer';
 import { applyOfficerLocationEvent, getOfficerLocationSnapshot, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import { announceNavigationInstruction, stopVoice, cancelPatrolSpeedVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternTime } from '@/lib/easternTime';
-import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
-import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
-import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows, getActiveDispatchCallReadTime } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache } from '@/lib/activeDispatchCalls';
+import { DashboardDataProvider,useDashboardData,useOptionalDashboardData } from '@/lib/DashboardDataContext';
+import {getCadReadFailure} from '@/lib/cadSourceHealth';
 import { persistOfficerStatus } from '@/lib/officerStatusService';
 import { lookupNavigationDestinations, lookupNavigationPoint } from '@/lib/navigationGeocoding';
 import { withRequestTimeout } from '@/lib/requestTimeout';
@@ -83,12 +83,16 @@ const MY_STATUSES = [
     { label: 'Out of Service', dot: 'bg-slate-600', shortcode: '10-7' },
 ];
 
-export default function Navigation({embedded=false}={}) {
+export default function Navigation(props={}){
+ const shared=useOptionalDashboardData();
+ return shared?<NavigationWorkspace {...props}/>:<DashboardDataProvider><NavigationWorkspace {...props}/></DashboardDataProvider>;
+}
+function NavigationWorkspace({embedded=false}={}) {
     const navigate = useNavigate();
     const [currentLocation, setCurrentLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [otherUnits, setOtherUnits] = useState([]);
-    const [activeCalls, setActiveCalls] = useState([]);
+    const {calls:activeCalls,loading:cadLoading,lastRefresh:callsCheckedAt,rateLimited:cadRateLimited,manualRefresh:refreshCad}=useDashboardData();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isLiveTracking, setIsLiveTracking] = useState(false);
     // Free map by default: tracking a GPS marker should never commandeer the
@@ -281,8 +285,7 @@ export default function Navigation({embedded=false}={}) {
     const navStepRouteIndexesRef = useRef([]);
     const destinationRequestRef = useRef(0);
     const callsLoadingRef = useRef(false);
-    const [callsError, setCallsError] = useState('');
-    const [callsCheckedAt, setCallsCheckedAt] = useState(null);
+    const callsError=cadRateLimited||getCadReadFailure()||callsCheckedAt&&Date.now()-callsCheckedAt.getTime()>30000?'Showing last confirmed CAD records; live feed delayed.':'';
 
     const patrolSpeedMonitor=usePatrolSpeeding({
         user:currentUser,limit:roadSpeedLimit,limitAt:roadSpeedLimitAt,
@@ -498,45 +501,30 @@ export default function Navigation({embedded=false}={}) {
         };
     }, [currentUser?.id]);
 
-    useEffect(() => {
-        // GRAC ingestion is owned app-wide by DashboardDataProvider. Navigation only
-        // reads DispatchCall so opening the map cannot start another backend sync loop.
-        fetchCalls();
-        let refreshTimer;
-        const unsubscribe = subscribeDispatchCallChanges(event => {
-            if (!event?.data && event?.type !== 'delete') {
-                window.clearTimeout(refreshTimer);
-                refreshTimer = window.setTimeout(() => fetchCalls(), 5000);
-                return;
-            }
-            // Keep the map aligned with the canonical CAD dashboard window. Calls
-            // older than the one-hour operational window are left to history/archive.
-            setActiveCalls(current => applyDispatchCallEvent(current, event, { hideClosed: true, limit: 250 }));
-        });
-        const recoverCalls = () => {
-            window.clearTimeout(refreshTimer);
-            refreshTimer = window.setTimeout(() => fetchCalls(), 200);
-        };
-        // Live DispatchCall events and the ingestion-finished signal repaint
-        // immediately. Reconcile only once per minute instead of every 15s;
-        // opening CAD plus Dispatch no longer queues duplicate 500-row reads.
-        const localInterval = setInterval(() => {
-            if (document.visibilityState === 'visible' && navigator.onLine) fetchCalls();
-        }, 60000);
-        window.addEventListener('bps-cad-ingest-finished', recoverCalls);
-        window.addEventListener('bps-operational-resume', recoverCalls);
-        window.addEventListener('online', recoverCalls);
-        window.addEventListener('pageshow', recoverCalls);
-        return () => {
-            unsubscribe?.();
-            clearInterval(localInterval);
-            window.clearTimeout(refreshTimer);
-            window.removeEventListener('bps-cad-ingest-finished', recoverCalls);
-            window.removeEventListener('bps-operational-resume', recoverCalls);
-            window.removeEventListener('online', recoverCalls);
-            window.removeEventListener('pageshow', recoverCalls);
-        };
-    }, []);
+    // The shell/provider owns call subscriptions and the 10-second reconciliation.
+    // Navigation must not keep its own competing incident list or source poll.
+    const focusedCallRef=useRef('');
+    useEffect(()=>{
+      if(!focusCallId){focusedCallRef.current='';return;}
+      if(focusedCallRef.current===focusCallId)return;
+      const target=activeCalls.find(c=>String(c.id)===String(focusCallId));
+      if(!target)return;
+      focusedCallRef.current=focusCallId;
+      setSelectedCall(target);setShowCallSidebar(true);setCallSidebarCollapsed(false);setCallDistrict(null);
+      if(validPosition(target.latitude,target.longitude)){
+        setMapCenter([Number(target.latitude),Number(target.longitude)]);
+        window.setTimeout(()=>setMapCenter(null),1200);
+        lookupDistrict(target.latitude,target.longitude).then(setCallDistrict).catch(()=>null);
+      }
+    },[activeCalls,focusCallId]);
+    // A cleared/deleted call cannot keep its actionable incident sidebar open.
+    useEffect(()=>{
+      setSelectedCall(previous=>{
+        if(!previous)return previous;
+        return activeCalls.find(call=>String(call.id)===String(previous.id))||null;
+      });
+    },[activeCalls]);
+
 
 
 
@@ -1664,63 +1652,9 @@ export default function Navigation({embedded=false}={}) {
     // Frontend must not call geocoding providers directly (causes 502s / rate limits).
 
     const fetchCalls = async () => {
-        if (callsLoadingRef.current) return;
-        callsLoadingRef.current = true;
-        setCallsRefreshing(true);
-        try {
-            let all = await loadActiveDispatchCallRows(500);
-            if (cadCallFeedIsStale(all)) {
-                // Render the persisted queue now; ingestion runs independently.
-                void refreshCadIngestionIfStale(all).then(recovery => {
-                    if (!recovery?.success || recovery?.skipped) return;
-                    clearActiveDispatchCallMemoryCache();
-                    window.dispatchEvent(new CustomEvent('bps-cad-ingest-finished'));
-                }).catch(error => setCallsError('Source sync delayed: ' + (error?.message || 'retrying')));
-            }
-            const readAt = getActiveDispatchCallReadTime();
-            setCallsCheckedAt(readAt ? new Date(readAt) : null);
-            setCallsError(!readAt || Date.now() - readAt > 30000 ? 'Showing saved calls; live feed is reconnecting.' : '');
-            const uniqueCalls = new Map();
-            for (const call of all || []) {
-                const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
-                const key = call.external_call_id || descriptionKey || call.id;
-                const current = uniqueCalls.get(key);
-                const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
-                const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
-                const currentHasOfficialCad = Boolean(current?.official_cad_verified && (current?.agency_cad_number || current?.call_id));
-                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
-                if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
-            }
-            // Use the same operational visibility and duplicate rules as CAD.
-            // Do not apply a second map-only cap that changes dashboard totals.
-            const active = dedupeOperationalCalls([...uniqueCalls.values()].filter(c =>
-                !['Cleared', 'Cancelled', 'Closed'].includes(String(c.status || ''))
-            ));
-            const { unmapped } = splitCallsByCoords(active);
-            setActiveCalls(active);
-            setUnmappedCalls(unmapped);
-            if (focusCallId) {
-                const target = active.find(c => c.id === focusCallId);
-                if (target) {
-                    setSelectedCall(target);
-                    setShowCallSidebar(true);
-                    setCallSidebarCollapsed(false);
-                    setCallDistrict(null);
-                    if (Number.isFinite(Number(target.latitude)) && Number.isFinite(Number(target.longitude))) {
-                        setMapCenter([Number(target.latitude), Number(target.longitude)]);
-                        window.setTimeout(() => setMapCenter(null), 1200);
-                        lookupDistrict(target.latitude, target.longitude).then(d => setCallDistrict(d)).catch(() => null);
-                    }
-                }
-            }
-            // geocoding handled by backend automation
-        } catch (e) {
-            console.warn('[NAV] fetchCalls error:', e.message);
-            setCallsError(e?.message || 'Call feed unavailable; retrying');
-        } finally {
-            callsLoadingRef.current = false;
-            setCallsRefreshing(false);
-        }
+      if(callsLoadingRef.current)return;
+      callsLoadingRef.current=true;setCallsRefreshing(true);
+      try{await refreshCad();}finally{callsLoadingRef.current=false;setCallsRefreshing(false);}
     };
 
 
@@ -1866,7 +1800,7 @@ export default function Navigation({embedded=false}={}) {
                       key={'tomtom-gps-'+tomTomRecoveryAttempt}
                       embedded allowBlankMapFallback tacticalCamera={!isNavigating?cadMapCamera:null}
                       currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
-                      activeCalls={showActiveCalls ? activeCalls : []}
+                      activeCalls={showActiveCalls ? displayedCalls : []}
                       otherUnits={mapVisibleUnits}
                       route={navRoute}
                       destination={navDestination}
@@ -1899,7 +1833,7 @@ export default function Navigation({embedded=false}={}) {
                     currentLocation={isNavigating ? (navigationDisplayLocation || currentLocation) : currentLocation}
                     destination={navDestination} route={navRoute} trafficSegments={showTomTomTraffic ? navTrafficSegments : []}
                     useOfflineTiles={!isOnline}
-                    activeCalls={showActiveCalls ? activeCalls : []}
+                    activeCalls={showActiveCalls ? displayedCalls : []}
                     heading={heading}
                     locationHistory={isLiveTracking ? locationHistory : []}
                     unitName={unitName || currentUser?.unit_number}
@@ -1943,7 +1877,7 @@ export default function Navigation({embedded=false}={}) {
                 <LiveMapToolbar user={currentUser} status={unitStatus} saving={statusSaving} onStatusChange={handleStatusChange}
                     onBack={() => navigate(cadDestination('CommandDashboard'))} onToggleIndex={embedded&&!isNavigating&&!mapFullscreen?()=>setCadIndexOpen(v=>!v):undefined} indexOpen={cadIndexOpen} onRecenter={recenter}
                     onRefreshCalls={() => { clearBase44ReadCacheMatching('function:getActiveDispatchCalls:'); clearBase44ReadCacheMatching('entity:DispatchCall:'); clearActiveDispatchCallMemoryCache(); fetchCalls(); }} callsRefreshing={callsRefreshing}
-                    callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
+                    callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : cadLoading?'Loading calls':'CAD read not yet confirmed')}
                     criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
                     gpsLabel={!isLiveTracking && (externalReceiver.connected || externalReceiver.connecting) ? (externalReceiver.connecting&&!externalReceiver.connected?'External antenna reconnecting…':externalReceiver.lastFixAt ? 'External antenna connected · Waiting for fresh satellite fix' : 'External antenna connected · No satellite fix yet') : !isLiveTracking && externalReceiver.portGranted ? 'External antenna authorized · Reconnecting receiver' : isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}

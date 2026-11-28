@@ -1,3 +1,4 @@
+import {isVisibleActiveCall} from '../../../base44/functions/_shared/callFeedPolicy.js';
 import {incidentPriority} from '@/lib/incidentPriority';
 /**
  * ActiveCallMarkers — PURE RENDER ONLY.
@@ -67,7 +68,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     const map = useMap();
     if (!calls || calls.length === 0) return null;
 
-    const renderable = calls.filter(c =>
+    const renderable = calls.filter(c => isVisibleActiveCall(c)&&!c.property_closed&&
         Number.isFinite(Number(c.latitude)) && Number.isFinite(Number(c.longitude)) &&
         Number(c.latitude) !== 0 && Number(c.longitude) !== 0
     ).map(c => ({ ...c, latitude: Number(c.latitude), longitude: Number(c.longitude) }));

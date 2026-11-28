@@ -1,3 +1,4 @@
+import {isVisibleActiveCall} from '../../../base44/functions/_shared/callFeedPolicy.js';
 import {incidentPriority} from '@/lib/incidentPriority';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -214,7 +215,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     const previous=layerSnapshotRef.current;
     const callSource=map.getSource('pathfinder-calls');
     if (snapshot.activeCalls!==previous.calls || callSource!==previous.callSource) {
-      const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
+      const calls=(snapshot.activeCalls||[]).filter(call=>isVisibleActiveCall(call)&&!call.property_closed&&mapped(call.latitude,call.longitude));
       callsRef.current=calls;
       callSource?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,priority:incidentPriority(call),label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
       previous.calls=snapshot.activeCalls;
