@@ -383,6 +383,7 @@ export default function AdminUsers({ embedded = false }) {
       emergency_contact_phone: userData.emergency_contact_phone || "",
       role: userData.role || "user",
       additional_roles: userData.additional_roles || [],
+      dispatch_role:userData.dispatch_role===true,
       ps_role:userData.ps_role || 'none',
       assigned_sites: userData.assigned_sites || [],
       additional_certifications: userData.certifications || [],

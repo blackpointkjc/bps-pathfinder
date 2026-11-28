@@ -1,3 +1,4 @@
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { getTeamsSyncConfig, sendTeamChannelMessage, sendTeamsDirectMessage } from '@/lib/teamsGraph';
 
 const roleSet = (user) => new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(r => String(r).toLowerCase()));
-const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
+const isDispatchUser = canAccessDispatchCenter;
 const isOperationalRecipient = (user) => {
   const roles = roleSet(user);
   const userType = String(user?.user_type || user?.account_type || user?.portal_type || '').toLowerCase();

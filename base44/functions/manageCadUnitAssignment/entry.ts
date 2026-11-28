@@ -21,13 +21,13 @@ Deno.serve(async (req) => {
     if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
-    if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
+    if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !['dispatch','dispatcher'].includes(__portalCaller.role) && __portalCaller.dispatch_role!==true && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
     const user = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const roles = new Set((user.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    const allowed = user.role === 'dispatch' || roles.has('dispatch') || roles.has('dispatcher') || user.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim())) || roles.has('cad_access') || Boolean(user.dispatch_role);
+    const allowed = ['dispatch','dispatcher'].includes(user.role) || roles.has('dispatch') || roles.has('dispatcher') || user.role === 'admin' || roles.has('full_access') || roles.has('supervisor') || (user.is_supervisor === true || ['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(user.rank || '').toLowerCase().replace(/[.]/g, '').trim())) || roles.has('cad_access') || user.dispatch_role===true;
     if (!allowed) return Response.json({ error: 'CAD assignment access required' }, { status: 403 });
 
     const { action, call_id, unit_id } = await req.json().catch(() => ({}));

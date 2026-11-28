@@ -54,10 +54,12 @@ Deno.serve(async (req) => {
         const needsRoster = ['rank','unit_number','badge_number','additional_roles','platoon','division','subdivision','substation','supervisor_id','is_supervisor'].some(field => updates[field] !== undefined);
         const targetUsers = needsRoster ? await base44.asServiceRole.entities.User.list(undefined,1000) : (target?[target]:[]);
         if (!target) return Response.json({ error: 'User not found' }, { status: 404 });
-        const permissionFields = ['role','additional_roles','ps_role','portal_approved'];
-        const changedPermissions = permissionFields.filter(field => updates[field] !== undefined && (field === 'additional_roles' ? JSON.stringify([...(updates[field] || [])].map(String).sort()) !== JSON.stringify([...(target[field] || [])].map(String).sort()) : JSON.stringify(updates[field] ?? null) !== JSON.stringify(target[field] ?? null)));
+        const permissionFields = ['role','additional_roles','ps_role','portal_approved','dispatch_role'];
+        const changedPermissions = permissionFields.filter(field => updates[field] !== undefined && (field === 'dispatch_role' ? (updates[field]===true)!==(target[field]===true) : field === 'additional_roles' ? JSON.stringify([...(updates[field] || [])].map(String).sort()) !== JSON.stringify([...(target[field] || [])].map(String).sort()) : JSON.stringify(updates[field] ?? null) !== JSON.stringify(target[field] ?? null)));
         if (changedPermissions.length && user.id !== '6ae7d733d4b1a647cd3e6f38') return Response.json({error:'Account role changes are restricted to Colonel Hiers.'},{status:403});
         if(user.id !== '6ae7d733d4b1a647cd3e6f38') for(const field of permissionFields)delete updates[field];
+        if(updates.dispatch_role!==undefined&&typeof updates.dispatch_role!=='boolean')return Response.json({error:'Dispatch role must be true or false'},{status:400});
+        if(updates.dispatch_role===true&&['client','student','visitor'].some(r=>r===String(target.user_type||'').toLowerCase()||(updates.additional_roles||target.additional_roles||[]).includes(r)))return Response.json({error:'Dispatch access requires a staff account'},{status:403});
         if (Array.isArray(updates.additional_roles) && userId !== '6ae7d733d4b1a647cd3e6f38') {
             updates.additional_roles = updates.additional_roles.filter((role:any) => String(role).toLowerCase() !== 'accounting');
         }
@@ -75,7 +77,7 @@ Deno.serve(async (req) => {
         if((updates.additional_roles||target.additional_roles||[]).includes('ia')&&['client','student','visitor'].some(r=>(updates.additional_roles||target.additional_roles||[]).includes(r)||target.user_type===r))return Response.json({error:'IA access requires a staff account.'},{status:403});
         const targetRoles = new Set((target.additional_roles || []).map((role: string) => String(role).toLowerCase()));
         const isSystemManager = user.role === 'admin' || roles.has('full_access');
-        const internalEmployeeRoles = ['cad_access','officer','supervisor','hr','accounting','trainer','support_staff'];
+        const internalEmployeeRoles = ['cad_access','dispatch','dispatcher','officer','supervisor','hr','accounting','trainer','support_staff'];
         const isInternalEmployee = target.role === 'admin' || internalEmployeeRoles.some(role => targetRoles.has(role)) || ['support staff', 'human resources'].includes(String(target.rank || '').toLowerCase());
         const targetIsClient = targetRoles.has('client') || [target.rank,target.user_type,target.account_type,target.portal_type].some(value => String(value || '').trim().toLowerCase() === 'client');
         if (!isSystemManager && roles.has('hr') && targetIsClient) return Response.json({error:'Client accounts are managed by administrators'},{status:403});
@@ -264,7 +266,7 @@ Deno.serve(async (req) => {
           try{
             await base44.asServiceRole.entities.AuditLog.create({
               entity_type:'User',entity_id:userId,
-              action:['employment_status','termination_date','account_status','role','ps_role','additional_roles'].includes(field)?'status_change':'update',
+              action:['employment_status','termination_date','account_status','role','ps_role','additional_roles','dispatch_role'].includes(field)?'status_change':'update',
               field_changed:field,actor_id:user.id,actor_name:String(user.email||''),
               before_value:safeAuditValue(field,target[field]),after_value:safeAuditValue(field,updatePayload[field]),
               timestamp:now,description:`Employee profile change: ${field}`,
@@ -275,7 +277,7 @@ Deno.serve(async (req) => {
         // Confirm edits to identity/contact/onboarding fields reached persistent User.
         // A successful SDK call alone is not proof that every field was retained.
         const verifiedUser = await base44.asServiceRole.entities.User.get(userId);
-        const verifiedFields = ['role','ps_role','additional_roles','termination_date','employment_status','account_status','profile_photo_url','profile_photo_original_url','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','substation','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
+        const verifiedFields = ['role','ps_role','additional_roles','dispatch_role','termination_date','employment_status','account_status','profile_photo_url','profile_photo_original_url','platoon','oversight_platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name','first_name','last_name','date_of_birth','address','city','state','zip','mobile_phone','badge_number','hire_date','division','subdivision','substation','dcjs_number','dcjs_expiration','firearm_expiration','drivers_license_number','drivers_license_state','drivers_license_expiration','emergency_contact_name','emergency_contact_relationship','emergency_contact_phone'];
         const missingWrites = verifiedFields.filter(field => updatePayload[field] !== undefined && JSON.stringify(verifiedUser?.[field] ?? null) !== JSON.stringify(updatePayload[field] ?? null));
         if (missingWrites.length) return Response.json({ error: 'Account data was not confirmed saved: ' + missingWrites.join(', '), unsaved_fields: missingWrites }, { status: 503 });
         try { await notifyPlatoonChange(base44.asServiceRole.entities, target, verifiedUser); }

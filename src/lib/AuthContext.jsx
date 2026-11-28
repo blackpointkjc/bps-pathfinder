@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
       // Newly invited student accounts can be created by Base44 only when the
       // invitation is accepted. Recover their trainer-owned enrollment by the
       // authenticated email before choosing the restricted first-login screen.
-      const assigned = (currentUser.additional_roles || []).length > 0 || currentUser.role === 'admin' || currentUser.role === 'dispatch';
+      const assigned = (currentUser.additional_roles || []).length > 0 || currentUser.role === 'admin' || ['dispatch','dispatcher'].includes(currentUser.role) || currentUser.dispatch_role===true;
       if (!assigned && String(currentUser.rank || '').toLowerCase() !== 'student registration pending') {
         try {
           const response = await base44.functions.invoke('resolveStudentEnrollment', {});
