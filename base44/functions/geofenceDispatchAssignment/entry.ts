@@ -48,6 +48,17 @@ async function withRetry<T>(operation: () => Promise<T>, attempts = 3): Promise<
   throw lastError;
 }
 
+// TimeClock stores "Site name - address"; use exact ID/name/address or the
+// exact site-name portion, not a substring or a division-wide match.
+function clockedAtProperty(entry:any,property:any){
+ if(!entry?.clock_in||entry.clock_out||entry.archived===true||property?.id==='public-helpme')return false;
+ const at=Date.parse(entry.clock_in);if(!Number.isFinite(at)||at>Date.now())return false;
+ const normalize=(v:any)=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+ const location=normalize(entry.location);
+ const site=normalize(property.site_name),address=normalize(property.address),id=normalize(property.id);
+ const entryId=normalize(entry.location_id||entry.site_id||entry.property_id);
+ return Boolean((entryId&&entryId===id)||(location&&(location===id||location===site||location===address||(site&&address&&location===site+' - '+address)||(site&&location.split(/\s+-\s+|:\s+/)[0]===site))));
+}
 function isFieldOfficer(user: any) {
   const rank = lower(user?.rank);
   if (!user?.email || user?.termination_date || user.disabled || ['suspended','terminated','inactive','denied'].includes(lower(user.account_status)) || ['suspended','terminated'].includes(lower(user.employment_status))) return false;
@@ -285,6 +296,7 @@ Deno.serve(async (req) => {
       const email = lower(officer.email);
       const session = activeByEmail.get(email);
       const openEntry = openEntryByEmail.get(email);
+      const onSiteClockIn=clockedAtProperty(openEntry,property);
       const sessionAt = new Date(session?.last_update || session?.updated_date || session?.created_date || 0).getTime();
       const liveSessionFresh = Boolean(session && session.session_active !== false
         && Number.isFinite(sessionAt) && sessionAt >= heartbeatCutoff);
@@ -301,7 +313,7 @@ Deno.serve(async (req) => {
 
       if (!liveSessionFresh) reasons.push('Officer is offline or connection is stale');
       if (!status || !['available','dispatched','enroute','en route','on scene','busy','on patrol'].includes(status)) reasons.push(`Status is ${session?.status || officer.status || 'unknown'}`);
-      if (!reliableGps) reasons.push('Fresh GPS required to determine the closest officer');
+      if (!reliableGps&&!onSiteClockIn) reasons.push('Fresh GPS required for an off-site response');
       const authorizationValues = [
         officer.assigned_location, officer.assigned_location_id, officer.location_id,
         ...(Array.isArray(officer.assigned_locations) ? officer.assigned_locations : []),
@@ -335,7 +347,8 @@ Deno.serve(async (req) => {
 
       const distance = reliableGps ? distanceMiles(hasCoordinates(call.latitude, call.longitude) ? Number(call.latitude) : propertyLat, hasCoordinates(call.latitude, call.longitude) ? Number(call.longitude) : propertyLon, lat, lon) : Number.POSITIVE_INFINITY;
       const distanceMeters = Number.isFinite(distance) ? distance * 1609.344 : Number.POSITIVE_INFINITY;
-      // Rank online units by distance; a payroll site or another active call does not exclude them.
+      // An open clock-in for the exact affected site takes precedence over distance.
+      // Other eligible officers remain backups, or primary if no site officer is eligible.
 
       const locationFallback = !reliableGps;
       const clockInTime = openEntry?.clock_in || session?.clock_in_time || null;
@@ -347,6 +360,7 @@ Deno.serve(async (req) => {
         status: session?.status || officer.status || (openEntry ? 'Available' : ''),
         distance_miles: Number.isFinite(distance) ? Number(distance.toFixed(2)) : null,
         eta_minutes: Number.isFinite(distance) ? Math.max(1, Math.ceil(distance * 2)) : null,
+        site_clocked_in:onSiteClockIn,
         location_fallback: locationFallback,
         authorization_fallback: locationFallback && !authorizedForProperty,
         clock_in_time: clockInTime,
@@ -358,18 +372,19 @@ Deno.serve(async (req) => {
         ranked.push({
           ...summary,
           score,
-          reasons: ['Online', 'Not Out of Service', 'Fresh reliable GPS', 'Ranked by distance to call; clock-in not required'],
+          reasons: ['Online','Not Out of Service',...(onSiteClockIn?['Clocked in at affected property','Site officer priority']:['Fresh reliable GPS','Ranked by distance to call'])],
         });
       }
     }
 
     ranked.sort((a, b) => {
+      if(Boolean(a.site_clocked_in)!==Boolean(b.site_clocked_in))return a.site_clocked_in?-1:1;
       if (Boolean(a.location_fallback) !== Boolean(b.location_fallback)) return a.location_fallback ? 1 : -1;
       if (a.score !== b.score) return a.score - b.score;
       return new Date(a.clock_in_time || 0).getTime() - new Date(b.clock_in_time || 0).getTime();
     });
     const existingCallAssignments = (assignments || []).filter((item: any) =>
-      String(item.call_id) === callId && !['cleared', 'cancelled'].includes(lower(item.status))
+      String(item.call_id) === callId && !['cleared', 'cancelled','canceled','closed','completed','resolved'].includes(lower(item.status))
     );
     const existingAssignedUnitIds = new Set([...existingCallAssignments.map((item: any) => String(item.unit_id)),...(call.assigned_units||[]).map(String)]);
     const previouslyCleared=new Set((assignments||[]).filter((a:any)=>lower(a.status)==='cleared').map((a:any)=>String(a.unit_id)));
@@ -424,7 +439,7 @@ Deno.serve(async (req) => {
         const assignmentRole = hasPrimaryAssignment ? 'backup' : 'primary';
         hasPrimaryAssignment = true;
         const existingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: unitId }, '-assigned_at', 20);
-        const hasActiveAssignment = (existingAssignments || []).some((item: any) => !['cleared', 'cancelled'].includes(lower(item.status)));
+        const hasActiveAssignment = (existingAssignments || []).some((item: any) => !['cleared', 'cancelled','canceled','closed','completed','resolved'].includes(lower(item.status)));
         // Automatic dispatch must never resurrect an officer who already cleared this call.
         // A dispatcher can explicitly reassign later through the manual assignment workflow,
         // but realtime/refresh reevaluation cannot recreate the cleared assignment.
@@ -601,6 +616,7 @@ Deno.serve(async (req) => {
         live_approved_by: property.auto_dispatch_live_approved_by || null,
         response_radius_miles: radius,
         required_units: requiredUnits,
+        primary_selection_policy:'clocked_in_at_property_first_then_nearest_eligible',
         staffed_units: totalStaffedUnits,
         staffing_shortfall: staffingShortfall,
         backup_required: Boolean(property.auto_dispatch_backup_required),
@@ -612,8 +628,8 @@ Deno.serve(async (req) => {
       },
       description: simulation
         ? 'Phase 2A safety simulation; no assignment or unit status was changed.'
-        : decision === 'assigned' ? 'Verified property alert fully staffed with the closest eligible unit(s) in live mode.'
-        : decision === 'partially_assigned' ? `Closest eligible unit(s) assigned; ${staffingShortfall} additional qualified unit(s) still required.`
+        : decision === 'assigned' ? 'Verified property alert staffed; eligible clocked-in property officers take precedence, then closest eligible units.'
+        : decision === 'partially_assigned' ? `Site-priority eligible unit(s) assigned; ${staffingShortfall} additional qualified unit(s) still required.`
         : decision === 'no_eligible_unit' ? 'No eligible unit available. Manual assignment remains available.' : 'Phase 2 shadow recommendation; no assignment or unit status was changed.',
     };
     await renewLease();
@@ -637,8 +653,8 @@ Deno.serve(async (req) => {
       evaluation_id: evaluation?.id,
       staffing_shortfall: staffingShortfall,
       configuration_snapshot: evaluationData.configuration_snapshot,
-      message: decision === 'assigned' ? 'Closest eligible unit assignment created.'
-        : decision === 'partially_assigned' ? `Closest eligible unit assigned; ${staffingShortfall} additional qualified unit(s) still required.`
+      message: decision === 'assigned' ? 'Site-priority eligible unit assignment created.'
+        : decision === 'partially_assigned' ? `Site-priority eligible unit assigned; ${staffingShortfall} additional qualified unit(s) still required.`
         : decision === 'no_eligible_unit' ? 'No eligible unit available.' : 'Shadow recommendation created. Dispatcher retains full control.',
     });
   } catch (error:any) {

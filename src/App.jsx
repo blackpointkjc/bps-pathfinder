@@ -181,12 +181,12 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout
   ? <Layout currentPageName={currentPageName}><PageErrorBoundary pageName={currentPageName}><Suspense fallback={<div role="status" className="p-6 text-slate-300">Loading workspace…</div>}>{children}</Suspense></PageErrorBoundary></Layout>
   : <PageErrorBoundary pageName={currentPageName}><Suspense fallback={<div role="status" className="p-6 text-slate-300">Loading workspace…</div>}>{children}</Suspense></PageErrorBoundary>;
 
-function LoadingScreen() {
+function LoadingScreen({onRetry}) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-slate-950 text-slate-100">
       <div className="text-center">
         <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-slate-700 border-t-blue-400" />
-        <p className="mt-4 text-xs font-bold tracking-[0.2em] text-slate-400">LOADING PATHFINDER</p>
+        <p className="mt-4 text-xs font-bold tracking-[0.2em] text-slate-400">LOADING PATHFINDER</p><p className="mt-2 text-sm text-slate-300">Verifying your secure session.</p><button type="button" className="mt-4 rounded border border-slate-500 px-4 py-2 text-sm" onClick={onRetry}>Retry connection</button>
       </div>
     </div>
   );
@@ -244,7 +244,7 @@ const AuthenticatedApp = () => {
       .finally(()=>clearTimeout(cap));
     return()=>{active=false;clearTimeout(cap);};
   },[user?.id,publicEntry,preparedUserId]);
-  const welcomeOverlay = user && preparedUserId!==user.id && !publicEntry ? <div className="portal-welcome" role="status" aria-live="polite"><div>
+  const welcomeOverlay = user && preparedUserId!==user.id && !publicEntry ? <div className="portal-welcome portal-welcome-nonblocking" role="status" aria-live="polite"><div>
     {(user.profile_photo_url || user.profile_photo_original_url) ? <img src={user.profile_photo_url || user.profile_photo_original_url} alt="Your profile" /> : <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full border-2 border-amber-400 text-4xl">{String(user.last_name || user.full_name || '?').slice(0,1)}</div>}
     <p className="mb-3 text-xs tracking-[.25em] text-amber-300">BLACKPOINT · PATHFINDER</p><h1>Welcome, {[user.rank,user.last_name || user.full_name].filter(Boolean).join(' ')}</h1><p className="mt-3 text-slate-300">{startupError||startupProgress.label+'…'}</p><progress aria-label="Preparing workspace" max={startupProgress.total} value={startupProgress.completed}/>
     {startupError&&<div className="mt-6 flex justify-center gap-3"><button type="button" className="rounded-full bg-amber-300 px-5 py-3 font-bold text-black" onClick={()=>window.location.reload()}>Retry preparation</button><button type="button" className="rounded-full border border-slate-500 px-5 py-3" onClick={()=>logout(true)}>Sign out</button></div>}
@@ -254,7 +254,7 @@ const AuthenticatedApp = () => {
   if (location.pathname.toLowerCase() === '/publicprofessionalstandards') return <Navigate replace to="/IAFORM" />;
   if (authEntry(location).isEntry) return <PortalLogin />;
 
-  if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen />;
+  if (isLoadingAuth || (!isAuthenticated && isLoadingPublicSettings)) return <LoadingScreen onRetry={checkAppState} />;
 
   if (authError?.type === 'user_not_registered') return <PortalLogin />;
 
@@ -273,8 +273,8 @@ const AuthenticatedApp = () => {
   // Authentication alone is not portal authorization. Newly invited users stay
   // in restricted onboarding until an administrator assigns their category.
   const accessRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const approvedCategory = user?.role === 'admin' || user?.role === 'dispatch' ||
-    ['ia','full_access','officer','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer','visitor'].some(role => accessRoles.has(role));
+  const approvedCategory = user?.role === 'admin' || ['dispatch','dispatcher'].includes(user?.role) || user?.dispatch_role===true ||
+    ['ia','full_access','officer','dispatch','dispatcher','cad_access','supervisor','client','student','support','support_staff','hr','accounting','trainer','visitor'].some(role => accessRoles.has(role));
   if (accountLock) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-950 p-6 text-slate-100">

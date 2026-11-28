@@ -106,3 +106,6 @@
   html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid{min-height:280px!important;flex:1 0 280px!important}
  }
 }
+
+/* Optional tool preloading cannot block dispatch controls. */
+.portal-welcome.portal-welcome-nonblocking{pointer-events:none!important;display:none!important}

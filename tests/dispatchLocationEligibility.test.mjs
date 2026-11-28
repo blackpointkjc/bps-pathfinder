@@ -18,3 +18,22 @@ reset();tables.User[0].dispatch_hold_new_calls=true;r=await call();assert.equal(
 reset();tables.User.push({id:'closer',email:'closer@example.test',rank:'Officer',additional_roles:['officer'],status:'Available'});tables.ActiveOfficer.push({...tables.ActiveOfficer[0],id:'closer-live',officer_email:'closer@example.test',latitude:37.5401});r=await call();assert.equal(tables.CallAssignment[0].unit_id,'closer','closest online officer wins even without clock-in');
 console.log('PASS: closest online officer; no payroll or existing-call blocker; offline/OOS/stale/hold excluded; GPS required for nearest ranking.');
 
+
+// Property alerts prefer the actual open payroll site, not assigned region or
+// the nearest officer at another property. The existing public-call policy is unchanged.
+function propertyReset(){
+ reset();tables.DispatchCall[0].source='richmond';
+ tables.Location=[{id:'armstrong',site_name:'Armstrong',address:'100 Test Street',latitude:37.54,longitude:-77.43,active:true,auto_dispatch_enabled:true,auto_dispatch_mode:'live',auto_dispatch_live_approved_at:current,auto_dispatch_live_approved_by:'admin'}];
+ tables.PropertyAlert=[{id:'alert-property',callId:'public-call',propertyId:'armstrong',lifecycle_status:'active'}];
+ tables.TimeEntry[0].location='Armstrong - 100 Test Street';
+ tables.User.push({id:'closer',email:'closer@example.test',rank:'Officer',additional_roles:['officer'],status:'Available'});
+ tables.ActiveOfficer.push({...tables.ActiveOfficer[0],id:'closer-live',officer_email:'closer@example.test',latitude:37.54001});
+ tables.TimeEntry.push({officer_email:'closer@example.test',clock_in:clockIn,location:'Armstrong Annex - 200 Test Street'});
+}
+propertyReset();r=await call();assert.equal(r.status,200,JSON.stringify(r));assert.equal(tables.CallAssignment[0].unit_id,'eligible');assert.equal(tables.CallAssignment[0].role,'primary');
+propertyReset();tables.ActiveOfficer[0].latitude=null;tables.ActiveOfficer[0].longitude=null;r=await call();assert.equal(tables.CallAssignment[0].unit_id,'eligible','on-site open clock-in is adequate for site preference even without a fresh GPS fix');
+propertyReset();tables.ActiveOfficer[0].status='Out of Service';r=await call();assert.equal(tables.CallAssignment[0].unit_id,'closer','OOS site officer never wins');
+propertyReset();tables.TimeEntry[0].clock_out=current;r=await call();assert.equal(tables.CallAssignment[0].unit_id,'closer','clocked out officer is no longer preferred');
+propertyReset();tables.Location[0].auto_dispatch_required_units=2;r=await call();assert.equal(tables.CallAssignment[0].unit_id,'eligible');assert.equal(tables.CallAssignment[0].role,'primary');assert.equal(tables.CallAssignment[1].unit_id,'closer');assert.equal(tables.CallAssignment[1].role,'backup');
+propertyReset();tables.ActiveOfficer[0].status='On Scene';tables.ActiveOfficer[0].current_call_id='other';r=await call();assert.equal(tables.CallAssignment[0].unit_id,'eligible');assert.equal(tables.ActiveOfficer[0].current_call_id,'other','site officer receives queued assignment without losing current incident');
+console.log('PASS: exact clock-in site primary, nearest eligible backup, similar names not matched, closed punches excluded, active-call queue preserved.');

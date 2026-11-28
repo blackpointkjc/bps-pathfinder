@@ -88,11 +88,11 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = useCallback(async (requestId) => {
     try {
       setIsLoadingAuth(true);
-      let currentUser = await withRequestTimeout(base44.auth.me(), 12000, 'Authentication request');
-      const session=await base44.functions.invoke('portalSession',{action:'check'});
+      let currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
+      const session=await withTimeout(base44.functions.invoke('portalSession',{action:'check'}),12000,'Secure session verification');
       if(!session.data?.success)throw new Error(session.data?.error||'Unable to verify your session. Please retry.');
       currentUser.__portal_session_started_at=session.data.session_started_at;
-      const registration = await base44.functions.invoke('portalRegistration', {action:'profile'});
+      const registration = await withTimeout(base44.functions.invoke('portalRegistration', {action:'profile'}),12000,'Account profile verification');
       if (registration.data?.error) throw new Error(registration.data.error);
       if (registration.data?.profile) currentUser = {...currentUser,...registration.data.profile};
       currentUser=effectivePortalIdentity(currentUser);
@@ -122,7 +122,7 @@ export const AuthProvider = ({ children }) => {
       const assigned = (currentUser.additional_roles || []).length > 0 || currentUser.role === 'admin' || ['dispatch','dispatcher'].includes(currentUser.role) || currentUser.dispatch_role===true;
       if (!assigned && String(currentUser.rank || '').toLowerCase() !== 'student registration pending') {
         try {
-          const response = await base44.functions.invoke('resolveStudentEnrollment', {});
+          const response = await withTimeout(base44.functions.invoke('resolveStudentEnrollment', {}),5000,'Student enrollment lookup');
           const enrollment = response?.data || response || {};
           if (enrollment.student_pending) {
             currentUser = { ...currentUser, ...{
@@ -137,6 +137,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
+      if(requestId!==requestSequence.current)return;
       // Authentication refresh/page reload is not a duty-status transition.
       // Preserve the authoritative server status so a browser refresh cannot turn
       // an Available/Enroute/On Scene officer OOS or retire a valid live session.
@@ -198,6 +199,12 @@ export const AuthProvider = ({ children }) => {
       const saved=offlineIdentity();
       if(saved&&!requiresFreshLogin(saved.__portal_session_started_at)){setUser(saved);setIsAuthenticated(true);setAuthError(null);setIsLoadingAuth(false);setIsLoadingPublicSettings(false);queryClientInstance.setQueryData(['currentUser'],saved);return;}
     }
+    const deadline=setTimeout(()=>{
+      if(requestId!==requestSequence.current)return;
+      requestSequence.current+=1;
+      setIsLoadingAuth(false);setIsLoadingPublicSettings(false);
+      setAuthError({type:'unknown',message:'Secure connection timed out. Retry connection to verify your account.'});
+    },25000);
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
@@ -223,11 +230,13 @@ export const AuthProvider = ({ children }) => {
           12000,
           'App settings request'
         );
+        if(requestId!==requestSequence.current)return;
         setAppPublicSettings(publicSettings);
         
         // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
           await authPromise;
+          if(requestId!==requestSequence.current)return;
         } else {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
@@ -236,6 +245,7 @@ export const AuthProvider = ({ children }) => {
       } catch (appError) {
         console.error('App state check failed:', appError);
         const authenticatedUser = appParams.token ? await authPromise.catch(() => null) : null;
+        if(requestId!==requestSequence.current)return;
         if (authenticatedUser) {
           // A signed-in session can continue even when the public-settings
           // endpoint is temporarily slow/unavailable. Retry settings later rather
@@ -279,6 +289,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingAuth(false);
       }
     } catch (error) {
+      if(requestId!==requestSequence.current)return;
       console.error('Unexpected error:', error);
       setAuthError({
         type: 'unknown',
@@ -286,7 +297,7 @@ export const AuthProvider = ({ children }) => {
       });
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
-    }
+    } finally {clearTimeout(deadline);}
   }, [checkUserAuth]);
 
   useEffect(() => {
