@@ -1,3 +1,4 @@
+import useRecentPropertyIncidents from '@/hooks/useRecentPropertyIncidents';
 import usePropertyAssignmentCalls from '@/hooks/usePropertyAssignmentCalls';
 import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
 import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
@@ -55,6 +56,7 @@ function CommandDashboardInner({embedded=false}) {
     const { calls, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
     const { user: authenticatedUser } = useAuth();
     const {ids:propertyIds,error:propertyError}=usePropertyAssignmentCalls(calls);
+    const propertyLog=useRecentPropertyIncidents(authenticatedUser?.id);
     const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(authenticatedUser?.id||authenticatedUser?.email);
     useEffect(()=>{const sync=()=>{const next=readCadDisplaySettings();setLocalScale(next.scale);setMonitor(next.monitor);};window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
 
@@ -71,12 +73,12 @@ function CommandDashboardInner({embedded=false}) {
     const linkedCallApplied = useRef(null);
     useEffect(() => {
         if (!linkedCallId){linkedCallApplied.current=null;return;}
-        if (linkedCallApplied.current===linkedCallId || !calls.length) return;
-        const match = calls.find(call => String(call.id) === String(linkedCallId));
+        if (linkedCallApplied.current===linkedCallId || !calls.length&&!propertyLog.rows.length) return;
+        const match = calls.find(call => String(call.id) === String(linkedCallId))||propertyLog.rows.find(call=>String(call.id)===String(linkedCallId));
         if (!match) return;
         linkedCallApplied.current = linkedCallId;
         setSelectedCall(match);
-    }, [linkedCallId, calls]);
+    }, [linkedCallId, calls,propertyLog.rows]);
 
 
     // Re-render every second for live elapsed timers
@@ -165,7 +167,7 @@ function CommandDashboardInner({embedded=false}) {
 
     return <>
       {!embedded&&monitor&&<CadIncidentMonitor calls={calls} loading={loading} onOpen={setSelectedCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin} propertyIds={propertyIds}/>}
-      <LiveCommandWorkspace propertyIds={propertyIds} propertyError={propertyError} currentUser={currentUser} selfAttachUser={isOperationalOfficer(currentUser)?currentUser:null} monitoredIds={monitoredIds} onTogglePin={togglePin} standaloneMonitor={!embedded?monitor:undefined} onToggleMonitor={!embedded?toggleMonitor:undefined} emergencyControl={<OfficerDistressButton currentUser={currentUser} compact/>} officerMode standaloneZoom={embedded?1:cadScaleValue(localScale)} unified={true} showMap={false} canManage={false} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
+      <LiveCommandWorkspace propertyRows={propertyLog.rows} propertyLoading={propertyLog.loading} propertyLogError={propertyLog.error} onPropertyRefresh={propertyLog.refresh} propertyIds={propertyIds} propertyError={propertyError} currentUser={currentUser} selfAttachUser={isOperationalOfficer(currentUser)?currentUser:null} monitoredIds={monitoredIds} onTogglePin={togglePin} standaloneMonitor={!embedded?monitor:undefined} onToggleMonitor={!embedded?toggleMonitor:undefined} emergencyControl={<OfficerDistressButton currentUser={currentUser} compact/>} officerMode standaloneZoom={embedded?1:cadScaleValue(localScale)} unified={true} showMap={false} canManage={false} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);propertyLog.refresh();}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} 
         canChangePriority={false} canClear={false}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} initialFocus={cadFocus}

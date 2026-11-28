@@ -36,6 +36,73 @@ async function readWithRetry<T>(label: string, loader: () => Promise<T>, fallbac
   return { data: fallback, error: message };
 }
 
+// Fixed, read-only operational window. Never expose arbitrary history or
+// caller contact details to officers through this action.
+const PROPERTY_WINDOW_MS=12*60*60*1000;
+const terminalPropertyStatus=(status:any)=>['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(status));
+async function recentPropertyIncidents(db:any,now=Date.now()){
+ const since=new Date(now-PROPERTY_WINDOW_MS).toISOString(),until=new Date(now).toISOString();
+ const range={$gte:since,$lte:until};
+ const pages=async(entity:any,query:any,sort:string)=>{
+   const all:any[]=[];
+   for(let skip=0;skip<10000;skip+=200){
+     const page=await entity.filter(query,sort,200,skip);
+     if(!Array.isArray(page))throw Error('Invalid property log response');
+     all.push(...page);if(page.length<200)return all;
+   }
+   throw Error('Property incident log exceeded its safe retrieval limit');
+ };
+ const stamp=(value:any)=>{const raw=String(value||'').trim();return raw?Date.parse(/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(raw)?raw:raw+'Z'):NaN;};
+ const alerts=await pages(db.PropertyAlert,{$and:[{is_test:{$ne:true}},{lifecycle_status:{$nin:['test','false_alarm']}},{$or:[{callTime:range},{time_received:range},{created_date:range}]}]},'-created_date');
+ const grouped=new Map<string,any[]>();
+ for(const a of alerts){if(!a.callId||!a.propertyId||a.propertyId==='public-helpme'||a.is_test===true||['test','false_alarm'].includes(lower(a.lifecycle_status)))continue;const id=String(a.callId);if(!grouped.has(id))grouped.set(id,[]);grouped.get(id)!.push(a);}
+ if(!grouped.size)return [];
+ const batch=async(entity:any,field:string,ids:string[],sort:string)=>{
+   const all:any[]=[];for(let i=0;i<ids.length;i+=100)all.push(...await pages(entity,{[field]:{$in:ids.slice(i,i+100)}},sort));return all;
+ };
+ const ids=[...grouped.keys()];
+ const [live,archives]=await Promise.all([batch(db.DispatchCall,'id',ids,'-created_date'),batch(db.CallHistory,'original_call_id',ids,'-archived_date')]);
+ const liveById=new Map(live.map(c=>[String(c.id),c]));
+ const archiveById=new Map<string,any>();for(const c of archives)if(!archiveById.has(String(c.original_call_id)))archiveById.set(String(c.original_call_id),c);
+ const assignmentIds=[...new Set([...ids,...archives.map(c=>String(c.id))])];
+ const assignments=await batch(db.CallAssignment,'call_id',assignmentIds,'-assigned_at');
+ const actorIds=[...new Set([...assignments.map(a=>a.unit_id),...live.flatMap(c=>c.assigned_units||[]),...archives.flatMap(c=>c.assigned_units||[])].filter(Boolean).map(String))];
+ const [units,sessions]=await Promise.all([batch(db.Unit,'id',actorIds,'-last_update_at'),batch(db.ActiveOfficer,'id',actorIds,'-created_date')]);
+ const personIds=[...new Set([...actorIds,...units.map(u=>u.user_id)].filter(Boolean).map(String))];
+ const emails=[...new Set([...actorIds.filter(id=>id.includes('@')),...sessions.map(s=>s.officer_email)].filter(Boolean).map(String))];
+ const [peopleById,peopleByEmail]=await Promise.all([batch(db.User,'id',personIds,'-updated_date'),batch(db.User,'email',emails,'-updated_date')]);
+ const people=[...peopleById,...peopleByEmail];
+ const actor=(key:string)=>{const unit=units.find(u=>String(u.id)===key),session=sessions.find(u=>String(u.id)===key);
+   const person=people.find(u=>String(u.id)===String(unit?.user_id||key)||lower(u.email)===lower(session?.officer_email||key));
+   return {key:String(person?.id||key),label:[person?.unit_number?'Unit '+person.unit_number:'',person?.rank,person?.last_name||person?.full_name].filter(Boolean).join(' ')||unit?.label||session?.officer_name||'Unidentified officer'};
+ };
+ const result:any[]=[];
+ for(const [id,linked] of grouped){
+   const a=linked[0],l=liveById.get(id),archive=archiveById.get(id),c=l||archive;
+   if(c&&!isValidCallRecord(c))continue;
+   const received=[c?.time_received,a.callTime,a.time_received,c?.created_date,a.created_date].map(stamp).find(Number.isFinite);
+   if(received===undefined||received<now-PROPERTY_WINDOW_MS||received>now)continue;
+   // Preserve actual incident disposition. A resolved alert alone is not
+   // proof that the agency incident closed if its live record still exists.
+   const resolved=!l&&linked.every(a=>lower(a.lifecycle_status)==='resolved');
+   const closed=Boolean(c?.manual_dismissed||c?.time_cleared||c?.time_closed||terminalPropertyStatus(c?.status)||(!c&&(resolved||terminalPropertyStatus(a.callStatus))));
+   const status=closed?(terminalPropertyStatus(c?.status)?c.status:'Closed'):c?.status||a.callStatus||'Status unavailable';
+   const unitRows=new Map<string,any>();
+   const validIds=new Set([id,archive?.id].filter(Boolean).map(String));
+   for(const row of assignments.filter(row=>validIds.has(String(row.call_id)))){
+     if(!row.unit_id)continue;
+     const person=actor(String(row.unit_id)),active=!closed&&!row.cleared_at&&!terminalPropertyStatus(row.status);
+     if(!unitRows.has(person.key)||active&&!unitRows.get(person.key).active)unitRows.set(person.key,{unit_id:person.key,label:person.label,role:row.role||'',status:row.status||'Status unavailable',active,assigned_at:row.assigned_at||null,cleared_at:row.cleared_at||null});
+   }
+   for(const raw of [...(l?.assigned_units||[]),...(archive?.assigned_units||[])]){
+     const person=actor(String(raw));
+     if(!unitRows.has(person.key))unitRows.set(person.key,{unit_id:person.key,label:person.label,role:'',status:closed?'Previously attached':'Attached',active:!closed});
+   }
+   result.push({id,incident:c?.incident||a.callIncident||'Call for service',location:c?.location||a.callLocation||'',agency:c?.agency||'',status,priority:c?.priority||a.callPriority||'medium',priority_override:c?.priority_override||false,agency_cad_number:c?.agency_cad_number||'',bps_reference:c?.bps_reference||'',call_id:cadRef(c)||cadRef(a),official_cad_verified:Boolean(c?.agency_cad_number||cadRef(a)),time_received:new Date(received).toISOString(),time_cleared:c?.time_cleared||c?.time_closed||null,property_names:[...new Set(linked.map(a=>a.propertyName).filter(Boolean))],property_log:true,property_closed:closed,property_read_only:closed||!l,property_record_available:Boolean(c),pathfinder_property_alert:!closed,assigned_units:[...unitRows.values()].filter(a=>a.active).map(a=>a.unit_id),property_assignments:[...unitRows.values()],property_disposition:c?.disposition||''});
+ }
+ return result.sort((a,b)=>stamp(a.time_received)-stamp(b.time_received)||a.id.localeCompare(b.id));
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -55,6 +122,7 @@ Deno.serve(async (req) => {
     if (!allowed || ['client','student','visitor'].some(role=>roles.has(role)||lower(user.user_type)===role||lower(user.role)===role)) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
     const input=await req.json().catch(()=>({}));
+    if(input.action==='recent_property_incidents')return Response.json({success:true,calls:await recentPropertyIncidents(base44.asServiceRole.entities),window_hours:12,fetched_at:new Date().toISOString()});
     if(user.role!=='admin'&&input.action!=='call_details')return Response.json({error:'Administrator access required for full CAD history'},{status:403});
     // Fetch optional linked reports and assignments only for an expanded call.
     // The history table itself no longer needs six expensive enrichment reads.

@@ -47,7 +47,7 @@ test('officer board shows the wider pending queue and no dispatcher or map contr
  const html=render({officerMode:true,showMap:true,canManage:true,detail:active,propertyIds:new Set(['pending'])});
  assert.match(html,/cc-officer-workspace/);
  assert.match(html,/data-map="false"/);
- assert.match(html,/Property calls awaiting assignment \(1\)/);
+ assert.match(html,/Property calls · Last 12 hours \(1\)/);
  assert.match(html,/Expand/);
  assert.ok(!html.includes('aria-label="Live map"'));
  assert.ok(!html.includes('Field initiated'));

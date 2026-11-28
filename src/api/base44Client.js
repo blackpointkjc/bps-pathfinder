@@ -60,7 +60,7 @@ const readCacheTtl = meta => {
   if (meta?.kind === 'function' && meta?.name === 'getCompanyAnalyticsData') return 2 * 60_000;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 5 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'getWelcomeBriefingData') return 90_000;
-  if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 60_000;
+  if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return meta.action==='recent_property_incidents'?10_000:60_000;
   if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageBolo' && meta?.action === 'list') return 2 * 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageHRTimeEntries' && meta?.action === 'list') return 60_000;

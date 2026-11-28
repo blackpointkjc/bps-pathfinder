@@ -225,3 +225,13 @@
 .cc-self-attach p{font-size:12px;color:#b8d3e3;padding:4px 0}
 .cad-nav-monitor{margin-left:auto}
 .cad-inline-feed-warning{color:#ffd19a;font-size:11px;align-self:center;padding:4px}
+.cc-property-summary{display:flex;flex-direction:column;gap:4px;margin-top:7px;font:500 13px/1.4 system-ui,sans-serif;color:#d7e7f2;overflow-wrap:break-word}
+.cc-property-summary strong{color:#f5d980;font-weight:600}
+.cc-property-summary strong[data-closed=true]{color:#b8dec9}
+.cc-call[data-property-closed=true]{background:#17252d!important;border-left-color:#71928a!important;animation:none!important}
+.cc-property-log-note{display:flex;grid-column:1/-1;justify-content:space-between;align-items:center;gap:6px;font-size:12px;color:#c9dbe7;padding:5px 7px;background:#0d2130}
+.cc-property-log-note button,.cc-property-detail header button{border:1px solid #527184;border-radius:4px;padding:5px 8px;color:#eef6fc}
+.cc-property-detail{font:14px/1.55 system-ui,sans-serif;padding:12px!important;overflow-y:auto}
+.cc-property-detail header{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.cc-property-detail h2{font-size:18px;margin:8px 0}.cc-property-detail h3{font-size:15px;margin:12px 0 6px}
+.cc-property-detail article{padding:8px;border-bottom:1px solid #3b5262}
