@@ -23,7 +23,7 @@ test('CAD roster merge preserves canonical identity and exclusions',async()=>{
 });
 test('CAD shell reuses one roster and one call provider; officer status does not start a second feed',()=>{
  assert.ok(read('src/pages/CADCenter.jsx').includes('<CadRosterProvider><CadShell'));
- assert.ok(read('src/pages/UnitStatus.jsx').includes('existing?<UnitStatusPage/>'));
+ assert.ok(read('src/pages/UnitStatus.jsx').includes('existing?<UnitStatusPage {...props}/>'));
  assert.ok(read('src/pages/UnitStatus.jsx').includes('refresh(true)'));
  const hub=read('src/lib/officerLocationHub.js');assert.ok(hub.includes('locationListeners'));
  const endpoint=read('base44/functions/getOnDutyUnits/entry.ts');assert.ok(endpoint.includes('markExpiredSessions'));assert.ok(!endpoint.includes('retireExpiredSessions'));

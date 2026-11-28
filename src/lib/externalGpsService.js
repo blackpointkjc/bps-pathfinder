@@ -20,8 +20,12 @@ let nextAutomaticReconnectAt = 0;
 let consecutiveReconnectFailures = 0;
 let lastSerialDataAt = 0;
 let manualDisconnect = false;
-const SERIAL_STALL_MS = 45_000;
-const RECOVERY_COOLDOWN_MS = 90_000;
+let reconnectTimer=null;
+let workerUnsupported=false;
+let handoffUntil=0;
+let suspended=false;
+const SERIAL_STALL_MS = 18_000;
+const RECOVERY_COOLDOWN_MS = 8_000;
 
 const STORAGE_BAUD_KEY = 'bps:external-gps-baud';
 const STORAGE_SELECTOR_KEY = 'bps:external-gps-selector';
@@ -63,7 +67,7 @@ let state = {
   connected: false,
   connecting: false,
   portGranted: false,
-  baudRate: DEFAULT_BAUD,
+  baudRate: storedBaud(),
   connectedAt: null,
   lastFixAt: null,
   lastDataAt: null,
@@ -147,7 +151,7 @@ function ensureGpsChannel() {
   gpsChannel.onmessage = event => {
     const data = event?.data || {};
     if (data.type === 'release-owner' && gpsOwner) {
-      void disconnectExternalGps();
+      void yieldExternalGpsOwnership();
     }
   };
   return gpsChannel;
@@ -203,7 +207,7 @@ function releaseGpsOwnership() {
 }
 
 function workerSerialSupported() {
-  return externalGpsSupported() && typeof Worker !== 'undefined';
+  return !workerUnsupported && externalGpsSupported() && typeof Worker !== 'undefined';
 }
 
 function portSelector(port) {
@@ -239,6 +243,7 @@ function ensureSerialWorker() {
       publishLiveLocation(data.fix);
       lastSerialDataAt = Date.now();
       consecutiveReconnectFailures = 0;
+      nextAutomaticReconnectAt=0;
       emit({
         lastDataAt: new Date().toISOString(),
         connected: true,
@@ -263,7 +268,10 @@ function ensureSerialWorker() {
         error: data.error || '',
         lastDataAt: state.lastDataAt,
       };
+      const expectedStop=!!pendingWorkerStop;
+      if(data.connected===true){nextAutomaticReconnectAt=0;consecutiveReconnectFailures=0;lastSerialDataAt=Date.now();}
       emit(patch);
+      if(data.connected!==true&&!expectedStop&&!pendingWorkerStart&&!connectPromise)queueReconnect(500,true);
       if (pendingWorkerStop && data.connected === false) {
         const pending = pendingWorkerStop;
         pendingWorkerStop = null;
@@ -293,7 +301,7 @@ function ensureSerialWorker() {
       pendingWorkerStart = null;
       window.clearTimeout(pending.timeoutId);
       pending.reject(friendlyOpenError(message));
-    }
+    }else if(!connectPromise){workerUnsupported=true;queueReconnect(500,true);}
   };
   return serialWorker;
 }
@@ -346,7 +354,7 @@ async function startWorkerPort({ baudRate = storedBaud(), selector = {} } = {}) 
       pendingWorkerStart = null;
       emit({ connected: false, connecting: false, backgroundReader: false, error: 'Timed out opening the GPS/COM port in the background reader.' });
       reject(new Error('Timed out opening the GPS/COM port in the background reader.'));
-    }, 12000);
+    }, 5000);
     pendingWorkerStart = { resolve, reject, timeoutId };
     worker.postMessage({ type: 'start', baudRate: baud, selector });
   });
@@ -494,8 +502,10 @@ async function readLoop(port, generation) {
     if(activePort===port && generation===readGeneration)
       emit({ connected:false, connecting:false, error:error?.message||'External GPS receiver disconnected.' });
   }
-  if(activePort===port && generation===readGeneration && !port.readable)
-    emit({ connected:false,connecting:false,error:'GPS serial stream disconnected. Automatic reconnect will retry the approved antenna.' });
+  if(activePort===port && generation===readGeneration){
+    emit({connected:false,connecting:false,connectedAt:null,error:'GPS serial stream disconnected. Reconnecting approved antenna…'});
+    queueReconnect(500,true);
+  }
 }
 
 async function closeCurrentPort() {
@@ -533,6 +543,7 @@ async function connectPort(port, baudRate) {
       const selector = portSelector(port);
       rememberSelector(selector);
       lastSerialDataAt = Date.now();
+      nextAutomaticReconnectAt=0;consecutiveReconnectFailures=0;
       emit({ connected: true, connectedAt: new Date().toISOString(), connecting: false, baudRate: baud, portGranted: true, lastDataAt: null, lastFixAt: null, satellites: null, hdop: null, error: '', activeSelector: selector, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
       void readLoop(port, generation);
       return state;
@@ -552,33 +563,60 @@ async function connectPort(port, baudRate) {
   throw friendly;
 }
 
+// Independent receiver recovery, not tied to map or React component remounts.
+function queueReconnect(delayMs=500,reset=false){
+  if(manualDisconnect||suspended||gpsPreferredSource()==='device')return;
+  if(reset){nextAutomaticReconnectAt=0;consecutiveReconnectFailures=0;}
+  clearTimeout(reconnectTimer);
+  reconnectTimer=setTimeout(async()=>{
+    reconnectTimer=null;
+    if(connectPromise){try{await connectPromise;}catch{}}
+    if(manualDisconnect||suspended||gpsPreferredSource()==='device')return;
+    await startExternalGpsAutoReconnect({recoverStale:true}).catch(()=>null);
+    if(!state.connected&&(state.portGranted||storedSelector()||antennaLockEnabled())&&!manualDisconnect&&!suspended&&gpsPreferredSource()!=='device')queueReconnect(Math.max(1000,nextAutomaticReconnectAt-Date.now(),handoffUntil-Date.now()));
+  },Math.max(100,delayMs));
+}
+async function yieldExternalGpsOwnership(){
+  handoffUntil=Date.now()+10000;
+  clearTimeout(reconnectTimer);
+  await stopWorkerPort({terminate:true}).catch(()=>null);
+  await closeCurrentPort().catch(()=>null);
+  releaseGpsOwnership();
+  emit({connected:false,connecting:false,connectedAt:null,backgroundReader:false,error:'Receiver in use by another Pathfinder tab.'});
+  queueReconnect(10000);
+}
 function installSerialEvents() {
   if (serialEventsInstalled || typeof navigator === 'undefined' || !navigator.serial) return;
   serialEventsInstalled = true;
-
-  if (typeof window !== 'undefined') {
-    const releaseOnPageExit = () => {
-      try { serialWorker?.postMessage({ type: 'stop' }); } catch (_) {}
-      try { serialWorker?.terminate(); } catch (_) {}
-      serialWorker = null;
-      releaseGpsOwnership();
-    };
-    window.addEventListener('pagehide', releaseOnPageExit, { capture: true });
-    window.addEventListener('beforeunload', releaseOnPageExit, { capture: true });
+  if(typeof window!=='undefined'){
+    window.addEventListener('pagehide',()=>{
+      suspended=true;clearTimeout(reconnectTimer);
+      try{serialWorker?.terminate();}catch{}
+      serialWorker=null;
+      void closeCurrentPort().finally(releaseGpsOwnership);
+      emit({connected:false,connecting:false,connectedAt:null,backgroundReader:false});
+    });
+    const resume=()=>{if(document.visibilityState==='hidden')return;suspended=false;queueReconnect(100,true);};
+    window.addEventListener('pageshow',resume);
+    window.addEventListener('focus',resume);
+    window.addEventListener('bps-operational-resume',resume);
+    document.addEventListener('visibilitychange',resume);
+    // A worker-owned port is not equal to the page's SerialPort object.
+    // Match the approved hardware selector as well as the page port.
+    navigator.serial.addEventListener?.('disconnect',event=>{
+      const port=event?.port||event?.target;
+      const selector=state.activeSelector||storedSelector();
+      if(port!==activePort&&!selectorMatches(port,selector)&&!(state.backgroundReader&&state.connected&&!port?.getInfo))return;
+      void (async()=>{
+        await stopWorkerPort({terminate:true}).catch(()=>null);
+        await closeCurrentPort().catch(()=>null);
+        releaseGpsOwnership();
+        emit({connected:false,connectedAt:null,connecting:false,backgroundReader:false,error:'External GPS receiver disconnected. Reconnecting…'});
+        queueReconnect(250,true);
+      })();
+    });
+    navigator.serial.addEventListener?.('connect',()=>{queueReconnect(100,true);});
   }
-
-  navigator.serial.addEventListener?.('disconnect', event => {
-    if (event?.target === activePort || event?.port === activePort) {
-      activePort = null;
-      activeReader = null;
-      releaseGpsOwnership();
-      emit({ connected: false, connectedAt: null, connecting: false, backgroundReader: false, error: 'External GPS receiver disconnected. Reconnecting…' });
-      if (!manualDisconnect) window.setTimeout(() => startExternalGpsAutoReconnect().catch(() => null), 3000);
-    }
-  });
-  navigator.serial.addEventListener?.('connect', () => {
-    if (!manualDisconnect) startExternalGpsAutoReconnect().catch(() => null);
-  });
 }
 
 export function externalGpsSupported() {
@@ -592,6 +630,7 @@ export function getExternalGpsStatus() {
     serialApiAvailable: serialApiAvailable(),
     policyAllowed: serialPolicyAllowed(),
     baudRate: state.baudRate || storedBaud(),
+    preferredSource:gpsPreferredSource(),
     lockedToAntenna: antennaLockEnabled(),
     lockedSelector: storedSelector(),
   };
@@ -610,7 +649,7 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
     return getExternalGpsStatus();
   }
   installSerialEvents();
-  if (manualDisconnect || gpsPreferredSource() === 'device') return getExternalGpsStatus();
+  if (manualDisconnect || suspended || Date.now()<handoffUntil || gpsPreferredSource() === 'device') return getExternalGpsStatus();
   if (connectPromise) return connectPromise;
 
   // No NMEA satellite fix is NOT a USB disconnection. GPS receivers can keep
@@ -625,13 +664,14 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
     && connectedAtMs > 0 && Date.now() - connectedAtMs > SERIAL_STALL_MS
     && Date.now() - (dataAtMs || connectedAtMs) > SERIAL_STALL_MS;
   if (state.connected && !serialStreamStalled) return getExternalGpsStatus();
-  if (Date.now() < nextAutomaticReconnectAt) return getExternalGpsStatus();
+  if (Date.now() < nextAutomaticReconnectAt){if(!state.connected)queueReconnect(nextAutomaticReconnectAt-Date.now());return getExternalGpsStatus();}
   // Gate all automatic retries, including concurrent watchdogs on navigation,
   // login and time clock. Real transport failures use bounded exponential backoff.
   nextAutomaticReconnectAt = Date.now() + (serialStreamStalled
     ? RECOVERY_COOLDOWN_MS
-    : Math.min(300_000, 15000 * 2 ** Math.min(consecutiveReconnectFailures, 5)));
+    : Math.min(15000, 1000 * 2 ** Math.min(consecutiveReconnectFailures, 4)));
 
+  emit({connecting:true,error:''});
   connectPromise = (async () => {
     if (serialStreamStalled) {
       // Only a silent serial data stream, not missing satellite fixes, can
@@ -653,20 +693,22 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
       const ports = await navigator.serial.getPorts();
       emit({ portGranted: Array.isArray(ports) && ports.length > 0, lockedToAntenna: antennaLockEnabled(), lockedSelector: storedSelector() });
       if (!ports?.length) {
+        emit({connected:false,connecting:false,error:'Waiting for the approved GPS receiver to be attached.'});
         releaseGpsOwnership();
         return getExternalGpsStatus();
       }
 
       const remembered = storedSelector();
       const locked = antennaLockEnabled();
-      const selectedPort = remembered ? ports.find(port => selectorMatches(port, remembered)) : null;
+      const matches=remembered?ports.filter(port=>selectorMatches(port,remembered)):[];
+      const selectedPort=matches.length===1?matches[0]:null;
       if (locked && !selectedPort) {
         emit({ connected: false, connecting: false, backgroundReader: false, error: 'Locked GPS antenna is not currently available.' });
         releaseGpsOwnership();
         return getExternalGpsStatus();
       }
 
-      const preferredPort = selectedPort || (ports.length === 1 ? ports[0] : null);
+      const preferredPort = selectedPort || (!remembered&&ports.length === 1 ? ports[0] : null);
       if (!preferredPort) {
         emit({
           connected: false,
@@ -686,6 +728,7 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
           consecutiveReconnectFailures = 0;
           return ready;
         } catch (workerError) {
+          workerUnsupported=true;
           console.warn('External GPS worker reconnect failed, using page reader:', workerError?.message);
           await stopWorkerPort({ terminate: true });
           await delay(350);
@@ -703,7 +746,7 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
       releaseGpsOwnership();
       return getExternalGpsStatus();
     }
-  })().finally(() => { connectPromise = null; });
+  })().finally(() => { connectPromise = null; if(!state.connected&&(state.portGranted||storedSelector()||antennaLockEnabled()))queueReconnect(Math.max(1000,nextAutomaticReconnectAt-Date.now())); });
 
   return connectPromise;
 }
@@ -718,6 +761,7 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
   installSerialEvents();
   if (connectPromise) return connectPromise;
   manualDisconnect = false;
+  suspended=false;handoffUntil=0;clearTimeout(reconnectTimer);
   nextAutomaticReconnectAt = 0;
   consecutiveReconnectFailures = 0;
 
@@ -785,6 +829,7 @@ export async function requestExternalGpsConnection({ baudRate = storedBaud() } =
         try {
           return await startWorkerPort({ baudRate, selector });
         } catch (workerError) {
+          workerUnsupported=true;
           console.warn('External GPS background reader unavailable, using exact selected port:', workerError?.message);
           await stopWorkerPort({ terminate: true });
           await delay(400);
@@ -831,6 +876,7 @@ export function unlockExternalGpsAntenna() {
 
 export async function disconnectExternalGps() {
   manualDisconnect = true;
+  clearTimeout(reconnectTimer);
   rememberGpsSource('device');
   nextAutomaticReconnectAt = Date.now() + 30_000;
   await stopWorkerPort({ terminate: true });
