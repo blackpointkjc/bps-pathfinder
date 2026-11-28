@@ -150,6 +150,7 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       const serverReadAt = Date.parse(payload.fetched_at || '');
       memoryRowsAt = Number.isFinite(serverReadAt) ? Math.min(serverReadAt, Date.now()) : Date.now();
       noteCadRead(memoryRowsAt);
+      if(payload.warnings?.length)noteCadReadFailure(payload.warnings.join('; '));
       requestBackoffUntil=0;
       return deduped;
     } catch (error) {
