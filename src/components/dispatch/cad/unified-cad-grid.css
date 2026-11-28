@@ -180,3 +180,6 @@
  .cc-workspace-v2 .cc-draft-body{display:flex;flex-direction:column}
  .cc-workspace-v2 .cc-draft input,.cc-workspace-v2 .cc-draft textarea,.cc-workspace-v2 .cc-draft select{font-size:16px}
 }
+
+.cc-workspace-v2:fullscreen{width:100vw;height:100vh;max-width:none;min-height:0;background:#06101c;overflow:hidden}
+.cc-workspace-v2:fullscreen .cc-grid{flex:1 1 0}
