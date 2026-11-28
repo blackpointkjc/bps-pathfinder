@@ -224,7 +224,7 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
         const handle=event=>{
             if(!event.altKey||event.ctrlKey||event.metaKey||event.repeat||event.target?.closest?.('input,textarea,select,[contenteditable=true]'))return;
             const key=String(event.key||'').toLowerCase();
-            if(key==='n'||key==='f'){event.preventDefault();setCreateSource(key==='f'?'field':'dispatch');}
+            if(key==='n'||key==='f'){event.preventDefault();setCreateSource(old=>old||(key==='f'?'field':'dispatch'));}
         };
         window.addEventListener('keydown',handle);
         return()=>window.removeEventListener('keydown',handle);
