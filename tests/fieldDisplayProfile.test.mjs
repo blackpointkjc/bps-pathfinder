@@ -31,8 +31,9 @@ test('screen fit is shared, keeps field navigation reachable, gives selected inc
  assert.ok(display.includes('Toughbook / field'));
  assert.ok(display.includes("window.visualViewport?.addEventListener('resize',apply)"));
  assert.ok(css.includes('.pf-field-tools{display:flex!important}'));
- assert.ok(css.includes('grid-template-areas:"pending active"'));
- assert.ok(css.includes('[data-view=incident],[data-view=comments]'));
+ const board=read('src/components/dispatch/cad/unified-cad-grid.css');
+ assert.ok(board.includes('grid-template-areas:"pending active"'));
+ assert.ok(board.includes('[data-view=incident],[data-view=comments]'));
  assert.ok(css.includes('data-mobile-view=detail]>.pf-dispatch-detail'));
  assert.ok(css.includes('@media(max-height:650px)'));
  assert.ok(css.includes('overflow-y:auto!important'));

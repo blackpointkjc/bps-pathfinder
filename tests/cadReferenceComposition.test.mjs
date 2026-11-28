@@ -72,3 +72,20 @@ test('property log displays closed and assigned incidents newest first, with off
  assert.ok(html.indexOf('Closed · Cleared')>html.indexOf('Unit 100 Officer Example (On Scene)'));
  assert.match(html,/Other live incidents \(1\)/);
 });
+
+test('officer board has independent property and other live lists, both queues default, and accessible navigation',()=>{
+ const html=render({officerMode:true,propertyIds:new Set(['pending']),dutyControl:React.createElement('button',null,'My status')});
+ assert.match(html,/data-view="queues"/);
+ assert.match(html,/data-queue-side="property"/);
+ assert.match(html,/data-queue-side="other"/);
+ assert.match(html,/aria-label="Property calls · Last 12 hours list"/);
+ assert.match(html,/aria-label="Other live incidents list"/);
+ assert.ok(html.indexOf('data-queue-side="property"')<html.indexOf('data-queue-side="other"'));
+ assert.match(html,/>Both queues<\//);
+ assert.equal((html.match(/>My status<\//g)||[]).length,1);
+ const css=readFileSync('src/components/dispatch/cad/unified-cad-grid.css','utf8');
+ assert.ok(css.includes('grid-template-areas:"pending active"'));
+ assert.ok(css.includes('grid-template-areas:"pending units active"'));
+ assert.ok(css.includes('overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain'));
+ assert.ok(css.includes('@container(max-width:640px)'));
+});

@@ -53,30 +53,6 @@
  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-mobile button{font-size:var(--pf-fit-label)!important;min-height:36px;white-space:normal}
  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-mobile{gap:5px;flex-wrap:wrap}
  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 :is(.cc-duty-control,.cc-self-attach button,.cc-detail-duty button,.tac-detail-actions button){font-size:var(--pf-fit-label)!important;min-height:36px;white-space:normal}
- /* Field board: two readable queues, full width incident, unit and comment
-    tabs. Reflow responds to actual scaled container width, not device name. */
- @container (max-width:1500px){
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-mobile{display:flex!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-map=false]{display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;grid-template-areas:"pending active"!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid>.cc-panel{display:none!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=pending],[data-view=active],[data-view=queues])>.cc-pending,
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=pending],[data-view=active],[data-view=queues])>.cc-active{display:flex!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=units],[data-view=incident],[data-view=comments]),html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-pending-expanded=true]{display:flex!important;flex-direction:column!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=units]>.cc-units,
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=incident],[data-view=comments])>.cc-incident{display:flex!important;flex:1 1 0}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-pending{display:flex!important;flex:1 1 0}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-active{display:none!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=incident] .cc-editor{display:flex;flex-direction:column;min-height:0;flex:1 1 0}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=incident] .cc-editor-comments{display:none!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=comments] .cc-editor>.tac-incident-detail-rail{display:none!important}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=comments] .cc-editor-comments{display:flex!important;flex:1 1 0}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:not([data-pending-expanded=true]) .cc-call-list{grid-template-columns:minmax(0,1fr)!important}
- }
- @container(max-width:850px){
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-map=false]{display:flex!important;flex-direction:column}
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=pending]>.cc-active,
-  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=active]>.cc-pending{display:none!important}
- }
  /* Dispatch work area: use existing working tabs instead of crushing 3 panes. */
  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 :is(.dispatch-v3-call-top strong,.dispatch-v3-call p,.pf-dispatch-facts,.pf-dispatch-pane-heading,.pf-dispatch-pane-title,.dispatch-v3-panel-head){font-size:var(--pf-fit-body)!important;line-height:1.4!important;font-weight:500!important}
  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 :is(.dispatch-v3-call-meta,.dispatch-v3-priority,.dispatch-v3-call-top time,.dispatch-v3-queue-group h3,.dispatch-v4-summary){font-size:var(--pf-fit-label)!important;line-height:1.4!important}
