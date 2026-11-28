@@ -11,7 +11,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
   const rows=await sdk.asServiceRole.entities.PortalAuthSession.filter({token_hash:hash},'-created_date',1),session=rows[0];
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
- }catch{return false;}
+ }catch(error){if(Number(error?.status||error?.response?.status)===429||/rate limit|too many requests/i.test(String(error?.message)))throw error;return false;}
 }
 const __limitFullAccess = (user:any) => user && String(user.id)!=='6ae7d733d4b1a647cd3e6f38' ? {...user,additional_roles:(user.additional_roles||[]).filter((role:any)=>String(role).toLowerCase()!=='full_access')} : user;
 
@@ -127,6 +127,7 @@ function propertyMatch(call, location) {
 }
 
 const PROPERTY_WINDOW_MS=12*60*60*1000;
+const propertyHistoryCache=new Map<string,{at:number,rows:any[],pending?:Promise<any[]>}>();
 const terminalPropertyStatus=(status:any)=>['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(status));
 async function recentPropertyIncidents(db:any,now=Date.now()){
 
@@ -242,7 +243,17 @@ Deno.serve(async (req) => {
     if (!allowed || ['client','student','visitor'].some(role=>roles.has(role)||lower(user.user_type)===role||lower(user.role)===role)) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
     const input=await req.json().catch(()=>({}));
-    if(input.action==='recent_property_incidents'){if(user.portal_approved===false||['pending','support','support_staff'].some(r=>lower(user.user_type)===r||lower(user.role)===r))return Response.json({error:'Approved CAD access required'},{status:403});return Response.json({success:true,calls:await recentPropertyIncidents(base44.asServiceRole.entities),window_hours:12,fetched_at:new Date().toISOString()});}
+    if(input.action==='recent_property_incidents'){if(user.portal_approved===false||['pending','support','support_staff'].some(r=>lower(user.user_type)===r||lower(user.role)===r))return Response.json({error:'Approved CAD access required'},{status:403});const cacheKey=(req.headers.get('Base44-App-Id')||'')+':'+(req.headers.get('X-Data-Env')||'prod');
+      let entry=propertyHistoryCache.get(cacheKey);
+      // Explicit cached mode is used by the command board. Existing admin
+      // historical queries and their access checks are unchanged.
+      if(input.cached!==true)return Response.json({success:true,calls:await recentPropertyIncidents(base44.asServiceRole.entities),window_hours:12,fetched_at:new Date().toISOString()});
+      if(!entry||Date.now()-entry.at>=90000){
+        if(!entry?.pending){entry={at:entry?.at||0,rows:entry?.rows||[],pending:recentPropertyIncidents(base44.asServiceRole.entities)};propertyHistoryCache.set(cacheKey,entry);}
+        try{const rows=await entry.pending!;entry.rows=rows;entry.at=Date.now();entry.pending=undefined;}
+        catch(error){entry.pending=undefined;if(!entry.at)throw error;return Response.json({success:true,calls:entry.rows,window_hours:12,fetched_at:new Date(entry.at).toISOString(),warning:'Historical property log delayed; showing last confirmed records'});}
+      }
+      return Response.json({success:true,calls:entry.rows,window_hours:12,fetched_at:new Date(entry.at).toISOString()});}
     if(user.role!=='admin'&&input.action!=='call_details')return Response.json({error:'Administrator access required for full CAD history'},{status:403});
     // Fetch optional linked reports and assignments only for an expanded call.
     // The history table itself no longer needs six expensive enrichment reads.
@@ -584,6 +595,6 @@ Deno.serve(async (req) => {
     });
   } catch (error:any) {
     console.error('getCallHistoryFeed failed:', error);
-    return Response.json({ error: error?.message || 'Unable to load call history' }, { status: 500 });
+    return Response.json({ error: error?.message || 'Unable to load call history' }, { status: Number(error?.status||error?.response?.status)===429||/rate limit|too many requests/i.test(String(error?.message))?429:500 });
   }
 });

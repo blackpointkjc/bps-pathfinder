@@ -90,7 +90,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const officers=units.filter(u=>(unitFilter==='all'||String(u.status||'').toLowerCase()===unitFilter)&&[u.rank,u.last_name,u.unit_number,u.platoon,u.status].join(' ').toLowerCase().includes(unitSearch.toLowerCase())).sort(comparePersonnel);
  const selectedProperty=selectedCall&&(propertyRows||[]).find(call=>call.id===selectedCall.id);
  const selectedLive=selectedCall&&allCalls.find(call=>call.id===selectedCall.id);
- const detail=selectedCall?(selectedProperty?{...(selectedLive||{}),...selectedProperty}:selectedLive||selectedCall):null;
+ const detail=selectedCall?(selectedProperty?{...selectedProperty,...(selectedLive||{}),property_closed:selectedLive?false:selectedProperty.property_closed,property_read_only:selectedLive?false:selectedProperty.property_read_only}:selectedLive||selectedCall):null;
  const openIncident=call=>{onOpen(call);setRightPane('incident');setScreen('incident');setExpandedMap(false);};
  const closeIncident=()=>{onClose?.();setRightPane('units');setScreen('operations');};
  const showUnits=()=>{setRightPane('units');setScreen('units');setExpandedMap(false);};

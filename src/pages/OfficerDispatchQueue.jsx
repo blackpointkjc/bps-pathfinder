@@ -36,21 +36,23 @@ export default function OfficerDispatchQueue() {
     queryFn: async () => {
       const response = await base44.functions.invoke('getMyDispatchQueue', {});
       const data = response?.data || response || {};
-      if (data.error) throw new Error(data.error);
+      if (data.error||!Array.isArray(data.queue)) throw new Error(data.error||'Officer queue response incomplete');
       return data;
     },
-    refetchInterval: 30000,
+    refetchInterval: 15000,
+    retry:false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    staleTime: 15000,
+    staleTime: 10000,
   });
 
   useEffect(()=>{
-    const refresh=()=>{void queryClient.invalidateQueries({queryKey:['myDispatchQueue']});};
+    let timer;
+    const refresh=()=>{clearTimeout(timer);timer=setTimeout(()=>{clearBase44ReadCacheMatching('function:getMyDispatchQueue:');void queryClient.invalidateQueries({queryKey:['myDispatchQueue']},{cancelRefetch:false});},750);};
     window.addEventListener('officer-distress-cleared',refresh);
     let unsubscribe;try{unsubscribe=base44.entities.CallAssignment.subscribe(refresh);}catch{}
-    return()=>{window.removeEventListener('officer-distress-cleared',refresh);unsubscribe?.();};
+    return()=>{clearTimeout(timer);window.removeEventListener('officer-distress-cleared',refresh);unsubscribe?.();};
   },[queryClient]);
   const queue = payload.queue || [];
   const visibleQueue=queue.filter(call=>[call.agency_cad_number,call.bps_reference,call.call_id,call.incident,call.location].join(' ').toLowerCase().includes(queueSearch.toLowerCase()));

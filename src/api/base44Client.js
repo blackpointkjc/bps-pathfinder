@@ -68,7 +68,7 @@ const readCacheTtl = meta => {
   return READ_CACHE_MS;
 };
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
-const CRITICAL_RATE_LIMIT_RECOVERY_MS = 25_000;
+const CRITICAL_RATE_LIMIT_RECOVERY_MS = 8_000;
 const READ_QUEUE_TIMEOUT_MS = 120_000;
 const RATE_LIMIT_KEY = 'bps:base44-rate-limit-until';
 const TRACE_STORAGE_KEY = 'bps:base44-request-trace-v2';
@@ -153,7 +153,8 @@ const readPriority = meta => {
   if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return meta.action === 'list' ? 40 : 96;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 95;
   if (meta?.kind === 'function' && ['getMyTimeEntries', 'manageHRTimeEntries', 'getMyScheduleData', 'getPTORequests', 'manageDutySupervisorSchedule'].includes(meta?.name)) return 90;
-  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getOnDutyUnits','getMyDispatchQueue'].includes(meta?.name)) return 95;
+  if (meta?.kind === 'function' && ['getActiveDispatchCalls','getMyDispatchQueue'].includes(meta?.name)) return 105;
+  if(meta?.kind==='function'&&meta.name==='getOnDutyUnits')return 95;
   if (meta?.kind === 'function' && meta?.name === 'getRoadSpeedLimit') return 86;
   if (meta?.kind === 'function' && ['getWorkforceSnapshot','getSupervisorWelfareBoard'].includes(meta?.name)) return 88;
   if (meta?.kind === 'function' && ['getAppDirectory','getOfficerDirectory','getSupervisorScopedTasks'].includes(meta?.name)) return 85;
@@ -165,7 +166,7 @@ const readPriority = meta => {
   if (meta?.kind === 'entity' && ['User','Location','Division'].includes(meta?.name)) return 75;
   // The active History screen is foreground CAD work. Do not leave its
   // paginated feed behind background analytics, roster, or telemetry scans.
-  if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 92;
+  if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return meta.action==='recent_property_incidents'?75:92;
   if(meta?.kind==='function'&&meta.name==='professionalStandards')return 91;
   if (meta?.kind === 'function' && ['getDispatchCallLinkFeed','getIncidentReportHistory','getLocationAuditReport','manageBolo','manageHRTimeEntries','manageDutySupervisorSchedule','manageAutoDispatchConfig'].includes(meta?.name)) return 80;
   if (meta?.kind === 'function' && meta?.name === 'getAccountingData') return 80;
@@ -217,8 +218,9 @@ const noteRateLimit = error => {
   recentRateLimitAt = Date.now();
   const headers = error?.response?.headers;
   const retryAfter = headers?.get?.('retry-after') ?? headers?.['retry-after'];
-  const seconds = Number(retryAfter);
-  const retryAt = retryAfter != null && String(retryAfter).trim() !== ''
+  const messageSeconds=Number(String(errorText(error)).match(/retry after\s+(\d+(?:\.\d+)?)\s*s/i)?.[1]);
+  const seconds = Number(retryAfter??(Number.isFinite(messageSeconds)?messageSeconds:null));
+  const retryAt = (retryAfter != null && String(retryAfter).trim() !== '')||Number.isFinite(messageSeconds)
     ? (Number.isFinite(seconds) ? recentRateLimitAt + Math.max(0, seconds) * 1000 : Date.parse(retryAfter))
     : 0;
   const recoveryMs = Number.isFinite(retryAt) && retryAt > recentRateLimitAt
@@ -273,6 +275,7 @@ function pumpReads() {
     // Use both bounded slots when no critical read is waiting. Priority ordering
     // still starts auth and live operations first; rate-limit backoff is unchanged.
     // Never let two long company snapshots occupy both live-CAD read slots.
+    if(activeBackgroundReads){const urgent=readQueue.findIndex(job=>job.priority>=90&&waitFor(job)===0);if(urgent<0)break;if(urgent>0)readQueue.unshift(readQueue.splice(urgent,1)[0]);}
     if (activeAnalyticsReads) {
       const eligible = readQueue.findIndex(job => !isAnalyticsRead(job.meta) && waitFor(job) === 0);
       if (eligible < 0) break;
@@ -418,7 +421,7 @@ function queuedRead(key, task, meta = {}) {
     // leaving the officer staring at an apparently infinite spinner for two
     // minutes. Background/administrative reads retain their full allowance.
     const foregroundTimeout = meta?.kind === 'function' && ['getActiveDispatchCalls', 'getOnDutyUnits', 'getRoadSpeedLimit', 'routeNavigation', 'getMyDispatchQueue'].includes(meta?.name)
-      ? (meta?.name === 'routeNavigation' ? 10_000 : 35_000) : READ_QUEUE_TIMEOUT_MS;
+      ? (meta?.name === 'routeNavigation' ? 10_000 : ['getActiveDispatchCalls','getMyDispatchQueue'].includes(meta?.name)?15_000:35_000) : READ_QUEUE_TIMEOUT_MS;
     job.totalQueueTimeoutMs = foregroundTimeout;
     armQueueTimeout(foregroundTimeout);
     const insertAt = readQueue.findIndex(queued => Number(queued.priority || 0) < job.priority);

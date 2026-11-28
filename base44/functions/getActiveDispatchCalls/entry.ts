@@ -38,7 +38,7 @@ async function __portalLoginIsCurrent(request,sdk,user){
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(v=>v.toString(16).padStart(2,'0')).join('');
   const rows=await sdk.asServiceRole.entities.PortalAuthSession.filter({token_hash:hash},'-created_date',1),session=rows[0];
   return !!session&&session.user_id===user.id&&!session.revoked&&Date.parse(session.started_at)>=Date.parse(__portalReauthAfter)&&Date.now()-Date.parse(session.last_activity_at)<13*60*60*1000;
- }catch{return false;}
+ }catch(error){if(Number(error?.status||error?.response?.status)===429||/rate limit|too many requests/i.test(String(error?.message)))throw error;return false;}
 }
 
 // All authorized viewers share bounded server reads within this worker.
@@ -53,6 +53,7 @@ async function cachedMetadata(key:string,ttl:number,load:()=>Promise<any>,warnin
  try{const value=await entry.pending;entry.value=value;entry.at=Date.now();entry.pending=undefined;return value;}
  catch(error:any){entry.pending=undefined;warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return entry.value;}
 }
+const retryAfterByKey=new Map<string,number>();
 const readCache = new Map<string, { at:number; rows:any[]; source?:any; warnings?:string[]; pending?:Promise<any> }>();
 // Only Base44 record IDs belong in an id query. Legacy CAD numbers and officer aliases are not record IDs.
 const validRecordId=(value:any)=>/^[a-f0-9]{24}$/i.test(String(value||''));
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
     const limit = Math.max(50, Math.min(500, Number(body?.limit || 100)));
     const cacheKey = (req.headers.get('Base44-App-Id') || '') + ':' + (req.headers.get('X-Data-Env') || 'prod');
     let cached = readCache.get(cacheKey);
-    if (!cached || Date.now() - cached.at >= 10000) {
+    if (!cached || (Date.now() - cached.at >= 10000 && Date.now()>=(retryAfterByKey.get(cacheKey)||0))) {
       if (!cached?.pending) {
         cached = { at:cached?.at||0, rows:cached?.rows||[], source:cached?.source, warnings:cached?.warnings, pending:(async () => {
           // Keep unresolved verified property calls and active assignments in
@@ -90,11 +91,12 @@ Deno.serve(async (req) => {
           const warnings:string[]=[];
           const optional=async(label:string,read:()=>Promise<any>)=>{try{return await read();}catch(error:any){warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return null;}};
           const [alerts,assignments,counters]=await Promise.all([
-            cachedMetadata(cacheKey+':properties',25000,()=>db.PropertyAlert.filter({lifecycle_status:{$nin:['resolved','false_alarm','test','inactive','closed']},is_test:{$ne:true}},'-created_date',1000),warnings,'Property alert links'),
-            cachedMetadata(cacheKey+':assignments',15000,()=>db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000),warnings,'Officer attachment links'),
+            cachedMetadata(cacheKey+':properties',20000,()=>db.PropertyAlert.filter({lifecycle_status:{$nin:['resolved','false_alarm','test','inactive','closed']},is_test:{$ne:true}},'-created_date',1000),warnings,'Property alert links'),
+            cachedMetadata(cacheKey+':assignments',20000,()=>db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000),warnings,'Officer attachment links'),
             cachedMetadata(cacheKey+':source',10000,()=>db.CadCounter.filter({counter_key:'dispatch_call'},'-updated_date',1),warnings,'GRAC heartbeat'),
           ]);
           const propertyIds=new Set((alerts||[]).filter(a=>a.callId&&a.propertyId&&a.propertyId!=='public-helpme'&&!TERMINAL.has(lower(a.callStatus))).map(a=>String(a.callId)));
+          const propertyNames=new Map<string,Set<string>>();for(const a of alerts||[]){if(propertyIds.has(String(a.callId))&&a.propertyName){if(!propertyNames.has(String(a.callId)))propertyNames.set(String(a.callId),new Set());propertyNames.get(String(a.callId))!.add(String(a.propertyName));}}
           const assignmentUnits=new Map<string,Set<string>>();
           for(const row of assignments||[]){if(!row.call_id||!row.unit_id||TERMINAL.has(lower(row.status)))continue;const key=String(row.call_id);if(!assignmentUnits.has(key))assignmentUnits.set(key,new Set());assignmentUnits.get(key)!.add(String(row.unit_id));}
           const retainedIds=[...new Set([...propertyIds,...assignmentUnits.keys()])].filter(validRecordId);
@@ -103,13 +105,9 @@ Deno.serve(async (req) => {
           const sourceRows:any[]=[];
           // Read by upstream identity, including incidents opened days ago.
           // This query does not use record IDs and cannot trigger the legacy-ID error.
-          const sourceKeys=[...sourceIds];
-          for(let i=0;i<sourceKeys.length;i+=100){
-            const batch=await optional('Current GRAC snapshot',()=>db.DispatchCall.filter({external_call_id:{$in:sourceKeys.slice(i,i+100)},manual_dismissed:{$ne:true}},'-updated_date',500));
-            if(Array.isArray(batch))sourceRows.push(...batch);
-          }
           const rows = await base44.asServiceRole.entities.DispatchCall.filter({
             $or: [
+              ...(sourceIds.size?[{external_call_id:{$in:[...sourceIds]}}]:[]),
               { time_received: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString(), $lte: new Date(Date.now() + 120000).toISOString() } },
               { $and: [{ $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] }, { created_date: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString() } }] },
               {source:{$in:['public_helpme','dispatch_manual','field_initiated','CAD clone']}},
@@ -122,11 +120,19 @@ Deno.serve(async (req) => {
           }, '-created_date', 500);
                     // A separate retained-record query avoids a busy agency feed crowding
           // unresolved property incidents out of the ordinary 500-row window.
+          const fetchedIds=new Set((rows||[]).map((r:any)=>String(r.id)));
+          const fetchedSourceIds=new Set((rows||[]).map((r:any)=>String(r.external_call_id||'')));
+          const sourceKeys=[...sourceIds].filter(id=>!fetchedSourceIds.has(id));
+          for(let i=0;i<sourceKeys.length;i+=100){
+            const batch=await optional('Current GRAC snapshot',()=>db.DispatchCall.filter({external_call_id:{$in:sourceKeys.slice(i,i+100)},manual_dismissed:{$ne:true}},'-updated_date',500));
+            if(Array.isArray(batch))sourceRows.push(...batch);
+          }
+          const missingRetainedIds=retainedIds.filter(id=>!fetchedIds.has(id)&&!sourceRows.some(row=>String(row.id)===id));
           const retainedRows:any[]=[];
           // Bound the ID query size, and never fail the ordinary feed due to an optional historical attachment lookup.
-          for(let i=0;i<retainedIds.length;i+=100){const batch=await optional('Retained CAD records',()=>db.DispatchCall.filter({id:{$in:retainedIds.slice(i,i+100)},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',100));if(Array.isArray(batch))retainedRows.push(...batch);}
+          for(let i=0;i<missingRetainedIds.length;i+=100){const batch=await optional('Retained CAD records',()=>db.DispatchCall.filter({id:{$in:missingRetainedIds.slice(i,i+100)},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',100));if(Array.isArray(batch))retainedRows.push(...batch);}
           const source=counter?{poll_at:counter.last_source_poll_at||null,poll_status:counter.last_source_poll_status||'',last_server_poll_at:counter.last_server_poll_at||null,last_success_at:counter.last_source_success_at||(String(counter.last_source_poll_status||'').startsWith('success')?counter.last_source_poll_at:null),website_rows:counter.last_website_row_count??null,api_rows:counter.last_api_row_count??null,latest_received:counter.last_website_latest_received||null,duration_ms:counter.last_source_poll_duration_ms??null,snapshot_count:sourceIds.size}:null;
-          const all=[...new Map([...rows||[],...retainedRows||[],...sourceRows].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_source_active:sourceIds.has(String(row.external_call_id||''))&&['richmond','henrico','chesterfield'].includes(lower(row.source)),pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row));
+          const all=[...new Map([...rows||[],...retainedRows||[],...sourceRows].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_source_active:sourceIds.has(String(row.external_call_id||''))&&['richmond','henrico','chesterfield'].includes(lower(row.source)),pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_property_names:[...(propertyNames.get(String(row.id))||[])],pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row));
           // Duplicate saved records of one source incident must not crowd out
           // other source incidents. Preserve the row with local attachments;
           // otherwise prefer the most recently updated record.
@@ -143,8 +149,8 @@ Deno.serve(async (req) => {
         })() };
         readCache.set(cacheKey, cached);
       }
-      try { const result=await cached.pending!; if(cached.at&&result.warnings.some((w:string)=>/Current GRAC snapshot|Retained CAD records|GRAC heartbeat/.test(w))){cached.warnings=result.warnings;cached.pending=undefined;}else{cached.rows=result.rows; cached.source=result.source; cached.warnings=result.warnings; cached.at = Date.now(); cached.pending = undefined;} }
-      catch (error:any) { cached.pending=undefined;if(!cached.at){readCache.delete(cacheKey);throw error;}cached.warnings=[...new Set([...(cached.warnings||[]),'CAD refresh delayed; showing last confirmed records'])];console.warn('CAD refresh delayed',error?.message||error); }
+      try { const result=await cached.pending!; if(cached.at&&result.warnings.some((w:string)=>/Current GRAC snapshot|Retained CAD records|GRAC heartbeat/.test(w))){cached.warnings=result.warnings;cached.pending=undefined;retryAfterByKey.set(cacheKey,Date.now()+5000);}else{cached.rows=result.rows; cached.source=result.source; cached.warnings=result.warnings; cached.at = Date.now(); cached.pending = undefined;} }
+      catch (error:any) { retryAfterByKey.set(cacheKey,Date.now()+5000);cached.pending=undefined;if(!cached.at){readCache.delete(cacheKey);throw error;}cached.warnings=[...new Set([...(cached.warnings||[]),'CAD refresh delayed; showing last confirmed records'])];console.warn('CAD refresh delayed',error?.message||error); }
     }
     const rows = cached.rows;
     const calls = (Array.isArray(rows) ? rows : [])
