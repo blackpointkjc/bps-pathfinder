@@ -1059,7 +1059,7 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
   const incomingKeys=[...new Set(incoming.map(externalKey).filter(Boolean))];
   const nowCutoff=new Date(Date.now()-3*60*60*1000).toISOString();
   const [recentSaved, history, locations, alerts, cachedAssignments] = await Promise.all([
-    base44.asServiceRole.entities.DispatchCall.filter({$or:[{external_call_id:{$in:incomingKeys}},{created_date:{$gte:nowCutoff}}]},'-created_date',500),
+    base44.asServiceRole.entities.DispatchCall.filter({$or:[{external_call_id:{$in:incomingKeys}},{created_date:{$gte:nowCutoff}},{time_received:{$gte:nowCutoff}}]},'-created_date',500),
     base44.asServiceRole.entities.CallHistory.list("-archived_date", 500),
     base44.asServiceRole.entities.Location.list("site_name", 1000),
     base44.asServiceRole.entities.PropertyAlert.list("-created_date", 300),

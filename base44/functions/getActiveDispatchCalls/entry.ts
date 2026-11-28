@@ -47,16 +47,16 @@ async function __portalLoginIsCurrent(request,sdk,user){
 }
 
 // All authorized viewers share bounded server reads within this worker.
-const metadataCache=new Map<string,{at:number,value:any,pending?:Promise<any>}>();
+const metadataCache=new Map<string,{at:number,value:any,failed?:boolean,pending?:Promise<any>}>();
 async function cachedMetadata(key:string,ttl:number,load:()=>Promise<any>,warnings:string[],label:string){
  let entry=metadataCache.get(key);
- if(entry&&Date.now()-entry.at<ttl){if(entry.value===null)warnings.push(label+' temporarily unavailable');return entry.value;}
+ if(entry&&Date.now()-entry.at<ttl){if(entry.failed||entry.value===null)warnings.push(label+' temporarily unavailable');return entry.value;}
  if(!entry?.pending){
-  entry={at:entry?.at||0,value:entry?.value??null,pending:load()};
+  entry={at:entry?.at||0,value:entry?.value??null,failed:entry?.failed,pending:load()};
   metadataCache.set(key,entry);
  }
- try{const value=await entry.pending;entry.value=value;entry.at=Date.now();entry.pending=undefined;return value;}
- catch(error:any){entry.pending=undefined;entry.at=Date.now()-ttl+10000;warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return entry.value;}
+ try{const value=await entry.pending;entry.value=value;entry.at=Date.now();entry.failed=false;entry.pending=undefined;return value;}
+ catch(error:any){entry.pending=undefined;entry.failed=true;entry.at=Date.now()-ttl+10000;warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return entry.value;}
 }
 const retryAfterByKey=new Map<string,number>();
 const readCache = new Map<string, { at:number; rows:any[]; source?:any; warnings?:string[]; pending?:Promise<any> }>();
@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
             cachedMetadata(cacheKey+':assignments',30000,()=>db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000),warnings,'Officer attachment links'),
             cachedMetadata(cacheKey+':source',15000,()=>db.CadCounter.filter({counter_key:'dispatch_call'},'-updated_date',1),warnings,'GRAC heartbeat'),
           ]);
+          if(counters===null||assignments===null||alerts===null)throw Object.assign(new Error('CAD metadata temporarily unavailable; retry after 10s'),{status:429});
           const propertyIds=new Set((alerts||[]).filter(a=>a.callId&&a.propertyId&&a.propertyId!=='public-helpme'&&!TERMINAL.has(lower(a.callStatus))).map(a=>String(a.callId)));
           const propertyNames=new Map<string,Set<string>>();for(const a of alerts||[]){if(propertyIds.has(String(a.callId))&&a.propertyName){if(!propertyNames.has(String(a.callId)))propertyNames.set(String(a.callId),new Set());propertyNames.get(String(a.callId))!.add(String(a.propertyName));}}
           const assignmentUnits=new Map<string,Set<string>>();

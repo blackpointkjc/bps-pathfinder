@@ -198,7 +198,12 @@ records.DispatchCall.push({...live,id:'000000000000000000000020',external_call_i
 records.DispatchCall.push({...live,id:'000000000000000000000031',source:'richmond',external_call_id:'stale-wanted',time_received:oldAt,created_date:oldAt,assigned_units:['legacy-mirror'],status:'On Scene'},{...live,id:'000000000000000000000032',source:'richmond',external_call_id:'stale-recent',status:'Dispatched',created_date:new Date(now-120000).toISOString()},{...live,id:'000000000000000000000033',source:'richmond',external_call_id:'closed-missing',status:'Dispatched',time_closed:new Date(now-30000).toISOString()});
 records.PropertyAlert.push({callId:'000000000000000000000031',propertyId:'site',lifecycle_status:'active',callStatus:'On Scene'});
 records.CadCounter=[{active_source_confirmed_agencies:['RPD'],active_source_snapshot_at:new Date(now-5000).toISOString(),active_source_snapshot:[{external_call_id:'grac-long-open'},{external_call_id:'grac-old-closed'}],id:'cad-counter',counter_key:'dispatch_call',last_source_poll_at:new Date(now-5000).toISOString(),last_source_poll_status:'success',last_website_row_count:46,last_api_row_count:46,last_website_latest_received:new Date(now-6*60000).toISOString()}];
+const liveReadStart=reads.length;
 const liveResult = await liveFeed({limit:100});
+assert.equal(reads.slice(liveReadStart).filter(r=>r.entity==='DispatchCall').length,1,'one primary query includes retained and source-confirmed calls');
+const beforeCached=reads.length;
+const cachedResult=await liveFeed({limit:100});assert.equal(cachedResult.status,200);
+assert.equal(reads.slice(beforeCached).filter(r=>r.entity!=='PortalAuthSession').length,0,'warm cache avoids additional data scans while retaining session checks');
 assert.equal(liveResult.status,200);
 assert.ok(!JSON.stringify(reads.filter(r=>r.entity==='DispatchCall')).includes('CAD-12345'));assert.ok(!JSON.stringify(reads.filter(r=>r.entity==='DispatchCall')).includes('BPS-202611-99'));
 assert.equal(liveResult.data.source_health.poll_status,'success');assert.equal(liveResult.data.source_health.api_rows,46);assert.equal(liveResult.data.source_health.poll_at,records.CadCounter[0].last_source_poll_at);

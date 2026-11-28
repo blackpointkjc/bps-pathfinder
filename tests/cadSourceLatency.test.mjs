@@ -76,3 +76,9 @@ assert.equal(identityContext.canCloseMissingAgencyCall(a,new Set()),false);
 assert.equal(identityContext.canCloseMissingAgencyCall({...a,source:'dispatch_manual'},new Set(['RFD'])),false);
 assert.equal(identityContext.canCloseMissingAgencyCall(a,new Set(['RFD'])),true);
 assert.equal(merge([], [a,{...a,external_call_id:'id-two'}]).length,2);
+
+assert.match(source,/GLOBAL_SOURCE_POLL_MIN_GAP_MS = 30e3/);
+const fast=source.slice(source.indexOf('async function ingestFastPublishedCalls('),source.indexOf('async function handleGracIngestion('));
+assert.match(fast,/closeIds.length\?await Promise.all/);
+assert.match(fast,/recentSaved.length>=500/);
+assert.match(fast,/const \[recentSaved, history, locations, alerts, cachedAssignments\]/);
