@@ -15,9 +15,10 @@ export function propertyAlertUpstreamDelayMs(alert) {
   return Math.max(0, detected-received);
 }
 export function propertyAlertWasTimely(alert) {
-  const delay=propertyAlertUpstreamDelayMs(alert);
-  // Missing upstream timing is not proof that a call was received just now.
-  return delay !== null && delay <= LIVE_PROPERTY_UPSTREAM_MAX_AGE_MS;
+  const detected=parseCadUtcTime(alert?.created_date||alert?.detectedAt);
+  const status=String(alert?.callStatus||'').trim().toLowerCase();
+  const lifecycle=String(alert?.lifecycle_status||'').trim().toLowerCase();
+  return Number.isFinite(detected)&&alert?.is_test!==true&&!['cleared','cancelled','canceled','closed','resolved','completed'].includes(status)&&!['resolved','false_alarm','test','inactive','closed'].includes(lifecycle);
 }
 export function propertyAlertDelayLabel(alert) {
   const delay=propertyAlertUpstreamDelayMs(alert);

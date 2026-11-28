@@ -1,3 +1,4 @@
+import {canAccessDispatchCenter,canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import RecordsSearchDialog from '@/components/RecordsSearchDialog';
 import {getRoleHome} from '@/lib/roleHome';
 import {hasIAAccess,hasWholeAppAccess} from '@/lib/portalAccess';
@@ -59,16 +60,16 @@ import { toast } from 'sonner';
 const CENTER_CONFIG = {
   standards: {label:'Professional Standards', icon:ShieldCheck, groups:[{label:'Professional Standards',items:[['Standards Workspace','ProfessionalStandards',ShieldCheck]]}]},
   visitor: {label:'Visitor Portal',icon:Users,groups:[{label:'Visitor Services',items:[['Visitor Portal','VisitorPortal',Users]]}]},
+  dispatch: {label:'Dispatch Center',icon:Radio,groups:[{label:'Dispatch Operations',items:[['Dispatch Queue','DispatchCenter',Radio]]}]},
   cad: {
     label: 'CAD Center',
     icon: Radio,
     groups: [
       { label: 'Live Operations', items: [
         ['Command Dashboard', 'CommandDashboard', Gauge],
-        ['Dispatch Center', 'DispatchCenter', Radio],
         ['Officer Queue', 'OfficerDispatchQueue', Radio],
         ['Live Map', 'Navigation', MapIcon],
-        ['Officer Status', 'UnitStatus', Users],
+        ['Unit Board', 'UnitStatus', Users],
         ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
       ]},
       { label: 'History & Intelligence', items: [
@@ -326,6 +327,7 @@ const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, conf
 
 const DESKTOP_CENTER_PAGE = {
   standards:'ProfessionalStandards', visitor:'VisitorPortal',
+  dispatch:'DispatchCenter',
   cad: 'CADCenter',
   officer: 'OfficerCenter',
   admin: 'AdminCenter',
@@ -341,7 +343,7 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
 });
 
 const DESKTOP_LEGACY_TOOL_ROUTES = {
-  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], UnitStatus: ['cad','live','units'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['cad','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['officer','reports','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
+  CommandDashboard: ['cad','live','command'], OfficerDispatchQueue: ['cad','live','officerqueue'], Navigation: ['cad','live','map'], UnitStatus: ['cad','live','units'], BOLOAlerts: ['cad','alerts','bolo'], DispatcherShiftReports: ['dispatch','live','dispatch'], CallHistory: ['cad','history','history'], RecordsAssistant: ['officer','reports','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['admin','sites','siteassets','admin_site_assets_tool','operations'],
   Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','reports','qr'], ShiftHandover: ['officer','reports','handover'], VirginiaFieldLawAssistant: ['officer','messages','law'], VATrespassNotices: ['officer','messages','trespass'], VACriminalComplaints: ['officer','messages','complaint'], Summons: ['officer','messages','summons'], WitnessSubpoenaRequest: ['officer','messages','subpoena'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], Announcements: ['officer','today','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerPerformanceReviews: ['officer','profile','reviews'], OfficerTraining: ['officer','profile','training'], RankStructure: ['officer','profile','rank'], RankDuties: ['officer','profile','duties'],
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'],
   AdminLocationTracker: ['admin','sites','locationdispatch','admin_location_dispatch_tool','tracker'], AdminGeofenceAlerts: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'], AdminAutoDispatchControls: ['admin','sites','locationdispatch','admin_location_dispatch_tool','autodispatch'], AdminLocations: ['admin','sites','locationdispatch','admin_location_dispatch_tool','locations'],
@@ -482,14 +484,15 @@ function allowedCenters(user) {
   if (roles.has('client') || user?.user_type === 'client' || rank === 'client') return ['client'];
   if (roles.has('student') || user?.user_type === 'student') return ['student'];
   if (roles.has('visitor')) return ['visitor'];
-  if (hasWholeAppAccess(user)) return ['admin','standards','cad','officer','supervisor','hr','support','accounting','training','client','student'];
-  if (user?.role === 'admin') return ['admin',...(hasIAAccess(user)?['standards']:[]),...(canAccessAccounting(user)?['accounting']:[]),...(roles.has('trainer')?['training']:[])];
+  if (hasWholeAppAccess(user)) return ['admin','standards',...(canAccessDispatchCenter(user)?['dispatch']:[]),'cad','officer','supervisor','hr','support','accounting','training','client','student'];
+  if (user?.role === 'admin') return ['admin',...(canAccessDispatchCenter(user)?['dispatch','cad']:[]),...(hasIAAccess(user)?['standards']:[]),...(canAccessAccounting(user)?['accounting']:[]),...(roles.has('trainer')?['training']:[])];
 
   // Combine ALL assigned workspaces. Previously an early return for dispatch,
   // supervisor or officer discarded HR/training/accounting and secondary roles.
   const centers = [];
   if (supervisor) centers.push('supervisor', 'cad', 'officer');
-  if (roles.has('dispatch') || user?.role === 'dispatch' || roles.has('cad_access')) centers.push('cad');
+  if (canAccessDispatchCenter(user)) centers.push('dispatch','cad');
+  if (roles.has('cad_access')) centers.push('cad');
   if (roles.has('officer')) centers.push('officer', 'cad');
   if (roles.has('hr') || rank === 'human resources') centers.push('hr');
   if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') centers.push('support');
@@ -502,7 +505,8 @@ function allowedCenters(user) {
 
 const CENTER_DEFAULT_PAGE = {
   standards:'ProfessionalStandards', visitor:'VisitorPortal',
-  cad: 'CommandDashboard',
+  dispatch:'DispatchCenter',
+  cad: 'CADCenter',
   officer: 'Dashboard',
   supervisor: 'SupervisorTasks',
   admin: 'AdminDashboard',
@@ -523,6 +527,8 @@ function defaultPageForUser(user) {
 }
 
 function canAccessPage(user, pageName) {
+  if (['CallHistory','CadResponseAnalytics'].includes(pageName)) return canAccessCadAdminPages(user);
+  if (pageName === 'DispatchCenter' || pageName === 'DispatcherShiftReports') return canAccessDispatchCenter(user);
   // Post Orders are an authenticated field reference, never a public/client page.
   if (pageName === 'PostOrders') {
     const client = user?.user_type === 'client' || String(user?.rank || '').toLowerCase() === 'client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');
@@ -1254,7 +1260,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const available = allowedCenters(user);
     if (!available.includes(activeCenter)) setActiveCenter(available[0] || 'cad');
-  }, [user?.role, user?.rank, user?.user_type, JSON.stringify(user?.additional_roles || [])]);
+  }, [user?.role, user?.rank, user?.user_type, JSON.stringify(user?.additional_roles || []),user?.dispatch_role,user?.disabled,user?.account_status,user?.employment_status,user?.portal_approved,user?.termination_date]);
 
   useEffect(() => {
     // Every signed-in operational user must receive property alerts. Some legacy
@@ -1522,7 +1528,7 @@ export default function Layout({ children, currentPageName }) {
   // remain available from the workspace selector, but desktop navigation must not
   // rewrite an inner-page URL back to a center landing page.
   const criticalOutage = outages.some(item => item.severity === 'outage');
-  const centerLabel = ['CADCenter','CommandDashboard','DispatchCenter'].includes(currentPageName) ? 'CAD Operations' : (CENTER_CONFIG[activeCenter]?.label || 'CAD Center');
+  const centerLabel = currentPageName==='DispatchCenter'||currentPageName==='DispatcherShiftReports' ? 'Dispatch Center' : ['CADCenter','CommandDashboard'].includes(currentPageName) ? 'CAD Operations' : (CENTER_CONFIG[activeCenter]?.label || 'CAD Center');
   const userHome = getRoleHome(user);
   const userHomePage = userHome.page;
   const userHomeLabel = userHome.label;

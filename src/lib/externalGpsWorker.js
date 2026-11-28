@@ -108,6 +108,7 @@ async function stopPort() {
     try { await port.close(); } catch (_) {}
   }
   lineBuffer = '';
+  lastGgaFixAt=0;lastMotion={speed:0,heading:null};
 }
 
 function portMatches(port, selector = {}) {
@@ -183,7 +184,7 @@ async function readLoop(port, localGeneration) {
         error: error?.message || 'External GPS receiver disconnected.' });
     }
   }
-  if(activePort===port && localGeneration===generation && !port.readable){
+  if(activePort===port && localGeneration===generation){
     self.postMessage({type:'status',connected:false,error:'GPS serial stream disconnected. Automatic reconnect will retry the approved antenna.'});
   }
 }

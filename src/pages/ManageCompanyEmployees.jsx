@@ -5,7 +5,6 @@ import { isClientAccount } from '@/lib/directoryUtils';
 import { getPayRangeForRank, previewRankChange } from '@/utils/rankPolicy';
 import CommandRankTiers from '@/components/CommandRankTiers';
 import { reportingLabel } from '@/utils/commandReporting';
-import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -137,7 +136,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       const requestedAdditionalRoles = [...new Set(userData.additional_roles || [])].sort();
       const existingAdditionalRoles = [...new Set(selectedUser?.additional_roles || [])].sort();
       const systemAccessChanged = selectedUser?.role !== requestedSystemRole
-        || JSON.stringify(existingAdditionalRoles) !== JSON.stringify(requestedAdditionalRoles) || userData.ps_role !== selectedUser?.ps_role;
+        || JSON.stringify(existingAdditionalRoles) !== JSON.stringify(requestedAdditionalRoles) || userData.ps_role !== selectedUser?.ps_role || (userData.dispatch_role===true)!==(selectedUser?.dispatch_role===true);
 
       // Commit role, employment, and profile changes in one audited server update.
       // Two sequential writes previously allowed a partial success to look saved.
@@ -211,7 +210,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const activeEmployees = allEmployees.filter(u => !isTerminated(u));
   const terminatedEmployees = allEmployees.filter(isTerminated);
   const pendingOnboarding = (users||[]).filter(u => !isClientAccount(u)&&u.email && !isTerminated(u) && u.role!=='admin' && (String(u.account_status||'').toLowerCase()==='pending' || u.portal_approved===false || !(u.additional_roles||[]).length)
-    && !(u.additional_roles||[]).some(role=>['officer','cad_access','support','support_staff','client','student','hr','accounting','trainer','supervisor','full_access'].includes(String(role).toLowerCase()))
+    && !(u.additional_roles||[]).some(role=>['officer','cad_access','dispatch','dispatcher','support','support_staff','client','student','hr','accounting','trainer','supervisor','full_access'].includes(String(role).toLowerCase()))
     && !['client','student','student registration pending'].includes(String(u.rank||'').toLowerCase()));
 
   const transitionFormerEmployee = async (person, action) => {
@@ -295,6 +294,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       emergency_contact_phone: userData.emergency_contact_phone || "",
       role: userData.role || "user",
       additional_roles: userData.additional_roles || [],
+      dispatch_role:userData.dispatch_role===true,
       ps_role:userData.ps_role || 'none',
       assigned_sites: userData.assigned_sites || [],
       profile_photo_url: userData.profile_photo_url || "",

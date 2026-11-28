@@ -1,3 +1,5 @@
+import {incidentPriority,priorityCode} from '@/lib/incidentPriority';
+import {useLocation} from 'react-router-dom';
 import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
 import '@/components/dispatch/tactical-console.css';
@@ -13,9 +15,12 @@ import { formatEasternTime,formatEasternDateTime } from '@/lib/easternTime';
 import { createPageUrl } from '../utils';
 
 const statusLabel = status => String(status || 'pending').replaceAll('_', ' ').toUpperCase();
-const priorityClass = priority => ({ critical:'bg-red-700', high:'bg-orange-600', medium:'bg-amber-600', low:'bg-slate-600' }[String(priority||'').toLowerCase()] || 'bg-slate-600');
+const priorityClass = priority => ({ critical:'bg-red-700', high:'bg-yellow-600', medium:'bg-slate-600', low:'bg-slate-600' }[String(priority||'').toLowerCase()] || 'bg-slate-600');
 
 export default function OfficerDispatchQueue() {
+  const location=useLocation();
+  const linkedCallId=new URLSearchParams(location.search).get('call_id');
+  const linkedApplied=useRef('');
   const [queueSearch,setQueueSearch]=useState('');
   const [selectedId, setSelectedId] = useState('');
   const [note, setNote] = useState('');
@@ -51,8 +56,10 @@ export default function OfficerDispatchQueue() {
   const visibleQueue=queue.filter(call=>[call.agency_cad_number,call.bps_reference,call.call_id,call.incident,call.location].join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
   useEffect(() => {
     if (!queue.length) { setSelectedId(''); return; }
+    if(linkedCallId&&linkedApplied.current!==linkedCallId&&queue.some(c=>String(c.id)===linkedCallId)){linkedApplied.current=linkedCallId;setSelectedId(linkedCallId);return;}
+    if(!linkedCallId)linkedApplied.current='';
     if (!selectedId || !queue.some(call => call.id === selectedId)) setSelectedId(queue[0].id);
-  }, [queue.map(call => call.id).join('|'), selectedId]);
+  }, [queue.map(call => call.id).join('|'), selectedId,linkedCallId]);
 
   // Shared notes are a dedicated query. They refresh on note events without
   // touching local officer status or refetching the whole dispatch queue.
@@ -190,7 +197,7 @@ export default function OfficerDispatchQueue() {
   return <div className="tac-console tac-mdt cad-mdt-terminal">
     <header className="tac-header"><div className="tac-brand"><ShieldAlert size={24}/><div><small>BLACK POINT · MOBILE DATA TERMINAL</small><h1>Field response</h1></div></div><div className="tac-header-actions"><span className="tac-feed-state"><i data-state={error?'warning':queueFetching?'loading':'ready'}/>{queueFetching?'SYNCING':error?'REFRESH FAILED':`UPDATED ${updatedLabel(queueUpdatedAt)}`}</span>{queueRefreshButton}</div></header>
     {!selected?<section className="tac-mdt-idle"><CheckCircle2 size={38}/><h2>Queue clear</h2><p>No active calls are assigned to you.</p></section>:<>
-      <div className="tac-mdt-current" ref={detailPanelRef} data-priority={String(selected.priority||'medium').toLowerCase()}><div><small>SELECTED ASSIGNMENT · {queue.indexOf(selected)+1} OF {queue.length}</small><h2>{selected.incident||'Call for service'}</h2><p><MapPinned size={19}/>{selected.location||'Location unavailable'}</p></div><div className="tac-mdt-reference"><Badge className={priorityClass(selected.priority)}>{String(selected.priority||'medium').toUpperCase()}</Badge><strong>{selected.agency_cad_number||selected.bps_reference||selected.call_id||selected.id}</strong><span>{statusLabel(selected.assignment?.status)} · {String(selected.assignment?.role||'role unverified').toUpperCase()}</span></div></div>
+      <div className="tac-mdt-current" ref={detailPanelRef} data-priority={incidentPriority(selected)}><div><small>SELECTED ASSIGNMENT · {queue.indexOf(selected)+1} OF {queue.length}</small><h2>{selected.incident||'Call for service'}</h2><p><MapPinned size={19}/>{selected.location||'Location unavailable'}</p></div><div className="tac-mdt-reference"><Badge className={priorityClass(incidentPriority(selected))}>{priorityCode(selected)+' · '+incidentPriority(selected).toUpperCase()}</Badge><strong>{selected.agency_cad_number||selected.bps_reference||selected.call_id||selected.id}</strong><span>{statusLabel(selected.assignment?.status)} · {String(selected.assignment?.role||'role unverified').toUpperCase()}</span></div></div>
       {selected.welfare_check&&<div className="tac-mdt-welfare" role="alert"><HeartPulse size={23}/><div><b>WELFARE CHECK REQUESTED</b><p>Dispatch is requesting your welfare status.</p></div><button disabled={working} onClick={()=>respondWelfare('ok')}>Welfare OK</button><button className="tac-danger" disabled={working} onClick={()=>respondWelfare('assist')}>Need assistance</button></div>}
       <div className="tac-mdt-actionbar">
         <button data-phase={['accepted','enroute','on_scene'].includes(selected.assignment?.status)?'done':'ready'} disabled={working||['accepted','enroute','on_scene'].includes(selected.assignment?.status)} onClick={()=>changeStatus('Acknowledged')}><CheckCircle2 size={22}/><span>{['accepted','enroute','on_scene'].includes(selected.assignment?.status)?'Acknowledged':'Acknowledge'}</span></button>
@@ -211,7 +218,7 @@ export default function OfficerDispatchQueue() {
         <section className="tac-mdt-pane tac-clearance"><div className="tac-panel-bar"><span>Clearance / disposition</span></div><div className="tac-clearance-body"><p>Record the outcome before clearing. The next assigned call will open automatically.</p><Textarea value={disposition} onChange={e=>setDisposition(e.target.value)} placeholder="Disposition required…" rows={3}/><button className="tac-danger" onClick={()=>changeStatus('Cleared')} disabled={working||!disposition.trim()}><CheckCircle2 size={18}/> Clear assignment</button></div></section>
        </aside>
       </div>
-      <section className="tac-mdt-pane tac-mdt-queue"><div className="tac-panel-bar"><span>Assignment stack · {queue.length} total</span><span>{Math.max(0,queue.length-1)} other calls</span></div><div className="tac-filters"><input aria-label="Find assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Search assignment stack"/></div><div className="tac-mdt-queue-list">{visibleQueue.map(call=><button key={call.id} data-priority={String(call.priority||'medium').toLowerCase()} aria-pressed={selected.id===call.id} disabled={working} onClick={()=>{if(selected.id===call.id)return;if((note.trim()||disposition.trim())&&!window.confirm('Switch call and discard unsaved note or disposition?'))return;setSelectedId(call.id);setNote('');setDisposition('');detailPanelRef.current?.scrollIntoView({block:'start',behavior:'smooth'});}}><span>#{queue.indexOf(call)+1} · {selected.id===call.id?'SELECTED':statusLabel(call.assignment?.status)}</span><b>{call.incident||'Call for service'}</b><small>{call.location||'Location pending'}</small><small>{call.agency_cad_number||call.bps_reference||call.call_id||call.id}</small></button>)}{!visibleQueue.length&&<p className="tac-empty">No matching assignments</p>}</div></section>
+      <section className="tac-mdt-pane tac-mdt-queue"><div className="tac-panel-bar"><span>Assignment stack · {queue.length} total</span><span>{Math.max(0,queue.length-1)} other calls</span></div><div className="tac-filters"><input aria-label="Find assigned call" value={queueSearch} onChange={e=>setQueueSearch(e.target.value)} placeholder="Search assignment stack"/></div><div className="tac-mdt-queue-list">{visibleQueue.map(call=><button key={call.id} data-priority={incidentPriority(call)} aria-pressed={selected.id===call.id} disabled={working} onClick={()=>{if(selected.id===call.id)return;if((note.trim()||disposition.trim())&&!window.confirm('Switch call and discard unsaved note or disposition?'))return;setSelectedId(call.id);setNote('');setDisposition('');detailPanelRef.current?.scrollIntoView({block:'start',behavior:'smooth'});}}><span>#{queue.indexOf(call)+1} · {selected.id===call.id?'SELECTED':statusLabel(call.assignment?.status)}</span><b>{call.incident||'Call for service'}</b><small>{call.location||'Location pending'}</small><small>{call.agency_cad_number||call.bps_reference||call.call_id||call.id}</small></button>)}{!visibleQueue.length&&<p className="tac-empty">No matching assignments</p>}</div></section>
       </div>
     </>}
   </div>;

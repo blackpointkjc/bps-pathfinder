@@ -4,7 +4,7 @@ import { readRosterCalls } from './callLookup.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk';
 import { portalSessionState } from '../../shared/portalLoginGuard.ts';
 import { LIVE_LOCATION_PRIVACY_USER_ID, stripLiveLocation } from './privacy.ts';
-import { isRateLimitError, rateLimitWaitMillis } from './rateLimitRetry.ts';
+import { isRateLimitError } from './rateLimitRetry.ts';
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
  try{
@@ -37,28 +37,15 @@ const hasValidCoordinates = (latitude: unknown, longitude: unknown) => hasCoordi
   && !(Number(latitude) === 0 && Number(longitude) === 0);
 
 const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
-async function retireExpiredSessions(base44: any, rows: any[], retentionCutoff: number) {
-  const stale = (rows || []).filter((row: any) => {
-    if (row?.session_active === false) return false;
+// The scheduled enforceOfficerDutyStatus sweep owns persisted session cleanup.
+// Roster reads only interpret expiry; no read may generate a burst of writes.
+function markExpiredSessions(rows: any[], retentionCutoff: number) {
+  for (const row of rows || []) {
     const stamp = new Date(row?.last_update || row?.updated_date || row?.created_date || 0).getTime();
-    return !Number.isFinite(stamp) || stamp < retentionCutoff;
-  });
-  if (!stale.length) return 0;
-  const now = new Date().toISOString();
-  await Promise.all(stale.map(async (row: any) => {
-    // Expired browser presence is not a duty-status transition. Mark only the
-    // live app session offline and preserve the officer's CAD status and last
-    // known GPS. Open TimeEntry + User status remain authoritative until Clock Out.
-    row.session_active = false;
-    row.last_update = now;
-    await base44.asServiceRole.entities.ActiveOfficer.update(row.id, {
-      session_active: false,
-      last_update: now,
-      heading: null,
-      speed: 0,
-    }).catch(() => null);
-  }));
-  return stale.length;
+    if (row?.session_active !== false && (!Number.isFinite(stamp) || stamp < retentionCutoff)) {
+      row.session_active = false;
+    }
+  }
 }
 
 async function readWithRetry(loader: () => Promise<any[]>, label: string) {
@@ -69,11 +56,10 @@ async function readWithRetry(loader: () => Promise<any[]>, label: string) {
       return Array.isArray(rows) ? rows : [];
     } catch (error: any) {
       lastError = error;
-      // A 429 is a request to pause, not a transient read to repeat instantly.
-      // Wait the window the platform states, then continue so the caller still
-      // receives live unit data instead of a failed request.
+      // A 429 must return promptly so the shared scheduler can honor backoff.
       if (isRateLimitError(error)) {
-        if (attempt < 2) { await delay(rateLimitWaitMillis(error)); continue; }
+        // Return the throttle to the shared client scheduler; multiple parallel
+        // retries here consume the same allowance and outlive the page deadline.
         break;
       }
       if (attempt < 2) await delay(300 * (attempt + 1));
@@ -162,7 +148,7 @@ Deno.serve(async (req) => {
       );
       const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
       const sessionRetentionCutoff = Date.now() - 8 * 60 * 60 * 1000;
-      await retireExpiredSessions(base44, activeOfficers, sessionRetentionCutoff);
+      markExpiredSessions(activeOfficers, sessionRetentionCutoff);
       const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
       const newestByEmail = new Map<string, any>();
       for (const active of activeOfficers || []) {
@@ -386,7 +372,7 @@ Deno.serve(async (req) => {
     // marked connection_stale and are not app-dispatch eligible until recovered.
     const sessionHealthyCutoff = Date.now() - 15 * 60 * 1000;
     const sessionRetentionCutoff = Date.now() - 8 * 60 * 60 * 1000;
-    await retireExpiredSessions(base44, activeOfficers, sessionRetentionCutoff);
+    markExpiredSessions(activeOfficers, sessionRetentionCutoff);
     const gpsFreshCutoff = Date.now() - 5 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {

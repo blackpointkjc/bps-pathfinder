@@ -1,0 +1,93 @@
+/* Dispatch Center: three clear operational panes. Container queries respond to
+   the available workstation width, including the operator's CAD zoom level. */
+.dispatch-v3{container-type:inline-size;font:14px/1.45 system-ui,sans-serif!important;background:#091521!important;color:#edf5fb}
+.dispatch-v3 .pf-dispatch-heading{background:#182c3c!important;padding:8px 12px!important;gap:8px!important}
+.dispatch-v3 .pf-dispatch-title{font:700 20px/1.2 system-ui,sans-serif!important}
+.dispatch-v3 .pf-dispatch-heading p{font-size:13px!important;color:#c2d2df!important}
+.dispatch-v3 .dispatch-actions{flex-wrap:wrap;overflow:visible!important;gap:5px!important}
+.dispatch-v3 .dispatch-actions button{min-height:34px;height:auto!important;font-size:12px!important;padding:6px 9px!important;white-space:normal!important;border-radius:3px!important}
+.dispatch-v3 .dispatch-kpis{display:flex!important;flex-wrap:wrap;gap:2px!important;padding:4px!important;background:#0a1926!important}
+.dispatch-v3 .dispatch-kpis>div{flex:1 1 100px;justify-content:flex-start!important;min-width:0;border-radius:2px!important;box-shadow:none!important;padding:6px 8px!important}
+.dispatch-v3 .dispatch-kpis>div>div>div:last-child{font:600 11px/1.35 system-ui,sans-serif!important;color:#c6d6e0!important;white-space:normal!important;letter-spacing:0!important}
+.dispatch-v3 .cad-queue-controls{display:flex!important;gap:5px!important;padding:7px!important;flex-wrap:wrap!important}
+.dispatch-v3 .cad-queue-controls input{min-height:34px;font-size:13px!important}
+.dispatch-v3 .cad-queue-filter-strip{flex-wrap:wrap;overflow:visible}
+.dispatch-v3 .cad-queue-controls button{min-height:30px;font:600 12px/1.3 system-ui,sans-serif!important}
+.dispatch-v3 .dispatch-v3-grid{display:grid!important;grid-template-columns:minmax(220px,29%) minmax(0,1fr) minmax(220px,28%);gap:4px!important;min-height:0!important;overflow:hidden!important;flex:1 1 0!important}
+.dispatch-v3 .dispatch-v3-grid>.pf-dispatch-list,.dispatch-v3 .dispatch-v3-grid>.pf-dispatch-detail,.dispatch-v3 .dispatch-v3-grid>.pf-dispatch-units{display:flex!important;flex-direction:column;width:100%!important;max-width:none!important;min-width:0;min-height:0!important;overflow:hidden!important;background:#132534!important;border:1px solid #324b5e!important}
+.dispatch-v3 .dispatch-v3-panel-head,.dispatch-v3 .pf-dispatch-pane-heading,.dispatch-v3 .tac-dispatch-center-tools{background:#1b3447!important;color:#f0f7fc!important;padding:8px 10px!important;font-size:14px!important;min-height:36px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;flex:none}
+.dispatch-v3 .dispatch-v3-panel-head span{font-size:12px;color:#c1d6e5}
+.dispatch-v3 .dispatch-v3-queue-scroll{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:5px}
+.dispatch-v3 .dispatch-v3-queue-group h3{display:flex;align-items:center;justify-content:space-between;gap:5px;background:#0a1825;color:#d4e5f1;font-size:12px;font-weight:700;padding:8px 6px;margin-bottom:4px}
+.dispatch-v3 .dispatch-v3-call{display:block;width:100%;text-align:left;background:#1b3041;color:#eef6fc;border:1px solid #385368;border-left:4px solid #53798c;border-radius:3px;margin:0 0 5px;padding:9px;overflow-wrap:anywhere}
+.dispatch-v3 .dispatch-v3-call[data-priority=critical]{border-left-color:#fb727d}.dispatch-v3 .dispatch-v3-call[data-priority=high]{border-left-color:#f3b250}
+.dispatch-v3 .dispatch-v3-call[aria-pressed=true]{background:#22536b;border-color:#7bc3e4}
+.dispatch-v3 .dispatch-v3-call-top{display:flex;align-items:flex-start;gap:6px}
+.dispatch-v3 .dispatch-v3-call-top strong{flex:1;font-size:14px;line-height:1.3}
+.dispatch-v3 .dispatch-v3-call-top time{font-size:12px;color:#d8e6ef}
+.dispatch-v3 .dispatch-v3-priority{font:700 12px/1.3 ui-monospace,monospace;border:1px solid #7090a3;border-radius:2px;padding:2px 4px}
+.dispatch-v3 .dispatch-v3-call p{font-size:13px;color:#d6e6f1;margin:5px 0}
+.dispatch-v3 .dispatch-v3-call-meta{display:flex;flex-wrap:wrap;gap:4px;font-size:11px;color:#c7dae8}
+.dispatch-v3 .dispatch-v3-call-meta span{padding:2px 5px;background:#294353;border-radius:2px}
+.dispatch-v3 .dispatch-v3-hazard{display:block;color:#ffdce1;background:#762532;font-size:12px;padding:5px;margin-top:5px}
+.dispatch-v3 .dispatch-v3-empty{padding:12px;color:#b9cfdd;font-size:13px}
+.dispatch-v3 .dispatch-v3-detail{font-size:14px;line-height:1.5}
+.dispatch-v3 .dispatch-v3-detail :is(.text-\[9px\],.text-\[10px\],.text-\[11px\],.text-xs),.dispatch-v3 .pf-dispatch-units :is(.text-\[9px\],.text-\[10px\],.text-xs){font-size:13px!important;line-height:1.45!important}
+.dispatch-v3 .dispatch-v3-detail :is(.text-slate-500,.text-slate-600),.dispatch-v3 .pf-dispatch-units :is(.text-slate-500,.text-slate-600){color:#bed0df!important}
+.dispatch-v3 .pf-dispatch-facts{font-size:14px!important;line-height:1.5}
+.dispatch-v3 .tac-dispatch-tabs{display:flex;flex-wrap:wrap;gap:3px}
+.dispatch-v3 .tac-dispatch-tabs button,.dispatch-v3 .pf-dispatch-status-actions button{font:600 13px/1.4 system-ui,sans-serif!important;min-height:34px;white-space:normal}
+.dispatch-v3 .pf-dispatch-status-actions{padding:8px;gap:5px}
+.dispatch-v3 .pf-dispatch-units .pf-dispatch-pane-title{font:700 14px system-ui,sans-serif!important}
+.dispatch-v3 .pf-dispatch-units button{min-height:32px;white-space:normal}
+.dispatch-v3 .pf-dispatch-units>div>div:last-child{overflow-y:auto;min-height:0}
+.dispatch-v3 .dispatch-v3-mobile{display:none}
+.dispatch-v3 .cad-bottom-status-wrap{font-size:12px!important}
+@container(max-width:900px){
+ .dispatch-v3 .dispatch-v3-mobile{display:block}
+ .dispatch-v3 .dispatch-v3-grid{display:flex!important;flex-direction:column}
+ .dispatch-v3 .dispatch-v3-grid>.pf-dispatch-list,.dispatch-v3 .dispatch-v3-grid>.pf-dispatch-detail,.dispatch-v3 .dispatch-v3-grid>.pf-dispatch-units{display:none!important;flex:1 1 0!important}
+ .dispatch-v3 .dispatch-v3-grid[data-mobile-view=calls]>.pf-dispatch-list,.dispatch-v3 .dispatch-v3-grid[data-mobile-view=detail]>.pf-dispatch-detail,.dispatch-v3 .dispatch-v3-grid[data-mobile-view=assignment]>.pf-dispatch-units,.dispatch-v3 .dispatch-v3-grid[data-mobile-view=units]>.pf-dispatch-units{display:flex!important}
+ .dispatch-v3 .dispatch-v3-grid[data-mobile-view=detail]>.pf-dispatch-detail>div{display:flex!important}
+ .dispatch-v3 .dispatch-actions button{min-height:32px}
+}
+@container(max-width:500px){.dispatch-v3 .dispatch-kpis>div{flex-basis:75px}.dispatch-v3 .dispatch-kpis>div:nth-child(6){display:none}.dispatch-v3 .cad-queue-controls{font-size:11px}.dispatch-v3 .pf-dispatch-facts{display:flex;flex-direction:column}.dispatch-v3 .dispatch-actions{max-height:110px;overflow-y:auto!important}}
+
+.dispatch-v3 .dispatch-v3-more{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.dispatch-v3 .dispatch-v3-more[hidden]{display:none!important}
+
+/* Dispatch intake & response desk: an expanded incident list in monitor mode,
+   then a focused editor with responding-unit controls after selection. */
+.dispatch-workspace-v4{font:13px/1.45 system-ui,sans-serif!important}
+.dispatch-workspace-v4 .dispatch-v4-summary{display:flex;align-items:center;gap:16px;flex-wrap:wrap;flex:none;padding:7px 10px;background:#102331;border-bottom:1px solid #395265;font-size:12px;color:#b9d0de}
+.dispatch-workspace-v4 .dispatch-v4-summary b{font-weight:550;color:#edf6fb;margin-left:4px;font-variant-numeric:tabular-nums}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false]{grid-template-columns:minmax(0,1fr) minmax(210px,22%)}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false]>.pf-dispatch-detail{display:none!important}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false] .dispatch-v4-queue-lanes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=true]{grid-template-columns:minmax(220px,31%) minmax(0,1fr) minmax(210px,25%)}
+.dispatch-workspace-v4 .dispatch-v4-queue-lanes section{min-width:0}
+.dispatch-workspace-v4 .dispatch-v4-queue-lanes h3{font-weight:550;font-size:12px;text-transform:none}
+.dispatch-workspace-v4 .dispatch-v3-call{padding:7px 9px;background:#142939;border:1px solid #334f62;border-left:3px solid #53798c}
+.dispatch-workspace-v4 .dispatch-v3-call-top strong{font-size:13px;font-weight:550;text-transform:none}
+.dispatch-workspace-v4 .dispatch-v3-call p{font-size:12px}
+.dispatch-workspace-v4 .dispatch-v3-call-meta{font-size:11px}
+.dispatch-workspace-v4 .dispatch-v3-call[data-priority=critical]{border-left-color:#fb727d}.dispatch-workspace-v4 .dispatch-v3-call[data-priority=high]{border-left-color:#f3b250}
+.dispatch-workspace-v4 .dispatch-v3-call[aria-pressed=true]{background:#21516a;border-color:#7bc3e4}
+.dispatch-workspace-v4 .pf-dispatch-title{font-size:16px!important;font-weight:600!important}
+.dispatch-workspace-v4 .dispatch-v3-panel-head,.dispatch-workspace-v4 .pf-dispatch-pane-heading,.dispatch-workspace-v4 .pf-dispatch-pane-title,.dispatch-workspace-v4 .tac-dispatch-center-tools{font-size:13px!important;font-weight:550!important;text-transform:none!important;letter-spacing:0!important}
+.dispatch-workspace-v4 .pf-dispatch-facts h2{font-size:16px!important;font-weight:550!important}
+.dispatch-workspace-v4 .dispatch-v4-intake{display:flex;flex:1;min-height:0;overflow:hidden}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft{flex:1;min-height:0}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft-body{overflow:auto}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft>header b{font-size:13px;font-weight:550;text-transform:none}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft-field{font-weight:500}
+@container(max-width:900px){
+ .dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false],.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=true]{display:flex!important;flex-direction:column}
+ .dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false] .dispatch-v4-queue-lanes{display:block}
+ .dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false][data-mobile-view=detail]>.pf-dispatch-detail{display:flex!important}
+}
+
+.dispatch-workspace-v4 .dispatch-v4-recommend{margin-bottom:7px;padding:6px;background:#172b39;border:1px solid #395567;border-radius:3px;font-size:12px}
+.dispatch-workspace-v4 .dispatch-v4-recommend summary{font-weight:550;cursor:pointer;padding:3px}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false][data-mobile-view=detail]>.pf-dispatch-detail{display:none!important}
+@container(max-width:900px){.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false][data-mobile-view=detail]>.pf-dispatch-list{display:flex!important}.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false][data-mobile-view=detail]>.pf-dispatch-detail{display:none!important}}

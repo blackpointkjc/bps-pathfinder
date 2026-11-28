@@ -1,3 +1,12 @@
+import usePropertyAssignmentCalls from '@/hooks/usePropertyAssignmentCalls';
+import {needsPropertyAssignment,assignedCadUnitIds,isVerifiedPropertyCall} from '@/lib/cadWorkspaceModel';
+import CadCloneIncidentDialog from '@/components/dispatch/cad/CadCloneIncidentDialog';
+import CadRecommendationList from '@/components/dispatch/cad/CadRecommendationList';
+import '@/components/dispatch/cad/unified-cad-grid.css';
+import {useAuth} from '@/lib/AuthContext';
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
+import {cadScaleValue,readCadDisplaySettings} from '@/lib/cadDisplaySettings';
+import '@/components/dispatch/cad/dispatch-readable.css';
 import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
 import '@/components/dispatch/tactical-console.css';
@@ -6,22 +15,21 @@ import AIRewriteField from '@/components/AIRewriteField';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
 import { cadDestination } from '@/lib/cadNavigation';
-import { incidentPriority } from '@/lib/incidentPriority';
+import { incidentPriority,priorityCode } from '@/lib/incidentPriority';
 import IncidentPrioritySelect from '@/components/dispatch/IncidentPrioritySelect';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
 import { base44, getBase44RequestHealth, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Shield, Radio, Map as MapIcon, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Shield, Radio, Map as MapIcon, Plus, Search, MessageSquarePlus, AlertTriangle, History, Megaphone, Wifi, Keyboard, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import NewCallAlert from '@/components/dispatch/NewCallAlert';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate,useLocation } from 'react-router-dom';
 import { MapContainer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
@@ -48,16 +56,27 @@ const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v4';
 function readCachedDispatchCalls() { return readLastGoodCalls(); }
 
 export default function DispatchCenter({embedded=false}) {
+ const {user,isLoadingAuth}=useAuth();
+ if(isLoadingAuth)return <div role="status" className="p-6 text-slate-200">Checking dispatch authorization…</div>;
+ if(!canAccessDispatchCenter(user))return <section className="p-6 text-slate-200" role="alert"><h1 className="text-xl font-bold">Dispatch access required</h1><p>This workstation is restricted to personnel assigned the dispatch role.</p></section>;
+ return <DispatchWorkspace embedded={embedded}/>;
+}
+
+function DispatchWorkspace({embedded=false}) {
+    const [standaloneScale,setStandaloneScale]=useState(()=>readCadDisplaySettings().scale);
+    const zoom=embedded?1:cadScaleValue(standaloneScale);
+    useEffect(()=>{const sync=()=>setStandaloneScale(readCadDisplaySettings().scale);window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
     const workstationRef=React.useRef(null);
     const statusBarRef=React.useRef(null);
     useEffect(()=>{
         if(embedded||!workstationRef.current)return;
         const host=workstationRef.current;
-        const measure=()=>host.style.setProperty('--cad-standalone-height',`${Math.max(280,window.innerHeight-Math.max(0,host.getBoundingClientRect().top)-8)}px`);
+        const measure=()=>host.style.setProperty('--cad-standalone-height',`${Math.max(280,window.innerHeight-Math.max(0,host.getBoundingClientRect().top)-8)/zoom}px`);
         measure();window.addEventListener('resize',measure);
         return()=>window.removeEventListener('resize',measure);
-    },[embedded]);
+    },[embedded,zoom]);
     const navigate = useNavigate();
+    const location=useLocation();
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
     const [unitLoadStatus, setUnitLoadStatus] = useState('loading');
@@ -67,26 +86,28 @@ export default function DispatchCenter({embedded=false}) {
     const [selectedCall, setSelectedCall] = useState(null);
     const [loading, setLoading] = useState(activeCalls.length === 0);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [intakeSource,setIntakeSource]=useState('dispatch');
+    const [cloneOpen,setCloneOpen]=useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showDispatchLog, setShowDispatchLog] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(false);
-    const [dockMap,setDockMap]=useState(()=>typeof window!=='undefined'&&window.innerWidth>=1440);
+    const [dockMap,setDockMap]=useState(false);
     const [detailTab,setDetailTab]=useState('incident');
     const [dispatchTomTomFailed,setDispatchTomTomFailed]=useState(false);
     const [useDispatchTomTom,setUseDispatchTomTom]=useState(true);
     const [mobileView, setMobileView] = useState('calls');
     const [monitoredProperties, setMonitoredProperties] = useState([]);
-    const [companyPropertyBoundaries,setCompanyPropertyBoundaries]=useState([]);
-    const [persistedPropertyCallIds,setPersistedPropertyCallIds]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('agency');
+    const [toolsOpen,setToolsOpen]=useState(false);
     const [supervisorWorking,setSupervisorWorking]=useState(false);
     const [statusWorking,setStatusWorking]=useState(false);
     const [dispatchFeedback,setDispatchFeedback]=useState('');
     const [cadAssignmentRows,setCadAssignmentRows]=useState([]);
+    const {ids:verifiedPropertyIds,error:propertyFeedError}=usePropertyAssignmentCalls(activeCalls);
     const [queueSearch, setQueueSearch] = useState('');
     const [callNotes, setCallNotes] = useState([]);
     const selectedNoteCallRef=React.useRef('');
@@ -128,11 +149,12 @@ export default function DispatchCenter({embedded=false}) {
                 event.preventDefault();
                 document.getElementById('cad-queue-search')?.focus();
             }
-            if (event.key.toLowerCase() === 'n') setShowCreateDialog(true);
-            if (event.key.toLowerCase() === 'm') setShowMap(value => !value);
+            if (event.key.toLowerCase() === 'n'&&!event.ctrlKey&&!event.metaKey&&!event.altKey) {setShowCreateDialog(true);setMobileView('detail');setShowPriorCalls(false);setShowDispatchLog(false);}
+            if (event.key.toLowerCase() === 'm'&&!event.ctrlKey&&!event.metaKey&&!event.altKey) setShowMap(value => !value);
             if (event.key === 'Escape') {
                 setShowMap(false);
                 setSelectedCall(null);
+                setMobileView('calls');
                 setShowMessaging(false);
                 setShowDispatchLog(false);
             }
@@ -153,7 +175,7 @@ export default function DispatchCenter({embedded=false}) {
                 return;
             }
             setActiveCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 200 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 500 });
                 try {
                     window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
@@ -190,7 +212,7 @@ export default function DispatchCenter({embedded=false}) {
             // for a dropped websocket event or a browser reconnect.
             if(Date.now()-lastActiveCallsLoadRef.current < 4_000)return;
             void loadActiveCalls();
-        }, 5_000);
+        }, 15_000);
 
         // Visible Dispatch Center screens share the guarded upstream sync lock.
         // Repaint immediately after persisted writes complete so the queue does
@@ -274,19 +296,6 @@ export default function DispatchCenter({embedded=false}) {
         try {
             const locations = await listDirectoryLocations('site_name');
             setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
-            // Property queue filters must work for ALL active contracted sites,
-            // not only sites which opted into automated property alerts.
-            const everyActiveSite=(locations||[]).filter(row=>row.active!==false).map(row=>({
-                ...row,property_monitoring_enabled:true,
-                property_monitoring_polygon:Array.isArray(row.property_monitoring_polygon)&&row.property_monitoring_polygon.length>=3?row.property_monitoring_polygon:(row.geofence_polygon||[]),
-                property_monitoring_radius_meters:Number(row.property_monitoring_radius_meters||row.geofence_radius_meters||100),
-            }));
-            setCompanyPropertyBoundaries(monitoredPropertiesFromLocations(everyActiveSite));
-            // Prior persisted property links count even when agency GPS has no coordinates.
-            try {
-              const recentAlerts=await base44.entities.PropertyAlert.list('-created_date',450);
-              setPersistedPropertyCallIds([...new Set((recentAlerts||[]).map(a=>String(a.callId||'')).filter(Boolean))]);
-            } catch(error){console.warn('Property-alert link refresh unavailable',error?.message);}
 
         } catch (error) {
             console.error('Error loading monitored properties:', error);
@@ -298,19 +307,9 @@ export default function DispatchCenter({embedded=false}) {
             const user = await withRequestTimeout(base44.auth.me(), 12000, 'Dispatch authentication');
             setCurrentUser(user);
 
-            // Check every supported dispatch/CAD access path consistently.
-            const roles = new Set((user.additional_roles || []).map(role => String(role).trim().toLowerCase()));
-            const hasDispatchAccess = user.role === 'admin'
-                || String(user.role || '').trim().toLowerCase() === 'dispatch'
-                || user.dispatch_role === true
-                || roles.has('dispatch')
-                || roles.has('cad_access')
-                || hasSupervisorAccess(user)
-                || roles.has('full_access');
-
-            if (!hasDispatchAccess) {
-                toast.error('Unauthorized - Dispatch access required');
-                navigate(createPageUrl('CommandDashboard'));
+            if (!canAccessDispatchCenter(user)) {
+                toast.error('Unauthorized - Dispatch role required');
+                navigate(createPageUrl('CommandDashboard'),{replace:true});
                 return;
             }
 
@@ -408,7 +407,7 @@ export default function DispatchCenter({embedded=false}) {
        if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 3000)) return;
        activeCallsLoadingRef.current = true;
        try {
-            let calls = await loadActiveDispatchCallRows(100);
+            let calls = await loadActiveDispatchCallRows(500);
             // Source ingestion is owned by one guarded timer, not triggered by
             // each feed reader; simultaneous retries previously competed for locks.
 
@@ -416,7 +415,7 @@ export default function DispatchCenter({embedded=false}) {
             const uniqueCalls = new Map();
             for (const call of calls || []) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
-                const key = call.external_call_id || descriptionKey || call.id;
+                const key = ['CAD clone','dispatch_manual','field_initiated'].includes(call.source)?call.id:call.external_call_id || descriptionKey || call.id;
                 const current = uniqueCalls.get(key);
                 const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
                 const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
@@ -486,9 +485,9 @@ export default function DispatchCenter({embedded=false}) {
         if (!callId) return setWelfareChecks([]);
         try {
             const rows = await base44.entities.OfficerWelfareCheck.filter({ call_id: callId }, '-requested_at', 50);
-            setWelfareChecks(rows || []);
+            if(selectedNoteCallRef.current===String(callId))setWelfareChecks(rows || []);
         } catch {
-            setWelfareChecks([]);
+            if(selectedNoteCallRef.current===String(callId))setWelfareChecks([]);
         }
     };
 
@@ -497,25 +496,26 @@ export default function DispatchCenter({embedded=false}) {
         setDetailTab('incident');
         selectedNoteCallRef.current=String(call?.id||'');
         setCallNotes([]);
-        if (typeof window !== 'undefined' && window.innerWidth < 1280) setMobileView('detail');
+        setWelfareChecks([]);
+        setMobileView('detail');
         setCallDistrict(null);
         loadCallNotes(call?.id);
         loadWelfareChecks(call?.id);
         if (call?.latitude && call?.longitude) {
-            lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
+            lookupDistrict(call.latitude, call.longitude).then(d => {if(selectedNoteCallRef.current===String(call.id))setCallDistrict(d);}).catch(()=>{});
         }
     };
 
     // Deep-link selected CAD calls from Live Command, including Help Me calls.
     const initialDeepLinkConsumed=React.useRef('');
     useEffect(()=>{
-        const id=new URLSearchParams(window.location.search).get('call_id');
+        const id=new URLSearchParams(location.search).get('call_id');
         if(!id || initialDeepLinkConsumed.current===id)return;
         const match=activeCalls.find(row=>String(row.id)===String(id));
         if(!match)return;
         initialDeepLinkConsumed.current=id;
         handleSelectCall(match);
-    },[activeCalls]);
+    },[activeCalls,location.search]);
 
     // Keep the selected call's shared note stream live. Field officers and dispatch
     // write to the same CallNote entity, so either side sees the other's update
@@ -558,7 +558,7 @@ export default function DispatchCenter({embedded=false}) {
                 status: newStatus,
             });
             const payload = result?.data || result || {};
-            if (payload.error) throw new Error(payload.error);
+            if (payload.error || !payload.success) throw new Error(payload.error || 'CAD did not confirm status update');
             setDispatchFeedback(`Call Updated: ${newStatus}`); setSelectedCall(previous=>previous?{...previous,status:newStatus}:previous);
             toast.success(`Call marked ${newStatus}`);
             if (['Cleared', 'Cancelled'].includes(newStatus)) setSelectedCall(null);
@@ -656,7 +656,8 @@ export default function DispatchCenter({embedded=false}) {
             return [createdCall, ...without];
         });
         setShowCreateDialog(false);
-        toast.success('Call created and dispatched');
+        toast.success('Incident saved');
+        handleSelectCall(createdCall);
         // Reconcile quietly in the background after the modal has closed.
         loadActiveCalls().catch(() => null);
     };
@@ -712,28 +713,25 @@ export default function DispatchCenter({embedded=false}) {
     };
 
 
-    const propertyAlertCalls=activeCalls.filter(call =>
-        Boolean(call.property_alert_id||call.property_id||call.matched_property_id||call.property_name||call.property_site)
-        ||persistedPropertyCallIds.includes(String(call.id))
-        ||Boolean(findPropertyMatch(call,companyPropertyBoundaries)));
+    const propertyAlertCalls=activeCalls.filter(call=>isVerifiedPropertyCall(call,verifiedPropertyIds));
     const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
     const matchesQueue = (call,filter) => {
         if (filter==='agency') return true;
-        if (!propertyCallIds.has(String(call.id))) return false;
+        if(filter==='all')return propertyCallIds.has(String(call.id));
         const activeAssignments=cadAssignmentRows.filter(row=>String(row.call_id)===String(call.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
-        if(filter==='all')return true;
-        if(filter==='unassigned')return !call.assigned_units?.length&&!activeAssignments.length;
+        if(filter==='assigned')return assignedCadUnitIds(call).length>0||!!activeAssignments.length;
+        if(filter==='unassigned')return needsPropertyAssignment(call,propertyCallIds,new Set(activeAssignments.length?[String(call.id)]:[]));
         if(filter==='priority')return ['critical','high'].includes(incidentPriority(call));
         const normalize=value=>String(value||'').toLowerCase().replace(/[ _-]/g,'');
-        return normalize(propertyCallProgress(call))===normalize(filter);
+        return normalize(call.status)===normalize(filter);
     };
-    const allCalls=activeCalls.filter(call=>matchesQueue(call,queueFilter)&&[call.call_id,call.bps_reference,call.agency_cad_number,call.incident,call.location,call.caller_name].filter(Boolean).join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
+    const allCalls=activeCalls.filter(call=>matchesQueue(call,queueFilter)&&[call.call_id,call.bps_reference,call.agency_cad_number,call.incident,call.location,call.caller_name].filter(Boolean).join(' ').toLowerCase().includes(queueSearch.toLowerCase())).sort((a,b)=>{const ta=parseServerTimestamp(a.time_received||a.created_date)?.getTime()||0,tb=parseServerTimestamp(b.time_received||b.created_date)?.getTime()||0;return sortOrder==='desc'?tb-ta:ta-tb;});
 
     const statusUnits = units.filter(unit => Boolean(unit.status));
     const availableUnits = statusUnits.filter(unit => unit.status === 'Available');
     const activeUnits = statusUnits.filter(unit => unit.status !== 'Out of Service');
-    const unassignedCalls = propertyAlertCalls.filter(call => !call.assigned_units?.length);
-    const priorityCalls = propertyAlertCalls.filter(call => ['critical', 'high'].includes(incidentPriority(call)));
+    const unassignedCalls = activeCalls.filter(call => matchesQueue(call,'unassigned'));
+    const priorityCalls = activeCalls.filter(call => ['critical', 'high'].includes(incidentPriority(call)));
     // "Old/wait" time is a Pathfinder property-monitoring metric only. General
     // GRAC/agency calls must never make this timer old or red.
     const callAgeMinutes = (call) => Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000));
@@ -749,7 +747,7 @@ export default function DispatchCenter({embedded=false}) {
 
 
     return (
-        <div ref={workstationRef} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white "+(!embedded?' cad-dispatch-standalone':'')}>
+        <div ref={workstationRef} style={!embedded?{zoom,'--dispatch-zoom':zoom}:undefined} data-high-zoom={!embedded&&zoom>1.24} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch dispatch-v3 dispatch-workspace-v4 relative flex h-full min-h-0 flex-col overflow-hidden text-white "+(!embedded?' cad-dispatch-standalone':'')}>
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
@@ -757,19 +755,21 @@ export default function DispatchCenter({embedded=false}) {
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
                     <div className="min-w-0">
-                        <h1 className="pf-dispatch-title">Dispatch / Control</h1>
-                        <p className="mt-0.5 text-[10px] leading-snug text-slate-300">Coordinate calls, units and response</p>
+                        <h1 className="pf-dispatch-title">Dispatch Center</h1>
+                        <p className="mt-0.5 text-[10px] leading-snug text-slate-300">Select an incident, review details, assign responding units</p>
                     </div>
                     <span className={"w-1.5 h-1.5 rounded-full ml-1 "+(callsLoadWarning?"bg-amber-400":loading?"bg-blue-400":"bg-green-400")} />
                     <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : callsLoadWarning?'DEGRADED':'CAD FEED'}</span>
                 </div>
+                
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
                     <button type="button" onClick={()=>{for(const prefix of ['function:getActiveDispatchCalls:','function:getOnDutyUnits:','function:sharedCadTimeline:'])clearBase44ReadCacheMatching(prefix);void loadActiveCalls(true);void loadUnits(true);if(selectedCall?.id){void loadCallNotes(selectedCall.id);void loadWelfareChecks(selectedCall.id);}}} className="pf-cad-button">Refresh</button>
-                    <button onClick={() => setShowCreateDialog(true)}
+                    <button onClick={() => {setIntakeSource('dispatch');setShowCreateDialog(true);setMobileView('detail');setShowPriorCalls(false);setShowDispatchLog(false);}}
                         className="flex items-center gap-1 rounded-lg border border-blue-700 bg-[#163153] text-white hover:bg-blue-900">
-                        <Plus className="w-3 h-3" /> New call
+                        <Plus className="w-3 h-3" /> New incident
                     </button>
+                    <button type="button" onClick={()=>{setIntakeSource('field');setShowCreateDialog(true);setMobileView('detail');setShowPriorCalls(false);setShowDispatchLog(false);}}>Field initiated</button>
 
                     <button onClick={() => {
                         setShowMap(true);
@@ -777,12 +777,14 @@ export default function DispatchCenter({embedded=false}) {
                         className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMap || mobileView === 'map' ? 'border-blue-500/40 bg-blue-900/20 text-blue-400' : 'border-slate-600 text-slate-500'}`}>
                         <MapIcon className="w-2.5 h-2.5" /> Map
                     </button>
-                    <button onClick={() => setShowPriorCalls(!showPriorCalls)}
+                    <button type="button" aria-expanded={toolsOpen} onClick={()=>setToolsOpen(v=>!v)} className="pf-cad-button">More tools {toolsOpen?'−':'+'}</button>
+                    <div className="dispatch-v3-more" hidden={!toolsOpen}>
+                    {currentUser?.role==='admin'&&<button onClick={() => setShowPriorCalls(!showPriorCalls)}
                         className={`px-2 py-1 border rounded text-[10px] ${
                             showPriorCalls ? 'border-amber-500/40 text-amber-400' : 'border-slate-600 text-slate-400 hover:text-white'
                         }`}>
                         {showPriorCalls ? 'BACK TO ACTIVE' : 'CALL / PROPERTY HISTORY'}
-                    </button>
+                    </button>}
                     <button onClick={() => setShowDispatchLog(true)} className="flex items-center gap-1 rounded border border-blue-600/60 px-2 py-1 text-[10px] text-blue-300 hover:bg-blue-950/40 hover:text-white"><ClipboardList className="h-2.5 w-2.5" /> Dispatch log</button>
                     <button onClick={() => {
                         const params = new URLSearchParams({ new: '1' });
@@ -808,6 +810,7 @@ export default function DispatchCenter({embedded=false}) {
                             <Shield className="w-2.5 h-2.5" /> ADMIN
                         </button>
                     )}
+                    </div>
                     <OfficerDistressButton currentUser={currentUser} className="text-[10px]" />
 
                 </div>
@@ -833,27 +836,12 @@ export default function DispatchCenter({embedded=false}) {
 
 
             {!showDispatchLog && <>
-            {/* ══ COMMAND STATUS STRIP ══ */}
-            <div className="dispatch-kpis pf-dispatch-metrics tac-dispatch-metrics grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
-                {[
-                    { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
-                    { label: 'PROPERTY UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
-                    { label: 'PROPERTY PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
-                    { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
-                    { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
-                    { label: 'PROPERTY OLDEST', value: propertyAlertCalls.length ? `${oldestPropertyCallMinutes}m` : '—', tone: oldestPropertyCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
-                ].map(({ label, value, tone, icon: Icon }) => (
-                    <div key={label} className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#26384c] bg-[#0d1420] px-2 py-2 text-center shadow-lg">
-                        <Icon className={`hidden h-3 w-3 shrink-0 sm:block ${tone}`} />
-                        <div className="min-w-0"><div className={`text-sm font-black leading-none ${tone}`}>{value}</div><div className="mt-0.5 truncate text-[7px] font-bold tracking-[0.1em] text-slate-500">{label}</div></div>
-                    </div>
-                ))}
-            </div>
+            <div className="dispatch-v4-summary"><span><i data-tone="warning"/> Waiting <b>{unassignedCalls.length}</b></span><span>Other live <b>{activeCalls.length-unassignedCalls.length}</b></span><span>Priority <b>{priorityCalls.length}</b></span><span>Available units <b>{availableUnits.length}</b></span>{(callsLoadWarning||propertyFeedError)&&<span role="alert">{callsLoadWarning||propertyFeedError}</span>}</div>
 
-            <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2 xl:hidden">
+            <div className="dispatch-v3-mobile flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2">
                 <div className="cad-mobile-view-tabs flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1.5" aria-label="Dispatch mobile panels">
                     {[
-                        ['calls','1 · Calls'], ['detail','2 · Details'], ['assignment','3 · Assign'], ['units','Units'], ['map','Map']
+                        ['calls','Calls'], ['detail','Details'], ['assignment','Assign'], ['units','Units'], ['map','Map']
                     ].map(([value,label]) => (
                         <button type="button" key={value} aria-pressed={value==='map'?showMap:mobileView===value} onClick={() => value==='map'?setShowMap(true):setMobileView(value)} className={`min-h-11 min-w-[76px] flex-1 shrink-0 rounded-lg border px-2 text-[10px] font-black tracking-wide ${(value==='map'?showMap:mobileView===value) ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#0b1320] text-slate-300'}`}>{label}</button>
                     ))}
@@ -869,7 +857,7 @@ export default function DispatchCenter({embedded=false}) {
                 </div>
                 <div className="cad-queue-filter-strip flex min-w-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1" aria-label="Filter dispatch calls">
                     {[
-                        ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED'], ['priority','PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','EN ROUTE'], ['On Scene','ON SCENE'], ['agency','ALL ACTIVE CALLS']
+                        ['agency','All calls'], ['unassigned','Waiting'], ['assigned','Assigned'], ['priority','Priority'], ['all','Property']
                     ].map(([value,label]) => (
                         <button type="button" key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`shrink-0 whitespace-nowrap rounded border px-2.5 py-2 text-[10px] ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-300 hover:text-white'}`}>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
                     ))}
@@ -882,86 +870,37 @@ export default function DispatchCenter({embedded=false}) {
                 <button onClick={() => setSortOrder('asc')} className={`px-2 py-0.5 rounded text-[10px] border ${
                     sortOrder === 'asc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
                 }`}>Oldest</button>
-                <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {queueFilter==='agency'?activeCalls.length:propertyAlertCalls.length}</span>
+                <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {activeCalls.length}</span>
             </div>
 
             {/* ══ MAIN GRID ══ */}
-            {showPriorCalls ? (
+            {showPriorCalls && currentUser?.role==='admin' ? (
                 <div className="dispatch-prior-calls flex-1 overflow-auto p-3">
-                    <CallHistory embedded />
+                    <button type="button" className="pf-cad-button" onClick={()=>setShowPriorCalls(false)}>Back to live dispatch</button><CallHistory embedded />
                 </div>
             ) : (
-                <div className="dispatch-main pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
+                <div data-mobile-view={mobileView} data-selected={!!selectedCall||showCreateDialog} className="dispatch-main dispatch-v3-grid dispatch-v4-grid pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
                     <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}>
-                        {/* Police Calls */}
-                        <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
-                            <span className="pf-dispatch-pane-title">1 · {queueFilter==='agency'?'All active calls':'Company property calls'}</span>
-                            <span className="text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
-                        </div>
-                        {/* Table header */}
-                        <div className="dispatch-call-headings pf-dispatch-legacy-head flex-none grid grid-cols-12">
-                            <div className="col-span-2">PRI</div>
-                            <div className="col-span-5">Incident</div>
-                            <div className="col-span-5">TIME</div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {allCalls.length === 0 ? (
-                                <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'Loading Current Calls…' : callsLoadWarning ? 'Active call feed unavailable — retrying when the API recovers' : queueSearch ? 'No Calls Match This Search' : queueFilter==='agency' ? 'No Active Calls' : 'No Property Calls Match This Filter'}</div>
-                            ) : allCalls.map(call => {
-                                return (
-                                <div key={call.id} role="button" tabIndex={0} aria-label={'Open incident '+(call.bps_reference||call.call_id||call.id)} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();handleSelectCall(call);}}} onClick={() => handleSelectCall(call)}
-                                    className={`dispatch-call-card pf-dispatch-call group grid cursor-pointer border-b px-2 py-2.5 transition-all ${
-                                        selectedCall?.id === call.id
-                                            ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6] border-[#172536]'
-                                            : 'border-[#172536] hover:bg-[#111827]'
-                                    }`}>
-                                    <div className="pf-dispatch-priority">
-                                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(incidentPriority(call))}`}>
-                                            {{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}
-                                        </span>
-                                    </div>
-                                    <div className="pf-dispatch-call-info">
-                                        <div className={`text-[9px] font-mono font-bold truncate ${call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{(call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…')}</div>
-                                        <div className="break-words text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{cleanIncident(call)}</div>
-                                        <div className="mt-1 break-words text-[9px] text-slate-400">{call.location}</div>
-                                        {propertyCallIds.has(String(call.id))&&<div className="mt-1 text-[9px] font-bold text-cyan-300">PROPERTY STATUS: {propertyCallProgress(call).toUpperCase()}</div>}
-                                        <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wide ${'text-slate-600'}`}>
-                                            {(call.agency || 'AGENCY N/A')}
-                                        </div>
-                                    </div>
-                                    <div className="pf-dispatch-call-time text-slate-400">
-                                        <div>{formatEasternTime(call.time_received || call.created_date)}</div>
-                                        {findPropertyMatch(call, monitoredProperties) ? (
-                                            <div className={`mt-1 font-bold ${callAgeMinutes(call) >= 15 ? 'text-red-400' : 'text-slate-600'}`}>
-                                                {callAgeMinutes(call)} MIN AGO · PROPERTY
-                                            </div>
-                                        ) : (
-                                            <div className={`mt-1 font-bold ${'text-slate-700'}`}>{'AGENCY CALL'}</div>
-                                        )}
-                                    </div>
-                                </div>
-                                );
-                            })}
-                        </div>
+                        <header className="dispatch-v3-panel-head"><b>Incident queue</b><span>{allCalls.length} calls</span></header>
+                        <div className="dispatch-v3-queue-scroll dispatch-v4-queue-lanes">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Other live / responding incidents',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>{if(showCreateDialog){if(!window.confirm('Discard unsaved draft and open this incident?'))return;setShowCreateDialog(false);}handleSelectCall(call);}}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
 
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
                     <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} pf-dispatch-detail min-h-0 w-full flex-1 min-w-0 flex-col xl:flex xl:min-h-0`}>
-                        <div className="tac-dispatch-center-tools"><span>INCIDENT WORKSPACE</span><div><button type="button" aria-pressed={dockMap} onClick={()=>setDockMap(x=>!x)}>{dockMap?'Hide map':'Dock tactical map'}</button><button type="button" onClick={()=>setShowMap(true)}>Full map</button></div></div>
-                        {dockMap&&!showMap&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
+                        <div className="tac-dispatch-center-tools"><span>{showCreateDialog?'New incident':'Incident workspace'}</span><div><button type="button" onClick={()=>{if(showCreateDialog&&!window.confirm('Discard unsaved draft?'))return;setShowCreateDialog(false);setSelectedCall(null);setMobileView('calls');}}>Close workspace</button><button type="button" aria-pressed={dockMap} onClick={()=>setDockMap(x=>!x)}>{dockMap?'Hide map':'Dock tactical map'}</button><button type="button" onClick={()=>setShowMap(true)}>Full map</button></div></div>
+                        {dockMap&&!showMap&&!showCreateDialog&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
-                            {selectedCall ? (
-                                <div className="pf-dispatch-detail-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>2 · Incident details</span><div className="flex gap-2 xl:hidden"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
+                            {showCreateDialog?<div className="cc-workspace-v2 dispatch-v4-intake"><CreateCallDialog inline source={intakeSource} units={units} currentUser={currentUser} onClose={()=>{setShowCreateDialog(false);setMobileView(selectedCall?'detail':'calls');}} onCreated={handleCallCreated}/></div>:selectedCall ? (
+                                <div className="pf-dispatch-detail-scroll dispatch-v3-detail min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>Incident details</span><div className="flex gap-2 flex-wrap"><button type="button" className="pf-cad-button" onClick={()=>setCloneOpen(true)}>Clone incident</button><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
-                                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(incidentPriority(selectedCall))}`}>{incidentPriority(selectedCall).toUpperCase()}</span>
+                                        <span data-priority={incidentPriority(selectedCall)} className={`cad-selected-priority text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(incidentPriority(selectedCall))}`}>{priorityCode(selectedCall)} · {incidentPriority(selectedCall).toUpperCase()}</span>
                                         {canEditIncidentPriority(currentUser) && <IncidentPrioritySelect call={selectedCall} priority={incidentPriority(selectedCall)} onSave={async(call,priority)=>{
                                             const response=await base44.functions.invoke('updateCadCallPriority',{call_id:call.id,priority});
                                             if(response?.data?.error)throw new Error(response.data.error);
@@ -975,11 +914,11 @@ export default function DispatchCenter({embedded=false}) {
                                     </div>
                                     <div className="tac-segment tac-dispatch-tabs" role="group" aria-label="Incident detail views">{[['incident','Incident'],['activity','CAD log / notes'],['all','All details']].map(([id,label])=><button type="button" key={id} aria-pressed={detailTab===id} onClick={()=>setDetailTab(id)}>{label}</button>)}</div>
                                     <div hidden={detailTab==='activity'} className="tac-incident-facts"><button type="button" className="tac-log-jump" onClick={()=>setDetailTab('activity')}><History size={15}/> CAD log · {callNotes.length} entries <ChevronRight size={14}/></button>
-                                    <div className="pf-dispatch-facts px-3 md:px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                                    <div data-priority={incidentPriority(selectedCall)} className="pf-dispatch-facts px-3 md:px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                                         <h2 className="col-span-full text-xl font-bold text-white">{cleanIncident(selectedCall)}</h2>
 
                                         <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
-                                        <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{incidentPriority(selectedCall).toUpperCase()}</span></div>
+                                        <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{priorityCode(selectedCall)} · {incidentPriority(selectedCall).toUpperCase()}</span></div>
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
                                         {selectedCall.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{selectedCall.caller_name}</span></div>}
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
@@ -1063,8 +1002,8 @@ export default function DispatchCenter({embedded=false}) {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-center h-16 text-[10px] text-slate-600">
-                                    Select a call from the queue to view details and manage response.
+                                <div className="dispatch-v3-empty flex items-center justify-center p-6 text-center">
+                                    Select an incident on the left to review its address, hazards and response actions. Then assign units on the right.
                                 </div>
                             )}
                         </div>
@@ -1074,14 +1013,15 @@ export default function DispatchCenter({embedded=false}) {
 
                     {/* ═══ RIGHT: UNITS / ASSIGNMENT ═══ */}
                     <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} pf-dispatch-units min-h-0 w-full flex-1 flex-col xl:flex xl:flex-none`}>
-                        {selectedCall && mobileView !== 'units' ? (
+                        {selectedCall && !showCreateDialog && mobileView !== 'units' ? (
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                                    <span className="pf-dispatch-pane-title">3 · Assign units</span>
+                                    <span className="pf-dispatch-pane-title">Assign units</span>
                                     <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">Call selected</span>
                                 </div>
-                                <div className="min-h-0 flex-1 p-3">
+                                <div className="min-h-0 flex-1 p-3 overflow-y-auto">
+                                    <details className="dispatch-v4-recommend"><summary>Recommended units</summary><CadRecommendationList key={selectedCall.id} call={selectedCall} units={units} onAssigned={handleUpdate}/></details>
                                     <UnitAssignmentPanel call={selectedCall} calls={activeCalls} units={units} allAssignments={cadAssignmentRows} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
                                 </div>
                             </div>
@@ -1089,7 +1029,7 @@ export default function DispatchCenter({embedded=false}) {
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                                    <span className="pf-dispatch-pane-title">3 · Assign units</span>
+                                    <span className="pf-dispatch-pane-title">Assign units</span>
                                 </div>
                                 <div className="flex min-h-0 flex-1 items-center justify-center p-4">
                                     <div className="max-w-[260px] rounded-xl border border-dashed border-slate-700 bg-[#09121e] p-5 text-center text-xs text-slate-400">Select an active call, then return to Assignment to dispatch a unit.</div>
@@ -1133,7 +1073,7 @@ export default function DispatchCenter({embedded=false}) {
                         <span className="flex shrink-0 items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-slate-300">{loading?'Syncing':callsLoadWarning?'Degraded':'Feed ready'}</span></span>
                         <span className="shrink-0">CALLS: <span className="text-white">{allCalls.length}</span></span>
                         <span className="shrink-0">UNITS ACTIVE: <span className="text-green-400">{activeUnits.length}</span></span>
-                        <span className="shrink-0">UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
+                        <span className="shrink-0">WAITING PROPERTY: <span className="text-yellow-400">{unassignedCalls.length}</span></span>
                         <span className="hidden shrink-0 items-center gap-1 text-slate-400 md:flex lg:ml-auto"><Keyboard className="h-3 w-3" /> N NEW CALL · / SEARCH · M MAP · ESC CLEAR</span>
                         <span className="shrink-0 font-bold text-green-400">{systemTime.toLocaleTimeString('en-US', { hour12: false })} ET</span>
                     </div>
@@ -1142,6 +1082,7 @@ export default function DispatchCenter({embedded=false}) {
             </div>
 
             </>}
+            {selectedCall&&<CadCloneIncidentDialog open={cloneOpen} onOpenChange={setCloneOpen} call={selectedCall} onCloned={handleCallCreated}/>}
             {/* Messaging Panel */}
             <MessagingPanel
                 currentUser={currentUser}
@@ -1150,15 +1091,7 @@ export default function DispatchCenter({embedded=false}) {
                 onClose={() => setShowMessaging(false)}
             />
 
-            {/* Create Call Dialog */}
-            {showCreateDialog && (
-                <CreateCallDialog
-                    units={units}
-                    currentUser={currentUser}
-                    onClose={() => setShowCreateDialog(false)}
-                    onCreated={handleCallCreated}
-                />
-            )}
+
         </div>
     );
 }

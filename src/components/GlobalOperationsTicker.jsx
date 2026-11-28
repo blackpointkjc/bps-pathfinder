@@ -63,7 +63,7 @@ function criticalSummary(calls) {
   return {
     key: 'critical:summary',
     kind: 'call',
-    href: createPageUrl('DispatchCenter'),
+    href: createPageUrl('CommandDashboard'),
     text: `⚠ ${critical.length} CRITICAL INCIDENT${critical.length === 1 ? '' : 'S'} ACTIVE · ${detailParts.join(' | ')}`,
   };
 }
@@ -115,7 +115,7 @@ function distressSegments(rows = []) {
     .map(row => ({
       key: `distress:${row.id}`,
       kind: 'distress',
-      href: createPageUrl('DispatchCenter'),
+      href: createPageUrl('CommandDashboard'),
       text: `OFFICER DISTRESS · UNIT ${row.unit_number || 'UNKNOWN'} · ${displayText([row.rank, row.last_name || row.officer_name].filter(Boolean).join(' ')).toUpperCase()}`,
     }));
 }
@@ -157,7 +157,7 @@ function propertySegments(rows = [], calls = []) {
     result.push({
       key: `property:${key}`,
       kind: 'property',
-      href: createPageUrl('DispatchCenter'),
+      href: createPageUrl('CommandDashboard'),
       text: `PROPERTY ALERT · ${displayText(liveCall.incident || row.callIncident || 'ACTIVE CALL').toUpperCase()} @ ${displayText(liveCall.location || row.callLocation || row.propertyName || 'MONITORED PROPERTY').toUpperCase()}`,
     });
   }

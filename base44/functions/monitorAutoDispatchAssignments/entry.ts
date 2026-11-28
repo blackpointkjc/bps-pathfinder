@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
       if (!callId || !activeCallIds.has(callId) || !activeAssignment(assignment.status)) continue;
       const officer: any = userById.get(String(assignment.unit_id));
       if (!officer?.email) continue;
+      if(officer.current_call_id&&String(officer.current_call_id)!==callId)continue;
       const latest = (welfareChecks || []).find((check: any) =>
         String(check.call_id) === callId && String(check.unit_id) === String(assignment.unit_id)
       );
@@ -165,11 +166,15 @@ Deno.serve(async (req) => {
       const responseSeconds = Math.max(ackSeconds, Number(property.auto_dispatch_escalation_seconds || 300));
       const linkedAssignments = (assignments || []).filter((item: any) => item.call_id === callId && activeAssignment(item.status));
       const pending = linkedAssignments.filter((item: any) => {
+        const officer:any=userById.get(String(item.unit_id));
+        if(officer?.current_call_id&&String(officer.current_call_id)!==callId)return false;
         if (item.accepted_at || lower(item.status) !== 'pending') return false;
         const assignedAt = new Date(item.assigned_at || item.created_date || 0).getTime();
         return Number.isFinite(assignedAt) && now - assignedAt >= ackSeconds * 1000;
       });
       const acceptedNotResponding = linkedAssignments.filter((item: any) => {
+        const officer:any=userById.get(String(item.unit_id));
+        if(officer?.current_call_id&&String(officer.current_call_id)!==callId)return false;
         if (!item.accepted_at || !['accepted', 'pending'].includes(lower(item.status))) return false;
         const acceptedAt = new Date(item.accepted_at).getTime();
         return Number.isFinite(acceptedAt) && now - acceptedAt >= responseSeconds * 1000;

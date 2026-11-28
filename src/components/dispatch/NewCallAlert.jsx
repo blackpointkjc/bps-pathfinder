@@ -1,3 +1,4 @@
+import {incidentPriority,priorityCode} from '@/lib/incidentPriority';
 import { AlertTriangle, MapPin, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -13,12 +14,12 @@ export default function NewCallAlert({ call, onAcknowledge }) {
                 exit={{ opacity: 0, y: -20 }}
                 className="fixed left-1/2 top-2 z-[100015] w-full max-w-lg -translate-x-1/2 px-2 sm:top-4 sm:px-4"
             >
-                <div className="flex max-h-[calc(100dvh-1rem)] flex-col gap-3 overflow-y-auto rounded-xl border-2 border-red-500 bg-red-950 p-3 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-4">
+                <div data-priority={incidentPriority(call)} className="cad-new-call-alert flex max-h-[calc(100dvh-1rem)] flex-col gap-3 overflow-y-auto rounded-xl border-2 border-red-500 bg-red-950 p-3 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-4">
                     <div className="flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-red-400 animate-pulse flex-shrink-0 mt-0.5" />
+                        <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                             <div className="text-red-300 font-mono font-bold text-sm uppercase tracking-wide">
-                                NEW INCOMING CALL
+                                {priorityCode(call)} · NEW INCOMING CALL
                             </div>
                             <div className="mt-0.5 break-words font-mono text-base font-bold leading-snug text-white">
                                 {call.incident}

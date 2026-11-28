@@ -1,67 +1,48 @@
-import {CadTerminalHeader,CadRefresh,CadPanelBar,CadMetricStrip,CadStatus} from '@/components/dispatch/CadTerminal';
+import {CadTerminalHeader,CadRefresh,CadMetricStrip,CadStatus} from '@/components/dispatch/CadTerminal';
 import {Users,Search,X} from 'lucide-react';
 import {formatEasternDateTime} from '@/lib/easternTime';
 import '@/components/dispatch/cad-center-terminal.css';
-import { useEffect, useState } from 'react';
-import { getAppDirectory } from '@/lib/appDirectory';
-import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
-import { applyOfficerLocationEvent, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
+import {useState} from 'react';
+import useCadRoster from '@/hooks/useCadRoster';
+import {DashboardDataProvider,useDashboardData,useOptionalDashboardData} from '@/lib/DashboardDataContext';
 import {dutyRows} from '@/components/dispatch/UnitDutyBoard';
+import {cadReferenceValue} from '@/lib/cadOperationalStatus';
+import {cadDisplayUnitState} from '@/lib/cadWorkspaceModel';
+import {cadDestination} from '@/lib/cadNavigation';
+import {useNavigate} from 'react-router-dom';
+import '@/components/dispatch/cad/unified-cad-grid.css';
 
-function UnitStatusPage() {
-    const { users, calls, loading, manualRefresh, rateLimited } = useDashboardData();
-    const [units, setUnits] = useState(users);
-    const [directory, setDirectory] = useState([]);
-    const [query,setQuery]=useState(''),[status,setStatus]=useState('ALL'),[platoon,setPlatoon]=useState('ALL'),[selectedId,setSelectedId]=useState(null);
-    useEffect(() => {
-        let live = true;
-        const fetchDirectory = () => getAppDirectory().then(result => {
-            if (live) setDirectory(result.users || []);
-        }).catch(error => console.warn('Officer platoon directory delayed:', error?.message));
-        void fetchDirectory();
-        const refresh = event => {
-            if (!event?.detail?.name || ['User', 'ActiveOfficer'].includes(event.detail.name)) void fetchDirectory();
-        };
-        window.addEventListener('bps-data-changed', refresh);
-        return () => { live = false; window.removeEventListener('bps-data-changed', refresh); };
-    }, []);
-    useEffect(() => {
-        const byEmail = new Map(directory.filter(row => row.email).map(row => [String(row.email).trim().toLowerCase(), row]));
-        const byId = new Map(directory.filter(row => row.id).map(row => [String(row.id), row]));
-        setUnits(users.map(person => {
-            const profile = byId.get(String(person.user_id || person.id || '')) || byEmail.get(String(person.email || person.officer_email || '').trim().toLowerCase());
-            return { ...person,
-                rank: profile?.rank || person.rank,
-                last_name: profile?.last_name || person.last_name,
-                additional_roles: profile?.additional_roles || person.additional_roles || [],
-                employment_status: profile?.employment_status || person.employment_status,
-                account_status: profile?.account_status || person.account_status,
-                platoon: profile?.platoon || profile?.oversight_platoon || person.platoon || person.oversight_platoon || null };
-        }));
-    }, [users, directory]);
-    useEffect(() => subscribeOfficerLocationChanges(event => setUnits(rows => applyOfficerLocationEvent(rows, event))), []);
+function UnitStatusPage({initialStatus='All',initialUnitSearch='',onOpenCall}) {
+    const navigate=useNavigate();
+    const {calls,rateLimited}=useDashboardData();
+    const {rows:units,loading,error,lastVerifiedAt,refresh}=useCadRoster();
+    const [query,setQuery]=useState(initialUnitSearch),[status,setStatus]=useState(initialStatus==='All'?'ALL':initialStatus),[platoon,setPlatoon]=useState('ALL'),[selectedId,setSelectedId]=useState(null);
+    const manualRefresh=()=>refresh(true);
     const all=dutyRows(units,calls);
     const rows=dutyRows(units,calls,query,status).filter(u=>platoon==='ALL'||(u.platoon||u.oversight_platoon)===platoon);
     const key=u=>String(u.id||u.email||u.officer_email);
     const selected=rows.find(u=>key(u)===selectedId);
+    const openCall=call=>onOpenCall?onOpenCall(call):navigate(cadDestination('CommandDashboard',new URLSearchParams({call_id:call.id})));
     const states=['Available','Dispatched','Enroute','On Scene','Busy','Out of Service','Distress'];
-    const presence=u=>u.connection_stale?'Stale':u.presence_online||u.session_active?'Online':'Offline';
-    const gps=u=>u.live_location_hidden?'Private':!(u.presence_online||u.session_active||u.map_visible)?'Offline':u.connection_stale?'Stale':u.gps_updated_at?'Recorded fix':u.last_gps_updated_at?'Last known':'Unavailable';
+    const presence=u=>u.connection_stale||u.presence_state==='stale'?'Stale':u.session_active===false||u.presence_state==='offline'?'Offline':u.presence_online===true||u.session_active===true?'Online':'Offline';
+    const gps=u=>u.live_location_hidden?'Private':presence(u)==='Stale'?'Stale':presence(u)==='Offline'?'Offline':u.gps_updated_at?'Recorded fix':u.last_gps_updated_at?'Last known':'Unavailable';
     const name=u=>[u.rank,u.last_name].filter(Boolean).join(' ')||u.officer_name||u.full_name||'Officer';
     return <div className="tac-console cad-terminal-page cad-unit-terminal">
-      <CadTerminalHeader title="Unit status / resources" icon={Users} subtitle="Duty readiness and recorded assignments"><CadRefresh busy={loading} onClick={manualRefresh}/></CadTerminalHeader>
-      <CadMetricStrip items={[{label:'Roster',value:all.length,selected:status==='ALL',onClick:()=>setStatus('ALL')},...['Available','Enroute','On Scene','Out of Service','Distress'].map(label=>({label,value:all.filter(u=>u.status===label).length,tone:label==='Distress'?'danger':label==='Available'?'ready':'neutral',selected:status===label,onClick:()=>setStatus(label)}))]}/>
-      {rateLimited&&<p role="status" className="tac-warning">Refresh delayed. Showing last received statuses.</p>}
+      <CadTerminalHeader title="Unit Board" icon={Users} subtitle="Officer status and current assignments"><CadRefresh busy={loading} onClick={manualRefresh}/></CadTerminalHeader>
+      <CadMetricStrip items={[{label:'Roster',value:all.length,selected:status==='ALL',onClick:()=>setStatus('ALL')},...states.map(label=>({label,value:all.filter(u=>u.status===label).length,tone:label==='Distress'?'danger':label==='Available'?'ready':'neutral',selected:status===label,onClick:()=>setStatus(label)}))]}/>
+      {(error||rateLimited)&&<p role="status" className="tac-warning">{error||'Refresh delayed. Showing last received statuses.'} <button type="button" disabled={loading} onClick={manualRefresh}>Retry roster</button></p>}<p className="cad-terminal-footer">{lastVerifiedAt?'Roster read '+formatEasternDateTime(lastVerifiedAt)+' ET':'Waiting for a verified officer roster'}</p>
       <div className="cad-terminal-filter"><label><Search size={15}/><input aria-label="Find unit" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Officer / badge / assignment"/></label><select aria-label="Duty status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{states.map(s=><option key={s}>{s}</option>)}</select><select aria-label="Platoon" value={platoon} onChange={e=>setPlatoon(e.target.value)}><option value="ALL">All platoons</option>{[...new Set(all.map(u=>u.platoon||u.oversight_platoon).filter(Boolean))].sort().map(p=><option key={p}>{p}</option>)}</select><button type="button" onClick={()=>{setQuery('');setStatus('ALL');setPlatoon('ALL');}}>Reset</button></div>
-      <div className="cad-terminal-split cad-unit-split" data-detail={!!selected}>
-       <section className="cad-terminal-panel"><CadPanelBar title={rows.length+' operational officers'}/><div className="cad-terminal-scroll"><table className="cad-terminal-table"><thead><tr>{['Unit','Officer','Status','Platoon','Assignment','Presence / GPS'].map(v=><th key={v}>{v}</th>)}</tr></thead><tbody>{rows.map(u=><tr key={key(u)} data-selected={selectedId===key(u)} onClick={()=>setSelectedId(key(u))}><td><button className="cad-record-link" type="button" onClick={()=>setSelectedId(key(u))}>{u.unit_number||'—'}</button></td><td>{name(u)}</td><td><CadStatus value={u.status}/></td><td>{u.platoon||u.oversight_platoon||'Unassigned'}</td><td>{u.assignment}</td><td>{presence(u)} / {gps(u)}</td></tr>)}</tbody></table>{!rows.length&&<p className="tac-empty">{loading?'Loading roster…':'No matching officers'}</p>}</div></section>
-       <section className="cad-terminal-panel cad-unit-detail"><CadPanelBar title="Officer detail">{selected&&<button onClick={()=>setSelectedId(null)} aria-label="Close officer detail"><X size={15}/></button>}</CadPanelBar><div className="cad-terminal-scroll">{selected?<><div className="cad-terminal-record-title"><small>UNIT {selected.unit_number||'—'}</small><h2>{name(selected)}</h2><CadStatus value={selected.status}/></div><dl className="cad-terminal-fields">{[['Platoon',selected.platoon||selected.oversight_platoon],['Presence',presence(selected)],['GPS',gps(selected)],['Last recorded update',selected.last_update_at||selected.last_update?formatEasternDateTime(selected.last_update_at||selected.last_update)+' ET':null],['Current assignment',selected.assignment]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v||'Not recorded'}</dd></div>)}</dl></>:<p className="tac-empty">Select an officer to inspect duty status and assignment.</p>}</div></section>
+      <div className="cc-unit-board" data-detail={!!selected}>
+       <section className="cc-panel"><header><span><Users size={14}/> Units ({rows.length})</span></header><div className="cc-scroll">{[['Available',rows.filter(u=>cadDisplayUnitState(u)==='available')],['Assigned / other',rows.filter(u=>cadDisplayUnitState(u)!=='available')]].map(([label,group])=><div key={label}><h3 className="cc-unit-group">{label} ({group.length})</h3>{group.map(u=><button type="button" key={key(u)} aria-pressed={selectedId===key(u)} className="cc-unit cc-unit-select" data-state={cadDisplayUnitState(u)} onClick={()=>setSelectedId(key(u))}><div><b>{u.unit_number||'—'}</b><small>{u.status||'Unknown'}</small><small>{presence(u)}</small></div><span>{name(u)} · {u.platoon||u.oversight_platoon||'Unassigned'}</span><small>{u.assignment}</small></button>)}</div>)}{!rows.length&&<p className="cc-empty">{loading?'Loading roster…':error?'Roster unavailable. Retry above.':'No matching officers'}</p>}</div></section>
+       <section className="cc-panel cc-unit-inspect"><header><span>Officer detail</span>{selected&&<button onClick={()=>setSelectedId(null)} aria-label="Close officer detail"><X size={15}/></button>}</header><div className="cc-scroll">{selected?<><div className="cad-terminal-record-title"><small>UNIT {selected.unit_number||'—'}</small><h2>{name(selected)}</h2><CadStatus value={selected.status}/></div><dl className="cad-terminal-fields">{[['Platoon',selected.platoon||selected.oversight_platoon],['Presence',presence(selected)],['GPS',gps(selected)],['Last recorded update',selected.last_update_at||selected.last_update?formatEasternDateTime(selected.last_update_at||selected.last_update)+' ET':null],['Current assignment',selected.assignment]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v||'Not recorded'}</dd></div>)}</dl>{calls.filter(c=>(c.assigned_units||[]).some(id=>[selected.id,selected.user_id,selected.active_officer_id,selected.email].some(v=>v!=null&&String(v)===String(id)))).map(c=><button key={c.id} className="cc-call" onClick={()=>openCall(c)}><strong>{cadReferenceValue(c)} · {c.incident}</strong><p>{c.location}</p></button>)}</>:<p className="cc-empty">Select an officer to inspect duty status and assignments.</p>}</div></section>
+
       </div>
     </div>;
 }
-export default function UnitStatus() {
+
+export default function UnitStatus(props){
   // The CAD Center shell already provides the live queue; reuse it instead of
   // mounting a second polling provider inside the same screen.
-  const existing = useOptionalDashboardData();
-  return existing ? <UnitStatusPage /> : <DashboardDataProvider><UnitStatusPage /></DashboardDataProvider>;
+  const existing=useOptionalDashboardData();
+  return existing?<UnitStatusPage {...props}/>:<DashboardDataProvider><UnitStatusPage {...props}/></DashboardDataProvider>;
 }

@@ -199,15 +199,11 @@ var CHESTERFIELD_PUBLIC_API_KEY = Deno.env.has("CHESTERFIELD_PUBLIC_API_KEY") ? 
 var ALLOWED_AGENCIES = /* @__PURE__ */ new Set(["RPD", "RFD", "HPD", "HFD", "CCPD", "CCFD"]);
 var AGENCY_SOURCE = { RPD: "richmond", RFD: "richmond", HPD: "henrico", HFD: "henrico", CCPD: "chesterfield", CCFD: "chesterfield" };
 var PROPERTY_MONITORING_EDGE_TOLERANCE_METERS = 100;
-var LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS = 3 * 60 * 1e3;
-var LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS = 15 * 60 * 1e3;
+// Called only when creating a new verified property alert. Agency receive
+// time is informational; a still-active call must not become silent history
+// simply because GRAC publishes late or a boundary match is recovered.
 function isFreshLivePropertyCall(call) {
-  const now = Date.now();
-  const firstSeenAt = new Date(call?.source_first_seen_at || call?.created_date || 0).getTime();
-  const callAt = new Date(call?.time_received || call?.created_date || 0).getTime();
-  const firstSeenAgeMs = now - firstSeenAt;
-  const upstreamAgeMs = now - callAt;
-  return Number.isFinite(firstSeenAt) && firstSeenAt > 0 && firstSeenAgeMs >= 0 && firstSeenAgeMs <= LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS && Number.isFinite(callAt) && callAt > 0 && upstreamAgeMs >= 0 && upstreamAgeMs <= LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS;
+  return !!call?.id && call.manual_dismissed!==true && !call.time_cleared && !['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(call.status||'').trim().toLowerCase());
 }
 var normalizeStatus = (raw) => {
   const value = String(raw || "").trim().toUpperCase();
@@ -329,9 +325,23 @@ function externalKey(record) {
 function legacyKey(record) {
   const agency = String(record?.agency || "").trim().toUpperCase();
   const incident = String(record?.incident || "").trim().toUpperCase().replace(/\s+/g, " ");
-  const received = record?.time_received ? new Date(record.time_received).toISOString() : "";
-  if (!ALLOWED_AGENCIES.has(agency) || !incident || !received) return "";
-  return `${agency}|${received}|${incident}`;
+  const stamp=Date.parse(record?.time_received||"");
+  const received=Number.isFinite(stamp)?new Date(stamp).toISOString():"";
+  const location=String(record?.location||"").trim().toUpperCase().replace(/\bNORTH\b/g,"N").replace(/\bSOUTH\b/g,"S").replace(/\bEAST\b/g,"E").replace(/\bWEST\b/g,"W").replace(/\bSTREET\b/g,"ST").replace(/\bAVENUE\b/g,"AVE").replace(/\bBOULEVARD\b/g,"BLVD").replace(/\bROAD\b/g,"RD").replace(/[^A-Z0-9]+/g," ").trim();
+  if (!ALLOWED_AGENCIES.has(agency) || !incident || !received || !location) return "";
+  return `${agency}|${received}|${incident}|${location}`;
+}
+function sameAgencyIdentity(a,b){
+ if(!a||!b)return false;
+ const first=externalKey(a),second=externalKey(b);
+ if(first&&second&&first!==second&&String(a.source_channel||"").includes("grac_api")&&String(b.source_channel||"").includes("grac_api"))return false;
+ return !!legacyKey(a)&&legacyKey(a)===legacyKey(b);
+}
+function matchAgencyRecord(row,byExternal,byLegacy){
+ const exact=byExternal.get(externalKey(row));
+ if(exact)return exact;
+ const fallback=byLegacy.get(legacyKey(row));
+ return sameAgencyIdentity(row,fallback)?fallback:null;
 }
 function recordKey(record) {
   return externalKey(record) || legacyKey(record);
@@ -471,6 +481,10 @@ function mergeLiveWebsiteAndApi(websiteCalls, apiCalls, _websiteCacheAgeSeconds 
   for (const api of apiCalls || []) {
     const key = liveMergeKey(api);
     const web = byKey.get(key);
+    if(web?.source_channel?.includes("grac_api_live")&&web.external_call_id&&api.external_call_id&&web.external_call_id!==api.external_call_id){
+      byKey.set(key+"|"+api.external_call_id,{...api,source_channel:"grac_api_live"});
+      continue;
+    }
     if (!web) {
       byKey.set(key, { ...api, source_channel: "grac_api_live" });
       continue;
@@ -607,7 +621,7 @@ function propertyMatch(call, location) {
   if (location?.active === false || !emergencyFour && location?.property_monitoring_enabled !== true) return null;
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
-  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+  const hasCoordinates = call?.latitude!=null&&call?.longitude!=null&&String(call.latitude).trim()!==""&&String(call.longitude).trim()!==""&&Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180&&!(lat===0&&lng===0);
   if (!hasCoordinates) {
     return sameStreetBlock(call?.location, location?.address) ? { relation: "nearby", distanceMeters: 0, addressFallback: true } : null;
   }
@@ -640,7 +654,7 @@ function propertyAlertFingerprint(call, propertyId) {
   ].join("|");
 }
 async function createImmediatePropertyAlerts(base44, call, monitored, existingCallPropertyKeys, existingKeys, sideEffects) {
-  if (!call?.id || ["Cleared", "Cancelled"].includes(String(call.status || ""))) return 0;
+  if (!isFreshLivePropertyCall(call)) return 0;
   let created = 0;
   for (const location of monitored || []) {
     const match = propertyMatch(call, location);
@@ -725,7 +739,7 @@ async function createImmediatePropertyAlerts(base44, call, monitored, existingCa
 async function reconcilePropertyAlerts(base44) {
   const [calls, locations, existingAlerts, existingEvaluations] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list("-created_date", 300),
-    base44.asServiceRole.entities.Location.list("site_name", 100),
+    base44.asServiceRole.entities.Location.list("site_name", 1000),
     // Read ALL alerts, not only unacknowledged alerts. An acknowledged alert is
     // still the authoritative record for that call/property pair and must not be
     // recreated every ingestion cycle.
@@ -884,7 +898,7 @@ async function reconcilePropertyAlerts(base44) {
   for (const alert of existingAlerts || []) {
     const lifecycle = String(alert.lifecycle_status || "active").toLowerCase();
     if (!activeCallIds.has(String(alert.callId)) || ["resolved", "false_alarm", "test"].includes(lifecycle)) continue;
-    const alertAt = new Date(alert.callTime || alert.time_received || alert.created_date || 0).getTime();
+    const alertAt = new Date(alert.created_date || 0).getTime();
     if (Number.isFinite(alertAt) && nowMs - alertAt >= 0 && nowMs - alertAt <= 15 * 60 * 1e3) {
       await base44.asServiceRole.functions.invoke("notifyPropertyAlertSms", {
         property_alert_id: alert.id
@@ -1018,12 +1032,32 @@ async function releaseIngestionLease(base44, lease) {
     }).catch(() => null);
   }
 }
-async function ingestFastPublishedCalls(base44, incoming) {
+async function repairRecentPropertyAnnouncementEvents(base44,alerts,calls,monitored,closedIds){
+ const callById=new Map((calls||[]).filter(c=>isFreshLivePropertyCall(c)&&!closedIds.has(String(c.id))).map(c=>[String(c.id),c]));
+ const siteById=new Map((monitored||[]).map(p=>[String(p.id),p]));
+ const candidates=(alerts||[]).filter(a=>{const c=callById.get(String(a.callId)),p=siteById.get(String(a.propertyId));const at=new Date(a.created_date||0).getTime();return c&&p&&propertyMatch(c,p)&&a.is_test!==true&&!['resolved','false_alarm','test','inactive','closed'].includes(String(a.lifecycle_status||'').toLowerCase())&&Number.isFinite(at)&&Date.now()-at>=0&&Date.now()-at<=60*60*1000;});
+ if(!candidates.length)return 0;
+ const keys=candidates.map(a=>`property-alert:${a.id}:created`);
+ const logs=await base44.asServiceRole.entities.CallStatusLog.filter({event_key:{$in:keys}},'-created_date',Math.min(1000,keys.length+1));
+ const published=new Set((logs||[]).map(row=>row.event_key));
+ let repaired=0;
+ for(const a of candidates.filter(a=>!published.has(`property-alert:${a.id}:created`)).slice(0,5)){
+  const c=callById.get(String(a.callId)),p=siteById.get(String(a.propertyId));
+  const cad=String(c.agency_cad_number||c.bps_reference||c.call_id||c.id);
+  await base44.asServiceRole.entities.CallStatusLog.create({call_id:c.id,incident_type:c.incident||'',location:c.location||'',old_status:'',new_status:c.status||'New',notes:'Recovered verified active property-alert announcement',event_key:`property-alert:${a.id}:created`,event_type:'property_alert',announcement_text:`Active call for service at ${p.site_name||p.address||'monitored property'}. ${c.incident||'Call for service'} at ${c.location||p.address||'address unavailable'}. CAD number ${cad}.`,announcement_priority:'high',cad_number:cad,triggering_action:'ingestGractivecalls.property_alert_recovery',audio_enabled:true,sensitive:false});
+  repaired++;
+ }
+ return repaired;
+}
+function canCloseMissingAgencyCall(row,confirmedAgencies){
+ return ['richmond','henrico','chesterfield'].includes(String(row?.source||'').toLowerCase())&&confirmedAgencies.has(String(row?.agency||'').toUpperCase())&&!row.public_request_id&&!row.manual_dismissed;
+}
+async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new Set()) {
   const started = Date.now();
   const [saved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list("-created_date", 500),
     base44.asServiceRole.entities.CallHistory.list("-archived_date", 500).catch(() => []),
-    base44.asServiceRole.entities.Location.list("site_name", 100).catch(() => []),
+    base44.asServiceRole.entities.Location.list("site_name", 1000),
     base44.asServiceRole.entities.PropertyAlert.list("-created_date", 300).catch(() => []),
     base44.asServiceRole.entities.CallAssignment.filter({ status: { $nin: ["cleared", "cancelled", "canceled"] } }, "-assigned_at", 1e3),
     base44.asServiceRole.entities.ActiveOfficer.filter({ current_call_id: { $exists: true } }, "-last_update", 500),
@@ -1052,7 +1086,7 @@ async function ingestFastPublishedCalls(base44, incoming) {
     const external = externalKey(row), legacy = legacyKey(row), key = external || legacy;
     if (!key || seen.has(key)) return false;
     seen.add(key);
-    return !byExternal.has(external) && !byLegacy.has(legacy) && !archivedExternal.has(external) && !archivedLegacy.has(legacy);
+    return !matchAgencyRecord(row,byExternal,byLegacy) && !archivedExternal.has(external) && !archivedLegacy.has(legacy);
   }).slice(0, 40);
   const numbers = await reserveCadNumbers(base44, newCalls.length);
   const sideEffects = [];
@@ -1101,12 +1135,12 @@ async function ingestFastPublishedCalls(base44, incoming) {
   }));
   const sameLiveField = (field, a, b) => field === "time_received" ? Date.parse(a) === Date.parse(b) : ["latitude", "longitude"].includes(field) ? Number(a) === Number(b) : String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
   const updateQueue = recent.filter((row) => {
-    const existing = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+    const existing = matchAgencyRecord(row,byExternal,byLegacy);
     return existing && existing.manual_dismissed !== true && ["incident", "location", "agency", "zone", "status", "priority", "time_received", "latitude", "longitude"].some((field) => row[field] !== void 0 && !(field === "priority" && existing.priority_override) && !sameLiveField(field, row[field], existing[field]));
   }).slice(0, 60);
   for (let offset = 0; offset < updateQueue.length; offset += 4) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async (row) => {
-      const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+      const previous = matchAgencyRecord(row,byExternal,byLegacy);
       const upstreamTerminal = ["cleared", "cancelled", "canceled", "closed", "resolved", "completed"].includes(lower(row.status));
       const preserveOfficerQueue = upstreamTerminal && await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, previous, cachedAssignments);
       const patch = {
@@ -1141,8 +1175,8 @@ async function ingestFastPublishedCalls(base44, incoming) {
       }
     }));
   }
-  for (const row of recent.slice(0, 80)) {
-    const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+  for (const row of recent) {
+    const previous = matchAgencyRecord(row,byExternal,byLegacy);
     if (!previous || previous.manual_dismissed === true || ["Cleared", "Cancelled"].includes(String(previous.status || ""))) continue;
     try {
       propertyAlertsCreated += await createImmediatePropertyAlerts(
@@ -1161,7 +1195,7 @@ async function ingestFastPublishedCalls(base44, incoming) {
   const liveKeys = new Set(incoming.flatMap((row) => [externalKey(row), legacyKey(row)]).filter(Boolean));
   const disappeared = (saved || []).filter((row) => {
     const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
-    return receivedAt >= now - 3 * 60 * 6e4 && receivedAt <= now && !["Cleared", "Cancelled"].includes(String(row.status || "")) && row.manual_dismissed !== true && row.source !== "public_helpme" && !row.public_request_id && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
+    return receivedAt >= now - 3 * 60 * 6e4 && receivedAt <= now && !["Cleared", "Cancelled"].includes(String(row.status || "")) && row.manual_dismissed !== true && canCloseMissingAgencyCall(row,confirmedAgencies) && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
   }).slice(0, 20);
   const closedIdsFromSource = /* @__PURE__ */ new Set();
   for (let offset = 0; offset < disappeared.length; offset += 4) {
@@ -1182,6 +1216,8 @@ async function ingestFastPublishedCalls(base44, incoming) {
   }
   waitUntil(Promise.allSettled(sideEffects));
   const closedIds = closedIdsFromSource;
+  try{await repairRecentPropertyAnnouncementEvents(base44,alerts,saved,monitored,closedIds);}catch(error){alertFailures++;console.error('Property announcement recovery deferred to next poll',error?.message||error);}
+
   const activeIds = new Set(saved.filter((call) => !closedIds.has(String(call.id)) && !["Cleared", "Cancelled"].includes(String(call.status))).map((call) => String(call.id)));
   const properties = new Map(monitored.map((property) => [String(property.id), property]));
   const candidates = alerts.filter((alert) => {
@@ -1318,8 +1354,10 @@ async function handleGracIngestion(req) {
           time_received: call.time_received
         }))
       });
+      const webAgencies=new Set(websiteIncoming.map(c=>String(c.agency||'').toUpperCase()));
+      const confirmedAgencies=new Set(apiIncoming.map(c=>String(c.agency||'').toUpperCase()).filter(a=>webAgencies.has(a)));
       if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
-        const result = await ingestFastPublishedCalls(base44, incoming);
+        const result = await ingestFastPublishedCalls(base44, incoming,confirmedAgencies);
         await recordSourcePoll(base44, lease, {
           last_source_poll_at: sourceObservedAt,
           last_source_poll_status: "success",
@@ -1337,7 +1375,7 @@ async function handleGracIngestion(req) {
       const incomingByLegacy = new Map(incoming.map((call) => [legacyKey(call), call]));
       const groups = /* @__PURE__ */ new Map();
       for (const record of existingCalls || []) {
-        const key = legacyKey(record) || externalKey(record);
+        const key = ["richmond","henrico","chesterfield"].includes(String(record.source||"").toLowerCase()) ? (externalKey(record)||legacyKey(record)) : "";
         if (!key) continue;
         groups.set(key, [...groups.get(key) || [], record]);
       }
@@ -1345,7 +1383,7 @@ async function handleGracIngestion(req) {
       for (const [key, records] of groups) {
         const canonical = chooseCanonical(records);
         const matchingIncoming = incomingByLegacy.get(legacyKey(canonical));
-        const upstreamId = matchingIncoming?.external_call_id || externalKey(canonical);
+        const upstreamId = sameAgencyIdentity(canonical,matchingIncoming) ? (matchingIncoming?.external_call_id || externalKey(canonical)) : externalKey(canonical);
         if (upstreamId && canonical.external_call_id !== upstreamId) {
           await base44.asServiceRole.entities.DispatchCall.update(canonical.id, { external_call_id: upstreamId });
         }
@@ -1369,7 +1407,7 @@ async function handleGracIngestion(req) {
       const archivedByExternal = new Set((archivedHistory || []).map((row) => externalKey(row)).filter(Boolean));
       const archivedByLegacy = new Set((archivedHistory || []).map((row) => legacyKey(row)).filter(Boolean));
       const [immediateLocations, immediateExistingAlerts] = await Promise.all([
-        base44.asServiceRole.entities.Location.list("site_name", 100).catch(() => []),
+        base44.asServiceRole.entities.Location.list("site_name", 1000),
         base44.asServiceRole.entities.PropertyAlert.list("-created_date", 1e3).catch(() => [])
       ]);
       const immediateMonitored = (immediateLocations || []).filter((location) => location.active !== false);
@@ -1392,7 +1430,7 @@ async function handleGracIngestion(req) {
         (record) => recordKey(record) && !/^BPS-\d{6}-\d{1,8}$/i.test(String(record.bps_reference || ""))
       );
       const newCalls = incoming.filter(
-        (call) => !byExternal.has(call.external_call_id) && !byLegacy.has(legacyKey(call)) && !archivedByExternal.has(externalKey(call)) && !archivedByLegacy.has(legacyKey(call))
+        (call) => !matchAgencyRecord(call,byExternal,byLegacy) && !archivedByExternal.has(externalKey(call)) && !archivedByLegacy.has(legacyKey(call))
       );
       const cadNumbers = await reserveCadNumbers(base44, needingCad.length + newCalls.length);
       let cadIndex = 0;
@@ -1413,7 +1451,7 @@ async function handleGracIngestion(req) {
       for (const callData of incoming) {
         const incomingExternal = externalKey(callData);
         const incomingLegacy = legacyKey(callData);
-        const existing = byExternal.get(callData.external_call_id) || byLegacy.get(incomingLegacy);
+        const existing = matchAgencyRecord(callData,byExternal,byLegacy);
         const alreadyArchived = archivedByExternal.has(incomingExternal) || archivedByLegacy.has(incomingLegacy);
         if (!existing && alreadyArchived) {
           continue;
@@ -1487,7 +1525,7 @@ async function handleGracIngestion(req) {
       const currentExternalKeys = new Set(incoming.map((call) => call.external_call_id));
       const currentLegacyKeys = new Set(incoming.map((call) => legacyKey(call)));
       for (const record of existingCalls || []) {
-        if (record.source === "public_helpme" || record.public_request_id) continue;
+        if (!canCloseMissingAgencyCall(record,confirmedAgencies)||!isFreshLivePropertyCall(record)) continue;
         const external = externalKey(record);
         const legacy = legacyKey(record);
         if (recordKey(record) && !currentExternalKeys.has(external) && !currentLegacyKeys.has(legacy)) {
@@ -1504,7 +1542,7 @@ async function handleGracIngestion(req) {
       const finalCalls = await base44.asServiceRole.entities.DispatchCall.list("-created_date", 1e3);
       const finalGroups = /* @__PURE__ */ new Map();
       for (const record of finalCalls || []) {
-        const key = legacyKey(record) || externalKey(record);
+        const key = ["richmond","henrico","chesterfield"].includes(String(record.source||"").toLowerCase()) ? (externalKey(record)||legacyKey(record)) : "";
         if (key) finalGroups.set(key, [...finalGroups.get(key) || [], record]);
       }
       for (const records of finalGroups.values()) {

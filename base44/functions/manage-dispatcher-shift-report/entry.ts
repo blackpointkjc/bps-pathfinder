@@ -18,7 +18,7 @@ const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role:
 
 function canDispatch(user: any) {
   const roles = rolesOf(user);
-  return user?.role === 'admin' || lower(user?.role) === 'dispatch' || user?.dispatch_role === true || roles.has('dispatch') || roles.has('cad_access') || roles.has('full_access');
+  return !!user&&!user.disabled&&user.portal_approved!==false&&!['client','student','visitor','pending'].some(r=>roles.has(r)||lower(user.role)===r||lower(user.user_type)===r)&&(['dispatch','dispatcher'].includes(lower(user.role))||user.dispatch_role===true||roles.has('dispatch')||roles.has('dispatcher'));
 }
 
 Deno.serve(async (req) => {
@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
-    if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
+    if ((!__portalCaller && !__portalService) || (__portalCaller && ((__portalCaller.additional_roles||[]).includes('visitor') || __portalCaller.disabled || __portalCaller.termination_date || String(__portalCaller.employment_status||'').toLowerCase()==='terminated' || (!__portalCaller.is_service && __portalCaller.role!=='admin' && !canDispatch(__portalCaller) && !(__portalCaller.additional_roles||[]).length && !['investigator','reviewer'].includes(__portalCaller.ps_role))))) return Response.json({error:'Approved portal access required'},{status:403});
     base44.auth.me = async () => __portalCaller;
 
     const me = await base44.auth.me().then(__portalAppIdentity).then(__limitFullAccess);

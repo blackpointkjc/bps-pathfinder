@@ -149,3 +149,25 @@
   html[data-pf-contrast="high"] .cad-incident-table :is(td, th) { border-color: #94a3b8 !important; }
   .pf-display-panel { max-height: min(760px, var(--radix-popover-content-available-height, calc(100dvh - 24px))); overscroll-behavior: contain; }
 }
+
+/* Custom CAD labels were outside the original Tailwind-only text-size rules. */
+@media screen {
+ .cc-workspace-v2 .cc-call-body p,.cc-workspace-v2 .cc-call-title strong,.cc-workspace-v2 .tac-detail-fields dd,.cc-workspace-v2 .tac-detail-block p,.cc-workspace-v2 .cad-comments-scroll article p{font-size:13px;line-height:1.4}
+ .cc-workspace-v2 .cc-call-index b,.cc-workspace-v2 .cc-call-index time,.cc-workspace-v2 .cc-radio-row,.cc-workspace-v2 .cc-unit-group,.cc-workspace-v2 .cc-call-tags small{font-size:11px}
+ html:is([data-pf-text="large"],[data-pf-text="extra-large"]) :is(.cc-workspace-v2,.cad-terminal-page,.cad-analytics,.dispatch-v3) :is(.cc-call-title strong,.cc-call-body p,.cc-call-index b,.cc-call-index time,.cc-call-tags small,.cc-radio-row,.cc-unit-group,.cc-tab,.cc-draft-field,.cc-draft input,.cc-draft textarea,.cc-draft select,.tac-detail-fields dd,.tac-detail-fields dt,.tac-detail-block p,.tac-detail-block h3,.cad-comments-scroll article p,.cad-comments-scroll b,.cad-comments-scroll time,.cad-comments-compose textarea,.cad-comments-compose button,.cad-terminal-table td,.cad-terminal-fields dd,.cad-terminal-fields dt,.dispatch-v3-call-top strong,.dispatch-v3-call p,.dispatch-v3-call-meta,.dispatch-v3-queue-group h3,.dispatch-v3-hazard){font-size:var(--pf-small)!important;line-height:1.45!important}
+ html:is([data-pf-text="large"],[data-pf-text="extra-large"]) :is(.cc-workspace-v2,.cad-terminal-page,.cad-analytics,.dispatch-v3) :is(.cc-panel>header,.tac-detail-title h2,.cc-draft>header,.cad-terminal-header h1,.dispatch-v3-panel-head,.pf-dispatch-pane-title){font-size:var(--pf-body)!important;line-height:1.35!important}
+ html:is([data-pf-text="large"],[data-pf-text="extra-large"]) .cc-workspace-v2 .cc-radio-row{min-height:33px}
+ html[data-pf-contrast="high"] :is(.cc-workspace-v2,.dispatch-v3,.cad-terminal-page) :is(.cc-call-index,.cc-call-body small,.cc-empty,.cc-unit-group,.dispatch-v3-empty,.dispatch-v3-call-meta){color:#e2eef7!important}
+}
+
+@media screen{
+ .cad-terminal-shell,.cc-command-host,.dispatch-workspace-v4{font-family:system-ui,sans-serif}
+ :is(.cad-terminal-shell,.cc-command-host,.dispatch-workspace-v4) :is(.cad-terminal-id b,.cad-terminal-nav button,.cad-status-metrics strong,.cad-monitor-title,.cad-monitor-counts b,.cad-monitor-chip strong,.cc-panel>header b,.cc-call-title strong,.cc-tab button,.tac-detail-title h2,.tac-detail-block h3,.tac-detail-actions button,.cad-terminal-record-title h2,.cad-terminal-header h1,.dispatch-v3-call-top strong,.pf-dispatch-pane-title,.dispatch-v3-panel-head){font-weight:550!important;letter-spacing:normal!important;text-transform:none!important}
+ :is(.cad-terminal-shell,.cc-command-host,.dispatch-workspace-v4) :is(.font-black,.font-extrabold){font-weight:600!important;letter-spacing:normal!important}
+ .cad-terminal-shell .cad-monitor-track{max-height:105px;overflow-y:auto}
+ .cad-terminal-shell .cad-monitor-title{font:500 12px/1.3 system-ui,sans-serif;color:#c4d9e6}
+ .cad-terminal-shell .cad-monitor-chip{min-width:190px;max-width:260px}
+ .cad-terminal-shell .cad-monitor-chip strong{white-space:normal}
+ .cad-terminal-shell .cad-monitor-chip small{white-space:normal}
+ .cc-officer-workspace .cc-panel>header{font-size:13px}
+}

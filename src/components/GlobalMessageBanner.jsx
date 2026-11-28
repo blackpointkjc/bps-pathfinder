@@ -1,3 +1,5 @@
+import {cadDestination} from '@/lib/cadNavigation';
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -22,8 +24,8 @@ const SOURCES = [
   // these Notification rows to the assigned officer -- previously nothing
   // told them dispatch had put them on a call. Filtered to the current user
   // the same way ChatMention is (see the `assignment` check in showBanner).
-  { entity: 'Notification', label: 'Assigned to Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_assignment' },
-  { entity: 'Notification', label: 'Unassigned from Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_unassignment' },
+  { entity: 'Notification', label: 'Assigned to Call', page: 'OfficerDispatchQueue', kind: 'assignment', assignment: 'call_assignment' },
+  { entity: 'Notification', label: 'Unassigned from Call', page: 'OfficerDispatchQueue', kind: 'assignment', assignment: 'call_unassignment' },
   { entity: 'Notification', label: 'Supervisor Operations', page: 'SupervisorOverview', kind: 'supervisor_task', targeted: 'supervisor_task', supervisorOnly: true },
 ];
 
@@ -70,6 +72,7 @@ export function CadAudioToggle() {
 
 const LOCAL_CLAIM_TTL_MS = 6 * 60 * 60 * 1000;
 const LIVE_PROPERTY_ALERT_MAX_AGE_MS = 3 * 60 * 1000;
+const PROPERTY_RECOVERY_MAX_AGE_MS = 60 * 60 * 1000;
 const localAnnouncementClaims = new Map();
 
 function localClaimKey(eventKey) {
@@ -334,7 +337,7 @@ export default function GlobalMessageBanner({ user }) {
       // Supervisor Operations board, but never as a blocking banner or voice
       // announcement for each missing report.
       if (isSupervisorTask && String(record.task_key || '').startsWith('missing-report-')) return;
-      const targetPage = isWelfareNotification
+      const targetPage = source.assignment || isWelfareNotification
         ? 'OfficerDispatchQueue'
         : isSupervisorTask
           ? 'SupervisorOverview'
@@ -397,8 +400,9 @@ export default function GlobalMessageBanner({ user }) {
         // this visual alert auto-closes or the user dismisses it.
         persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification || source.sourceName === 'Platoon Command'),
         recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
-        notificationId: (isWelfareNotification || isSupervisorTask || source.sourceName === 'Platoon Command') ? record.id : null,
+        notificationId: (source.assignment || isWelfareNotification || isSupervisorTask || source.sourceName === 'Platoon Command') ? record.id : null,
         relatedId: isWelfareNotification ? String(record.related_id || '') : '',
+        callId: source.assignment&&!isWelfareNotification?String(record.related_id||''):'',
         fingerprint,
         sender: text.sender,
         photo: record.sender_photo_url || '',
@@ -527,10 +531,10 @@ export default function GlobalMessageBanner({ user }) {
       const liveAgeMs = Date.now() - liveReferenceAt;
       const isFreshLivePropertyAlert = Number.isFinite(liveReferenceAt)
         && liveAgeMs >= 0
-        && liveAgeMs <= LIVE_PROPERTY_ALERT_MAX_AGE_MS;
+        && (liveAgeMs <= LIVE_PROPERTY_ALERT_MAX_AGE_MS || (options.recovery===true && liveAgeMs <= PROPERTY_RECOVERY_MAX_AGE_MS));
       if (!isFreshLivePropertyAlert || !propertyAlertWasTimely(record)) {
-        // A call first published 18 minutes after its actual receive time is
-        // history discovered late, not a brand-new emergency alarm.
+        // Closed/historical alerts must not replay. A late upstream timestamp
+        // alone never suppresses a newly verified active property alert.
         knownIds.current.add(key);
         return;
       }
@@ -540,7 +544,7 @@ export default function GlobalMessageBanner({ user }) {
       // that verified snapshot immediately instead of blocking speech on several
       // follow-up network reads. Recovery/update events keep the conservative
       // lookup path below so stale history can never replay as a live call.
-      const realtimeCreate = options.realtimeCreate === true || options.recovery===true;
+      const realtimeCreate = options.realtimeCreate === true || (options.recovery===true&&liveAgeMs<=LIVE_PROPERTY_ALERT_MAX_AGE_MS);
       if (realtimeCreate && record.callId && record.propertyId && record.propertyName && record.callIncident) {
         const callKey = String(record.callId);
         const currentStatus = callStatusKey(record.callStatus || 'new');
@@ -601,12 +605,13 @@ export default function GlobalMessageBanner({ user }) {
         announcedPropertyCallStatuses.current.set(callKey, currentStatus);
         knownIds.current.add(key);
         window.dispatchEvent(new CustomEvent('bps-unread-notification', {
-          detail: { page: 'DispatchCenter', key },
+          detail: { page: 'CommandDashboard', key },
         }));
         const banner = {
           id: key,
           title: 'ACTIVE CALL FOR SERVICE',
-          page: 'DispatchCenter',
+          page: 'CommandDashboard',
+          callId:callKey,
           kind: 'property',
           persistent: false,
           recordId: record.id,
@@ -705,13 +710,14 @@ export default function GlobalMessageBanner({ user }) {
       announcedPropertyCallStatuses.current.set(callKey, currentStatus);
       knownIds.current.add(key);
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
-        detail: { page: 'DispatchCenter', key },
+        detail: { page: 'CommandDashboard', key },
       }));
 
       const banner = {
         id: key,
         title: 'ACTIVE CALL FOR SERVICE',
-        page: 'DispatchCenter',
+        page: 'CommandDashboard',
+        callId:callKey,
         kind: 'property',
         persistent: false,
         recordId: record.id,
@@ -841,7 +847,8 @@ export default function GlobalMessageBanner({ user }) {
         const banner = {
           id: key,
           title: String(record.event_type || 'CAD STATUS').replaceAll('_', ' ').toUpperCase(),
-          page: 'DispatchCenter',
+          page: canAccessDispatchCenter(user)?'DispatchCenter':'CommandDashboard',
+          callId:String(record.call_id||''),
           kind: record.announcement_priority === 'emergency' ? 'property' : 'assignment',
           persistent: false,
           recordId: record.id,
@@ -888,7 +895,7 @@ export default function GlobalMessageBanner({ user }) {
       // window could announce a call 15+ minutes late after a refresh/reconnect,
       // which made BPSPF sound delayed even though the alert row was old.
       const recoverRecentPropertyCalls = () => {
-        const propertyCutoff = Date.now() - LIVE_PROPERTY_ALERT_MAX_AGE_MS;
+        const propertyCutoff = Date.now() - PROPERTY_RECOVERY_MAX_AGE_MS;
         return base44.entities.PropertyAlert.list('-created_date', 50).then(records => {
           (records || []).slice().reverse().forEach(record => {
             if (!record?.id) return;
@@ -897,7 +904,7 @@ export default function GlobalMessageBanner({ user }) {
             if (Number.isFinite(created) && created >= propertyCutoff) {
               // A verified property alert arriving during connection is still
               // actionable for a short interval. Claim once, never replay later.
-              void showPropertyCall(record, { allowAudio: Date.now()-created <= LIVE_PROPERTY_ALERT_MAX_AGE_MS, recovery:true });
+              void showPropertyCall(record, { allowAudio: Date.now()-created <= PROPERTY_RECOVERY_MAX_AGE_MS, recovery:true });
             } else {
               // Old alerts stay available in history but are never replayed as a
               // new live voice/banner event.
@@ -1171,7 +1178,7 @@ export default function GlobalMessageBanner({ user }) {
                 }).catch(() => null);
               }
               await dismiss(banner.id);
-              navigate(createPageUrl(banner.page));
+              if(['CommandDashboard','OfficerDispatchQueue','DispatchCenter'].includes(banner.page)){const page=banner.page==='DispatchCenter'&&!canAccessDispatchCenter(user)?'CommandDashboard':banner.page;navigate(cadDestination(page,new URLSearchParams(banner.callId?{call_id:banner.callId}:{})));}else navigate(createPageUrl(banner.page));
             }}
             className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
           >

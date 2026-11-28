@@ -1,0 +1,227 @@
+/* Dense, multi-panel Pathfinder CAD workstation. Scoped to the CAD command screen. */
+.cc-workspace{display:flex;flex-direction:column;min-width:0;min-height:0;flex:1;overflow:hidden;background:#07121d;color:#e0e9f2;container-type:inline-size}
+.cc-toolbar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:5px 7px;background:#101e2c;border-bottom:1px solid #344b60;flex:none}
+.cc-create{display:flex;gap:4px}.cc-toolbar button,.cc-toolbar select,.cc-toolbar label,.cc-mobile button,.cc-panel header button{border:1px solid #345269;background:#142d40;color:#dcecf8;border-radius:3px;padding:5px 7px;font-size:11px;min-height:29px}
+.cc-toolbar button[aria-pressed=true],.cc-mobile button[aria-pressed=true]{background:#165d7c;border-color:#42a2c9;color:#fff}.cc-toolbar label{display:flex;align-items:center;gap:5px;flex:1;min-width:120px}.cc-toolbar input{width:100%;min-width:0;background:transparent;color:inherit;outline:none}
+.cc-grid{display:grid;grid-template-columns:minmax(120px,.85fr) minmax(150px,1.08fr) minmax(245px,2fr) minmax(150px,1.08fr) minmax(155px,1.3fr);grid-template-rows:minmax(0,1fr) minmax(135px,.57fr);grid-template-areas:"units pending incident active comments" "units pending incident active map";gap:3px;min-height:0;flex:1;padding:3px;background:#07121d;overflow:hidden}
+.cc-grid[data-map=false]{grid-template-rows:minmax(0,1fr);grid-template-areas:"units pending incident active comments"}
+.cc-panel{display:flex;flex-direction:column;min-width:0;min-height:0;background:#101e2c;border:1px solid #2a4054;overflow:hidden}
+.cc-units{grid-area:units}.cc-pending{grid-area:pending}.cc-active{grid-area:active}.cc-incident{grid-area:incident}.cc-comments{grid-area:comments}.cc-map{grid-area:map}
+.cc-panel>header{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:34px;padding:5px 7px;flex:none;border-bottom:1px solid #344b60;background:#0a1723;color:#e4eff8;font-size:12px;font-weight:700}.cc-panel>header span{display:flex;align-items:center;gap:4px}.cc-panel>header small{overflow:hidden;text-overflow:ellipsis;font-size:10px;white-space:nowrap}
+.cc-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-gutter:stable;padding:3px}
+.cc-call{width:100%;display:block;text-align:left;padding:6px;margin-bottom:4px;background:#162a3b;border:1px solid #2b465b;border-left:3px solid #4c7189;border-radius:3px;overflow-wrap:anywhere;color:#e7f1f8}
+.cc-call:hover,.cc-call[aria-pressed=true]{background:#17435b;border-color:#4d9bbd}.cc-call[data-priority=critical]{border-left-color:#ef6874}.cc-call[data-priority=high]{border-left-color:#f2ae53}
+.cc-call-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font:10px ui-monospace,monospace;color:#accadd}.cc-call-meta b{flex:1;min-width:0;overflow-wrap:anywhere}.cc-call-meta time{color:#b7c7d6}.cc-call>strong{display:block;font-size:12px;margin:4px 0;line-height:1.3}.cc-call p{font-size:11px;color:#c6d6e1;line-height:1.35;margin:3px 0}.cc-call .cc-snippet{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#94adbf;border-top:1px solid #345269;padding-top:4px}
+.cc-call-tags{display:flex;gap:3px;flex-wrap:wrap}.cc-call-tags small{font-size:10px;background:#243e50;padding:2px 4px;color:#d5e4ef}.cc-call-tags [data-unit=true]{background:#087fa9;color:white}
+.cc-unit-search{margin:4px;padding:5px;min-width:0;background:#0b1824;border:1px solid #345269;color:#d8e7f2;font-size:12px}.cc-unit-group{font-size:11px;color:#aabfce;margin:7px 3px 4px;font-weight:600}.cc-unit{border:1px solid #345269;background:#142636;padding:4px;margin-bottom:4px;font-size:11px;overflow-wrap:anywhere}.cc-unit>div{display:flex;justify-content:space-between;gap:3px;background:#304b62;color:#fff;padding:3px 4px;font:700 10px ui-monospace,monospace}.cc-unit[data-state=available]>div{background:#147845;color:#fff}.cc-unit[data-state=enroute]>div{background:#bb7718;color:#fff}.cc-unit[data-state=busy]>div,.cc-unit[data-state="on scene"]>div{background:#087caa}.cc-unit[data-state=distress]>div{background:#a92236}.cc-unit>span,.cc-unit>small{display:block;padding:3px 2px;color:#b7c9d7}.cc-empty,.cc-idle{padding:12px;color:#9eb3c4;font-size:12px}.cc-idle{display:flex;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center}.cc-idle strong{color:#e5eef5}
+.cc-incident>.tac-incident-detail-rail{flex:1;min-height:0;min-width:0;border:0}.cc-map>.tac-map-panel{flex:1;min-width:0;min-height:0}.cc-map .tac-panel-bar{flex-wrap:wrap}.cc-map .tac-map-camera-tools button{font-size:10px!important}.cc-comments .cad-comments-compose{flex-wrap:wrap}.cc-comments .cad-comments-compose textarea{flex-basis:100%}.cc-comments .cad-comments{min-height:0}.cc-mobile{display:none}
+@container(max-width:1080px){.cc-grid{grid-template-columns:minmax(110px,.75fr) minmax(140px,1fr) minmax(230px,1.65fr) minmax(140px,1fr);grid-template-areas:"units pending incident active" "units pending comments map";grid-template-rows:minmax(0,1fr) minmax(130px,.66fr)}.cc-grid[data-map=false]{grid-template-areas:"units pending incident active" "units pending comments active";grid-template-rows:minmax(0,1fr) minmax(130px,.66fr)}}
+@container(max-width:720px){.cc-mobile{display:flex;flex:none;gap:3px;padding:4px;background:#0b1824}.cc-mobile button{flex:1;padding:5px 2px}.cc-grid,.cc-grid[data-map=false]{display:flex;flex-direction:column;overflow:hidden}.cc-grid>.cc-panel{display:none;flex:1}.cc-grid[data-view=queues]>.cc-pending,.cc-grid[data-view=queues]>.cc-active,.cc-grid[data-view=units]>.cc-units,.cc-grid[data-view=incident]>.cc-incident,.cc-grid[data-view=comments]>.cc-comments,.cc-grid[data-view=map]>.cc-map{display:flex}.cc-toolbar label{min-width:130px}.cc-toolbar button{min-height:34px}.cc-grid .cc-call{padding:8px}}
+
+.cc-command-host>.tac-command-strip{display:none}.cc-command-host>.tac-header{padding:4px 8px;min-height:34px}.cc-command-host>.tac-header .tac-brand h1{font-size:14px}.cc-command-host>.tac-header .tac-brand small{display:none}.cc-command-host>.tac-header .tac-brand>svg{width:17px}
+.cc-unit[data-state=offline]>div,.cc-unit[data-state=stale]>div,.cc-unit[data-state=hold]>div{background:#3c4853;color:#e0e8f0}
+.cc-unit[data-state=hold]>div{background:#644b2a}.cc-unit-search{flex:none}
+.cc-incident .tac-detail-scroll{flex:1;min-height:0;overflow:auto}.cc-incident .tac-detail-secondary{flex-wrap:wrap}.cc-incident .tac-detail-actions{gap:3px;padding:5px}
+@container(max-width:720px){.cc-command-host>.tac-header .tac-header-actions{width:auto}.cc-command-host>.tac-header .tac-brand{display:none}.cc-command-host>.tac-header-actions{gap:3px}.cc-incident .tac-detail-heading{padding:7px}}
+
+/* Workstation composition: tightly packed full-height incident stack, selected
+   incident, active stack and live side tools; no duplicate dashboard cards. */
+.cc-command-host{display:flex!important;flex-direction:column;min-height:0;overflow:hidden}
+.cc-workspace{background:#06101b;font-family:Arial,system-ui,sans-serif}
+.cc-grid{grid-template-columns:minmax(102px,.85fr) minmax(126px,1.1fr) minmax(205px,2.05fr) minmax(126px,1.1fr) minmax(156px,1.45fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"units pending incident active comments";gap:2px;padding:2px}
+.cc-grid[data-map=true][data-right-tool=map]{grid-template-areas:"units pending incident active map"}
+.cc-grid[data-right-tool=map]>.cc-comments{display:none}
+.cc-grid[data-right-tool=comments]>.cc-map{display:none}
+.cc-panel{border-color:#203449;background:#0a1928}
+.cc-panel>header{font-size:12px;background:#060f1b;min-height:32px}
+.cc-unit{padding:2px;border:0;background:#142b40;margin-bottom:2px}
+.cc-unit>div{font-size:11px;padding:4px 3px;border-radius:2px}
+.cc-unit>span,.cc-unit>small{font-size:10px;padding:2px 3px}
+.cc-call{border-radius:2px;background:#142a3b;padding:5px;margin-bottom:3px}
+.cc-call>strong{font-size:12px;text-transform:uppercase}
+.cc-unit-select{width:100%;text-align:left;display:block}.cc-unit-select[aria-pressed=true]{outline:2px solid #69b9dc;outline-offset:-2px}
+.cc-unit-board{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,1fr);gap:3px;min-height:0;flex:1;overflow:hidden}
+.cc-unit-board .cc-panel>header{flex:none}.cc-unit-inspect .cc-scroll{padding:10px}
+.cc-map>.tac-map-panel{flex:1;min-height:0}
+@container (min-width:721px) and (max-width:850px){.cc-grid,.cc-grid[data-map=false]{grid-template-columns:minmax(90px,.8fr) minmax(110px,1fr) minmax(180px,1.7fr) minmax(110px,1fr);grid-template-rows:minmax(0,1fr) minmax(120px,.65fr);grid-template-areas:"units pending incident active" "units pending comments active"}.cc-grid[data-map=true][data-right-tool=map]{grid-template-areas:"units pending incident active" "units pending map active"}}
+@container(max-width:720px){.cc-grid,.cc-grid[data-map=true][data-right-tool=map],.cc-grid[data-map=false]{display:flex;flex-direction:column}.cc-grid>.cc-panel{display:none}.cc-grid[data-view=queues]>.cc-pending,.cc-grid[data-view=queues]>.cc-active,.cc-grid[data-view=units]>.cc-units,.cc-grid[data-view=incident]>.cc-incident,.cc-grid[data-view=comments]>.cc-comments,.cc-grid[data-view=map]>.cc-map{display:flex}}
+@media(max-width:780px){.cc-unit-board{grid-template-columns:minmax(0,1fr);overflow:auto;display:flex;flex-direction:column}.cc-unit-board>.cc-panel{min-height:180px;flex:1 0 240px}.cc-unit-board[data-detail=false]>.cc-unit-inspect{display:none}}
+
+@container(min-width:1200px){.cc-grid[data-map=true][data-right-tool=comments]{grid-template-rows:minmax(0,1fr) minmax(140px,.65fr);grid-template-areas:"units pending incident active comments" "units pending incident active map"}.cc-grid[data-map=true][data-right-tool=comments]>.cc-map{display:flex}}
+.cc-command-host>.tac-header .tac-header-actions>button{min-height:30px!important;font-size:11px!important;padding:3px 7px!important;border-radius:2px!important}
+
+/* CommandCentral reference composition, v2. Scope separately from Unit Board.
+   The center editor is opened by selecting a call; otherwise active calls own
+   its entire width. No empty permanent detail pane. */
+.cc-workspace-v2{background:#06101c;font:13px/1.35 Arial,system-ui,sans-serif;color:#e4edf4}
+.cc-workspace-v2 .cc-toolbar{background:#183247;border-bottom:1px solid #345266;padding:4px 6px;gap:5px;flex-wrap:wrap}
+.cc-workspace-v2 .cc-toolbar label{background:#28485e;border:0;border-radius:12px;min-height:25px}
+.cc-workspace-v2 .cc-toolbar button,.cc-workspace-v2 .cc-toolbar select{min-height:25px;padding:3px 6px;font-size:11px;background:#102538;border-color:#3c5769}
+.cc-workspace-v2 .cc-grid{display:grid;grid-template-columns:minmax(132px,13%) minmax(162px,16%) minmax(0,1fr) minmax(205px,23%);grid-template-rows:minmax(0,1fr);grid-template-areas:"units pending active map";gap:4px;padding:4px;background:#06101c}
+.cc-workspace-v2 .cc-grid[data-map=false]{grid-template-columns:minmax(132px,13%) minmax(162px,16%) minmax(0,1fr);grid-template-areas:"units pending active";grid-template-rows:minmax(0,1fr)}
+.cc-workspace-v2 .cc-grid[data-selected=true]{grid-template-columns:minmax(124px,13%) minmax(146px,15%) minmax(310px,1fr) minmax(146px,16%) minmax(165px,19%);grid-template-areas:"units pending incident active map";grid-template-rows:minmax(0,1fr)}
+.cc-workspace-v2 .cc-grid[data-selected=true][data-map=false]{grid-template-columns:minmax(124px,13%) minmax(146px,15%) minmax(0,1fr) minmax(146px,17%);grid-template-areas:"units pending incident active"}
+.cc-workspace-v2 .cc-panel{background:#071521;border:0;border-radius:0;overflow:hidden;min-height:0}
+.cc-workspace-v2 .cc-panel>header{background:#06101b;border-bottom:1px solid #203547;min-height:31px;padding:4px 5px;font-size:12px;font-weight:600}
+.cc-workspace-v2 .cc-panel>header button{background:transparent;border:0;padding:2px;min-height:22px;color:#d0e3ed}
+.cc-workspace-v2 .cc-scroll{padding:3px 0;scrollbar-width:thin;scrollbar-color:#456078 #0b1824}
+.cc-workspace-v2 .cc-call-list{display:grid;grid-template-columns:minmax(0,1fr);gap:3px;align-content:start}
+.cc-workspace-v2 .cc-grid[data-selected=false] .cc-active .cc-call-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr))}
+.cc-workspace-v2 .cc-call{display:grid;grid-template-columns:minmax(38px,29%) minmax(0,1fr);grid-template-rows:auto auto;align-content:start;gap:0;background:#142837;border:1px solid #263d4d;border-radius:3px;margin:0;padding:0;color:#e7eff5;text-align:left;line-height:1.25;min-width:0}
+.cc-workspace-v2 .cc-call[aria-pressed=true]{background:#154c65;border-color:#4c9abb}
+.cc-workspace-v2 .cc-call-index{grid-column:1;grid-row:1/3;display:flex;flex-direction:column;gap:6px;padding:5px 3px;background:#0e202d;border-right:1px solid #263d4d;overflow-wrap:anywhere;font-size:10px;color:#c7d6e0}
+.cc-workspace-v2 .cc-call-index b{font-size:10px;line-height:1.2;color:#eaf2f9;overflow-wrap:anywhere}
+.cc-workspace-v2 .cc-call-index time{font:10px/1.3 ui-monospace,monospace;color:#a9becd}
+.cc-workspace-v2 .cc-call-index svg{margin-top:auto}
+.cc-workspace-v2 .cc-call-body{padding:5px;min-width:0;overflow-wrap:anywhere}
+.cc-workspace-v2 .cc-call-title{display:flex;align-items:flex-start;gap:4px;min-width:0}
+.cc-workspace-v2 .cc-call-title strong{font-size:12px;line-height:1.25;text-transform:uppercase;overflow-wrap:anywhere}
+.cc-workspace-v2 .cc-call-title em{font:700 10px ui-monospace,monospace;background:#263c4c;border:1px solid #466274;border-radius:2px;padding:1px 2px;flex:none}
+.cc-workspace-v2 .cc-call[data-priority=critical] .cc-call-title em{background:#8c2330;border-color:#e66570}
+.cc-workspace-v2 .cc-call[data-priority=high] .cc-call-title em{background:#80531e;border-color:#da9c48}
+.cc-workspace-v2 .cc-call-body p{font-size:11px;line-height:1.3;color:#d8e5ee;margin:4px 0}
+.cc-workspace-v2 .cc-call-body>small{font-size:10px;color:#9eb7c9}
+.cc-workspace-v2 .cc-call .cc-snippet{grid-column:2;grid-row:2;margin:0;padding:5px;font-size:10px;border-top:1px solid #2a4253;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cc-workspace-v2 .cc-hazard{display:block;background:#9d2733;color:#fff;font-size:10px;line-height:1.2;margin-top:4px;padding:2px 3px;overflow-wrap:anywhere}
+.cc-workspace-v2 .cc-call-tags{margin-top:4px}
+.cc-workspace-v2 .cc-call-tags small{font:700 10px ui-monospace,monospace;border-radius:2px}
+.cc-workspace-v2 .cc-call-tags [data-state=enroute],.cc-workspace-v2 .cc-call-tags [data-state=dispatched]{background:#ce8a1b;color:#0a1720}
+.cc-workspace-v2 .cc-call-tags [data-state=available]{background:#158247;color:white}
+.cc-workspace-v2 .cc-create{padding:4px 0;display:flex;flex-wrap:wrap;gap:3px}
+.cc-workspace-v2 .cc-create button{display:flex;align-items:center;justify-content:center;gap:2px;flex:1 1 auto;min-height:24px;padding:3px 4px;background:#102636;border:1px solid #34586f;border-radius:2px;color:#a7d7ee;font-size:10px;white-space:nowrap}
+.cc-workspace-v2 .cc-unit-filters{display:flex;gap:2px;flex-wrap:wrap}
+.cc-workspace-v2 .cc-unit-filters .cc-unit-search{margin:1px;flex:1 1 65px;width:0;min-width:0;font-size:10px;padding:3px}
+.cc-workspace-v2 .cc-unit-group{display:flex;align-items:center;gap:3px;width:100%;font-size:11px;color:#bbcad5;padding:4px 1px;margin:4px 0 2px;text-align:left;background:transparent;border:0}
+.cc-workspace-v2 .cc-radio-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(26px,.8fr) minmax(35px,.8fr);align-items:stretch;gap:0;width:100%;padding:0;margin:0 0 3px;background:#203747;border:0;line-height:1.2;border-radius:2px;overflow:hidden;font:700 10px ui-monospace,monospace;color:#dce7ee}
+.cc-workspace-v2 .cc-radio-row b,.cc-workspace-v2 .cc-radio-row>span,.cc-workspace-v2 .cc-radio-row time{padding:4px 3px;min-width:0;overflow-wrap:anywhere;text-align:left}
+.cc-workspace-v2 .cc-radio-row>span{color:inherit}
+.cc-workspace-v2 .cc-radio-row time{background:#233949;color:#d8e3ea;font-weight:400;text-align:right}
+.cc-workspace-v2 .cc-radio-row[data-state=available]{background:#269350;color:#03190e}
+.cc-workspace-v2 .cc-radio-row[data-state=enroute],.cc-workspace-v2 .cc-radio-row[data-state=dispatched]{background:#d58e16;color:#211303}
+.cc-workspace-v2 .cc-radio-row[data-state=busy],.cc-workspace-v2 .cc-radio-row[data-state="on scene"]{background:#17a6d4;color:#041d2c}
+.cc-workspace-v2 .cc-radio-row[data-state=distress]{background:#c22b42;color:#fff}
+.cc-workspace-v2 .cc-radio-row[aria-pressed=true]{outline:2px solid #d2ebff;outline-offset:-2px}
+.cc-workspace-v2 .cc-unit-pop{background:#1a3042;padding:7px;font-size:11px;overflow-wrap:anywhere;max-height:30%;overflow:auto}
+.cc-workspace-v2 .cc-unit-pop button{display:block;color:#9bd8f6;text-align:left;padding:4px 0}
+.cc-workspace-v2 .cc-incident{background:#132736}
+.cc-workspace-v2 .cc-tabs{display:flex;flex:none;min-height:30px;overflow-x:auto;background:#06101b;gap:2px;border-bottom:1px solid #294457}
+.cc-workspace-v2 .cc-tab{display:flex;align-items:center;gap:2px;flex:none;padding:3px 4px;border:1px solid transparent;background:#132330;font-size:11px}
+.cc-workspace-v2 .cc-tab[data-active=true]{background:#20445c;border-top-color:#51a2c6;color:#fff}
+.cc-workspace-v2 .cc-tab button{padding:3px;color:inherit}
+.cc-workspace-v2 .cc-editor{display:grid;grid-template-columns:minmax(0,1.13fr) minmax(0,1fr);gap:4px;min-width:0;min-height:0;flex:1 1 0;overflow:hidden}
+.cc-workspace-v2 .cc-editor>.tac-incident-detail-rail{height:100%;min-width:0;min-height:0;background:#132736;border:0}
+.cc-workspace-v2 .tac-detail-heading{background:#132736;padding:7px;border-color:#294354}
+.cc-workspace-v2 .tac-detail-title h2{font-size:13px!important;line-height:1.3}
+.cc-workspace-v2 .tac-detail-heading>p{font-size:12px}
+.cc-workspace-v2 .tac-detail-fields{display:grid;background:transparent;gap:0;border-color:#294354}
+.cc-workspace-v2 .tac-detail-fields>div{background:transparent;padding:5px}
+.cc-workspace-v2 .tac-detail-fields dt{font-size:10px;margin-bottom:2px}
+.cc-workspace-v2 .tac-detail-fields dd,.cc-workspace-v2 .tac-detail-block p{font-size:11px;line-height:1.4}
+.cc-workspace-v2 .tac-detail-block{padding:7px;border-color:#294354}
+.cc-workspace-v2 .tac-detail-block h3,.cc-workspace-v2 .tac-detail-block summary{font-size:11px}
+.cc-workspace-v2 .tac-detail-actions{display:flex;flex-wrap:wrap;background:#142a3b;padding:4px;gap:3px}
+.cc-workspace-v2 .tac-detail-actions button,.cc-workspace-v2 .cad-detail-secondary button{font-size:10px!important;min-height:25px!important;padding:3px 5px!important}
+.cc-workspace-v2 .cad-detail-secondary{padding:4px;gap:3px}
+.cc-workspace-v2 .cc-editor-comments{min-height:0;min-width:0;display:flex;flex-direction:column;background:#102331}
+.cc-workspace-v2 .cc-editor-comments>header{display:flex;gap:4px;align-items:center;min-height:31px;padding:4px 5px;border-bottom:1px solid #304657;font-size:11px;font-weight:600}
+.cc-workspace-v2 .cad-comments{background:#132736}
+.cc-workspace-v2 .cad-comments-scroll article{padding:6px;gap:3px;border:0}
+.cc-workspace-v2 .cad-comments-scroll article header{flex-wrap:wrap;gap:2px}
+.cc-workspace-v2 .cad-comments-scroll b{font-size:10px}.cc-workspace-v2 .cad-comments-scroll time{font-size:9px;white-space:normal}
+.cc-workspace-v2 .cad-comments-scroll article p{padding:6px;background:#243b4c;border-radius:5px;font:11px/1.4 ui-monospace,monospace}
+.cc-workspace-v2 .cad-comments-scroll article[data-kind=activity] p{background:#1a2b38}
+.cc-workspace-v2 .cad-comments-compose{padding:4px;flex-wrap:wrap;background:#132736}
+.cc-workspace-v2 .cad-comments-compose textarea{min-height:32px;font-size:11px;flex-basis:100%}
+.cc-workspace-v2 .cad-comments-compose button{font-size:10px;min-height:26px;padding:3px 6px}
+.cc-workspace-v2 .cc-map>.tac-map-panel{flex:1 1 0;height:auto;min-height:0}
+.cc-workspace-v2 .cc-map .tac-map-camera-tools{gap:2px}
+.cc-workspace-v2 .cc-draft-host{display:flex;flex:1;min-height:0;overflow:hidden}
+.cc-workspace-v2 .cc-draft-host[hidden]{display:none!important}
+.cc-workspace-v2 .cc-draft{display:flex;flex-direction:column;width:100%;min-height:0;background:#142837}
+.cc-workspace-v2 .cc-draft>header{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px;background:#075f7c;color:#fff;font-size:12px}
+.cc-workspace-v2 .cc-draft-body{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:8px;padding:8px;flex:1;min-height:0;overflow:auto}
+.cc-workspace-v2 .cc-draft-field{display:flex;flex-direction:column;gap:3px;color:#c5d1dc;font-size:11px;font-weight:600;margin-bottom:7px}
+.cc-workspace-v2 .cc-draft input,.cc-workspace-v2 .cc-draft textarea,.cc-workspace-v2 .cc-draft select{width:100%;min-width:0;background:#2b3f4e;border:1px solid #425969;border-radius:2px;color:#fff;font:12px/1.4 Arial,sans-serif;padding:4px;min-height:27px}
+.cc-workspace-v2 .cc-draft-pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.cc-workspace-v2 .cc-draft-catalog{max-height:110px;overflow:auto}
+.cc-workspace-v2 .cc-draft-catalog button,.cc-workspace-v2 .cc-draft-units button{display:block;width:100%;text-align:left;padding:4px;background:#243e50;border:1px solid #405b6c;border-radius:2px;font-size:11px;margin:3px 0}
+.cc-workspace-v2 .cc-draft-units button[aria-pressed=true]{background:#087da6;color:white}
+.cc-workspace-v2 .cc-draft-units button small{display:block;color:#c1d9e7;font-size:10px}
+.cc-workspace-v2 .cc-draft-units h3{font-size:12px;font-weight:700;margin-bottom:5px}
+.cc-workspace-v2 .cc-draft-units p{font-size:11px;color:#b0c6d6}
+.cc-workspace-v2 .cc-draft footer{display:flex;justify-content:flex-end;gap:6px;padding:8px;flex:none;border-top:1px solid #395366}
+.cc-workspace-v2 .cc-draft footer button{padding:6px 10px;background:#126b8b;border-radius:2px;color:white;font-size:12px}
+.cc-workspace-v2 .cc-draft footer button:disabled{opacity:.5}
+.cad-command-v2 .cad-terminal-systembar{background:#1b354b;border-bottom-color:#39576b;min-height:27px;padding:3px 6px}
+.cad-command-v2 .cad-terminal-nav{padding:2px;gap:3px}
+.cad-command-v2 .cad-terminal-nav button{min-height:29px;padding:4px 7px;font-size:11px}
+.cad-command-v2 .cad-status-metrics button{min-width:45px;padding:2px 6px;flex-direction:row;align-items:center;gap:4px}
+.cad-command-v2 .cad-status-metrics strong{font-size:12px}
+.cad-command-v2 .cad-status-actions{padding:2px 4px;gap:3px}
+.cad-command-v2 .cad-status-actions button{min-height:24px;padding:3px 5px}
+.cc-command-host:has(.cc-workspace-v2)>.tac-header{background:#0b1a28;min-height:29px;padding:3px 5px}
+.cc-command-host:has(.cc-workspace-v2)>.tac-header .tac-brand h1{font-size:12px!important}
+@container(min-width:721px) and (max-width:1150px){
+ .cc-workspace-v2 .cc-grid[data-selected=true][data-map=true]{grid-template-columns:minmax(100px,12%) minmax(116px,16%) minmax(0,1fr) minmax(118px,17%);grid-template-rows:minmax(0,1fr) minmax(125px,.5fr);grid-template-areas:"units pending incident active" "units pending incident map"}
+ .cc-workspace-v2 .cc-grid[data-selected=true][data-map=false]{grid-template-columns:minmax(100px,12%) minmax(116px,16%) minmax(0,1fr) minmax(118px,17%);grid-template-areas:"units pending incident active"}
+ .cc-workspace-v2 .cc-grid[data-selected=false][data-map=true]{grid-template-columns:minmax(100px,14%) minmax(120px,20%) minmax(0,1fr) minmax(130px,25%);grid-template-areas:"units pending active map"}
+ .cc-workspace-v2 .cc-editor{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1.4fr) minmax(100px,1fr)}
+}
+@container(max-width:720px){
+ .cc-workspace-v2 .cc-grid,.cc-workspace-v2 .cc-grid[data-map=false],.cc-workspace-v2 .cc-grid[data-selected=true],.cc-workspace-v2 .cc-grid[data-selected=true][data-map=false]{display:flex;flex-direction:column;gap:3px}
+ .cc-workspace-v2 .cc-grid>.cc-panel{display:none;flex:1 1 0;min-height:0}
+ .cc-workspace-v2 .cc-grid[data-view=queues]>.cc-pending,.cc-workspace-v2 .cc-grid[data-view=queues]>.cc-active,.cc-workspace-v2 .cc-grid[data-view=units]>.cc-units,.cc-workspace-v2 .cc-grid[data-view=incident]>.cc-incident,.cc-workspace-v2 .cc-grid[data-view=comments]>.cc-incident,.cc-workspace-v2 .cc-grid[data-view=map]>.cc-map{display:flex}
+ .cc-workspace-v2 .cc-editor{display:flex;flex-direction:column}
+ .cc-workspace-v2 .cc-editor-comments{display:none;flex:1}
+ .cc-workspace-v2 .cc-grid[data-view=comments] .cc-editor>.tac-incident-detail-rail{display:none}
+ .cc-workspace-v2 .cc-grid[data-view=comments] .cc-editor-comments{display:flex}
+ .cc-workspace-v2 .cc-grid[data-selected=false] .cc-active .cc-call-list{grid-template-columns:minmax(0,1fr)}
+ .cc-workspace-v2 .cc-radio-row{font-size:13px;min-height:35px}
+ .cc-workspace-v2 .cc-draft-body{display:flex;flex-direction:column}
+ .cc-workspace-v2 .cc-draft input,.cc-workspace-v2 .cc-draft textarea,.cc-workspace-v2 .cc-draft select{font-size:16px}
+}
+
+.cc-workspace-v2:fullscreen{width:100vw;height:100vh;max-width:none;min-height:0;background:#06101c;overflow:hidden}
+.cc-workspace-v2:fullscreen .cc-grid{flex:1 1 0}
+
+/* Officer command is a monitoring board, not a dispatch console. Give the
+   pending queue the largest share; a detail view temporarily replaces units. */
+.cc-officer-workspace .cc-grid[data-map=false]{grid-template-columns:minmax(130px,18%) minmax(0,1.4fr) minmax(0,1fr);grid-template-areas:"units pending active";grid-template-rows:minmax(0,1fr)}
+.cc-officer-workspace .cc-grid[data-selected=true][data-map=false]{grid-template-columns:minmax(180px,32%) minmax(0,1fr) minmax(145px,23%);grid-template-areas:"pending incident active";grid-template-rows:minmax(0,1fr)}
+.cc-officer-workspace .cc-grid[data-selected=true]>.cc-units{display:none}
+.cc-officer-workspace .cc-grid[data-selected=false] .cc-pending .cc-call-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.cc-officer-workspace .cc-grid[data-pending-expanded=true][data-map=false]{grid-template-columns:minmax(0,1fr);grid-template-areas:"pending"}
+.cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-panel:not(.cc-pending){display:none}
+.cc-officer-workspace .cc-grid[data-pending-expanded=true] .cc-call-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.cc-officer-workspace .cc-editor{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1.4fr) minmax(100px,.8fr)}
+.cc-officer-workspace .cc-call-title strong{font-weight:550;text-transform:none;font-size:13px;line-height:1.4}
+.cc-officer-workspace .cc-panel>header b{font-weight:550;font-size:13px}
+.cc-officer-workspace .cc-call-index b,.cc-officer-workspace .cc-radio-row{font-weight:500}
+.cc-officer-workspace .cc-call-body p{font-size:12px;color:#d9e5ee}
+@container(max-width:780px){
+ .cc-officer-workspace .cc-mobile{display:flex}
+ .cc-officer-workspace .cc-grid[data-map=false],.cc-officer-workspace .cc-grid[data-selected=true][data-map=false],.cc-officer-workspace .cc-grid[data-pending-expanded=true][data-map=false]{display:flex;flex-direction:column}
+ .cc-officer-workspace .cc-grid>.cc-panel,.cc-officer-workspace .cc-grid[data-selected=true]>.cc-units{display:none}
+ .cc-officer-workspace .cc-grid[data-view=pending]>.cc-pending,.cc-officer-workspace .cc-grid[data-view=active]>.cc-active,.cc-officer-workspace .cc-grid[data-view=units]>.cc-units,.cc-officer-workspace .cc-grid[data-view=incident]>.cc-incident,.cc-officer-workspace .cc-grid[data-view=comments]>.cc-incident{display:flex}
+ .cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-pending{display:flex}
+ .cc-officer-workspace .cc-editor{display:flex;flex-direction:column}
+ .cc-officer-workspace .cc-grid[data-view=comments] .cc-editor-comments{display:flex}
+}
+/* Pin controls are siblings of call buttons, never nested buttons. */
+.cc-call-wrap{position:relative;min-width:0}
+.cc-officer-workspace .cc-call-wrap>.cc-call{height:100%;min-width:0}
+.cc-officer-workspace .cc-call-wrap .cc-call-body{padding-right:27px}
+.cc-pin{position:absolute;right:3px;top:3px;width:24px;height:24px;display:grid;place-items:center;color:#acc6d8;background:#1c3648;border:1px solid #3d596b;border-radius:3px}
+.cc-pin[aria-pressed=true]{background:#225b74;color:#fff;border-color:#72b8db}
+.cc-pin:hover{background:#34566c}
+.cc-officer-workspace .cc-unit-utility,.cc-officer-workspace .cc-detail-duty{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:3px 4px;flex:none}
+.cc-officer-workspace .cc-duty-control,.cc-officer-workspace .cc-unit-utility>button{font:500 11px/1.3 system-ui,sans-serif;color:#d6e9f4;border:1px solid #37566b;background:#193448;border-radius:3px;padding:4px 6px}
+.cc-officer-workspace .cc-detail-duty{margin-left:auto;order:99}
+.cc-officer-workspace .cc-grid[data-selected=true] .cc-detail-duty{display:flex}
+.cc-unit-board{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+.cc-self-attach{padding:6px;border-bottom:1px solid #2b4355}
+.cc-self-attach button{padding:6px 9px;background:#194f66;color:#edf8ff;border:1px solid #4d879e;border-radius:3px;font-size:12px}
+.cc-self-attach button:disabled{opacity:.65}
+.cc-self-attach p{font-size:12px;color:#b8d3e3;padding:4px 0}
+.cad-nav-monitor{margin-left:auto}
+.cad-inline-feed-warning{color:#ffd19a;font-size:11px;align-self:center;padding:4px}

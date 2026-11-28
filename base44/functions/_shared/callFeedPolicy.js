@@ -20,5 +20,6 @@ export function isVisibleActiveCall(call, now = Date.now()) {
   if (!isValidCallRecord(call) || call.manual_dismissed === true || call.time_cleared
     || TERMINAL.has(String(call.status || '').trim().toLowerCase())) return false;
   const stamp = callTimestamp(call);
-  return stamp > 0 && stamp <= now + 120000 && (call.source === 'public_helpme' || now - stamp <= ACTIVE_WINDOW_MS);
+  const retained = call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
+  return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }

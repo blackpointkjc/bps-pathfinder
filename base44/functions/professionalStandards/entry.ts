@@ -265,11 +265,11 @@ export default async function(req){
   const canRead=c=>review||c.investigator_id===u.id;
   // Most actions only operate on the selected case and its records. Avoid
   // a global User.list for each click, message, upload, or audit refresh.
-  const requiresPersonnel=['list','reports','create_case','get','update','resend_assignment','link_officers','officer_directory'].includes(action);
-  const staff=requiresPersonnel?(action==='create_case'||action==='officer_directory'||action==='link_officers'?await casePersonnel(db):await iaPersonnel(db)):[];
+  const requiresPersonnel=['list','reports','create_case','get','update','resend_assignment'].includes(action);
+  const staff=requiresPersonnel?(action==='create_case'?await casePersonnel(db):await iaPersonnel(db)):[];
   const eligible=staff.filter(v=>psRole(v));
   const staffSummary=eligible.map(v=>({id:v.id,name:actorName(v),email:v.email,role:psRole(v)}));
-  const globalTools=await globalCaseTools({action,body,db,u,review,base44,audit,notify,fail});
+  const globalTools=await globalCaseTools({action,body,db,u,review,base44,audit,notify,fail,casePersonnel});
   if(globalTools)return globalTools;
   if(action==='create_case'){
    const input=body.case||{},sourceEntity=text(input.source_entity,80),sourceId=text(input.source_record_id,100);
@@ -386,7 +386,7 @@ export default async function(req){
    await notifyIaAdminStatus(base44,db,u,{...c,status:'closed',closed_at:now,updated_date:now});
    return Response.json({success:true,closed:true,closed_at:now});
   }
-  const caseTools=await linkedCaseTools({action,body,db,u,c,records,review,editable:review||c.investigator_id===u.id,base44,audit,notify,fail,text,actorName});
+  const caseTools=await linkedCaseTools({action,body,db,u,c,records,review,editable:review||c.investigator_id===u.id,base44,audit,notify,fail,text,actorName,casePersonnel});
   if(caseTools)return caseTools;
   if(action==='get'){
    await audit(db,u,'case_view',c.id);

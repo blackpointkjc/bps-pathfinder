@@ -1,0 +1,144 @@
+/* CommandCentral-style CAD upgrade surfaces: persistent incident monitor,
+   unit recommendations, live incident comments, response analytics and the
+   per-workstation display/clone dialogs. */
+
+/* ---------- Persistent incident monitor ---------- */
+.cad-monitor{display:flex;flex-direction:column;flex:none;min-width:0;background:#0b1420;border-bottom:1px solid #405367}
+.cad-monitor-bar{display:flex;align-items:center;gap:10px;padding:4px 10px;min-height:28px}
+.cad-monitor-title{display:flex;align-items:center;gap:6px;font:650 10px ui-monospace,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:#9fb8cc;white-space:nowrap}
+.cad-monitor-title svg{color:#7cc8e5}
+.cad-monitor-counts{display:flex;gap:10px;margin-left:auto;font:11px ui-monospace,Consolas,monospace;color:#93a7b9;white-space:nowrap}
+.cad-monitor-counts b{font-weight:700}
+.cad-monitor-counts b[data-tone=warning]{color:#f7c97e}
+.cad-monitor-counts b[data-tone=danger]{color:#ff9b9f}
+.cad-monitor-bar>button{display:flex;align-items:center;justify-content:center;min-height:24px;min-width:26px;padding:2px 6px;border:1px solid #3d5468;border-radius:2px;background:#16263a;color:#cfe2f1}
+.cad-monitor-bar>button:hover{background:#24405a;color:#fff}
+.cad-monitor-track{display:flex;gap:1px;overflow-x:auto;padding:0 0 1px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.cad-monitor-chip{display:flex;flex-direction:column;gap:2px;flex:0 0 auto;min-width:172px;max-width:238px;padding:6px 9px;border:0;border-left:3px solid #3d5468;border-radius:0;background:#111d2a;text-align:left;color:#dde9f3}
+.cad-monitor-chip:hover{background:#1c2f42}
+.cad-monitor-chip[data-state=watch]{border-left-color:#e0a94a}
+.cad-monitor-chip[data-state=overdue]{border-left-color:#ef6b6b;background:#221518}
+.cad-monitor-chip[data-pending=true]{border-left-color:#5aa9d6}
+.cad-monitor-ref{font:11px ui-monospace,Consolas,monospace;color:#a9d4ec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cad-monitor-chip strong{font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cad-monitor-chip small{font-size:11px;color:#9db1c3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cad-monitor-meta{display:flex;align-items:center;gap:6px;font:10px ui-monospace,Consolas,monospace;color:#a6bccd}
+.cad-monitor-meta em{font-style:normal;font-weight:700;color:#b9ddf3}
+.cad-monitor-meta em[data-tone=critical]{color:#ff9b9f}
+.cad-monitor-meta em[data-tone=high]{color:#ffbe8c}
+.cad-monitor-meta time{font-variant-numeric:tabular-nums;color:#e7c98c}
+.cad-monitor-meta i{font-style:normal;border:1px solid #46617a;border-radius:2px;padding:0 4px;color:#a9c4d8}
+.cad-monitor-meta i[data-field=true]{border-color:#3f7f6a;color:#9fe6c6}
+.cad-monitor-empty{margin:0;padding:7px 10px;font-size:11px;color:#93a7b9}
+
+/* ---------- Intelligent unit recommendations ---------- */
+.cad-recommend{display:flex;flex-direction:column;gap:1px;margin-top:6px}
+.cad-recommend-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:#14212d;border:1px solid #2c3d4f}
+.cad-recommend-row>div{display:flex;flex-direction:column;min-width:0}
+.cad-recommend-row b{font-size:12px;color:#e6f1fa;overflow-wrap:anywhere}
+.cad-recommend-row small{font-size:11px;color:#9db1c3;overflow-wrap:anywhere}
+.cad-recommend-row button{display:flex;align-items:center;gap:5px;flex:none;min-height:30px;padding:4px 9px;border:1px solid #3d7f9c;border-radius:2px;background:#17374b;color:#cdeefc;font-size:11px;font-weight:650}
+.cad-recommend-row button:hover{background:#21546f;color:#fff}
+.cad-recommend-row button:disabled{opacity:.6}
+.cad-recommend-empty{display:flex;align-items:flex-start;gap:6px;margin:0;padding:7px 8px;font-size:11px;color:#a6bccd;background:#14212d;border:1px solid #2c3d4f}
+.cad-recommend-feedback{margin:6px 0 0;font-size:11px;color:#9fe6c6}
+
+/* ---------- Live incident comments ---------- */
+.cad-comments{display:flex;flex-direction:column;flex:1 1 0;min-height:0;background:#0f1a25}
+.cad-comments-scroll{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior-y:contain}
+.cad-comments-scroll article{padding:8px 10px;border-bottom:1px solid #2c3d4f;display:grid;gap:4px}
+.cad-comments-scroll article header{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.cad-comments-scroll b{font-size:12px;color:#b9e4fa;overflow-wrap:anywhere}
+.cad-comments-scroll time{font:10px ui-monospace,Consolas,monospace;color:#93a7b9;white-space:nowrap}
+.cad-comments-scroll p{margin:0;font-size:12px;line-height:1.5;color:#dbe7f1;white-space:pre-wrap;overflow-wrap:anywhere}
+.cad-comments-scroll article[data-kind=activity] p{color:#c0cfdd;font-size:11px}
+.cad-comments-empty{display:flex;align-items:flex-start;gap:6px;margin:0;padding:14px 10px;font-size:12px;color:#9db1c3}
+.cad-comments-compose{display:flex;gap:6px;align-items:stretch;padding:8px;border-top:1px solid #405367;background:#132132;flex:none}
+.cad-comments-compose textarea{flex:1 1 auto;min-width:0;min-height:44px;padding:6px 8px;border:1px solid #50667b;border-radius:2px;background:#0b1622;color:#eaf5fd;font-size:12px;resize:vertical}
+.cad-comments-compose button{display:flex;align-items:center;gap:5px;flex:none;padding:6px 10px;border:1px solid #3d7f9c;border-radius:2px;background:#17374b;color:#cdeefc;font-size:12px;font-weight:650}
+.cad-comments-compose button:disabled{opacity:.55}
+.cad-comments-warning{margin:0;padding:7px 10px;font-size:11px;color:#ffd7a8;background:#2b2115;border-bottom:1px solid #4d3a22}
+
+/* ---------- Response analytics ---------- */
+.cad-analytics{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden;background:#0a1017;color:#dbe7f1}
+.cad-analytics-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:#101d2b;border-bottom:1px solid #405367;flex:none}
+.cad-analytics-bar h2{display:flex;align-items:center;gap:7px;font-size:14px;color:#eaf5fd}
+.cad-analytics-note{font:11px ui-monospace,Consolas,monospace;color:#9db1c3}
+.cad-analytics-bar button{display:flex;align-items:center;gap:5px;margin-left:auto;min-height:30px;padding:4px 9px;border:1px solid #3d5468;border-radius:2px;background:#16263a;color:#cfe2f1;font-size:11px;font-weight:650}
+.cad-analytics-bar button:hover{background:#24405a;color:#fff}
+.cad-analytics-warning{margin:0;padding:7px 10px;font-size:11px;color:#ffd7a8;background:#2b2115}
+.cad-analytics-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:#2c3d4f;flex:none}
+.cad-analytics-kpi{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px 6px;background:#14202c;text-align:center;min-width:0}
+.cad-analytics-kpi span{font:10px ui-monospace,Consolas,monospace;letter-spacing:.05em;text-transform:uppercase;color:#a8bccd}
+.cad-analytics-kpi strong{font:700 19px ui-monospace,Consolas,monospace;color:#e8f3fb;font-variant-numeric:tabular-nums}
+.cad-analytics-kpi small{font-size:10px;color:#8ea3b6;overflow-wrap:anywhere}
+.cad-analytics-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:1px;flex:1 1 0;min-height:0;background:#2c3d4f}
+.cad-analytics-panel{display:flex;flex-direction:column;min-height:0;min-width:0;background:#111a24}
+.cad-analytics-table-wrap{flex:1 1 0;min-height:0;overflow:auto}
+.cad-analytics-table{width:100%;border-collapse:collapse;font-size:12px}
+.cad-analytics-table th{position:sticky;top:0;background:#203143;color:#b9cede;font:10px ui-monospace,Consolas,monospace;text-transform:uppercase;text-align:left;padding:8px}
+.cad-analytics-table td{padding:8px;border-bottom:1px solid #2c3d4f;color:#dbe7f1;font-variant-numeric:tabular-nums}
+.cad-analytics-recent{flex:1 1 0;min-height:0;overflow-y:auto}
+.cad-analytics-recent article{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid #2c3d4f}
+.cad-analytics-recent article>div{display:flex;flex-direction:column;min-width:0}
+.cad-analytics-recent b{font-size:12px;overflow-wrap:anywhere}
+.cad-analytics-recent small{font-size:10px;color:#9db1c3}
+.cad-analytics-recent time{font:10px ui-monospace,Consolas,monospace;color:#9db1c3;white-space:nowrap}
+.cad-analytics-recent em{font:700 12px ui-monospace,Consolas,monospace;font-style:normal;color:#9fe6c6;text-align:right}
+.cad-analytics-empty{margin:0;padding:14px 10px;font-size:12px;color:#9db1c3}
+
+/* ---------- Display settings ---------- */
+.cad-settings-body{display:flex;flex-direction:column;gap:10px}
+.cad-settings-body h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#93a7b9}
+.cad-settings-scales{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.cad-settings-scales button{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border:1px solid #3d5468;border-radius:4px;background:#132132;text-align:left;color:#dbe7f1}
+.cad-settings-scales button[aria-pressed=true]{border-color:#5aa9d6;background:#1b3b52;color:#f2fbff}
+.cad-settings-scales button>span{display:flex;flex-direction:column;min-width:0}
+.cad-settings-scales b{font-size:13px}
+.cad-settings-scales small{font-size:11px;color:#9db1c3;overflow-wrap:anywhere}
+.cad-settings-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #3d5468;border-radius:4px;background:#132132;text-align:left;color:#dbe7f1}
+.cad-settings-toggle>span{display:flex;flex-direction:column;min-width:0}
+.cad-settings-toggle b{font-size:13px}
+.cad-settings-toggle small{font-size:11px;color:#9db1c3;overflow-wrap:anywhere}
+.cad-settings-toggle i{font:650 11px ui-monospace,Consolas,monospace;font-style:normal;border:1px solid #46617a;border-radius:2px;padding:2px 6px;color:#a9c4d8;flex:none}
+.cad-settings-toggle[aria-pressed=true] i{border-color:#3f7f6a;color:#9fe6c6}
+.cad-settings-reset{display:flex;align-items:center;gap:6px;align-self:flex-start;padding:6px 10px;border:1px solid #3d5468;border-radius:4px;background:#16263a;color:#cfe2f1;font-size:12px}
+.cad-settings-reset:hover{background:#24405a;color:#fff}
+
+/* ---------- Incident clone ---------- */
+.cad-clone-form{display:flex;flex-direction:column;gap:10px}
+.cad-clone-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cad-clone-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cad-clone-field span{font-size:11px;font-weight:650;color:#a9bccd}
+.cad-clone-field input,.cad-clone-field select,.cad-clone-field textarea{width:100%;min-height:36px;padding:7px 9px;border:1px solid #3d5468;border-radius:4px;background:#0d1824;color:#eaf5fd;font-size:13px}
+.cad-clone-field textarea{min-height:72px;resize:vertical}
+.cad-clone-error{margin:0;font-size:12px;color:#ffb4b4}
+.cad-clone-form footer{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+.cad-clone-form footer button{padding:8px 14px;border:1px solid #3d5468;border-radius:4px;background:#16263a;color:#cfe2f1;font-size:13px;font-weight:650}
+.cad-clone-form footer button:hover{background:#24405a;color:#fff}
+.cad-clone-form footer .cad-clone-primary{border-color:#3d7f9c;background:#1d5474;color:#f0fbff}
+.cad-clone-form footer .cad-clone-primary:hover{background:#256a90}
+
+/* ---------- Incident detail secondary actions ---------- */
+.cad-detail-secondary{display:flex;flex-wrap:wrap;gap:5px;padding:7px 8px;border-top:1px solid #354454;background:#152230;flex:none}
+.cad-detail-secondary button{display:flex;align-items:center;gap:5px;min-height:32px;padding:4px 8px;border:1px solid #3d5468;border-radius:2px;background:#1b2c3d;color:#cfe2f1;font-size:11px;font-weight:650}
+.cad-detail-secondary button:hover{background:#264055;color:#fff}
+
+/* ---------- Connection monitoring ---------- */
+.cad-status-stale{font:650 10px ui-monospace,Consolas,monospace;color:#f7c97e;border:1px solid #7d5a26;border-radius:2px;padding:2px 6px;white-space:nowrap}
+
+/* ---------- Detached map window ---------- */
+.cad-shell-detached .cad-terminal-screen{height:100%}
+.cad-shell-detached .cad-screen-map{display:flex;flex-direction:column;flex:1 1 0;min-height:0}
+.cad-shell-detached .pf-navigation-workspace,.cad-shell-detached .tac-console{height:100%!important;min-height:0!important}
+
+@media(max-width:1023px){
+  .cad-monitor-chip{min-width:158px;max-width:206px}
+  .cad-analytics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cad-analytics-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+  .cad-settings-scales,.cad-clone-grid{grid-template-columns:minmax(0,1fr)}
+}.cad-monitor-entry{display:flex;align-items:stretch;flex:none;background:#142838}
+.cad-monitor-entry .cad-monitor-chip{min-width:170px}
+.cad-monitor-remove,.cad-monitor-missing button{color:#c5dbe8;padding:4px;border-left:1px solid #3a5265;background:#182b3b}
+.cad-monitor-remove:hover,.cad-monitor-missing button:hover{background:#65303b;color:white}
+.cad-monitor-missing{display:flex;align-items:center;gap:5px;padding:5px 8px;color:#a9bdcc;font-size:11px;flex:none}

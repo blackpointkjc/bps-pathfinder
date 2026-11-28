@@ -40,7 +40,8 @@ export function dedupeOperationalCalls(rows = []) {
 
   for (const call of sorted) {
     const descriptionKey = String(call?.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
-    const stableKey = call?.external_call_id
+    const explicitlyLocal=['CAD clone','dispatch_manual','field_initiated'].includes(call?.source);
+    const stableKey = explicitlyLocal ? 'local:'+String(call.id) : call?.external_call_id
       || (call?.agency_cad_number ? `${call.source || call.agency || ''}:cad:${call.agency_cad_number}` : '')
       || descriptionKey
       || '';
@@ -60,8 +61,10 @@ export function dedupeOperationalCalls(rows = []) {
     const stamp = callTimestamp(call);
     const duplicateIndex = result.findIndex(existing =>
       incident
+      && !(existing.id!==call.id && ([existing.source,call.source].some(source=>['CAD clone','dispatch_manual','field_initiated'].includes(source))))
       && normalizedText(existing?.agency) === normalizedText(call?.agency)
       && !(existing?.agency_cad_number && call?.agency_cad_number && existing.agency_cad_number !== call.agency_cad_number)
+      && !(existing?.external_call_id && call?.external_call_id && existing.external_call_id !== call.external_call_id)
       && location
       && normalizedText(existing?.incident) === incident
       && normalizedText(existing?.location) === location
@@ -73,7 +76,7 @@ export function dedupeOperationalCalls(rows = []) {
       result.push(call);
     }
   }
-  return result.sort((a, b) => callTimestamp(b) - callTimestamp(a));
+  return result.sort((a,b)=>Number(Boolean(b.pathfinder_property_alert||b.pathfinder_assignment_unit_ids?.length||b.assigned_units?.length))-Number(Boolean(a.pathfinder_property_alert||a.pathfinder_assignment_unit_ids?.length||a.assigned_units?.length))||callTimestamp(b)-callTimestamp(a));
 }
 
 function readLastGoodCalls() {

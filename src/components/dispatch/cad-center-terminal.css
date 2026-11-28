@@ -1,6 +1,6 @@
 @import './tactical-console.css';
 /* Shared operational shell. A single measured workspace owns viewport sizing. */
-.cad-terminal-shell{--cad-line:#354454;display:flex!important;flex-direction:column;min-width:0;width:100%;height:var(--cad-workspace-height,calc(100dvh - 150px))!important;min-height:0!important;max-width:100%;overflow:hidden!important;border:0!important;background:#080d13;color:#e1e8ef;font-family:Inter,system-ui,sans-serif}
+.cad-terminal-shell{--cad-line:#354454;display:flex!important;flex-direction:column;min-width:0;width:100%;height:calc(var(--cad-workspace-height,calc(100dvh - 150px)) / var(--cad-scale,1))!important;min-height:0!important;max-width:100%;overflow:hidden!important;border:0!important;background:#080d13;color:#e1e8ef;font-family:Inter,system-ui,sans-serif;zoom:var(--cad-scale,1)}
 .cad-terminal-systembar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px;padding:5px 10px;background:#101b28;border-bottom:1px solid #405367;flex:none;font:11px ui-monospace,Consolas,monospace;color:#b7c9da}
 .cad-terminal-id{display:flex;gap:7px;align-items:center;min-width:0}.cad-terminal-id b{color:#c1e4f4;white-space:nowrap}.cad-terminal-id svg{color:#8dbed5;flex:none}.cad-terminal-clock{white-space:nowrap;font-variant-numeric:tabular-nums;color:#d8e7f2}
 .cad-terminal-nav{display:flex;gap:5px;flex:none;align-items:stretch;background:#0b141e;padding:3px;border-bottom:1px solid #405367;overflow-x:auto;scrollbar-width:thin;overscroll-behavior-x:contain}
@@ -82,65 +82,23 @@
 .cad-mdt-terminal .tac-mdt-current h2{font-size:clamp(18px,2vw,27px);margin:3px 0}
 .cad-mdt-terminal .tac-mdt-actionbar button{min-height:52px}
 @media(max-width:720px){.cad-terminal-screen>.cad-mdt-terminal{overflow-y:auto}.cad-mdt-body{flex:none;overflow:visible}.cad-mdt-terminal .tac-mdt-actionbar button{min-height:53px}.cad-mdt-terminal .tac-mdt-reference{flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap}}
+/* Apply the physical viewport height after zoom, including dispatch's old
+   media-query height rule. A larger zoom reflows container-query layouts. */
+.cad-terminal-shell[style]{height:var(--cad-scaled-height,calc(var(--cad-workspace-height,calc(100dvh - 150px)) / var(--cad-scale,1)))!important}
+.cad-app main[data-page="CADCenter"] .cad-terminal-shell.cad-shell-dispatch[style]{height:var(--cad-scaled-height,calc(var(--cad-workspace-height,calc(100dvh - 150px)) / var(--cad-scale,1)))!important}
+.cad-top-display,.cad-zoom-controls{display:flex;align-items:center;gap:4px;flex:none}
+.cad-zoom-controls{border:1px solid #547187;background:#132a3a;border-radius:3px;padding:2px}
+.cad-zoom-controls button{font:700 12px/1.2 system-ui,sans-serif!important;min-width:27px;min-height:26px;color:#e8f4fc;background:#203d52;padding:3px 5px;border-radius:2px}
+.cad-zoom-controls button:disabled{opacity:.4}
+.cad-zoom-controls button:hover:not(:disabled){background:#335b72}
+.cad-terminal-systembar{flex-wrap:wrap}
+.cad-terminal-systembar .cad-terminal-id{overflow-wrap:anywhere;flex-wrap:wrap}
+.cad-terminal-shell .cad-terminal-screen{min-height:0}
 
-/* ============================================================
-   CommandCentral-style CAD shell additions
-   Persistent telemetry strip, universal command search and the
-   resource (unit board + assignment backlog) workstation.
-   ============================================================ */
-.cad-ops-strip{display:flex;align-items:stretch;gap:4px;flex:none;background:#0b141e;border-bottom:1px solid #405367;padding:3px 4px;min-width:0;overflow:hidden}
-.cad-ops-feed{display:flex;align-items:center;gap:6px;padding:0 9px;border:1px solid #2e4052;background:#101b28;color:#a9c4d8;font:600 10px ui-monospace,Consolas,monospace;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;flex:none}
-.cad-ops-feed i{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 7px rgba(74,222,128,.8)}
-.cad-ops-feed[data-state=syncing] i{background:#facc15}
-.cad-ops-feed[data-state=limited] i{background:#f87171}
-.cad-ops-metrics{display:flex;flex:1 1 auto;gap:1px;min-width:0;overflow-x:auto;scrollbar-width:none}
-.cad-ops-metrics::-webkit-scrollbar{display:none}
-.cad-ops-metrics button{display:flex;flex:1 0 auto;align-items:center;gap:6px;padding:5px 9px;border:1px solid #2e4052;background:#131f2b;color:#a9bccd;white-space:nowrap;min-height:30px;border-radius:0}
-.cad-ops-metrics button:hover{background:#1d3044}
-.cad-ops-metrics button[aria-pressed=true]{background:#23465e;border-color:#6593ae;box-shadow:inset 0 -2px #95d0e9}
-.cad-ops-metrics span{font:600 10px ui-monospace,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase}
-.cad-ops-metrics strong{font:700 15px ui-monospace,Consolas,monospace;color:#e6f1fa;font-variant-numeric:tabular-nums}
-.cad-ops-metrics [data-tone=ready] strong{color:#84e0af}
-.cad-ops-metrics [data-tone=warning] strong{color:#f6c77d}
-.cad-ops-metrics [data-tone=danger] strong{color:#ff969a}
-.cad-ops-oldest{display:flex;align-items:center;gap:6px;padding:0 9px;border:1px solid #2e4052;background:#101b28;white-space:nowrap;flex:none}
-.cad-ops-oldest b{font:600 10px ui-monospace,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;color:#a9bccd}
-.cad-ops-oldest>span{font:700 14px ui-monospace,Consolas,monospace;color:#e6f1fa;font-variant-numeric:tabular-nums}
-.cad-ops-oldest[data-tone=danger]>span{color:#ff969a}
-.cad-ops-search,.cad-ops-refresh{display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid #3b5570;background:#17293b;color:#cfe4f2;font:600 11px ui-monospace,Consolas,monospace;min-height:30px;flex:none;border-radius:0}
-.cad-ops-search:hover,.cad-ops-refresh:hover{background:#23445b}
-.cad-ops-search kbd{border:1px solid #4a6478;border-radius:2px;padding:1px 4px;font-size:9px;color:#a9c4d8}
-@media(max-width:900px){.cad-ops-feed,.cad-ops-oldest{display:none}.cad-ops-search span,.cad-ops-search kbd{display:none}.cad-ops-metrics button{padding:5px 7px}}
-
-.cad-palette-backdrop{position:fixed;inset:0;z-index:2147483200;display:flex;justify-content:center;align-items:flex-start;padding:min(12vh,90px) 16px 16px;background:rgba(2,6,12,.72)}
-.cad-palette{width:min(720px,100%);max-height:min(70vh,620px);display:flex;flex-direction:column;background:#0c1621;border:1px solid #4a6478;box-shadow:0 28px 70px rgba(0,0,0,.6);overflow:hidden}
-.cad-palette-field{display:flex;align-items:center;gap:9px;padding:10px 12px;border-bottom:1px solid #354454;color:#9fbcd1;flex:none}
-.cad-palette-field input{flex:1 1 auto;min-width:0;background:transparent;border:0;outline:none;color:#f0f8ff;font-size:15px;min-height:34px}
-.cad-palette-field kbd,.cad-palette-foot kbd{border:1px solid #40586d;border-radius:2px;padding:1px 5px;font:600 10px ui-monospace,Consolas,monospace;color:#a9c4d8}
-.cad-palette-results{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain}
-.cad-palette-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;border-bottom:1px solid #1d2c3a;background:transparent;color:#dbe9f5;border-radius:0}
-.cad-palette-row[data-active=true]{background:#1c3a52}
-.cad-palette-group{flex:none;width:86px;font:600 9px ui-monospace,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:#7fa2ba}
-.cad-palette-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column}
-.cad-palette-main b{font-size:13px;font-weight:700;overflow-wrap:anywhere}
-.cad-palette-main small{font-size:11px;color:#a2b8ca;overflow-wrap:anywhere}
-.cad-palette-badge{flex:none;border:1px solid #6b849a;padding:1px 5px;font:700 9px ui-monospace,Consolas,monospace;color:#cfe4f2}
-.cad-palette-empty{padding:16px 12px;color:#a2b8ca;font-size:12px}
-.cad-palette-foot{display:flex;gap:14px;flex-wrap:wrap;padding:7px 12px;border-top:1px solid #354454;color:#93aec2;font:600 10px ui-monospace,Consolas,monospace;flex:none}
-
-.cad-resource-board{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:4px;padding:4px;height:100%;min-height:0;background:#0a1017}
-.cad-resource-board>.cad-terminal-panel{min-height:0;height:100%}
-.cad-panel-hint{font:600 10px ui-monospace,Consolas,monospace;color:#8fa9bd;text-transform:none;letter-spacing:0}
-.cad-awaiting-row{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 10px;border-bottom:1px solid #27394a;border-left:4px solid #70899e;background:#131e2a;color:#dce7f1;border-radius:0}
-.cad-awaiting-row[data-state=watch]{border-left-color:#edc56f;background:#1a2129}
-.cad-awaiting-row[data-state=overdue]{border-left-color:#f87582;background:#1d1a20}
-.cad-awaiting-row:hover{background:#203649}
-.cad-awaiting-code{flex:none;min-width:28px;text-align:center;border:1px solid #5b7a92;padding:2px 4px;font:700 10px ui-monospace,Consolas,monospace;color:#cfe4f2}
-.cad-awaiting-body{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
-.cad-awaiting-body b{font:700 11px ui-monospace,Consolas,monospace;color:#a9d7f4}
-.cad-awaiting-body strong{font-size:13px;font-weight:700;overflow-wrap:anywhere}
-.cad-awaiting-body small{font-size:11px;color:#a2b8ca;overflow-wrap:anywhere}
-.cad-awaiting-age{display:flex;align-items:center;gap:6px;flex:none;font:700 12px ui-monospace,Consolas,monospace;color:#f0d18b}
-.cad-detail-premise{padding:8px}
-.cad-detail-premise .tac-detail-message{margin:0 0 4px}
-@media(max-width:900px){.cad-resource-board{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.cad-resource-board>.cad-terminal-panel{height:auto;min-height:340px}}
+.cad-terminal-shell[data-high-zoom=true]{overflow-y:auto!important;overscroll-behavior:contain}
+.cad-terminal-shell[data-high-zoom=true]>.cad-terminal-screen{min-height:320px!important;flex:1 0 320px!important}
+.tac-command[data-high-zoom=true],.dispatch-v3[data-high-zoom=true]{overflow-y:auto!important}
+.tac-command[data-high-zoom=true]>.cc-workspace,.dispatch-v3[data-high-zoom=true]>.dispatch-v3-grid{min-height:300px!important;flex:1 0 300px!important}
+/* Premise (repeat-call) history panel in the incident detail rail. */
+.tac-detail-premise{padding:8px}
+.tac-detail-premise .tac-detail-message{margin:0 0 4px}

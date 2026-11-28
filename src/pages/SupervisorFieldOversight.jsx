@@ -146,7 +146,7 @@ export default function SupervisorFieldOversight() {
   const refreshAll = async () => Promise.all([refetchWelfare(), refetchLocations()]);
   const openCad = callOrRow => {
     const callId = callOrRow?.call_id || callOrRow?.id;
-    navigate(`${createPageUrl('CADCenter')}?section=live&tool=dispatch${callId ? `&call_id=${encodeURIComponent(callId)}` : ''}`);
+    navigate(`${createPageUrl('CADCenter')}?section=live&tool=command${callId ? `&call_id=${encodeURIComponent(callId)}` : ''}`);
   };
   const escalateWelfareCheck = async check => {
     if (!check?.id || workingId) return;

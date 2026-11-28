@@ -5,7 +5,6 @@ import { accessLabel } from '@/utils/accountLabels';
 import { isOutOfOffice } from '@/utils/outOfOffice';
 import AdminOutOfOffice from '@/components/AdminOutOfOffice';
 import { getPayRangeForRank, nextUnitNumber, previewRankChange, canAssignSubstation } from '@/utils/rankPolicy';
-import { uploadInternalFile } from '@/lib/internalUpload';
 import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -383,6 +382,7 @@ export default function AdminUsers({ embedded = false }) {
       emergency_contact_phone: userData.emergency_contact_phone || "",
       role: userData.role || "user",
       additional_roles: userData.additional_roles || [],
+      dispatch_role:userData.dispatch_role===true,
       ps_role:userData.ps_role || 'none',
       assigned_sites: userData.assigned_sites || [],
       additional_certifications: userData.certifications || [],

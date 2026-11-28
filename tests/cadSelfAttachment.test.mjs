@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {readFile} from 'node:fs/promises';
+import {transform} from 'esbuild';
+test('self-attach is authenticated, adds only the requesting officer and keeps the current incident',async()=>{
+ const now=new Date().toISOString(),token='mock-session';
+ const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))).map(x=>x.toString(16).padStart(2,'0')).join('');
+ const officer={id:'me',email:'officer@example.test',role:'user',additional_roles:['officer'],status:'On Scene',current_call_id:'current'};
+ const tables={PortalAuthSession:[{token_hash:hash,user_id:'me',started_at:now,last_activity_at:now}],User:[officer],DispatchCall:[{id:'next',incident:'Service call',location:'Example street',status:'On Scene',assigned_units:['other']},{id:'closed',status:'Cleared',assigned_units:[]}],ActiveOfficer:[{id:'session',officer_email:officer.email,session_active:true,last_update:now,status:'On Scene',current_call_id:'current'}],Unit:[{id:'unit',user_id:'me',assigned_call_ids:['current']}],CallAssignment:[],CallStatusLog:[]};
+ const db=new Proxy({},{get:(_,name)=>({get:async id=>tables[name].find(r=>r.id===id),filter:async q=>tables[name].filter(r=>Object.entries(q).every(([k,v])=>r[k]===v)),create:async data=>{const row={...data,id:name+tables[name].length};tables[name].push(row);return row;},update:async(id,patch)=>Object.assign(tables[name].find(r=>r.id===id),patch)})});
+ const sdk={auth:{me:async()=>officer},asServiceRole:{entities:db},entities:db};
+ const source=(await readFile('base44/functions/updateMyCallAssignment/entry.ts','utf8')).replace(/^import .*;\n/gm,'');
+ const code=(await transform(source,{loader:'ts',format:'esm'})).code;let handler;
+ new Function('createClientFromRequest','Deno',code)(()=>sdk,{serve:fn=>handler=fn});
+ const invoke=async(call_id,action='join')=>{sdk.auth.me=async()=>officer;const response=await handler(new Request('https://example.test',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({call_id,action,unit_id:'forged'})}));return {status:response.status,...await response.json()};};
+ let result=await invoke('next');assert.equal(result.success,true,JSON.stringify(result));assert.equal(result.queued,true);assert.equal(officer.current_call_id,'current');assert.equal(tables.ActiveOfficer[0].status,'On Scene');assert.deepEqual(tables.DispatchCall[0].assigned_units,['other','me']);assert.equal(tables.CallAssignment[0].unit_id,'me');assert.equal(tables.CallAssignment[0].status,'pending');
+ result=await invoke('next');assert.equal(tables.CallAssignment.length,1);assert.equal(result.success,true);
+ result=await invoke('closed');assert.equal(result.status,409);
+ officer.dispatch_hold_new_calls=true;result=await invoke('next');assert.equal(result.status,409);
+ officer.dispatch_hold_new_calls=false;
+ tables.DispatchCall.push({id:'current',incident:'Current call',location:'First street',status:'On Scene',assigned_units:['me']});
+ tables.CallAssignment.push({id:'current-assignment',call_id:'current',unit_id:'me',status:'on_scene',role:'primary',assigned_at:now});
+ result=await invoke('current','leave');assert.equal(result.success,true,JSON.stringify(result));assert.equal(result.current_call_id,'next');assert.equal(officer.current_call_id,'next');assert.equal(tables.ActiveOfficer[0].status,'Dispatched');assert.equal(tables.CallAssignment.find(a=>a.id==='current-assignment').status,'cleared');
+
+});

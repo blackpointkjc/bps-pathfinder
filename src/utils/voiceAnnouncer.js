@@ -124,7 +124,7 @@ export function cancelPatrolSpeedVoice() {
 }
 
 function buildUtterance(clean, options = {}) {
-  const utterance = new SpeechSynthesisUtterance(clean);
+  const utterance = new SpeechSynthesisUtterance(formatCadReferenceForSpeech(clean));
   utterance.lang = options.lang || 'en-US';
   // One consistent, natural radio voice across Pathfinder. Avoid the unnaturally
   // low pitch/rate combination that made announcements sound synthetic.
@@ -408,7 +408,6 @@ export function announceVoice(text, options = {}) {
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
   const clean = formatCadReferenceForSpeech(text)
     .replace(/\b(?:1st|first)\s+resp(?:onder)?\b/gi, 'First Responder')
-    .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
     .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
@@ -423,7 +422,6 @@ export function announceVoiceAsync(text, options = {}) {
   options = { ...options, rate: 0.93, pitch: 0.86, lang: 'en-US' };
   const clean = formatCadReferenceForSpeech(text)
     .replace(/\b(?:1st|first)\s+resp(?:onder)?\b/gi, 'First Responder')
-    .replace(/\bCAD\b/gi, 'cad')
     .replace(/\s+/g, ' ')
     .trim();
   if (!clean || wasEventProcessed(options.eventId) || !acceptText(clean, options.dedupeMs ?? 1800)) return Promise.resolve(false);

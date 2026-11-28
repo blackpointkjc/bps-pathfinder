@@ -375,8 +375,7 @@ export default function Navigation({embedded=false}={}) {
         const resume=()=>{
             if(document.visibilityState==='hidden')return;
             const receiver=getExternalGpsStatus();
-            if(receiver.portGranted || receiver.connected || receiver.connecting ||
-               receiver.lockedToAntenna){
+            if(receiver.supported&&receiver.preferredSource!=='device'){
                 void startExternalGpsAutoReconnect({recoverStale:true}).catch(()=>null);
             }
             const latest=getLiveLocation(30000);
@@ -407,9 +406,9 @@ export default function Navigation({embedded=false}={}) {
             setIsLiveTracking(false);
             setGpsQuality(previous => previous.state === 'stale' ? previous : { ...previous, state: 'stale' });
             const receiver = getExternalGpsStatus();
-            if (receiver.connected || receiver.portGranted) {
+            if (receiver.supported&&receiver.preferredSource!=='device') {
                 const elapsed = receiver.lastFixAt ? Date.now() - Date.parse(receiver.lastFixAt) : Infinity;
-                if (elapsed > 45_000) startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
+                if (!receiver.connected||elapsed > 18_000) startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
             }
         };
         const timer = window.setInterval(check, 5_000);
@@ -935,12 +934,12 @@ export default function Navigation({embedded=false}={}) {
             setGpsFixSource(String(recent.source || ''));
             return [recent.latitude, recent.longitude];
         }
-        if (receiver.portGranted || receiver.connected || receiver.connecting) {
+        if (receiver.supported&&receiver.preferredSource!=='device') {
             // Receiver reconnection runs independently; never block routing on
             // USB hardware recovery or incorrectly treat a stale fix as live.
             void startExternalGpsAutoReconnect({ recoverStale: true }).catch(() => null);
         }
-        const budgetMs = quick ? 2400 : 6500;
+        const budgetMs = receiver.supported&&receiver.preferredSource!=='device'&&(receiver.portGranted||receiver.lockedToAntenna||receiver.connecting)?15000:quick?2400:6500;
         try {
             const fix = await waitForLiveLocation({ maxAgeMs: 12000, timeoutMs: budgetMs, maxAccuracyMeters: 100 });
             const quality = locationQuality(fix);
@@ -1947,7 +1946,7 @@ export default function Navigation({embedded=false}={}) {
                     callsStatus={callsError || (callsCheckedAt ? 'Calls checked ' + formatEasternTime(callsCheckedAt) : 'Loading calls')}
                     criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
-                    gpsLabel={!isLiveTracking && (externalReceiver.connected || externalReceiver.connecting) ? (externalReceiver.lastFixAt ? 'External antenna connected · Waiting for fresh satellite fix' : 'External antenna connected · No satellite fix yet') : !isLiveTracking && externalReceiver.portGranted ? 'External antenna authorized · Reconnecting receiver' : isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
+                    gpsLabel={!isLiveTracking && (externalReceiver.connected || externalReceiver.connecting) ? (externalReceiver.connecting&&!externalReceiver.connected?'External antenna reconnecting…':externalReceiver.lastFixAt ? 'External antenna connected · Waiting for fresh satellite fix' : 'External antenna connected · No satellite fix yet') : !isLiveTracking && externalReceiver.portGranted ? 'External antenna authorized · Reconnecting receiver' : isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
                     gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
 
             </div>
@@ -2076,7 +2075,7 @@ export default function Navigation({embedded=false}={}) {
                             <div>Satellite fix: {externalReceiver.lastFixAt && gpsStatusClock - Date.parse(externalReceiver.lastFixAt) < 30000 ? 'Received, but not yet usable for navigation' : 'No recent valid position'}</div>
                             {externalReceiver.satellites != null && <div>Satellites: {externalReceiver.satellites}</div>}
                             {externalReceiver.error && <div className="mt-1 font-bold text-amber-200">{externalReceiver.error}</div>}
-                            <div className="mt-1 text-amber-200/80">{!externalReceiver.connected ? 'Select the GPS receiver again.' : !externalReceiver.lastDataAt || gpsStatusClock - Date.parse(externalReceiver.lastDataAt) >= 15000 ? 'Port is open but GPS data is silent. Check the selected COM port and baud rate in the GPS menu.' : 'Serial bytes are arriving. If a fix never appears, check satellite reception or the receiver NMEA protocol.'}</div>
+                            <div className="mt-1 text-amber-200/80">{!externalReceiver.connected ? 'Pathfinder is retrying the approved receiver automatically. Use Reconnect / Select Antenna if permission or hardware selection is required.' : !externalReceiver.lastDataAt || gpsStatusClock - Date.parse(externalReceiver.lastDataAt) >= 15000 ? 'Port is open but GPS data is silent. Check the selected COM port and baud rate in the GPS menu.' : 'Serial bytes are arriving. If a fix never appears, check satellite reception or the receiver NMEA protocol.'}</div>
                             <button type="button" onClick={recoverExternalReceiver} disabled={gpsRecovering} className="mt-2 rounded-md border border-cyan-500 bg-cyan-900 px-3 py-2 font-semibold text-white disabled:opacity-50">{gpsRecovering ? 'Connecting…' : 'Reconnect / Select Antenna'}</button>
                         </details>
                     )}

@@ -26,7 +26,8 @@ function isVisibleActiveCall(call, now = Date.now()) {
   const stamp = callTimestamp(call);
   // Public requests remain visible until a real disposition, even if
   // waiting on a dispatcher or eligible unit for more than an hour.
-  return stamp > 0 && stamp <= now + 120000 && (call.source === 'public_helpme' || now - stamp <= ACTIVE_WINDOW_MS);
+  const retained = call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
+  return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
@@ -69,19 +70,34 @@ Deno.serve(async (req) => {
     if (!cached || Date.now() - cached.at >= 3000) {
       if (!cached?.pending) {
         cached = { at:0, rows:[], pending:(async () => {
-          // The board is defined by recency, not by matching the last source poll.
-          // Gating rows on that poll dropped current calls whose source had already
-          // moved on, which left the board empty while calls were still running.
+          // Keep unresolved verified property calls and active assignments in
+          // the feed even when the original agency timestamp is over an hour old.
+          const db=base44.asServiceRole.entities;
+          const [alerts,assignments]=await Promise.all([
+            db.PropertyAlert.filter({lifecycle_status:{$nin:['resolved','false_alarm','test','inactive','closed']},is_test:{$ne:true}},'-created_date',1000),
+            db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000),
+          ]);
+          const propertyIds=new Set((alerts||[]).filter(a=>a.callId&&a.propertyId&&a.propertyId!=='public-helpme'&&!TERMINAL.has(lower(a.callStatus))).map(a=>String(a.callId)));
+          const assignmentUnits=new Map<string,Set<string>>();
+          for(const row of assignments||[]){if(!row.call_id||!row.unit_id||TERMINAL.has(lower(row.status)))continue;const key=String(row.call_id);if(!assignmentUnits.has(key))assignmentUnits.set(key,new Set());assignmentUnits.get(key)!.add(String(row.unit_id));}
+          const retainedIds=[...new Set([...propertyIds,...assignmentUnits.keys()])];
           const rows = await base44.asServiceRole.entities.DispatchCall.filter({
             $or: [
+              ...(retainedIds.length?[{id:{$in:retainedIds}}]:[]),
               { time_received: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString(), $lte: new Date(Date.now() + 120000).toISOString() } },
               { $and: [{ $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] }, { created_date: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString() } }] },
-              {source:'public_helpme'},
+              {source:{$in:['public_helpme','dispatch_manual','field_initiated','CAD clone']}},
+              {$and:[{agency:'BPS'},{cad_number_source:'bps_internal'}]},
+              {status:{$in:['Dispatched','Enroute','On Scene']}},
+              {'assigned_units.0':{$exists:true}},
             ],
             manual_dismissed: {$ne:true},
             status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
           }, '-created_date', 500);
-          return (rows || []).filter((row:any) => isVisibleActiveCall(row));
+                    // A separate retained-record query avoids a busy agency feed crowding
+          // unresolved property incidents out of the ordinary 500-row window.
+          const retainedRows=retainedIds.length?await db.DispatchCall.filter({id:{$in:retainedIds},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',1000):[];
+          return [...new Map([...rows||[],...retainedRows||[]].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row));
         })() };
         readCache.set(cacheKey, cached);
       }
@@ -91,7 +107,7 @@ Deno.serve(async (req) => {
     const rows = cached.rows;
     const calls = (Array.isArray(rows) ? rows : [])
       .filter(call => isVisibleActiveCall(call))
-      .sort((a, b) => callTimestamp(b) - callTimestamp(a))
+      .sort((a, b) => Number(Boolean(b.pathfinder_property_alert||b.pathfinder_assignment_unit_ids?.length||b.assigned_units?.length))-Number(Boolean(a.pathfinder_property_alert||a.pathfinder_assignment_unit_ids?.length||a.assigned_units?.length))||callTimestamp(b)-callTimestamp(a))
       .slice(0, limit);
 
     return Response.json({

@@ -76,7 +76,7 @@ export default function SupervisorCommandBoard() {
   const openDispatch = row => {
     const id = row?.call_id || row?.id;
     if (!id) return;
-    window.location.href = `${createPageUrl('CADCenter')}?section=live&tool=dispatch&call_id=${encodeURIComponent(id)}`;
+    window.location.href = `${createPageUrl('CADCenter')}?section=live&tool=command&call_id=${encodeURIComponent(id)}`;
   };
 
   return <div className="min-h-full bg-[#07111d] p-4 text-slate-100 md:p-6">

@@ -7,7 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getOfficerLocationSnapshot } from '@/lib/officerLocationHub';
 import { cadCallFeedIsStale, refreshCadIngestionIfStale } from '@/lib/cadCallFeed';
-import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows } from '@/lib/activeDispatchCalls';
+import { clearActiveDispatchCallMemoryCache, dedupeOperationalCalls, loadActiveDispatchCallRows, getActiveDispatchCallReadTime } from '@/lib/activeDispatchCalls';
 import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/dispatchCallRealtime';
 
 
@@ -137,8 +137,9 @@ export function DashboardDataProvider({ children }) {
             } catch {
                 // Cache is only a fast first paint; the live entity query remains authoritative.
             }
-            setLastRefresh(new Date());
-            setRateLimited(false);
+            const confirmedReadAt=getActiveDispatchCallReadTime();
+            setLastRefresh(confirmedReadAt?new Date(confirmedReadAt):null);
+            if(confirmedReadAt && Date.now()-confirmedReadAt<30000)setRateLimited(false);
             lastRefreshTime.current = Date.now();
             setLoading(false);
 
@@ -249,14 +250,13 @@ export function DashboardDataProvider({ children }) {
                 return;
             }
             setCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 300 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 500 });
                 try {
                     window.localStorage.setItem(ACTIVE_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
                 return next;
             });
-            setLastRefresh(new Date());
-            setRateLimited(false);
+            // A realtime event is not a confirmed full feed read.
         });
         return () => {
             window.clearTimeout(reconcileTimer);
@@ -284,9 +284,9 @@ export function useDashboardData() {
 }
 
 /**
- * Lets a screen that is already wrapped (for example the CAD Center shell)
- * supply the live CAD queue to nested workstations instead of mounting a
- * second provider and doubling the polling load.
+ * Lets a screen that already owns the live CAD queue (for example the CAD
+ * Center shell) supply it to nested workstations instead of mounting a second
+ * provider and doubling the polling load.
  */
 export function useOptionalDashboardData() {
     return useContext(DashboardDataContext);

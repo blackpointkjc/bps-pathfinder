@@ -1,3 +1,4 @@
+import UnifiedCadGrid from './cad/UnifiedCadGrid';
 import './cad-workstations.css';
 import './tactical-console.css';
 import TacticalCommandMap from './TacticalCommandMap';
@@ -9,10 +10,14 @@ import { comparePersonnel } from '@/utils/rankPolicy';
 import { Radio, Search, Users, RefreshCw } from 'lucide-react';
 import { cadAgeLabel, cadServiceLevel } from '@/lib/cadOperationalStatus';
 
-export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,initialFocus='all',syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
- const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState(initialFocus),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
+export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster,initialFocus='all',unified=false,canManage=false,onCreate,showMap=true,onMapVisibility,draft,draftOpen,onCloseDraft,standaloneZoom=1,officerMode=false,monitoredIds=[],onTogglePin,standaloneMonitor,onToggleMonitor,emergencyControl,propertyIds,propertyError,currentUser,selfAttachUser}){
+ // The CAD status bar and command palette deep-link into the board with a
+ // pre-filtered queue, so the requested view is already on screen.
+ const startingFocus=officerMode?'all':['all','urgent','unassigned','overdue'].includes(initialFocus)?initialFocus:'all';
+ const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState(startingFocus),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
  const [utilityPanel,setUtilityPanel]=useState(null);
- const [screen,setScreen]=useState('operations');
+ useEffect(()=>{setFocus(startingFocus);},[startingFocus]);
+ const [screen,setScreen]=useState(startingFocus==='all'?'operations':'incidents');
  const [expandedMap,setExpandedMap]=useState(false);
  const [rightPane,setRightPane]=useState('units');
  const commandRef=useRef(null);
@@ -24,7 +29,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
      const bottom=Math.min(window.innerHeight,window.visualViewport?.height||window.innerHeight,host?.getBoundingClientRect().bottom||window.innerHeight);
      const top=Math.max(root.getBoundingClientRect().top,host?.getBoundingClientRect().top||0,0);
      const height=Math.floor(bottom-top-3);
-     if(height>0)root.style.setProperty('--command-available-height',height+'px');
+     if(height>0)root.style.setProperty('--command-available-height',(height/standaloneZoom)+'px');
    });};
    const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
    if(host)observer?.observe(host);
@@ -34,7 +39,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
    window.addEventListener('resize',measure);window.visualViewport?.addEventListener('resize',measure);
    measure();
    return()=>{cancelAnimationFrame(frame);observer?.disconnect();window.removeEventListener('resize',measure);window.visualViewport?.removeEventListener('resize',measure);};
- },[]);
+ },[standaloneZoom]);
  // A deep-linked incident (CAD status bar or command palette) opens the detail
  // rail exactly as if the dispatcher had selected it from the incident stack.
  const lastLinked=useRef(null);
@@ -44,9 +49,6 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
   lastLinked.current=selectedCall.id;
   setRightPane('incident');setScreen('incident');setExpandedMap(false);
  },[selectedCall?.id]);
- // Telemetry shortcuts (for example the CAD status bar's "Unassigned") arrive as
- // a new initialFocus while this board stays mounted.
- useEffect(()=>{if(initialFocus)setFocus(initialFocus);},[initialFocus]);
  const [unitFilter,setUnitFilter]=useState('all');
  const [districts,setDistricts]=useState({});
  const districtCache=useRef(new Map());
@@ -91,12 +93,13 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const closeIncident=()=>{onClose?.();setRightPane('units');setScreen('operations');};
  const showUnits=()=>{setRightPane('units');setScreen('units');setExpandedMap(false);};
  const run=async(key,task)=>{if(working)return;setWorking(key);setError('');try{await task();}catch(e){setError(e?.response?.data?.error||e.message||'Action could not be saved.');}finally{setWorking('');}};
- return <div ref={commandRef} className="tac-console tac-command">
-  <header className="tac-header"><div className="tac-brand"><Radio size={23}/><div><small>BLACK POINT · OPERATIONS</small><h1>Command / Control</h1></div></div><div className="tac-header-actions"><span className="tac-feed-state"><i data-state={rateLimited||syncStatus.state==='error'?'warning':loading?'loading':'ready'}/>{rateLimited?'RATE LIMITED':loading?'SYNCING':syncStatus.state==='error'?'DEGRADED':'CAD FEED'}</span><button onClick={onRefresh}><RefreshCw size={15}/> Refresh</button>{actions}<button onClick={()=>setUtilityPanel('duty')}>Duty settings</button></div></header>
-  <div className="tac-command-strip">{[
+ return <div ref={commandRef} style={standaloneZoom!==1?{zoom:standaloneZoom}:undefined} data-high-zoom={standaloneZoom>1.24} className={'tac-console tac-command'+(unified?' cc-command-host':'')}>
+  {!officerMode&&<header className="tac-header"><div className="tac-brand"><Radio size={23}/><div><small>BLACK POINT · OPERATIONS</small><h1>{officerMode?'Officer command':'Command / Control'}</h1></div></div><div className="tac-header-actions"><span className="tac-feed-state"><i data-state={rateLimited||syncStatus.state==='error'?'warning':loading?'loading':'ready'}/>{rateLimited?'RATE LIMITED':loading?'SYNCING':syncStatus.state==='error'?'DEGRADED':'CAD FEED'}</span><button onClick={onRefresh}><RefreshCw size={15}/> Refresh</button>{actions}<button onClick={()=>setUtilityPanel('duty')}>Duty settings</button></div></header>}
+  {!officerMode&&<div className="tac-command-strip">{[
     ['ALL INCIDENTS',allCalls.length,'all','normal'],['UNASSIGNED',allCalls.filter(needsDispatch).length,'unassigned','warning'],['P1 / P2',critical.length,'urgent','danger'],['OVERDUE',allCalls.filter(c=>cadServiceLevel(c).state==='overdue').length,'overdue','danger'],['AVAILABLE',available.length,'resources','ready'],['DISTRESS',units.filter(u=>String(u.status).toLowerCase()==='distress').length,'distress','danger']
-  ].map(([label,count,id,tone])=><button key={id} data-tone={tone} onClick={()=>{if(id==='resources'||id==='distress'){setUnitFilter(id==='distress'?'distress':'available');showUnits();}else {setFocus(id);setScreen('incidents');setExpandedMap(false)}}}><span>{label}</span><strong>{loading&&!allCalls.length&&id==='all'?'—':count}</strong></button>)}</div>
+  ].map(([label,count,id,tone])=><button key={id} data-tone={tone} onClick={()=>{if(id==='resources'||id==='distress'){setUnitFilter(id==='distress'?'distress':'available');showUnits();}else {setFocus(id);setScreen('incidents');setExpandedMap(false)}}}><span>{label}</span><strong>{loading&&!allCalls.length&&id==='all'?'—':count}</strong></button>)}</div>}
   {(error||syncStatus.state==='error'&&syncStatus.error||rateLimited)&&<p role="alert" className="tac-warning">{error||syncStatus.error||'CAD rate limited. Showing last received data.'}</p>}
+  {unified?<UnifiedCadGrid propertyIds={propertyIds} propertyError={propertyError} currentUser={currentUser} selfAttachUser={selfAttachUser} monitoredIds={monitoredIds} onTogglePin={onTogglePin} standaloneMonitor={standaloneMonitor} onToggleMonitor={onToggleMonitor} dutyControl={<button type="button" className="cc-duty-control" onClick={()=>setUtilityPanel('duty')}>My status</button>} emergencyControl={emergencyControl} officerMode={officerMode} calls={visible} allCalls={allCalls} units={units} loading={loading} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={onRetryRoster} detail={detail} onOpen={openIncident} onClose={closeIncident} onDispatch={onDispatch} onMap={onMap} onPriority={onPriority} onClear={(call,event)=>run(call.id,async()=>{await onClear(call,event);closeIncident();})} canChangePriority={canChangePriority} canClear={canClear} canManage={canManage} priorityOf={priorityOf} priorities={priorities} identifierOf={identifierOf} incidentOf={incidentOf} elapsedOf={elapsedOf} callDistrict={callDistrict} working={working} onCreate={onCreate} draft={draft} draftOpen={draftOpen} onCloseDraft={onCloseDraft} onRefresh={onRefresh} initialFocus={initialFocus} query={query} setQuery={setQuery} agency={agency} setAgency={setAgency} showMap={showMap} onMapVisibility={onMapVisibility} screen={screen} unitFilter={unitFilter} setUnitFilter={setUnitFilter} onReset={()=>{setFocus('all');setQuery('');setAgency('all');setUnitFilter('all');}}/>:<>
   <div className="tac-mobile-switch"><button aria-pressed={screen==='operations'} onClick={()=>setScreen('operations')}>Map</button><button aria-pressed={screen==='incidents'} onClick={()=>{setExpandedMap(false);setScreen('incidents')}}>Calls</button><button aria-pressed={screen==='incident'} disabled={!detail} onClick={()=>{setExpandedMap(false);setRightPane('incident');setScreen('incident')}}>Details</button><button aria-pressed={screen==='units'} onClick={showUnits}>Units</button></div>
   <div className="tac-command-grid" data-screen={screen} data-map-expanded={expandedMap} data-right-pane={detail&&rightPane==='incident'?'incident':'units'}>
     <section className="tac-incident-rail"><div className="tac-panel-bar"><span>Incident stack <b>{visible.length}</b></span><button onClick={()=>{setFocus('all');setQuery('');setAgency('all')}}>Reset</button></div>
@@ -105,9 +108,10 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
       <div className="tac-incident-scroll">{visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;const sla=cadServiceLevel(call);return <button key={call.id} className="tac-call-strip" data-priority={priorityOf(call)} data-sla={sla.state} aria-pressed={detail?.id===call.id} onClick={()=>openIncident(call)}><div className="tac-call-top"><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span><b>{identifierOf(call).value}</b>{sla.state!=='ok'&&<span className="tac-sla-chip" data-state={sla.state}>{sla.state==='overdue'?'OVERDUE':'AGING'} {cadAgeLabel(sla.minutes)}</span>}<time>{elapsedOf(call)||'—'}</time></div><strong>{incidentOf(call)}</strong><span className="tac-address">{call.location||'Location pending'}</span><div className="tac-call-foot"><span>{call.agency||'BPS'}</span><span>{call.status||'Active'}</span><span>{(call.assigned_units||[]).length} units</span></div></button>})}{!visible.length&&<p className="tac-empty">{loading?'Loading incidents…':'No matching active incidents'}</p>}</div>
     </section>
     <div className="tac-operations"><TacticalCommandMap calls={allCalls} units={units} onCallClick={openIncident} selectedCall={detail} expanded={expandedMap} onExpand={()=>{setScreen('operations');setExpandedMap(x=>!x);}}/></div>
-    {detail&&rightPane==='incident'&&<CommandIncidentDetails key={detail.id} call={detail} units={units} priority={priorities[priorityOf(detail)]||priorities.medium} reference={identifierOf(detail).value} incident={incidentOf(detail)} elapsed={elapsedOf(detail)} district={callDistrict(detail)} onClose={closeIncident} onUnits={showUnits} onDispatch={onDispatch} onMap={onMap} onPriority={onPriority} onClear={(call,event)=>run(call.id,async()=>{await onClear(call,event);closeIncident();})} canChangePriority={canChangePriority} canClear={canClear} working={working}/>}
+    {detail&&rightPane==='incident'&&<CommandIncidentDetails key={detail.id} call={detail} units={units} priority={priorities[priorityOf(detail)]||priorities.medium} reference={identifierOf(detail).value} incident={incidentOf(detail)} elapsed={elapsedOf(detail)} district={callDistrict(detail)} onClose={closeIncident} onUnits={showUnits} onDispatch={onDispatch} onMap={onMap} onPriority={onPriority} onClear={(call,event)=>run(call.id,async()=>{await onClear(call,event);closeIncident();})} canChangePriority={canChangePriority} canClear={canClear} canManage={canManage} working={working}/>}
     <section className="tac-unit-rail" hidden={!!detail&&rightPane==='incident'}><div className="tac-panel-bar"><span><Users size={15}/> Unit status</span><div>{detail&&<button onClick={()=>{setRightPane('incident');setScreen('incident')}}>Incident</button>}<button onClick={onRetryRoster} disabled={rosterLoading} aria-label="Refresh officers"><RefreshCw size={14}/></button><button onClick={()=>setUtilityPanel('resources')}>Roster</button></div></div><div className="tac-filters"><label><Search size={14}/><input aria-label="Find unit" placeholder="Unit / officer / platoon" value={unitSearch} onChange={e=>setUnitSearch(e.target.value)}/></label><select value={unitFilter} onChange={e=>setUnitFilter(e.target.value)} aria-label="Unit status filter"><option value="all">All statuses</option>{[...new Set(units.map(u=>String(u.status||'').toLowerCase()).filter(Boolean))].map(status=><option key={status}>{status}</option>)}</select></div>{rosterError&&<p className="tac-warning">{rosterError}</p>}<div className="tac-unit-scroll">{officers.map(unit=><div key={unit.id||unit.email} className="tac-unit-row" data-status={String(unit.status||'').toLowerCase()}><strong className="tac-unit-number">{unit.unit_number||'—'}</strong><div><b>{[unit.rank,unit.last_name].filter(Boolean).join(' ')||'Officer'}</b><small>{unit.connection_stale?'STALE':unit.presence_online||unit.session_active?'ONLINE':'OFFLINE'}{unit.platoon?' · '+unit.platoon:''}</small>{unit.current_call_info&&<small className="tac-unit-call">{unit.current_call_info}</small>}</div><span>{unit.status||'Unknown'}</span></div>)}{!officers.length&&<p className="tac-empty">{rosterLoading?'Loading units…':'No matching units'}</p>}</div></section>
   </div>
+  </>}
   <Dialog open={!!utilityPanel} onOpenChange={open=>{if(!open)setUtilityPanel(null);}}>
    <DialogContent className="max-w-3xl border-slate-700 bg-slate-900 text-white">
     <DialogHeader><DialogTitle className="pr-10">{utilityPanel==='duty'?'My duty & location':'Unit status & resources'}</DialogTitle><DialogDescription>{utilityPanel==='duty'?'Manage your duty status and location sharing.':'Search officers and review availability and assignments.'}</DialogDescription></DialogHeader>

@@ -81,7 +81,7 @@ globalThis.window = {
 };
 const voiceSource = (await readFile('src/utils/voiceAnnouncer.js', 'utf8'))
   .replace("import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';", 'const formatEasternTime = () => ""; const parseServerTimestamp = value => new Date(value);');
-const voice = await import('data:text/javascript;base64,' + Buffer.from(voiceSource.replace("import { formatCadReferenceForSpeech } from '@/utils/cadSpeechReference';", 'const formatCadReferenceForSpeech = value => value;')).toString('base64'));
+const voice = await import('data:text/javascript;base64,' + Buffer.from(voiceSource.replace("import { formatCadReferenceForSpeech } from '@/utils/cadSpeechReference';", 'import { formatCadReferenceForSpeech } from '+JSON.stringify(new URL('../src/utils/cadSpeechReference.js',import.meta.url).href)+';')).toString('base64'));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 let finishHorn;
 let hornCount = 0;
@@ -127,6 +127,13 @@ finishHorn();
 await flush();
 assert.equal(events.includes('speech:Cancelled call.'), false);
 
+// Both public announcement paths must deliver phonetic CAD identifiers to TTS.
+voice.announceVoice('CAD 00123. Respond to 100 Main Street.', {eventId:'speech:cad-number'});
+await flush();
+assert.ok(events.includes('speech:see ay dee number zero zero one two three. Respond to 100 Main Street.'));
+const spoken=await voice.announceVoiceAsync('CAD number BPS-202611-00042.',{eventId:'speech:bps-number'});
+assert.equal(spoken,true);
+assert.ok(events.includes('speech:see ay dee number zero zero zero four two.'));
 // Actual horn oscillator scheduling, completion, and cancellation.
 const { playPropertyHorn } = await import('../src/utils/alertUtils.js');
 let stopped = 0, disconnected = 0;

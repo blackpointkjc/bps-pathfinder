@@ -1,3 +1,5 @@
+import {readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
+import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DISPLAY_DEFAULTS, displayStorageKey, readDisplayPreferences, normalizeDisplayPreferences } from '@/lib/displayPreferences';
@@ -11,6 +13,9 @@ export default function DisplayPreferences({ userId }) {
     try { return readDisplayPreferences(window.localStorage, storageKey); }
     catch { return { ...DISPLAY_DEFAULTS }; }
   });
+  const [cadScale,setCadScale]=useState(()=>readCadDisplaySettings().scale);
+  useEffect(()=>{const sync=()=>setCadScale(readCadDisplaySettings().scale);window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
+  const changeCadScale=scale=>{const next=writeCadDisplaySettings({...readCadDisplaySettings(),scale});setCadScale(next.scale);window.dispatchEvent(new CustomEvent('bps-cad-display-changed',{detail:next}));};
   const [saveError, setSaveError] = useState(false);
   const sizeIndex = TEXT_SIZES.indexOf(settings.text);
 
@@ -66,6 +71,7 @@ export default function DisplayPreferences({ userId }) {
           </div>
         </fieldset>
 
+        <fieldset className="pf-display-group"><legend>CAD workspace zoom</legend><CadZoomControls value={cadScale} onChange={changeCadScale}/><p>Enlarge or reduce the entire CAD workspace.</p></fieldset>
         <fieldset className="pf-display-group">
           <legend>Contrast</legend>
           <div className="pf-choice-row">
@@ -93,7 +99,7 @@ export default function DisplayPreferences({ userId }) {
           <p style={{ fontSize: settings.text === 'extra-large' ? 16 : settings.text === 'large' ? 14 : 12, color: settings.contrast === 'high' ? '#f1f5f9' : '#aebfd0', paddingBlock: settings.spacing === 'comfortable' ? 10 : 2 }}>Incident details and location appear here.</p>
         </div>
         <p className="pf-display-save" role="status">{saveError ? 'Applied for now. This browser could not save your preference.' : 'Saved for your account on this browser. Other officers keep their own settings.'}</p>
-        <button type="button" className="pf-display-reset" onClick={() => update(DISPLAY_DEFAULTS)}>Reset display settings</button>
+        <button type="button" className="pf-display-reset" onClick={() => {update(DISPLAY_DEFAULTS);changeCadScale('standard');}}>Reset display settings</button>
       </PopoverContent>
     </Popover>
   );

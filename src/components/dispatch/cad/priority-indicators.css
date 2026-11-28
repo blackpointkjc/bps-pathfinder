@@ -1,0 +1,44 @@
+/* Flash the priority border, not the entire reading surface. */
+@keyframes pf-cad-p1-flash {
+  0%,100% { box-shadow:inset 0 0 0 2px #ef4444; }
+  50% { box-shadow:inset 0 0 0 2px #7f1d1d; }
+}
+@keyframes pf-cad-p2-flash {
+  0%,100% { box-shadow:inset 0 0 0 2px #facc15; }
+  50% { box-shadow:inset 0 0 0 2px #854d0e; }
+}
+:is(.cc-call,.dispatch-v3-call,.tac-call-strip,.tac-mdt-current,.tac-mdt-queue-list button,.cad-monitor-chip,.pf-dispatch-facts,.cad-new-call-alert,.cad-marker-priority-ring,.pf-priority-badge,.cad-selected-priority)[data-priority="critical"],
+.tac-detail-title>b[data-priority="P1"] {
+  border-left-color:#ef4444!important;
+  animation:pf-cad-p1-flash 1s ease-in-out infinite!important;
+}
+:is(.cc-call,.dispatch-v3-call,.tac-call-strip,.tac-mdt-current,.tac-mdt-queue-list button,.cad-monitor-chip,.pf-dispatch-facts,.cad-new-call-alert,.cad-marker-priority-ring,.pf-priority-badge,.cad-selected-priority)[data-priority="high"],
+.tac-detail-title>b[data-priority="P2"] {
+  border-left-color:#facc15!important;
+  animation:pf-cad-p2-flash 1s ease-in-out infinite!important;
+}
+:is(.cc-call,.dispatch-v3-call,.tac-call-strip,.tac-mdt-current,.cad-monitor-chip)[data-priority="critical"] :is(.cc-call-title em,.dispatch-v3-priority,.cad-priority,.tac-mdt-reference>div,.cad-monitor-meta em) {
+ background:#8b1d29!important;color:#fff!important;border-color:#ef4444!important;
+}
+:is(.cc-call,.dispatch-v3-call,.tac-call-strip,.tac-mdt-current,.cad-monitor-chip)[data-priority="high"] :is(.cc-call-title em,.dispatch-v3-priority,.cad-priority,.tac-mdt-reference>div,.cad-monitor-meta em),.tac-detail-title>b[data-priority="P2"] {
+ background:#facc15!important;color:#251900!important;border-color:#facc15!important;
+}
+:is(.cc-call,.dispatch-v3-call,.tac-call-strip,.tac-mdt-current,.tac-mdt-queue-list button,.cad-monitor-chip,.pf-dispatch-facts,.cad-new-call-alert,.cad-marker-priority-ring,.pf-priority-badge,.cad-selected-priority)[data-priority="medium"],
+:is(.cc-call,.dispatch-v3-call,.tac-call-strip,.tac-mdt-current,.tac-mdt-queue-list button,.cad-monitor-chip,.pf-dispatch-facts,.cad-new-call-alert,.cad-marker-priority-ring,.pf-priority-badge,.cad-selected-priority)[data-priority="low"],
+.tac-detail-title>b:is([data-priority="P3"],[data-priority="P4"]) { animation:none!important; }
+.cad-new-call-alert:is([data-priority="medium"],[data-priority="low"]){border-color:#64748b!important;background:#172534!important}
+.cad-new-call-alert[data-priority="high"]{border-color:#facc15!important;background:#30280c!important}
+.cad-new-call-alert[data-priority="high"] :is(.text-red-300,.text-red-400){color:#fde047!important}
+.cad-new-call-alert:is([data-priority="medium"],[data-priority="low"]) :is(.text-red-300,.text-red-400){color:#d4e1ec!important}
+.cad-new-call-alert[data-priority="high"] button{background:#facc15!important;color:#251900!important}
+.cad-new-call-alert:is([data-priority="medium"],[data-priority="low"]) button{background:#334155!important;color:#fff!important}
+.cad-marker-priority-ring{border-radius:50%}
+@media(prefers-reduced-motion:reduce){
+ :is(.cc-call,.dispatch-v3-call,.tac-call-strip,.tac-mdt-current,.tac-mdt-queue-list button,.cad-monitor-chip,.pf-dispatch-facts,.cad-new-call-alert,.cad-marker-priority-ring,.pf-priority-badge,.cad-selected-priority)[data-priority],
+ .tac-detail-title>b[data-priority]{animation:none!important}
+ .cad-marker-priority-ring[data-priority="critical"]{box-shadow:inset 0 0 0 2px #ef4444}
+ .cad-marker-priority-ring[data-priority="high"]{box-shadow:inset 0 0 0 2px #facc15}
+}
+
+:is(.pf-priority-badge,.cad-selected-priority)[data-priority=high]{background:#facc15!important;color:#251900!important;border-color:#facc15!important}
+:is(.pf-priority-badge,.cad-selected-priority)[data-priority=critical]{background:#8b1d29!important;color:white!important;border-color:#ef4444!important}
