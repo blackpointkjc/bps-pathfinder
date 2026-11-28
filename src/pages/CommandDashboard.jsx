@@ -1,16 +1,14 @@
 import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
 import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
-import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
+import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
 import { cadReference } from '@/lib/cadReference';
 import useCadRoster from '@/hooks/useCadRoster';
 import { cadDestination } from '@/lib/cadNavigation';
-import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import LiveCommandWorkspace from '@/components/dispatch/LiveCommandWorkspace';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useLocation,useNavigate } from 'react-router-dom';
-import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils';
 import { incidentPriority as getCallPriority } from '@/lib/incidentPriority';
 import { cleanIncident } from '@/utils/callUtils';
@@ -51,10 +49,11 @@ function elapsed(call) {
 }
 
 // Inner dashboard — consumes context
-function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
+function CommandDashboardInner({embedded=false}) {
+    const [monitor,setMonitor]=useState(()=>readCadDisplaySettings().monitor);
+    const toggleMonitor=()=>setMonitor(previous=>writeCadDisplaySettings({...readCadDisplaySettings(),monitor:!previous}).monitor);
     const [localScale,setLocalScale]=useState(()=>readCadDisplaySettings().scale);
     const location=useLocation();
-    const [createSource,setCreateSource]=useState(null);
     const navigate = useNavigate();
     const { calls, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
     const { user: authenticatedUser } = useAuth();
@@ -159,41 +158,6 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
         return () => window.removeEventListener('bps-alert-mute-changed', syncMute);
     }, []);
 
-    const handlePriorityOverride = async (call, next) => {
-        if (!canEditIncidentPriority(currentUser)) throw new Error('Dispatcher role required');
-        const response = await base44.functions.invoke('updateCadCallPriority', { call_id: call.id, priority: next });
-        const payload = response?.data || {};
-        if (payload.error) throw new Error(payload.error);
-        setSelectedCall(previous => previous?.id === call.id ? {...previous,priority:next,priority_override:true} : previous);
-        await manualRefresh();
-    };
-
-    const handleMarkCleared = async (call, e) => {
-        e.stopPropagation();
-        const result = await base44.functions.invoke('updateCadCallStatus', {
-            call_id: call.id,
-            status: 'Cleared',
-        });
-        const payload = result?.data || result || {};
-        if (payload.error) throw new Error(payload.error);
-        manualRefresh();
-    };
-
-    const openCallInDispatch = (call) => {
-        if (!call?.id) return;
-        navigate(cadDestination('DispatchCenter', new URLSearchParams({ call_id: String(call.id) })));
-    };
-
-    const openCallOnMap = (call) => {
-        if (!call?.id) return;
-        const params = new URLSearchParams({ callId: call.id });
-        if (Number.isFinite(Number(call.latitude)) && Number.isFinite(Number(call.longitude))) {
-            params.set('lat', String(call.latitude));
-            params.set('lng', String(call.longitude));
-        }
-        navigate(cadDestination('Navigation',params));
-    };
-
     const getCallIdentifier = (call) => {
         const official = String(call?.agency_cad_number || (call?.official_cad_verified ? call?.call_id : '') || '').trim();
         const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
@@ -210,7 +174,6 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
     // the street — pull them off the unit status board so only field units appear.
     const statusUnits = cadOfficerUnits;
     const isAdmin            = currentUser?.role === 'admin';
-    const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const currentRoles = new Set((currentUser?.additional_roles || []).map(r => String(r).trim().toLowerCase()));
     const operationalRank = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(String(currentUser?.rank || '').trim().toLowerCase());
     const hasFieldStatusAccess = isAdmin || currentUser?.is_supervisor || currentRoles.has('full_access') || currentRoles.has('supervisor') || currentRoles.has('officer') || currentRoles.has('cad_access') || operationalRank;
@@ -223,11 +186,12 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
         : DISPATCH_STATUSES;
 
     return <>
+      {!embedded&&monitor&&<CadIncidentMonitor calls={calls} loading={loading} onOpen={setSelectedCall} onCollapse={toggleMonitor}/>}
       <LiveCommandWorkspace officerMode standaloneZoom={embedded?1:cadScaleValue(localScale)} unified={true} showMap={false} canManage={false} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} 
         canChangePriority={false} canClear={false}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} initialFocus={cadFocus}
-        actions={<>{!embedded&&<CadZoomControls value={localScale} onChange={value=>{setLocalScale(value);writeCadDisplaySettings({...readCadDisplaySettings(),scale:value});}}/>}<button type="button" onClick={()=>navigate(cadDestination('OfficerDispatchQueue'))} className="min-h-9 rounded border border-cyan-700 px-3 text-sm">My assignments</button><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
+        actions={<>{!embedded&&<button type="button" aria-pressed={monitor} onClick={toggleMonitor}>Monitor {monitor?'on':'off'}</button>}{!embedded&&<CadZoomControls value={localScale} onChange={value=>{setLocalScale(value);writeCadDisplaySettings({...readCadDisplaySettings(),scale:value});}}/>}<button type="button" onClick={()=>navigate(cadDestination('OfficerDispatchQueue'))} className="min-h-9 rounded border border-cyan-700 px-3 text-sm">My assignments</button><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />
 
@@ -235,17 +199,14 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
 
 }
 
-export default function CommandDashboard({embedded=false,showMap=true,onMapVisibility}) {
-    const [localMap,setLocalMap]=useState(showMap);
-    const mapVisible=embedded?showMap:localMap;
-    const updateMap=onMapVisibility||setLocalMap;
+export default function CommandDashboard({embedded=false}) {
     // The CAD Center shell already owns the live queue; reuse it instead of
     // mounting a second provider and duplicating every CAD read.
     const existing = useOptionalDashboardData();
-    if (existing) return <CommandDashboardInner embedded={embedded} showMap={mapVisible} onMapVisibility={updateMap}/>;
+    if (existing) return <CommandDashboardInner embedded={embedded}/>;
     return (
         <DashboardDataProvider>
-            <CommandDashboardInner embedded={embedded} showMap={mapVisible} onMapVisibility={updateMap}/>
+            <CommandDashboardInner embedded={embedded}/>
         </DashboardDataProvider>
     );
 }

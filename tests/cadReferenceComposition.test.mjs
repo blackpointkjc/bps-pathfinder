@@ -42,3 +42,14 @@ test('draft is rendered inline rather than obscuring the live queues; layout con
  const intake=readFileSync('src/components/dispatch/CreateCallDialog.jsx','utf8');
  assert.ok(intake.includes('if(inline)'));assert.ok(intake.includes("invoke('createDispatchCall'"));
 });
+
+test('officer board shows the wider pending queue and no dispatcher or map controls even with dispatcher capability props',()=>{
+ const html=render({officerMode:true,showMap:true,canManage:true,detail:active});
+ assert.match(html,/cc-officer-workspace/);
+ assert.match(html,/data-map="false"/);
+ assert.match(html,/Pending incidents \(1\)/);
+ assert.match(html,/Expand/);
+ assert.ok(!html.includes('aria-label="Live map"'));
+ assert.ok(!html.includes('Field initiated'));
+ assert.ok(!html.includes('> Map</button>'));
+});

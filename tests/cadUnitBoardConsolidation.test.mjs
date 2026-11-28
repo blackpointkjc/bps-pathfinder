@@ -9,5 +9,5 @@ test('one unit workstation retains backlog and legacy links; direct command uses
  assert.ok(!shell.includes("id: 'resources'"));
  assert.ok(shell.includes("params.get(toolKey)==='resources'?'units'"));
  assert.ok(board.includes('Pending assignments'));assert.ok(board.includes('Officer detail'));assert.ok(board.includes('initialUnitSearch'));
- assert.ok(command.includes('unified={true}'));assert.ok(command.includes('canManage&&createSource'));
+ assert.ok(command.includes('unified={true}'));assert.ok(command.includes('officerMode'));assert.ok(command.includes('showMap={false} canManage={false}'));
 });

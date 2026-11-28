@@ -1,3 +1,6 @@
+import CadCloneIncidentDialog from '@/components/dispatch/cad/CadCloneIncidentDialog';
+import CadRecommendationList from '@/components/dispatch/cad/CadRecommendationList';
+import '@/components/dispatch/cad/unified-cad-grid.css';
 import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
@@ -82,6 +85,7 @@ function DispatchWorkspace({embedded=false}) {
     const [loading, setLoading] = useState(activeCalls.length === 0);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [intakeSource,setIntakeSource]=useState('dispatch');
+    const [cloneOpen,setCloneOpen]=useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showDispatchLog, setShowDispatchLog] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
@@ -144,11 +148,12 @@ function DispatchWorkspace({embedded=false}) {
                 event.preventDefault();
                 document.getElementById('cad-queue-search')?.focus();
             }
-            if (event.key.toLowerCase() === 'n') {setIntakeSource('dispatch');setShowCreateDialog(true);setMobileView('detail');}
-            if (event.key.toLowerCase() === 'm') setShowMap(value => !value);
+            if (event.key.toLowerCase() === 'n'&&!event.ctrlKey&&!event.metaKey&&!event.altKey) {setShowCreateDialog(true);setMobileView('detail');setShowPriorCalls(false);setShowDispatchLog(false);}
+            if (event.key.toLowerCase() === 'm'&&!event.ctrlKey&&!event.metaKey&&!event.altKey) setShowMap(value => !value);
             if (event.key === 'Escape') {
                 setShowMap(false);
                 setSelectedCall(null);
+                setMobileView('calls');
                 setShowMessaging(false);
                 setShowDispatchLog(false);
             }
@@ -492,9 +497,9 @@ function DispatchWorkspace({embedded=false}) {
         if (!callId) return setWelfareChecks([]);
         try {
             const rows = await base44.entities.OfficerWelfareCheck.filter({ call_id: callId }, '-requested_at', 50);
-            setWelfareChecks(rows || []);
+            if(selectedNoteCallRef.current===String(callId))setWelfareChecks(rows || []);
         } catch {
-            setWelfareChecks([]);
+            if(selectedNoteCallRef.current===String(callId))setWelfareChecks([]);
         }
     };
 
@@ -886,7 +891,7 @@ function DispatchWorkspace({embedded=false}) {
             {/* ══ MAIN GRID ══ */}
             {showPriorCalls ? (
                 <div className="dispatch-prior-calls flex-1 overflow-auto p-3">
-                    <CallHistory embedded />
+                    <button type="button" className="pf-cad-button" onClick={()=>setShowPriorCalls(false)}>Back to live dispatch</button><CallHistory embedded />
                 </div>
             ) : (
                 <div data-mobile-view={mobileView} data-selected={!!selectedCall||showCreateDialog} className="dispatch-main dispatch-v3-grid dispatch-v4-grid pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0">
@@ -894,7 +899,7 @@ function DispatchWorkspace({embedded=false}) {
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
                     <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}>
                         <header className="dispatch-v3-panel-head"><b>Incident queue</b><span>{allCalls.length} calls</span></header>
-                        <div className="dispatch-v3-queue-scroll dispatch-v4-queue-lanes">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Assigned / responding',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>handleSelectCall(call)}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
+                        <div className="dispatch-v3-queue-scroll dispatch-v4-queue-lanes">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Assigned / responding',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>{if(showCreateDialog){if(!window.confirm('Discard unsaved draft and open this incident?'))return;setShowCreateDialog(false);}handleSelectCall(call);}}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
 
                     </div>
 
@@ -904,8 +909,8 @@ function DispatchWorkspace({embedded=false}) {
                         {dockMap&&!showMap&&!showCreateDialog&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
-                            {showCreateDialog?<div className="cc-workspace-v2 dispatch-v4-intake"><CreateCallDialog inline source={intakeSource} units={units} currentUser={currentUser} onClose={()=>setShowCreateDialog(false)} onCreated={handleCallCreated}/></div>:selectedCall ? (
-                                <div className="pf-dispatch-detail-scroll dispatch-v3-detail min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>Incident details</span><div className="flex gap-2"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
+                            {showCreateDialog?<div className="cc-workspace-v2 dispatch-v4-intake"><CreateCallDialog inline source={intakeSource} units={units} currentUser={currentUser} onClose={()=>{setShowCreateDialog(false);setMobileView(selectedCall?'detail':'calls');}} onCreated={handleCallCreated}/></div>:selectedCall ? (
+                                <div className="pf-dispatch-detail-scroll dispatch-v3-detail min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>Incident details</span><div className="flex gap-2 flex-wrap"><button type="button" className="pf-cad-button" onClick={()=>setCloneOpen(true)}>Clone incident</button><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
@@ -1030,7 +1035,8 @@ function DispatchWorkspace({embedded=false}) {
                                     <span className="pf-dispatch-pane-title">Assign units</span>
                                     <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">Call selected</span>
                                 </div>
-                                <div className="min-h-0 flex-1 p-3">
+                                <div className="min-h-0 flex-1 p-3 overflow-y-auto">
+                                    <details className="dispatch-v4-recommend"><summary>Recommended units</summary><CadRecommendationList key={selectedCall.id} call={selectedCall} units={units} onAssigned={handleUpdate}/></details>
                                     <UnitAssignmentPanel call={selectedCall} calls={activeCalls} units={units} allAssignments={cadAssignmentRows} unitLoadStatus={unitLoadStatus} onRetryUnits={() => loadUnits(true)} onUpdate={handleUpdate} />
                                 </div>
                             </div>
@@ -1091,6 +1097,7 @@ function DispatchWorkspace({embedded=false}) {
             </div>
 
             </>}
+            {selectedCall&&<CadCloneIncidentDialog open={cloneOpen} onOpenChange={setCloneOpen} call={selectedCall} onCloned={handleCallCreated}/>}
             {/* Messaging Panel */}
             <MessagingPanel
                 currentUser={currentUser}

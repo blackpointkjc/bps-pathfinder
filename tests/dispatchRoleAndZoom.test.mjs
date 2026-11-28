@@ -34,3 +34,24 @@ test('dispatch redesign keeps real response actions, timeline and assignment con
  assert.ok(css.includes('@container(max-width:900px)'));
  assert.ok(css.includes('grid-template-columns:minmax(220px,29%) minmax(0,1fr) minmax(220px,28%)'));
 });
+
+test('monitor preference controls actual rendering on command, not an excluded route',()=>{
+ const shell=readFileSync('src/pages/CADCenter.jsx','utf8');
+ const command=readFileSync('src/pages/CommandDashboard.jsx','utf8');
+ assert.ok(shell.includes('const monitorOpen=display.monitor'));
+ assert.ok(shell.includes('monitor:!previous.monitor'));
+ assert.ok(shell.includes('{monitorOpen && <CadIncidentMonitor'));
+ assert.ok(!shell.includes("monitorOpen && active.id!=='command'"));
+ assert.ok(command.includes('!embedded&&monitor&&<CadIncidentMonitor'));
+ assert.ok(!command.includes("invoke('updateCadCallStatus'"));
+ assert.ok(!command.includes('CreateCallDialog'));
+});
+test('dispatch idle monitor expands both queues; field intake, cloning and recommendations are in dispatch',()=>{
+ const page=readFileSync('src/pages/DispatchCenter.jsx','utf8');
+ const css=readFileSync('src/components/dispatch/cad/dispatch-readable.css','utf8');
+ assert.ok(page.includes('data-selected={!!selectedCall||showCreateDialog}'));
+ assert.ok(page.includes('CreateCallDialog inline source={intakeSource}'));
+ assert.ok(page.includes('CadCloneIncidentDialog open={cloneOpen}'));
+ assert.ok(page.includes('CadRecommendationList key={selectedCall.id}'));
+ assert.ok(css.includes('.dispatch-v4-grid[data-selected=false] .dispatch-v4-queue-lanes'));
+});
