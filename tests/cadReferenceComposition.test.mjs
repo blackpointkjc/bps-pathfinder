@@ -89,3 +89,14 @@ test('officer board has independent property and other live lists, both queues d
  assert.ok(css.includes('overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain'));
  assert.ok(css.includes('@container(max-width:640px)'));
 });
+
+test('unit roster gives the middle panel a readable minimum width, full names and statuses, and an expanded roster',()=>{
+ const html=render({officerMode:true,units:[{id:'u1',unit_number:'102',rank:'Lt Colonel',last_name:'Example',status:'On Scene',session_active:true}]});
+ assert.match(html,/Unit 102/);assert.match(html,/Lt Colonel Example/);assert.match(html,/cc-unit-state-label">On scene/);
+ assert.match(html,/aria-label="Unit roster"/);assert.match(html,/Expand units/);
+ const css=readFileSync('src/components/dispatch/cad/unified-cad-grid.css','utf8');
+ assert.ok(css.includes('minmax(320px,23%)'));
+ assert.ok(css.includes('@container(min-width:1400px)'));
+ assert.ok(css.includes('grid-template-areas:"pending units active"'));
+ assert.ok(css.includes('repeat(auto-fit,minmax(min(100%,300px),1fr))'));
+});

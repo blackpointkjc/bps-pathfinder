@@ -257,8 +257,8 @@
 .cc-workspace-v2.cc-split-board .cc-grid[data-view=comments] .cc-editor>.tac-incident-detail-rail{display:none}
 .cc-workspace-v2.cc-split-board .cc-grid[data-view=comments] .cc-editor-comments{display:flex;flex:1 1 0;min-height:0}
 .cc-workspace-v2.cc-split-board .cc-radio-row{min-height:40px;font-size:14px}
-@container(min-width:1650px){
- .cc-workspace-v2.cc-split-board .cc-grid[data-view=queues]{grid-template-columns:minmax(0,1fr) minmax(160px,14%) minmax(0,1fr);grid-template-areas:"pending units active"}
+@container(min-width:1400px){
+ .cc-workspace-v2.cc-split-board .cc-grid[data-view=queues]{grid-template-columns:minmax(0,1fr) minmax(320px,23%) minmax(0,1fr);grid-template-areas:"pending units active"}
  .cc-workspace-v2.cc-split-board .cc-grid[data-view=queues]>.cc-units{display:flex}
 }
 @container(max-width:640px){
@@ -266,3 +266,27 @@
  .cc-workspace-v2.cc-split-board .cc-mobile button{font-size:12px;min-height:32px;padding:5px 7px}
  .cc-split-utilities{margin-left:0}
 }
+
+/* Unit roster: a real readable panel, never three tiny cells competing for width.
+   Below 1400 CSS pixels the expanded Units view is one full-width panel. */
+.cc-workspace-v2.cc-split-board .cc-units>header{background:#203a4c;border-bottom:1px solid #527084}
+.cc-workspace-v2.cc-split-board .cc-unit-roster{padding:8px;overflow-y:auto;overflow-x:hidden;scrollbar-width:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
+.cc-workspace-v2.cc-split-board .cc-unit-group{font:600 14px/1.4 system-ui,sans-serif;min-height:36px;padding:7px 4px;white-space:normal}
+.cc-workspace-v2.cc-split-board .cc-unit-roster .cc-radio-row{display:flex;flex-direction:column;gap:0;min-height:72px;width:100%;margin:0 0 8px;border:1px solid #4e6a7c;border-radius:5px;background:#162d3d;color:#f0f5fa;overflow:visible;text-align:left;font:500 15px/1.4 system-ui,sans-serif}
+.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-identity,.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-state-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;width:100%;min-width:0;background:transparent;padding:8px 10px;margin:0;color:inherit;font:inherit}
+.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-identity{align-items:flex-start;flex-direction:column;gap:3px}
+.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-identity b{font:650 max(16px,var(--pf-fit-body,16px))/1.35 system-ui,sans-serif;padding:0;overflow-wrap:anywhere}
+.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-identity span{font:500 max(14px,var(--pf-fit-label,14px))/1.4 system-ui,sans-serif;color:#d4e4ee;overflow-wrap:anywhere}
+.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-state-line{border-top:1px solid #3d586a;padding:6px 10px}
+.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-state-label{font:600 max(13px,var(--pf-fit-label,13px))/1.4 system-ui,sans-serif;background:#344c5e;color:#f0f5fa;padding:4px 7px;border-radius:4px;white-space:normal;overflow-wrap:anywhere}
+.cc-workspace-v2.cc-split-board .cc-radio-row .cc-unit-state-line time{font:550 max(13px,var(--pf-fit-label,13px))/1.4 system-ui,sans-serif;padding:3px 0;background:transparent;color:#e3edf5;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cc-workspace-v2.cc-split-board .cc-radio-row[data-state=available] .cc-unit-state-label{background:#20653e;color:#e4ffed}
+.cc-workspace-v2.cc-split-board .cc-radio-row:is([data-state=dispatched],[data-state=enroute]) .cc-unit-state-label{background:#775118;color:#fff2cf}
+.cc-workspace-v2.cc-split-board .cc-radio-row:is([data-state=busy],[data-state="on scene"]) .cc-unit-state-label{background:#155972;color:#def7ff}
+.cc-workspace-v2.cc-split-board .cc-radio-row[data-state=distress]{border:2px solid #ff6475}
+.cc-workspace-v2.cc-split-board .cc-radio-row[data-state=distress] .cc-unit-state-label{background:#a62a3b;color:#fff}
+.cc-workspace-v2.cc-split-board .cc-radio-row[data-state=hold] .cc-unit-state-label{background:#6d512c;color:#fff0d1}
+.cc-workspace-v2.cc-split-board .cc-unit-pop{font-size:14px;line-height:1.5;padding:10px;max-height:40%;flex:none}
+.cc-workspace-v2.cc-split-board .cc-grid[data-view=units] .cc-unit-roster>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px;align-items:start}
+.cc-workspace-v2.cc-split-board .cc-grid[data-view=units] .cc-unit-group{grid-column:1/-1}
+.cc-workspace-v2.cc-split-board .cc-grid[data-view=units] .cc-radio-row{margin:0}
