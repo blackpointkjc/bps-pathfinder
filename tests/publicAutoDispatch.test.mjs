@@ -14,3 +14,8 @@ console.log('PASS: public calls auto-assign one eligible clocked-in officer, not
 
 reset();tables.User[0].status='On Scene';tables.User[0].current_call_id='prior';tables.ActiveOfficer[0].status='On Scene';tables.ActiveOfficer[0].current_call_id='prior';tables.Unit=[{id:'vehicle',user_id:'eligible',status:'On Scene',assigned_call_ids:['prior']}];
 r=await call();assert.equal(r.decision,'assigned');assert.equal(tables.CallAssignment.length,1);assert.equal(tables.CallAssignment[0].status,'pending');assert.equal(tables.User[0].current_call_id,'prior');assert.equal(tables.User[0].status,'On Scene');assert.equal(tables.ActiveOfficer[0].current_call_id,'prior');assert.deepEqual(tables.Unit[0].assigned_call_ids,['prior','public-call']);assert.equal(tables.Unit[0].status,'On Scene');
+
+reset();Object.assign(tables.DispatchCall[0],{source:'grac',agency:'RPD',incident:'WELFARE CHECK , INVESTIGATE',status:'On Scene',time_received:new Date(Date.now()-1003000).toISOString()});
+tables.Location=[{id:'armstrong-test',site_name:'Armstrong test',latitude:37.54,longitude:-77.43,active:true,auto_dispatch_enabled:true,auto_dispatch_mode:'live',auto_dispatch_live_approved_at:current,auto_dispatch_live_approved_by:'admin'}];
+tables.PropertyAlert=[{id:'alert-late',callId:'public-call',propertyId:'armstrong-test',created_date:current,lifecycle_status:'active'}];
+r=await call();assert.equal(r.decision,'assigned',JSON.stringify(r));assert.equal(tables.CallAssignment.length,1,'late active verified property call still auto-dispatches');

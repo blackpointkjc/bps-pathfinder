@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
     if(!alert&&publicCall){alert=await base44.asServiceRole.entities.PropertyAlert.create({callId,propertyId:'public-helpme',propertyName:'Public request for assistance',callIncident:call.incident,callLocation:call.location,callTime:call.time_received,time_received:call.time_received,callStatus:call.status,callPriority:call.priority,source_key:'public-helpme:'+callId,distanceMeters:0,acknowledged:false});}
     if (!alert || String(alert.callId) !== callId) return Response.json({ error: 'No property alert is linked to this CAD call' }, { status: 400 });
     if (!simulation && (alert.is_test === true || ['resolved','false_alarm','test'].includes(lower(alert.lifecycle_status)))) return Response.json({ success:true, skipped:true, reason:'Alert is not active' });
-    // Do not dispatch historical feed items when a unit comes online later.
-    // Use the original incident time, never the ingestion/updated timestamp.
+    // Active verified property calls stay eligible despite upstream delay.
+    // Preserve the expiry policy for public assistance requests.
     const incidentAt = new Date(call.time_received || alert.callTime || alert.time_received || call.created_date || 0).getTime();
     const incidentAgeMs = Date.now() - incidentAt;
     if (!simulation && (call.manual_dismissed===true||call.time_cleared|| (publicCall&&(!Number.isFinite(incidentAt)||incidentAt<=0||incidentAgeMs < -60_000||incidentAgeMs>15*60_000)))) {
@@ -143,6 +143,7 @@ Deno.serve(async (req) => {
     const publicFallback=publicCall&&alert.propertyId==='public-helpme';
     const property = publicFallback?{id:'public-helpme',site_name:'Public assistance',address:call.location,latitude:call.latitude,longitude:call.longitude,auto_dispatch_enabled:true,auto_dispatch_mode:'live',auto_dispatch_live_approved_at:call.time_received,auto_dispatch_live_approved_by:'public-dispatch-policy',auto_dispatch_response_radius_miles:5}:await withRetry(() => base44.asServiceRole.entities.Location.get(String(alert.propertyId))).catch(() => null);
     if (!property) return Response.json({ error: 'Linked property configuration was not found' }, { status: 400 });
+    if(!simulation&&property.active===false)return Response.json({success:true,skipped:true,reason:'Property is inactive'});
 
     // Automatic assignment is opt-in per property. Shadow remains the default;
     // only an explicit saved live mode may change operational records.
@@ -488,7 +489,7 @@ Deno.serve(async (req) => {
               recipient_email: lower(officer.email),
               type: 'call_assignment',
               title: `Automatic Dispatch · ${cadNumber}`,
-              message: `Unit ${recommendation.unit_number || ''}, ${queued?'added to your queue, after your current call':'respond to'} ${queued?'':' '} ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. Safety warning: ${property.property_safety_warnings || call.hazards || 'None listed'}.`,
+              message: `Unit ${recommendation.unit_number || ''}, ${queued?'next assignment after your current call:':'respond to'} ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. Safety warning: ${property.property_safety_warnings || call.hazards || 'None listed'}.`,
               is_read: false,
               related_id: callId,
               priority: ['critical', 'high'].includes(lower(call.priority)) ? 'critical' : 'high',
