@@ -63,7 +63,6 @@ export default function DispatchCenter({embedded=false}) {
 }
 
 function DispatchWorkspace({embedded=false}) {
-    const {ids:verifiedPropertyIds,error:propertyFeedError}=usePropertyAssignmentCalls();
     const [standaloneScale,setStandaloneScale]=useState(()=>readCadDisplaySettings().scale);
     const zoom=embedded?1:cadScaleValue(standaloneScale);
     useEffect(()=>{const sync=()=>setStandaloneScale(readCadDisplaySettings().scale);window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
@@ -107,6 +106,7 @@ function DispatchWorkspace({embedded=false}) {
     const [statusWorking,setStatusWorking]=useState(false);
     const [dispatchFeedback,setDispatchFeedback]=useState('');
     const [cadAssignmentRows,setCadAssignmentRows]=useState([]);
+    const {ids:verifiedPropertyIds,error:propertyFeedError}=usePropertyAssignmentCalls(activeCalls);
     const [queueSearch, setQueueSearch] = useState('');
     const [callNotes, setCallNotes] = useState([]);
     const selectedNoteCallRef=React.useRef('');

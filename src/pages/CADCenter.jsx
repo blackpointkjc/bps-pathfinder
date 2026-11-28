@@ -47,7 +47,6 @@ const TRANSIENT_PARAMS = ['new', 'open', 'call_id', 'call_number', 'callId', 'la
 function CadShell({ embedded = false }) {
   const {user}=useAuth();
   const dispatchAllowed=canAccessDispatchCenter(user);
-  const {ids:propertyIds}=usePropertyAssignmentCalls();
   const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(user?.id||user?.email);
   const adminAllowed=canAccessCadAdminPages(user);
   const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>(item.id!=='dispatch'||dispatchAllowed)&&(!['history','response'].includes(item.id)||adminAllowed))]).filter(([,items])=>items.length)),[dispatchAllowed,adminAllowed]);
@@ -55,6 +54,7 @@ function CadShell({ embedded = false }) {
   const navigate = useNavigate();
   const hostRef = useRef(null);
   const { calls, loading, rateLimited, lastRefresh, manualRefresh } = useDashboardData();
+  const {ids:propertyIds}=usePropertyAssignmentCalls(calls);
   const { rows, loading: rosterLoading, error: rosterError, refresh: refreshRoster } = useCadRoster();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [display, setDisplay] = useState(() => readCadDisplaySettings());

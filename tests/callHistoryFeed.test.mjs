@@ -189,8 +189,13 @@ assert.equal(browserFeed.dedupeOperationalCalls([{...live,agency_cad_number:'123
 const liveFeed = await loadHandler('base44/functions/getActiveDispatchCalls/entry.ts');
 records.DispatchCall.push(live, {...live,id:'oldImported',time_received:new Date(now-3*86400000).toISOString()}, {...live,id:'future',time_received:new Date(now+600000).toISOString()});
 records.DispatchCall.push({...live,id:'old-manual',source:'dispatch_manual',time_received:oldAt},{...live,id:'old-assigned',assigned_units:['unit-1'],status:'Dispatched',time_received:oldAt});
+records.DispatchCall.push({...live,id:'old-property',time_received:oldAt,assigned_units:[]},{...live,id:'old-assignment-row',time_received:oldAt,assigned_units:[]},{...live,id:'closed-property',time_received:oldAt,status:'Cleared'});
+records.PropertyAlert.push({id:'p-old',callId:'old-property',propertyId:'site',lifecycle_status:'active',callStatus:'New'},{id:'p-closed',callId:'closed-property',propertyId:'site',lifecycle_status:'active'});
+records.CallAssignment.push({id:'assignment-row',call_id:'old-assignment-row',unit_id:'officer-id',status:'pending'});
 const liveResult = await liveFeed({limit:100});
 assert.equal(liveResult.status,200);
-assert.equal(liveResult.data.calls.length,3);
-assert.deepEqual(new Set(liveResult.data.calls.map(row=>row.id)),new Set(['live','old-manual','old-assigned']));
+assert.equal(liveResult.data.calls.length,5);
+assert.deepEqual(new Set(liveResult.data.calls.map(row=>row.id)),new Set(['live','old-manual','old-assigned','old-property','old-assignment-row']));
+assert.equal(liveResult.data.calls.find(c=>c.id==='old-property').pathfinder_property_alert,true);
+assert.deepEqual(Array.from(liveResult.data.calls.find(c=>c.id==='old-assignment-row').pathfinder_assignment_unit_ids),['officer-id']);
 console.log('PASS: 840 calls across 90-day pages; older-call search/date range; bounded enrichment; source failure/access controls; full GPS address -> retained prior call; managed-property lookup; duplicate suppression; live recency.');

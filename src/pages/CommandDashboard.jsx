@@ -54,7 +54,7 @@ function CommandDashboardInner({embedded=false}) {
     const location=useLocation();
     const { calls, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
     const { user: authenticatedUser } = useAuth();
-    const {ids:propertyIds,error:propertyError}=usePropertyAssignmentCalls();
+    const {ids:propertyIds,error:propertyError}=usePropertyAssignmentCalls(calls);
     const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(authenticatedUser?.id||authenticatedUser?.email);
     useEffect(()=>{const sync=()=>{const next=readCadDisplaySettings();setLocalScale(next.scale);setMonitor(next.monitor);};window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
 

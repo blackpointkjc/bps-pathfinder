@@ -128,46 +128,38 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, action, queued, assigned_units: assignedUnits, current_call_id: queued?currentId:String(call_id), current_call_info: queued?(latest.current_call_info||user.current_call_info||''):callInfo });
     }
 
-    const assignedUnits = assigned.filter((id: string) => id !== user.id);
-    await base44.asServiceRole.entities.DispatchCall.update(call_id, { assigned_units: assignedUnits });
-
-    // Audit cleanup is non-critical to the field action. Keep the response fast and
-    // let any matching assignment rows settle without blocking the officer UI.
-    const records = await base44.asServiceRole.entities.CallAssignment.filter({ call_id, unit_id: user.id }).catch(() => []);
-    await Promise.all((records || [])
-      .filter((record: any) => record.status !== 'cleared')
-      .map((record: any) => base44.asServiceRole.entities.CallAssignment.update(record.id, {
-        status: 'cleared',
-        cleared_at: now,
-      }).catch(() => null)));
-
-    const leavingCurrentCall = String(user.current_call_id || '') === String(call_id);
-    if (leavingCurrentCall) {
-      await base44.asServiceRole.entities.User.update(user.id, {
-        current_call_id: '',
-        current_call_info: '',
-        last_updated: now,
-      }).catch(() => null);
-      const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []);
-      for (const session of sessions || []) {
-        if (session.session_active === false) continue;
-        await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
-          current_call_id: '',
-          current_call_info: '',
-          show_lights: false,
-          last_update: now,
-        }).catch(() => null);
-      }
+    const db=base44.asServiceRole.entities;
+    const [sessions,units]=await Promise.all([db.ActiveOfficer.filter({officer_email:user.email},'-last_update',10),db.Unit.filter({user_id:user.id},'-last_update_at',20)]);
+    const aliases=new Set([user.id,user.email,...(sessions||[]).map(s=>s.id),...(units||[]).map(u=>u.id)].filter(Boolean).map(String));
+    const assignedUnits=assigned.filter(id=>!aliases.has(String(id)));
+    const records=await db.CallAssignment.filter({call_id},'-assigned_at',150);
+    const active=records.filter(row=>!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
+    if(!assigned.some(id=>aliases.has(String(id)))&&!active.some(row=>aliases.has(String(row.unit_id))))return Response.json({error:'You are not attached to this incident'},{status:403});
+    for(const record of active.filter(row=>aliases.has(String(row.unit_id))))await db.CallAssignment.update(record.id,{status:'cleared',cleared_at:now});
+    await db.DispatchCall.update(call_id,{assigned_units:assignedUnits});
+    const remaining=active.filter(row=>!aliases.has(String(row.unit_id))).sort((a,b)=>Date.parse(a.assigned_at||'')-Date.parse(b.assigned_at||''));
+    if(remaining.length&&!remaining.some(row=>row.role==='primary'))await db.CallAssignment.update(remaining[0].id,{role:'primary'});
+    const currentId=String((sessions||[]).find(s=>s.session_active!==false)?.current_call_id||user.current_call_id||'');
+    const leavingCurrentCall=currentId===String(call_id);
+    let nextId=currentId;
+    let nextStatus='';
+    if(leavingCurrentCall){
+      const groups=await Promise.all([...aliases].map(unit_id=>db.CallAssignment.filter({unit_id},'-assigned_at',300)));
+      const nextRows=[...new Map(groups.flat().filter(row=>String(row.call_id)!==String(call_id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase())).map(row=>[String(row.call_id),row])).values()];
+      const candidates=(await Promise.all(nextRows.map(async row=>({row,call:await db.DispatchCall.get(row.call_id).catch(()=>null)})))).filter(item=>item.call&&!item.call.manual_dismissed&&!item.call.time_cleared&&!['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(item.call.status||'').toLowerCase()));
+      const weight={critical:0,high:1,medium:2,low:3};
+      candidates.sort((a,b)=>(weight[String(a.call.priority||'').toLowerCase()]??2)-(weight[String(b.call.priority||'').toLowerCase()]??2)||Date.parse(a.row.assigned_at||'')-Date.parse(b.row.assigned_at||''));
+      const next=candidates[0]?.call;
+      nextId=next?String(next.id):'';
+      nextStatus=next?'Dispatched':'Available';
+      const info=next?`${next.incident||'Call for service'} · ${next.location||''}`.slice(0,500):'';
+      const patch={status:nextStatus,current_call_id:nextId,current_call_info:info,status_since:now};
+      await db.User.update(user.id,{...patch,last_updated:now});
+      for(const session of sessions||[])if(session.session_active!==false)await db.ActiveOfficer.update(session.id,{...patch,show_lights:false,last_update:now});
     }
-    const units = await base44.asServiceRole.entities.Unit.filter({ user_id: user.id }, '-last_update_at', 20).catch(() => []);
-    for (const unit of units || []) {
-      await base44.asServiceRole.entities.Unit.update(unit.id, {
-        assigned_call_ids: (unit.assigned_call_ids || []).filter((id: string) => String(id) !== String(call_id)),
-        last_update_at: now,
-      }).catch(() => null);
-    }
+    for(const unit of units||[])await db.Unit.update(unit.id,{...(leavingCurrentCall?{status:nextStatus}:{}),assigned_call_ids:(unit.assigned_call_ids||[]).filter(id=>String(id)!==String(call_id)),last_update_at:now});
+    return Response.json({success:true,action,assigned_units:assignedUnits,current_call_id:nextId});
 
-    return Response.json({ success: true, action, assigned_units: assignedUnits, current_call_id: leavingCurrentCall ? '' : String(user.current_call_id || '') });
   } catch (error: any) {
     console.error('updateMyCallAssignment failed', error);
     return Response.json({ error: error?.message || 'Assignment update failed' }, { status: 500 });

@@ -337,7 +337,7 @@ export default function GlobalMessageBanner({ user }) {
       // Supervisor Operations board, but never as a blocking banner or voice
       // announcement for each missing report.
       if (isSupervisorTask && String(record.task_key || '').startsWith('missing-report-')) return;
-      const targetPage = isWelfareNotification
+      const targetPage = source.assignment || isWelfareNotification
         ? 'OfficerDispatchQueue'
         : isSupervisorTask
           ? 'SupervisorOverview'
@@ -605,7 +605,7 @@ export default function GlobalMessageBanner({ user }) {
         announcedPropertyCallStatuses.current.set(callKey, currentStatus);
         knownIds.current.add(key);
         window.dispatchEvent(new CustomEvent('bps-unread-notification', {
-          detail: { page: 'DispatchCenter', key },
+          detail: { page: 'CommandDashboard', key },
         }));
         const banner = {
           id: key,
@@ -710,7 +710,7 @@ export default function GlobalMessageBanner({ user }) {
       announcedPropertyCallStatuses.current.set(callKey, currentStatus);
       knownIds.current.add(key);
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
-        detail: { page: 'DispatchCenter', key },
+        detail: { page: 'CommandDashboard', key },
       }));
 
       const banner = {

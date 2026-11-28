@@ -190,13 +190,15 @@ Deno.serve(async (req) => {
       });
       const next = (otherCurrent?candidates.find(item=>String(item.call.id)===currentId):null)||candidates[0];
       const nextCad = next ? (next.call.agency_cad_number || next.call.bps_reference || next.call.call_id || next.call.id) : '';
-      const nextStatus = next ? (otherCurrent&&String(next.call.id)===currentId?(officerRecord.status||user.status||'Dispatched'):'Dispatched') : 'Available';
+      const preserveCurrent=otherCurrent&&String(next?.call?.id||'')===currentId;
+      const nextStatus = next ? (preserveCurrent?((ownedSessions||[]).find((s:any)=>s.session_active!==false)?.status||officerRecord.status||user.status||'Dispatched'):'Dispatched') : 'Available';
       const nextInfo = next ? `${next.call.incident || 'Call for service'} · ${next.call.location || ''}`.slice(0, 500) : '';
-      await base44.asServiceRole.entities.User.update(user.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, status_since: now, last_updated: now }).catch(() => null);
-      const sessions = ownedSessions;
-      for (const session of sessions || []) if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, show_lights: false, last_update: now }).catch(() => null);
-      await Promise.all((ownedUnits||[]).map((unit:any)=>base44.asServiceRole.entities.Unit.update(unit.id,{status:nextStatus,assigned_call_ids:(unit.assigned_call_ids||[]).filter((id:any)=>String(id)!==String(call_id)),last_update_at:now}).catch(()=>null)));
-      if (next) {
+      if(!preserveCurrent){
+        await base44.asServiceRole.entities.User.update(user.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, status_since: now, last_updated: now });
+        for (const session of ownedSessions || []) if (session.session_active !== false) await base44.asServiceRole.entities.ActiveOfficer.update(session.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, show_lights: false, last_update: now });
+      }
+      await Promise.all((ownedUnits||[]).map((unit:any)=>base44.asServiceRole.entities.Unit.update(unit.id,{...(preserveCurrent?{}:{status:nextStatus}),assigned_call_ids:(unit.assigned_call_ids||[]).filter((id:any)=>String(id)!==String(call_id)),last_update_at:now})));
+      if (next&&!preserveCurrent) {
         await base44.asServiceRole.entities.CallNote.create({ call_id:next.call.id, author_id:user.id, author_name:officer, note:`[QUEUE] Previous call cleared. This is now the officer's next active call (${nextCad}).`, note_type:'update' }).catch(()=>null);
       }
       return Response.json({ success:true, status, next_call_id:next?.call?.id || '', next_call_number:nextCad || '' });
