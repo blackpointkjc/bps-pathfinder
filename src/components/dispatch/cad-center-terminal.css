@@ -1,6 +1,6 @@
 @import './tactical-console.css';
 /* Shared operational shell. A single measured workspace owns viewport sizing. */
-.cad-terminal-shell{--cad-line:#354454;display:flex!important;flex-direction:column;min-width:0;width:100%;height:var(--cad-workspace-height,calc(100dvh - 150px))!important;min-height:0!important;max-width:100%;overflow:hidden!important;border:0!important;background:#080d13;color:#e1e8ef;font-family:Inter,system-ui,sans-serif}
+.cad-terminal-shell{--cad-line:#354454;display:flex!important;flex-direction:column;min-width:0;width:100%;height:calc(var(--cad-workspace-height,calc(100dvh - 150px)) / var(--cad-scale,1))!important;min-height:0!important;max-width:100%;overflow:hidden!important;border:0!important;background:#080d13;color:#e1e8ef;font-family:Inter,system-ui,sans-serif;zoom:var(--cad-scale,1)}
 .cad-terminal-systembar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px;padding:5px 10px;background:#101b28;border-bottom:1px solid #405367;flex:none;font:11px ui-monospace,Consolas,monospace;color:#b7c9da}
 .cad-terminal-id{display:flex;gap:7px;align-items:center;min-width:0}.cad-terminal-id b{color:#c1e4f4;white-space:nowrap}.cad-terminal-id svg{color:#8dbed5;flex:none}.cad-terminal-clock{white-space:nowrap;font-variant-numeric:tabular-nums;color:#d8e7f2}
 .cad-terminal-nav{display:flex;gap:5px;flex:none;align-items:stretch;background:#0b141e;padding:3px;border-bottom:1px solid #405367;overflow-x:auto;scrollbar-width:thin;overscroll-behavior-x:contain}

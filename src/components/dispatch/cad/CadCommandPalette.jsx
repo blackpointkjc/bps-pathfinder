@@ -16,6 +16,7 @@ export default function CadCommandPalette({
   calls = [],
   units = [],
   workstations = [],
+  commands = [],
   onSelectCall,
   onSelectUnit,
   onSelectWorkstation,
@@ -36,6 +37,19 @@ export default function CadCommandPalette({
     const term = query.trim().toLowerCase();
     const matches = (...values) => !term || values.filter(Boolean).join(' ').toLowerCase().includes(term);
     return [
+      {
+        id: 'commands',
+        title: 'Commands',
+        items: commands
+          .filter(command => matches(command.label, command.detail))
+          .slice(0, GROUP_LIMIT)
+          .map(command => ({
+            id: command.id,
+            label: command.label,
+            detail: command.detail || 'CAD command',
+            run: command.run,
+          })),
+      },
       {
         id: 'calls',
         title: 'Incidents',
@@ -77,7 +91,7 @@ export default function CadCommandPalette({
           })),
       },
     ].filter(group => group.items.length);
-  }, [query, calls, units, workstations, onSelectCall, onSelectUnit, onSelectWorkstation]);
+  }, [query, calls, units, workstations, commands, onSelectCall, onSelectUnit, onSelectWorkstation]);
 
   const flat = useMemo(() => groups.flatMap(group => group.items), [groups]);
 
@@ -113,7 +127,7 @@ export default function CadCommandPalette({
             ref={inputRef}
             value={query}
             onChange={event => { setQuery(event.target.value); setActive(0); }}
-            placeholder="Search incidents, units and workstations"
+            placeholder="Search incidents, units, workstations and commands"
             aria-label="Search CAD"
           />
           <kbd>Esc</kbd>

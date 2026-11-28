@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Search } from 'lucide-react';
+import { MonitorPlay, RadioTower, RefreshCw, Search, SlidersHorizontal } from 'lucide-react';
 import { cadAgeLabel, cadTelemetry } from '@/lib/cadOperationalStatus';
 import { formatEasternTime } from '@/lib/easternTime';
 import './cad-command.css';
@@ -8,13 +8,15 @@ const FEED = {
   live: { label: 'CAD feed live', tone: 'ready' },
   syncing: { label: 'Syncing', tone: 'loading' },
   limited: { label: 'Rate limited', tone: 'warning' },
+  stale: { label: 'Feed stale', tone: 'warning' },
 };
 
 /**
  * CommandCentral-style persistent status bar. Feed health, service levels and
  * resource counts stay on screen across every CAD workstation, so a dispatcher
  * never has to leave the current screen to see unassigned, overdue or distress
- * workload.
+ * workload. Connection monitoring is explicit: a delayed roster or an aging
+ * feed is named here instead of silently showing old data.
  */
 export default function CadStatusBar({
   calls = [],
@@ -22,9 +24,14 @@ export default function CadStatusBar({
   loading = false,
   rateLimited = false,
   lastRefresh = null,
+  rosterError = '',
+  monitorOpen = true,
   onRefresh,
   onFind,
   onOpen,
+  onToggleMonitor,
+  onDetach,
+  onSettings,
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -33,7 +40,10 @@ export default function CadStatusBar({
   }, []);
 
   const telemetry = useMemo(() => cadTelemetry(calls, units, now), [calls, units, now]);
-  const feed = rateLimited ? FEED.limited : loading && !calls.length ? FEED.syncing : FEED.live;
+  const syncedAt = lastRefresh ? new Date(lastRefresh).getTime() : null;
+  const syncAge = syncedAt ? now - syncedAt : null;
+  const stale = syncAge != null && syncAge > 5 * 60 * 1000;
+  const feed = rateLimited ? FEED.limited : stale ? FEED.stale : loading && !calls.length ? FEED.syncing : FEED.live;
 
   const metrics = [
     { key: 'active', label: 'Active', value: telemetry.active, tone: 'normal', target: { tool: 'command', params: { cad_focus: 'all' } } },
@@ -58,6 +68,16 @@ export default function CadStatusBar({
       <div className="cad-status-actions">
         {telemetry.oldest > 0 && <span className="cad-status-oldest">Oldest {cadAgeLabel(telemetry.oldest)}</span>}
         <span className="cad-status-sync">{lastRefresh ? `Synced ${formatEasternTime(lastRefresh)} ET` : 'Awaiting sync'}</span>
+        {rosterError && <span className="cad-status-stale" title={rosterError}>Roster delayed</span>}
+        <button type="button" aria-pressed={monitorOpen} onClick={onToggleMonitor} title="Show or hide the incident monitor">
+          <RadioTower size={14} /><span>Monitor</span>
+        </button>
+        <button type="button" onClick={onDetach} title="Open the live map in a separate window for a second monitor">
+          <MonitorPlay size={14} /><span>Detach map</span>
+        </button>
+        <button type="button" onClick={onSettings} aria-label="CAD display settings" title="CAD display settings">
+          <SlidersHorizontal size={14} />
+        </button>
         <button type="button" onClick={onFind} aria-label="Open the CAD command palette">
           <Search size={14} /><span>Find</span><kbd>Ctrl K</kbd>
         </button>

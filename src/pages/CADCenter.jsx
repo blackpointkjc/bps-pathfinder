@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { RadioTower, Radio, ClipboardList, Map, Users, AlertTriangle, History, Shield, LayoutGrid } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Activity, AlertTriangle, ClipboardList, History, LayoutGrid, Map, Radio, RadioTower, Shield, Users } from 'lucide-react';
 import { CadClock } from '@/components/dispatch/CadTerminal';
 import '@/components/dispatch/cad-center-terminal.css';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -9,6 +9,11 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
 import CadCommandPalette from '@/components/dispatch/cad/CadCommandPalette';
 import CadResourceBoard from '@/components/dispatch/cad/CadResourceBoard';
+import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
+import CadDisplaySettingsDialog from '@/components/dispatch/cad/CadDisplaySettingsDialog';
+import CadResponseAnalytics from '@/components/dispatch/cad/CadResponseAnalytics';
+import { cadScaleValue, readCadDisplaySettings, writeCadDisplaySettings } from '@/lib/cadDisplaySettings';
+import { createPageUrl } from '@/utils';
 import CommandDashboard from './CommandDashboard';
 import DispatchCenter from './DispatchCenter';
 import Navigation from './Navigation';
@@ -32,6 +37,7 @@ const TOOLS = {
     { id: 'history', icon: History, short: 'Records', label: 'Call History', component: CallHistory },
 
   ],
+  analysis: [{ id: 'response', icon: Activity, short: 'Analytics', label: 'Response Analytics' }],
 };
 
 // Deep-link keys are cleared whenever a workstation is chosen, so a stale
@@ -43,28 +49,91 @@ function CadShell({ embedded = false }) {
   const navigate = useNavigate();
   const hostRef = useRef(null);
   const { calls, loading, rateLimited, lastRefresh, manualRefresh } = useDashboardData();
-  const { rows, loading: rosterLoading, refresh: refreshRoster } = useCadRoster();
+  const { rows, loading: rosterLoading, error: rosterError, refresh: refreshRoster } = useCadRoster();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [display, setDisplay] = useState(() => readCadDisplaySettings());
+  const [monitorOpen, setMonitorOpen] = useState(() => readCadDisplaySettings().monitor);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const units = useMemo(() => rows.filter(isOperationalOfficer), [rows]);
   const params = new URLSearchParams(location.search);
+  const detached = params.get('detached') === '1';
   const section = params.get(embedded ? 'cad_section' : 'section') || 'live';
   const toolKey = embedded ? 'cad_tool' : 'tool';
   const tools = TOOLS[section] || TOOLS.live;
   const active = tools.find(tool => tool.id === params.get(toolKey)) || tools[0];
   const Component = active.component;
+  const scale = cadScaleValue(display.scale);
 
-  // CommandCentral keyboard model: Ctrl/Cmd + K opens quick find from any screen.
+  const select = (nextSection, tool, extra = {}) => {
+    const next = new URLSearchParams(location.search);
+    next.set(embedded ? 'cad_section' : 'section', nextSection);
+    next.set(toolKey, tool);
+    TRANSIENT_PARAMS.forEach(key => next.delete(key));
+    Object.entries(extra).forEach(([key, value]) => {
+      if (value != null && value !== '') next.set(key, String(value));
+    });
+    navigate({ pathname: location.pathname, search: '?' + next.toString() }, { replace: true });
+  };
+
+  const openCall = call => {
+    if (call?.id) select('live', 'command', { call_id: call.id });
+  };
+
+  const refreshAll = useCallback(() => {
+    manualRefresh();
+    refreshRoster(true);
+  }, [manualRefresh, refreshRoster]);
+
+  const updateDisplay = useCallback(next => {
+    setDisplay(writeCadDisplaySettings(next));
+  }, []);
+
+  const toggleMonitor = () => {
+    const next = !monitorOpen;
+    setMonitorOpen(next);
+    updateDisplay({ ...display, monitor: next });
+  };
+
+  // A detached map runs in its own browser window, so a dispatcher can keep the
+  // tactical picture on a second monitor while the queue stays on the first.
+  const openDetachedMap = () => {
+    const popup = window.open(
+      `${createPageUrl('CADCenter')}?section=live&tool=map&detached=1`,
+      'pathfinder-cad-map',
+      'popup=yes,width=1500,height=950',
+    );
+    popup?.focus?.();
+  };
+
+  // CommandCentral keyboard model: Ctrl/Cmd + K opens quick find from any
+  // screen, Alt + 1-6 jumps between live workstations and Alt + R refreshes.
   useEffect(() => {
     const onKeyDown = event => {
-      if ((event.metaKey || event.ctrlKey) && String(event.key).toLowerCase() === 'k') {
+      const key = String(event.key || '');
+      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'k') {
         event.preventDefault();
         setPaletteOpen(open => !open);
+        return;
+      }
+      if (!event.altKey || event.ctrlKey || event.metaKey) return;
+      const index = Number(key);
+      if (Number.isInteger(index) && index >= 1 && index <= TOOLS.live.length) {
+        const tool = TOOLS.live[index - 1];
+        if (tool) {
+          event.preventDefault();
+          select('live', tool.id);
+        }
+        return;
+      }
+      if (key.toLowerCase() === 'r') {
+        event.preventDefault();
+        refreshAll();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [location.search, refreshAll]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -87,27 +156,57 @@ function CadShell({ embedded = false }) {
     };
   }, [active.id]);
 
-  const select = (nextSection, tool, extra = {}) => {
-    const next = new URLSearchParams(location.search);
-    next.set(embedded ? 'cad_section' : 'section', nextSection);
-    next.set(toolKey, tool);
-    TRANSIENT_PARAMS.forEach(key => next.delete(key));
-    Object.entries(extra).forEach(([key, value]) => {
-      if (value != null && value !== '') next.set(key, String(value));
-    });
-    navigate({ pathname: location.pathname, search: '?' + next.toString() }, { replace: true });
-  };
-
-  const openCall = call => {
-    if (call?.id) select('live', 'command', { call_id: call.id });
-  };
-
   const workstations = useMemo(
     () => Object.entries(TOOLS).flatMap(([group, items]) => items.map(item => ({ ...item, section: group }))),
     [],
   );
 
-  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id} data-workstation={active.id}>
+  const commands = useMemo(() => [
+    {
+      id: 'cmd-refresh',
+      label: 'Refresh CAD feed and unit roster',
+      detail: 'Reload live calls, units and connection health',
+      run: refreshAll,
+    },
+    {
+      id: 'cmd-monitor',
+      label: monitorOpen ? 'Hide incident monitor' : 'Show incident monitor',
+      detail: 'Pending and at-risk incidents across every workstation',
+      run: toggleMonitor,
+    },
+    {
+      id: 'cmd-detach',
+      label: 'Detach live map window',
+      detail: 'Open the tactical map on a second monitor',
+      run: openDetachedMap,
+    },
+    {
+      id: 'cmd-analytics',
+      label: 'Response analytics',
+      detail: 'Dispatch, acknowledgement, arrival and clearance times',
+      run: () => select('analysis', 'response'),
+    },
+    {
+      id: 'cmd-display',
+      label: 'CAD display settings',
+      detail: 'Scaling, incident monitor and workspace layout',
+      run: () => setSettingsOpen(true),
+    },
+  ], [monitorOpen, display, refreshAll]);
+
+  if (detached) {
+    return <section className="cad-console-shell cad-terminal-shell cad-shell-detached" style={{ '--cad-scale': scale }}>
+      <div className="cad-terminal-systembar">
+        <span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>Detached live map</span></span>
+        <CadClock />
+      </div>
+      <div className="cad-active-screen cad-terminal-screen cad-screen-map">
+        <Navigation embedded />
+      </div>
+    </section>;
+  }
+
+  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id} data-workstation={active.id} style={{ '--cad-scale': scale }}>
     <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><CadClock /></div>
     <CadStatusBar
       calls={calls}
@@ -115,10 +214,16 @@ function CadShell({ embedded = false }) {
       loading={loading}
       rateLimited={rateLimited}
       lastRefresh={lastRefresh}
-      onRefresh={() => { manualRefresh(); refreshRoster(true); }}
+      rosterError={rosterError}
+      monitorOpen={monitorOpen}
+      onRefresh={refreshAll}
       onFind={() => setPaletteOpen(true)}
       onOpen={target => select('live', target.tool, target.params || {})}
+      onToggleMonitor={toggleMonitor}
+      onDetach={openDetachedMap}
+      onSettings={() => setSettingsOpen(true)}
     />
+    {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
     <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(TOOLS).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
       {active.id === 'resources'
@@ -133,7 +238,9 @@ function CadShell({ embedded = false }) {
             onOpenCall={openCall}
             onOpenUnits={() => select('live', 'units')}
           />
-        : Component ? <Component embedded /> : null}
+        : active.id === 'response'
+          ? <CadResponseAnalytics />
+          : Component ? <Component embedded /> : null}
     </div>
     <CadCommandPalette
       open={paletteOpen}
@@ -141,9 +248,19 @@ function CadShell({ embedded = false }) {
       calls={calls}
       units={units}
       workstations={workstations}
+      commands={commands}
       onSelectCall={openCall}
       onSelectUnit={unit => select('live', 'resources', { cad_unit: unit.unit_number || unit.email || '' })}
       onSelectWorkstation={tool => select(tool.section, tool.id)}
+    />
+    <CadDisplaySettingsDialog
+      open={settingsOpen}
+      onOpenChange={setSettingsOpen}
+      settings={display}
+      onChange={next => {
+        updateDisplay(next);
+        setMonitorOpen(next.monitor);
+      }}
     />
   </section>;
 }
