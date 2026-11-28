@@ -1,3 +1,5 @@
+import {useAuth} from '@/lib/AuthContext';
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,7 +30,8 @@ const emptyForm = () => ({
   dispatch_log: [],
 });
 
-export default function DispatcherShiftReports({ embedded = false }) {
+export default function DispatcherShiftReports({embedded=false}){const {user,isLoadingAuth}=useAuth();if(isLoadingAuth)return null;if(!canAccessDispatchCenter(user))return <p role="alert">Dispatch access required.</p>;return <DispatchReportsWorkspace embedded={embedded}/>;}
+function DispatchReportsWorkspace({ embedded = false }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -38,14 +41,7 @@ export default function DispatcherShiftReports({ embedded = false }) {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const isAdmin = user?.role === 'admin';
-  const dispatchRoles = new Set((user?.additional_roles || []).map((r) => String(r).trim().toLowerCase()));
-  const isDispatcher =
-    String(user?.role || '').trim().toLowerCase() === 'dispatch' ||
-    dispatchRoles.has('dispatch') ||
-    dispatchRoles.has('cad_access') ||
-    dispatchRoles.has('full_access') ||
-    !!user?.dispatch_role ||
-    isAdmin;
+  const isDispatcher=canAccessDispatchCenter(user);
 
   const { data: calls = [], isLoading: callsLoading } = useQuery({
     queryKey: ['allDispatchCallsForLinking'],

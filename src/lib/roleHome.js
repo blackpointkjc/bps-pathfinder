@@ -1,3 +1,4 @@
+import {canAccessDispatchCenter} from './dispatchPermissions.js';
 import {hasIAAccess,hasWholeAppAccess} from './portalAccess';
 const HOME={
  admin:{center:'admin',page:'AdminCenter',label:'Administration Main'},
@@ -6,7 +7,8 @@ const HOME={
  trainer:{center:'training',page:'TrainerCenter',label:'Trainer Main'},
  accounting:{center:'accounting',page:'AccountingCenter',label:'Accounting Main'},
  officer:{center:'officer',page:'OfficerCenter',label:'Officer Main'},
- dispatch:{center:'cad',page:'CADCenter',label:'Dispatch Main'},
+ dispatch:{center:'dispatch',page:'DispatchCenter',label:'Dispatch Main'},
+ cad:{center:'cad',page:'CADCenter',label:'CAD Main'},
  support:{center:'support',page:'AdminSupportStaffClock',label:'Support Main'},
  ia:{center:'standards',page:'ProfessionalStandards',label:'Professional Standards Main'},
  student:{center:'student',page:'StudentPortal',label:'Student Main'},
@@ -25,7 +27,8 @@ export function getRoleHome(user){
  if(roles.has('trainer'))return HOME.trainer;
  if(roles.has('accounting'))return HOME.accounting;
  if(roles.has('officer'))return HOME.officer;
- if(roles.has('dispatch')||roles.has('cad_access')||user?.dispatch_role===true)return HOME.dispatch;
+ if(canAccessDispatchCenter(user))return HOME.dispatch;
+ if(roles.has('cad_access'))return HOME.cad;
  if(roles.has('support')||roles.has('support_staff')||rank==='support staff')return HOME.support;
  if(hasIAAccess(user))return HOME.ia;
  return HOME.officer;

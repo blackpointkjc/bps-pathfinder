@@ -1,3 +1,5 @@
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
+import {cadDestination} from '@/lib/cadNavigation';
 import { briefingPersonnelIndex, briefingOfficerName, mergeBriefingStaffing } from '@/lib/briefingPersonnel';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -508,11 +510,11 @@ export default function WelcomeBriefing({ user }) {
     return `Away about ${days} day${days === 1 ? '' : 's'}`;
   }, [offlineSince]);
 
-  const go = page => {
+  const go = (page,callId) => {
     // Navigation from inside the briefing must not acknowledge or dismiss it.
     // Keep this as SPA navigation so the briefing remains mounted and visible.
     const centerRoutes = {
-      DispatchCenter: isAdmin ? '/AdminCenter?admin_center=cad&cad_section=live&cad_tool=dispatch' : '/CADCenter?section=live&tool=dispatch',
+      DispatchCenter: cadDestination(canAccessDispatchCenter(user)?'DispatchCenter':'CommandDashboard',new URLSearchParams(callId?{call_id:String(callId)}:{})),
       Schedule: '/OfficerCenter?section=today&tool=myschedule',
       Announcements: '/OfficerCenter?section=today&tool=announcements',
       SupervisorTasks: '/SupervisorCenter?section=command&tool=tasks',
@@ -665,7 +667,7 @@ export default function WelcomeBriefing({ user }) {
                     {brief.appUpdates.length > 0 && <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail="Unread platform or software update records" tone="violet" />}
                     <BriefCard icon={ClipboardList} label="Assigned Tasks" value={dataErrors.includes('assigned tasks') ? 'Unavailable' : brief.tasks.length} detail={brief.tasks.length ? 'Open tasks currently assigned to you' : 'No open assigned tasks'} tone={brief.tasks.length ? 'amber' : 'emerald'} onClick={canOpenSupervisorTasks ? openActionItems : undefined} />
                     {brief.updates.length > 0 && <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail="Unread account, schedule, or system notification records" tone="blue" />}
-                    <BriefCard icon={Siren} label="Property Calls While Away" value={propertyLoading ? 'Loading…' : propertySourcesFailed ? (brief.propertyAlerts.length || 'Unavailable') : brief.propertyAlerts.length} detail={propertySourcesFailed ? 'Retrying property alerts; last loaded results are retained.' : brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={propertySourcesFailed ? 'amber' : brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
+                    <BriefCard icon={Siren} label="Property Calls While Away" value={propertyLoading ? 'Loading…' : propertySourcesFailed ? (brief.propertyAlerts.length || 'Unavailable') : brief.propertyAlerts.length} detail={propertySourcesFailed ? 'Retrying property alerts; last loaded results are retained.' : brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={propertySourcesFailed ? 'amber' : brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter',alert.callId)} />
                   </div>
 
                   {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0 || brief.tasks.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-violet-950/10 p-3 sm:p-4">
@@ -681,7 +683,7 @@ export default function WelcomeBriefing({ user }) {
                     <div className="flex items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-slate-300">Session Summary</div></div>
                     <p className="mt-2 text-sm leading-6 text-slate-400">{totalItems ? `You have ${totalItems} item${totalItems === 1 ? '' : 's'} needing your attention from Teams mentions, announcements, assigned tasks, verified notifications, or monitored-property activity.` : 'You are fully caught up. No unread Teams mentions, unseen announcements, assigned tasks, verified notifications, or monitored-property calls were found for this session.'}</p>
                     {brief.propertyAlerts.slice(0, 3).map(alert => (
-                      <button key={alert.id} type="button" onClick={() => go('DispatchCenter')} className="mt-2 flex w-full items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/20 p-3 text-left hover:bg-red-950/35">
+                      <button key={alert.id} type="button" onClick={() => go('DispatchCenter',alert.callId)} className="mt-2 flex w-full items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/20 p-3 text-left hover:bg-red-950/35">
                         <Siren className="mt-0.5 h-4 w-4 shrink-0 text-red-300"/><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-white">{alert.propertyName || 'Monitored Property'} · {alert.callIncident || 'Call for service'}</div><div className="mt-1 break-words text-[10px] text-slate-400">{alert.callLocation || alert.description || 'Location unavailable'}</div></div><ChevronRight className="h-4 w-4 shrink-0 text-slate-600"/>
                       </button>
                     ))}

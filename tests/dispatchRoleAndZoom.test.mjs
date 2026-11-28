@@ -10,11 +10,11 @@ test('dispatch workstation requires an explicitly assigned dispatch role, not ge
 });
 test('page guard and every nested navigation entry use the dispatch authorization policy',()=>{
  const layout=readFileSync('src/Layout.jsx','utf8'),shell=readFileSync('src/pages/CADCenter.jsx','utf8'),page=readFileSync('src/pages/DispatchCenter.jsx','utf8');
- assert.ok(layout.includes("if (pageName === 'DispatchCenter') return canAccessDispatchCenter(user)"));
- assert.ok(shell.includes("items.filter(item=>(item.id!=='dispatch'||dispatchAllowed)"));
+ assert.ok(layout.includes("if (pageName === 'DispatchCenter' || pageName === 'DispatcherShiftReports') return canAccessDispatchCenter(user)"));
+ assert.ok(!shell.includes("component: DispatchCenter"));assert.ok(shell.includes("requestedTool==='dispatch'&&dispatchAllowed"));
  assert.ok(shell.includes('Object.entries(permittedTools).flatMap'));
  assert.ok(shell.includes('Object.entries(permittedTools).map'));
- assert.ok(shell.includes("if(tool==='dispatch'&&!dispatchAllowed)return"));
+ assert.ok(shell.includes("if(tool==='dispatch')return"));
  assert.ok(page.indexOf('if(!canAccessDispatchCenter(user))')<page.indexOf('return <DispatchWorkspace'));
  assert.ok(page.includes('if (!canAccessDispatchCenter(user))'));
 });

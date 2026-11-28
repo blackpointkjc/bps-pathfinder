@@ -29,7 +29,7 @@ import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } fr
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import NewCallAlert from '@/components/dispatch/NewCallAlert';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate,useLocation } from 'react-router-dom';
 import { MapContainer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
@@ -76,6 +76,7 @@ function DispatchWorkspace({embedded=false}) {
         return()=>window.removeEventListener('resize',measure);
     },[embedded,zoom]);
     const navigate = useNavigate();
+    const location=useLocation();
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
     const [unitLoadStatus, setUnitLoadStatus] = useState('loading');
@@ -508,13 +509,13 @@ function DispatchWorkspace({embedded=false}) {
     // Deep-link selected CAD calls from Live Command, including Help Me calls.
     const initialDeepLinkConsumed=React.useRef('');
     useEffect(()=>{
-        const id=new URLSearchParams(window.location.search).get('call_id');
+        const id=new URLSearchParams(location.search).get('call_id');
         if(!id || initialDeepLinkConsumed.current===id)return;
         const match=activeCalls.find(row=>String(row.id)===String(id));
         if(!match)return;
         initialDeepLinkConsumed.current=id;
         handleSelectCall(match);
-    },[activeCalls]);
+    },[activeCalls,location.search]);
 
     // Keep the selected call's shared note stream live. Field officers and dispatch
     // write to the same CallNote entity, so either side sees the other's update

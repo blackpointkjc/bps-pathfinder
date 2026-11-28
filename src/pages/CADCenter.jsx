@@ -3,10 +3,10 @@ import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter,canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, AlertTriangle, ClipboardList, History, Map, Radio, RadioTower, Shield, Users } from 'lucide-react';
+import { Activity, AlertTriangle, ClipboardList, History, Map, RadioTower, Shield, Users } from 'lucide-react';
 import { CadClock } from '@/components/dispatch/CadTerminal';
 import '@/components/dispatch/cad-center-terminal.css';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate,useLocation, useNavigate } from 'react-router-dom';
 import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
 import useCadRoster,{CadRosterProvider} from '@/hooks/useCadRoster';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
@@ -16,7 +16,6 @@ import CadResponseAnalytics from '@/components/dispatch/cad/CadResponseAnalytics
 import { cadScaleValue, readCadDisplaySettings, writeCadDisplaySettings } from '@/lib/cadDisplaySettings';
 import { createPageUrl } from '@/utils';
 import CommandDashboard from './CommandDashboard';
-import DispatchCenter from './DispatchCenter';
 import Navigation from './Navigation';
 import UnitStatus from './UnitStatus';
 import BOLOAlerts from './BOLOAlerts';
@@ -27,7 +26,6 @@ import OfficerDispatchQueue from './OfficerDispatchQueue';
 const TOOLS = {
   live: [
     { id: 'command', icon: RadioTower, short: 'Command', label: 'Command Board', component: CommandDashboard },
-    { id: 'dispatch', icon: Radio, short: 'Dispatch', label: 'Dispatch Queue', component: DispatchCenter },
     { id: 'officerqueue', icon: ClipboardList, short: 'Field MDT', label: 'Officer Queue', component: OfficerDispatchQueue },
     { id: 'map', icon: Map, short: 'Live map', label: 'Live Map', component: Navigation },
     { id: 'units', icon: Users, short: 'Units', label: 'Unit Board', component: UnitStatus },
@@ -49,7 +47,7 @@ function CadShell({ embedded = false }) {
   const dispatchAllowed=canAccessDispatchCenter(user);
   const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(user?.id||user?.email);
   const adminAllowed=canAccessCadAdminPages(user);
-  const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>(item.id!=='dispatch'||dispatchAllowed)&&(!['history','response'].includes(item.id)||adminAllowed))]).filter(([,items])=>items.length)),[dispatchAllowed,adminAllowed]);
+  const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>(!['history','response'].includes(item.id)||adminAllowed))]).filter(([,items])=>items.length)),[adminAllowed]);
   const location = useLocation();
   const navigate = useNavigate();
   const hostRef = useRef(null);
@@ -74,7 +72,7 @@ function CadShell({ embedded = false }) {
   const shellStyle={'--cad-scale':scale,zoom:scale,'--cad-scaled-height':viewportHeight?viewportHeight/scale+'px':undefined};
 
   const select = (nextSection, tool, extra = {}) => {
-    if(tool==='dispatch'&&!dispatchAllowed)return;
+    if(tool==='dispatch')return;
     if(['history','response'].includes(tool)&&!adminAllowed)return;
     const next = new URLSearchParams(location.search);
     next.set(embedded ? 'cad_section' : 'section', nextSection);
@@ -197,6 +195,7 @@ function CadShell({ embedded = false }) {
     },
   ].filter(command=>(active.id!=='command'||command.id!=='cmd-detach')&&(command.id!=='cmd-analytics'||adminAllowed)), [monitorOpen, display, refreshAll, location.search,active.id,adminAllowed]);
 
+  if(requestedTool==='dispatch'&&dispatchAllowed){const next=new URLSearchParams();for(const key of ['call_id','call_number','new','open'])if(params.has(key))next.set(key,params.get(key));return <Navigate replace to={createPageUrl('DispatchCenter')+(next.size?'?'+next.toString():'')}/>;}
   if (detached) {
     return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" data-high-zoom={scale>1.24} style={shellStyle}>
       <div className="cad-terminal-systembar">
