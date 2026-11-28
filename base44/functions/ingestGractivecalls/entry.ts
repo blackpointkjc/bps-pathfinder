@@ -1031,7 +1031,10 @@ async function repairRecentPropertyAnnouncementEvents(base44,alerts,calls,monito
  }
  return repaired;
 }
-async function ingestFastPublishedCalls(base44, incoming) {
+function canCloseMissingAgencyCall(row,confirmedAgencies){
+ return ['richmond','henrico','chesterfield'].includes(String(row?.source||'').toLowerCase())&&confirmedAgencies.has(String(row?.agency||'').toUpperCase())&&!row.public_request_id&&!row.manual_dismissed;
+}
+async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new Set()) {
   const started = Date.now();
   const [saved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list("-created_date", 500),
@@ -1174,7 +1177,7 @@ async function ingestFastPublishedCalls(base44, incoming) {
   const liveKeys = new Set(incoming.flatMap((row) => [externalKey(row), legacyKey(row)]).filter(Boolean));
   const disappeared = (saved || []).filter((row) => {
     const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
-    return receivedAt >= now - 3 * 60 * 6e4 && receivedAt <= now && !["Cleared", "Cancelled"].includes(String(row.status || "")) && row.manual_dismissed !== true && row.source !== "public_helpme" && !row.public_request_id && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
+    return receivedAt >= now - 3 * 60 * 6e4 && receivedAt <= now && !["Cleared", "Cancelled"].includes(String(row.status || "")) && row.manual_dismissed !== true && canCloseMissingAgencyCall(row,confirmedAgencies) && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
   }).slice(0, 20);
   const closedIdsFromSource = /* @__PURE__ */ new Set();
   for (let offset = 0; offset < disappeared.length; offset += 4) {
@@ -1333,8 +1336,10 @@ async function handleGracIngestion(req) {
           time_received: call.time_received
         }))
       });
+      const webAgencies=new Set(websiteIncoming.map(c=>String(c.agency||'').toUpperCase()));
+      const confirmedAgencies=new Set(apiIncoming.map(c=>String(c.agency||'').toUpperCase()).filter(a=>webAgencies.has(a)));
       if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
-        const result = await ingestFastPublishedCalls(base44, incoming);
+        const result = await ingestFastPublishedCalls(base44, incoming,confirmedAgencies);
         await recordSourcePoll(base44, lease, {
           last_source_poll_at: sourceObservedAt,
           last_source_poll_status: "success",
@@ -1352,7 +1357,7 @@ async function handleGracIngestion(req) {
       const incomingByLegacy = new Map(incoming.map((call) => [legacyKey(call), call]));
       const groups = /* @__PURE__ */ new Map();
       for (const record of existingCalls || []) {
-        const key = legacyKey(record) || externalKey(record);
+        const key = ["richmond","henrico","chesterfield"].includes(String(record.source||"").toLowerCase()) ? (externalKey(record)||legacyKey(record)) : "";
         if (!key) continue;
         groups.set(key, [...groups.get(key) || [], record]);
       }
@@ -1502,7 +1507,7 @@ async function handleGracIngestion(req) {
       const currentExternalKeys = new Set(incoming.map((call) => call.external_call_id));
       const currentLegacyKeys = new Set(incoming.map((call) => legacyKey(call)));
       for (const record of existingCalls || []) {
-        if (record.source === "public_helpme" || record.public_request_id) continue;
+        if (!canCloseMissingAgencyCall(record,confirmedAgencies)||!isFreshLivePropertyCall(record)) continue;
         const external = externalKey(record);
         const legacy = legacyKey(record);
         if (recordKey(record) && !currentExternalKeys.has(external) && !currentLegacyKeys.has(legacy)) {
@@ -1519,7 +1524,7 @@ async function handleGracIngestion(req) {
       const finalCalls = await base44.asServiceRole.entities.DispatchCall.list("-created_date", 1e3);
       const finalGroups = /* @__PURE__ */ new Map();
       for (const record of finalCalls || []) {
-        const key = legacyKey(record) || externalKey(record);
+        const key = ["richmond","henrico","chesterfield"].includes(String(record.source||"").toLowerCase()) ? (externalKey(record)||legacyKey(record)) : "";
         if (key) finalGroups.set(key, [...finalGroups.get(key) || [], record]);
       }
       for (const records of finalGroups.values()) {

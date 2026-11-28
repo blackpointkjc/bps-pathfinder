@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronUp, RadioTower, X } from 'lucide-react';
 import {
   cadAgeLabel,
-  cadNeedsDispatch,
   cadReferenceValue,
   cadServiceLevel,
 } from '@/lib/cadOperationalStatus';

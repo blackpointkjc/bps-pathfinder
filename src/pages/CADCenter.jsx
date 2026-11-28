@@ -3,7 +3,7 @@ import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter,canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, AlertTriangle, ClipboardList, History, LayoutGrid, Map, Radio, RadioTower, Shield, Users } from 'lucide-react';
+import { Activity, AlertTriangle, ClipboardList, History, Map, Radio, RadioTower, Shield, Users } from 'lucide-react';
 import { CadClock } from '@/components/dispatch/CadTerminal';
 import '@/components/dispatch/cad-center-terminal.css';
 import { useLocation, useNavigate } from 'react-router-dom';

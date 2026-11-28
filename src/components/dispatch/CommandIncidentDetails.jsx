@@ -1,3 +1,4 @@
+import {assignedCadUnitIds} from '@/lib/cadWorkspaceModel';
 import UnitAssignmentPanel from './UnitAssignmentPanel';
 import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
@@ -41,9 +42,9 @@ export default function CommandIncidentDetails({call,units,priority,reference,in
  const recordedAssignments=data?.assignments||[];
  const activeAssignments=recordedAssignments.filter(a=>!['cleared','cancelled','canceled','closed','completed'].includes(String(a.status||'').toLowerCase()));
  const unitLabel=id=>{const u=units.find(u=>[u.id,u.user_id,u.officer_id,u.active_officer_id,u.email,u.unit_number].some(v=>v!=null&&String(v)===String(id)));return u?[u.unit_number?'Unit '+u.unit_number:'',u.rank,u.last_name].filter(Boolean).join(' '):'Unresolved unit';};
- const fallbackAssignments=(call.assigned_units||[]).map(id=>({unit_id:id,label:unitLabel(id)}));
+ const fallbackAssignments=assignedCadUnitIds(call).map(id=>({unit_id:id,label:unitLabel(id)}));
  const assigned=recordedAssignments.length?activeAssignments:fallbackAssignments;
- const mine=joined||[...assigned.map(a=>a.unit_id),...(call.assigned_units||[])].some(id=>String(id)===String(selfAttachUser?.id));
+ const mine=joined||[...assigned.map(a=>a.unit_id),...assignedCadUnitIds(call)].some(id=>String(id)===String(selfAttachUser?.id));
  const attach=async()=>{if(joining||mine||!selfAttachUser)return;setJoining(true);setJoinFeedback('');try{const response=await base44.functions.invoke('updateMyCallAssignment',{call_id:id,action:'join'});const result=response?.data||response||{};if(!result.success)throw Error(result.error||'Assignment not confirmed');setJoined(true);setJoinFeedback(result.queued?'Attached to your assignment queue; current incident retained.':'Attached. Open Officer Queue to manage your response.');refresh();}catch(error){setJoinFeedback(error?.response?.data?.error||error.message||'Unable to attach');}finally{setJoining(false);}};
 
  return <section className="tac-incident-detail-rail" aria-label="Incident details">

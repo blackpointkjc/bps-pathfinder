@@ -7,7 +7,6 @@ import useCadRoster from '@/hooks/useCadRoster';
 import LiveCommandWorkspace from '@/components/dispatch/LiveCommandWorkspace';
 import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusControl';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
 import { useLocation } from 'react-router-dom';
 import { incidentPriority as getCallPriority } from '@/lib/incidentPriority';
 import { cleanIncident } from '@/utils/callUtils';

@@ -1,11 +1,11 @@
 import usePropertyAssignmentCalls from '@/hooks/usePropertyAssignmentCalls';
-import {needsPropertyAssignment} from '@/lib/cadWorkspaceModel';
+import {needsPropertyAssignment,assignedCadUnitIds,isVerifiedPropertyCall} from '@/lib/cadWorkspaceModel';
 import CadCloneIncidentDialog from '@/components/dispatch/cad/CadCloneIncidentDialog';
 import CadRecommendationList from '@/components/dispatch/cad/CadRecommendationList';
 import '@/components/dispatch/cad/unified-cad-grid.css';
 import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
-import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
+import {cadScaleValue,readCadDisplaySettings} from '@/lib/cadDisplaySettings';
 import '@/components/dispatch/cad/dispatch-readable.css';
 import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
@@ -19,11 +19,10 @@ import { incidentPriority } from '@/lib/incidentPriority';
 import IncidentPrioritySelect from '@/components/dispatch/IncidentPrioritySelect';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import { comparePersonnel } from '@/utils/rankPolicy';
-import { hasSupervisorAccess } from '@/lib/supervisorAccess';
 import React, { useState, useEffect } from 'react';
 import { base44, getBase44RequestHealth, clearBase44ReadCacheMatching } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Shield, Radio, Map as MapIcon, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Shield, Radio, Map as MapIcon, Plus, Search, MessageSquarePlus, AlertTriangle, History, Megaphone, Wifi, Keyboard, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
@@ -713,13 +712,13 @@ function DispatchWorkspace({embedded=false}) {
     };
 
 
-    const propertyAlertCalls=activeCalls.filter(call=>verifiedPropertyIds.has(String(call.id)));
-    const propertyCallIds=verifiedPropertyIds;
+    const propertyAlertCalls=activeCalls.filter(call=>isVerifiedPropertyCall(call,verifiedPropertyIds));
+    const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
     const matchesQueue = (call,filter) => {
         if (filter==='agency') return true;
         if(filter==='all')return propertyCallIds.has(String(call.id));
         const activeAssignments=cadAssignmentRows.filter(row=>String(row.call_id)===String(call.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
-        if(filter==='assigned')return !!call.assigned_units?.length||!!activeAssignments.length;
+        if(filter==='assigned')return assignedCadUnitIds(call).length>0||!!activeAssignments.length;
         if(filter==='unassigned')return needsPropertyAssignment(call,propertyCallIds,new Set(activeAssignments.length?[String(call.id)]:[]));
         if(filter==='priority')return ['critical','high'].includes(incidentPriority(call));
         const normalize=value=>String(value||'').toLowerCase().replace(/[ _-]/g,'');
@@ -874,7 +873,7 @@ function DispatchWorkspace({embedded=false}) {
             </div>
 
             {/* ══ MAIN GRID ══ */}
-            {showPriorCalls ? (
+            {showPriorCalls && currentUser?.role==='admin' ? (
                 <div className="dispatch-prior-calls flex-1 overflow-auto p-3">
                     <button type="button" className="pf-cad-button" onClick={()=>setShowPriorCalls(false)}>Back to live dispatch</button><CallHistory embedded />
                 </div>

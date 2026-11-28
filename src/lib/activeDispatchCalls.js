@@ -64,6 +64,7 @@ export function dedupeOperationalCalls(rows = []) {
       && !(existing.id!==call.id && ([existing.source,call.source].some(source=>['CAD clone','dispatch_manual','field_initiated'].includes(source))))
       && normalizedText(existing?.agency) === normalizedText(call?.agency)
       && !(existing?.agency_cad_number && call?.agency_cad_number && existing.agency_cad_number !== call.agency_cad_number)
+      && !(existing?.external_call_id && call?.external_call_id && existing.external_call_id !== call.external_call_id)
       && location
       && normalizedText(existing?.incident) === incident
       && normalizedText(existing?.location) === location
@@ -75,7 +76,7 @@ export function dedupeOperationalCalls(rows = []) {
       result.push(call);
     }
   }
-  return result.sort((a, b) => callTimestamp(b) - callTimestamp(a));
+  return result.sort((a,b)=>Number(Boolean(b.pathfinder_property_alert||b.pathfinder_assignment_unit_ids?.length||b.assigned_units?.length))-Number(Boolean(a.pathfinder_property_alert||a.pathfinder_assignment_unit_ids?.length||a.assigned_units?.length))||callTimestamp(b)-callTimestamp(a));
 }
 
 function readLastGoodCalls() {

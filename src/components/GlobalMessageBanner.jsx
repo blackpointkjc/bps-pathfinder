@@ -1,3 +1,5 @@
+import {cadDestination} from '@/lib/cadNavigation';
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -22,8 +24,8 @@ const SOURCES = [
   // these Notification rows to the assigned officer -- previously nothing
   // told them dispatch had put them on a call. Filtered to the current user
   // the same way ChatMention is (see the `assignment` check in showBanner).
-  { entity: 'Notification', label: 'Assigned to Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_assignment' },
-  { entity: 'Notification', label: 'Unassigned from Call', page: 'DispatchCenter', kind: 'assignment', assignment: 'call_unassignment' },
+  { entity: 'Notification', label: 'Assigned to Call', page: 'OfficerDispatchQueue', kind: 'assignment', assignment: 'call_assignment' },
+  { entity: 'Notification', label: 'Unassigned from Call', page: 'OfficerDispatchQueue', kind: 'assignment', assignment: 'call_unassignment' },
   { entity: 'Notification', label: 'Supervisor Operations', page: 'SupervisorOverview', kind: 'supervisor_task', targeted: 'supervisor_task', supervisorOnly: true },
 ];
 
@@ -398,8 +400,9 @@ export default function GlobalMessageBanner({ user }) {
         // this visual alert auto-closes or the user dismisses it.
         persistent: Boolean(source.mention || source.kind === 'announcement' || isWelfareNotification || source.sourceName === 'Platoon Command'),
         recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
-        notificationId: (isWelfareNotification || isSupervisorTask || source.sourceName === 'Platoon Command') ? record.id : null,
+        notificationId: (source.assignment || isWelfareNotification || isSupervisorTask || source.sourceName === 'Platoon Command') ? record.id : null,
         relatedId: isWelfareNotification ? String(record.related_id || '') : '',
+        callId: source.assignment&&!isWelfareNotification?String(record.related_id||''):'',
         fingerprint,
         sender: text.sender,
         photo: record.sender_photo_url || '',
@@ -607,7 +610,8 @@ export default function GlobalMessageBanner({ user }) {
         const banner = {
           id: key,
           title: 'ACTIVE CALL FOR SERVICE',
-          page: 'DispatchCenter',
+          page: 'CommandDashboard',
+          callId:callKey,
           kind: 'property',
           persistent: false,
           recordId: record.id,
@@ -712,7 +716,8 @@ export default function GlobalMessageBanner({ user }) {
       const banner = {
         id: key,
         title: 'ACTIVE CALL FOR SERVICE',
-        page: 'DispatchCenter',
+        page: 'CommandDashboard',
+        callId:callKey,
         kind: 'property',
         persistent: false,
         recordId: record.id,
@@ -842,7 +847,8 @@ export default function GlobalMessageBanner({ user }) {
         const banner = {
           id: key,
           title: String(record.event_type || 'CAD STATUS').replaceAll('_', ' ').toUpperCase(),
-          page: 'DispatchCenter',
+          page: canAccessDispatchCenter(user)?'DispatchCenter':'CommandDashboard',
+          callId:String(record.call_id||''),
           kind: record.announcement_priority === 'emergency' ? 'property' : 'assignment',
           persistent: false,
           recordId: record.id,
@@ -1172,7 +1178,7 @@ export default function GlobalMessageBanner({ user }) {
                 }).catch(() => null);
               }
               await dismiss(banner.id);
-              navigate(createPageUrl(banner.page));
+              if(['CommandDashboard','OfficerDispatchQueue','DispatchCenter'].includes(banner.page)){const page=banner.page==='DispatchCenter'&&!canAccessDispatchCenter(user)?'CommandDashboard':banner.page;navigate(cadDestination(page,new URLSearchParams(banner.callId?{call_id:banner.callId}:{})));}else navigate(createPageUrl(banner.page));
             }}
             className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' || banner.kind === 'bolo' || banner.kind === 'assignment' || banner.kind === 'supervisor_task' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
           >

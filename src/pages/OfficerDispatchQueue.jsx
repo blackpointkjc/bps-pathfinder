@@ -1,3 +1,4 @@
+import {useLocation} from 'react-router-dom';
 import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
 import '@/components/dispatch/tactical-console.css';
@@ -16,6 +17,9 @@ const statusLabel = status => String(status || 'pending').replaceAll('_', ' ').t
 const priorityClass = priority => ({ critical:'bg-red-700', high:'bg-orange-600', medium:'bg-amber-600', low:'bg-slate-600' }[String(priority||'').toLowerCase()] || 'bg-slate-600');
 
 export default function OfficerDispatchQueue() {
+  const location=useLocation();
+  const linkedCallId=new URLSearchParams(location.search).get('call_id');
+  const linkedApplied=useRef('');
   const [queueSearch,setQueueSearch]=useState('');
   const [selectedId, setSelectedId] = useState('');
   const [note, setNote] = useState('');
@@ -51,8 +55,10 @@ export default function OfficerDispatchQueue() {
   const visibleQueue=queue.filter(call=>[call.agency_cad_number,call.bps_reference,call.call_id,call.incident,call.location].join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
   useEffect(() => {
     if (!queue.length) { setSelectedId(''); return; }
+    if(linkedCallId&&linkedApplied.current!==linkedCallId&&queue.some(c=>String(c.id)===linkedCallId)){linkedApplied.current=linkedCallId;setSelectedId(linkedCallId);return;}
+    if(!linkedCallId)linkedApplied.current='';
     if (!selectedId || !queue.some(call => call.id === selectedId)) setSelectedId(queue[0].id);
-  }, [queue.map(call => call.id).join('|'), selectedId]);
+  }, [queue.map(call => call.id).join('|'), selectedId,linkedCallId]);
 
   // Shared notes are a dedicated query. They refresh on note events without
   // touching local officer status or refetching the whole dispatch queue.
