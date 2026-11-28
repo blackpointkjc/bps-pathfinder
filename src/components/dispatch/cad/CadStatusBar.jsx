@@ -5,10 +5,10 @@ import { formatEasternTime } from '@/lib/easternTime';
 import './cad-command.css';
 
 const FEED = {
-  live: { label: 'CAD feed live', tone: 'ready' },
+  live: { label: 'CAD queue synced', tone: 'ready' },
   syncing: { label: 'Syncing', tone: 'loading' },
   limited: { label: 'Rate limited', tone: 'warning' },
-  stale: { label: 'Feed stale', tone: 'warning' },
+  stale: { label: 'Queue read stale', tone: 'warning' },
 };
 
 /**
@@ -42,8 +42,8 @@ export default function CadStatusBar({
   const telemetry = useMemo(() => cadTelemetry(calls, units, now), [calls, units, now]);
   const syncedAt = lastRefresh ? new Date(lastRefresh).getTime() : null;
   const syncAge = syncedAt ? now - syncedAt : null;
-  const stale = syncAge != null && syncAge > 5 * 60 * 1000;
-  const feed = rateLimited ? FEED.limited : stale ? FEED.stale : !syncedAt || loading && !calls.length ? FEED.syncing : FEED.live;
+  const stale = syncAge != null && syncAge > 30 * 1000;
+  const feed = rateLimited ? FEED.limited : stale ? FEED.stale : !syncedAt ? (loading ? FEED.syncing : FEED.stale) : loading && !calls.length ? FEED.syncing : FEED.live;
 
   const metrics = [
     { key: 'active', label: 'Active', value: telemetry.active, tone: 'normal', target: { tool: 'command', params: { cad_focus: 'all' } } },

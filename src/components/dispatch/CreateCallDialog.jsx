@@ -72,7 +72,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
 
             const callData = {
                 ...formData,
-                ...(source==='field'?{source:'field_initiated',source_channel:'dispatcher_field_intake'}:{}),
+                ...(source==='field'?{source:'field_initiated',source_channel:'dispatcher_field_intake'}:{source:'dispatch_manual',source_channel:'dispatcher_manual_intake'}),
                 call_id: bpsReference,
                 bps_reference: bpsReference,
                 agency_cad_number: '',

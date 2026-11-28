@@ -20,7 +20,7 @@ const emptyForm = call => ({
   zone: call?.zone || '',
   hazards: call?.hazards || '',
   priority: String(call?.priority || 'medium').toLowerCase(),
-  description: call?.description ? `Related to ${cadReferenceValue(call)} — ${call.description}` : `Related to ${cadReferenceValue(call)}.`,
+  description: call?.description ? `Related to ${cadReferenceValue(call)} — ${String(call.description).replace(/\[GRAC:[^\]]+\]/g,'').trim()}` : `Related to ${cadReferenceValue(call)}.`,
 });
 
 /**

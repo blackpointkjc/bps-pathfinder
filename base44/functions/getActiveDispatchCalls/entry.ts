@@ -26,7 +26,8 @@ function isVisibleActiveCall(call, now = Date.now()) {
   const stamp = callTimestamp(call);
   // Public requests remain visible until a real disposition, even if
   // waiting on a dispatcher or eligible unit for more than an hour.
-  return stamp > 0 && stamp <= now + 120000 && (call.source === 'public_helpme' || now - stamp <= ACTIVE_WINDOW_MS);
+  const retained = ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
+  return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
 async function __portalLoginIsCurrent(request,sdk,user){
@@ -76,7 +77,10 @@ Deno.serve(async (req) => {
             $or: [
               { time_received: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString(), $lte: new Date(Date.now() + 120000).toISOString() } },
               { $and: [{ $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] }, { created_date: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString() } }] },
-              {source:'public_helpme'},
+              {source:{$in:['public_helpme','dispatch_manual','field_initiated','CAD clone']}},
+              {$and:[{agency:'BPS'},{cad_number_source:'bps_internal'}]},
+              {status:{$in:['Dispatched','Enroute','On Scene']}},
+              {'assigned_units.0':{$exists:true}},
             ],
             manual_dismissed: {$ne:true},
             status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
