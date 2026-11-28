@@ -20,8 +20,8 @@ export function splitCadIncidents(calls=[],fieldOnly=false,propertyIds=null,ownI
 export const cadDisplayUnitState = unit => unit?.connection_stale||unit?.presence_state==='stale'?'stale':unit?.dispatch_hold_new_calls?'hold':!(unit?.presence_online===true||unit?.session_active===true)||unit?.session_active===false||unit?.presence_state==='offline'?'offline':String(unit?.status||'unknown').toLowerCase();
 
 export function recentPropertyRows(rows=[],now=Date.now()){
- const stamp=c=>{const raw=String(c?.time_received||'').trim();return raw?Date.parse(/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(raw)?raw:raw+'Z'):NaN;};
+ const stamp=c=>{const raw=String(c?.time_received||'').trim();return raw?Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z'):NaN;};
  const result=new Map();
  for(const c of rows){const at=stamp(c);if(c?.id&&Number.isFinite(at)&&at>=now-12*3600000&&at<=now)result.set(String(c.id),c);}
- return [...result.values()].sort((a,b)=>stamp(a)-stamp(b)||String(a.id).localeCompare(String(b.id)));
+ return [...result.values()].sort((a,b)=>stamp(b)-stamp(a)||String(a.id).localeCompare(String(b.id)));
 }

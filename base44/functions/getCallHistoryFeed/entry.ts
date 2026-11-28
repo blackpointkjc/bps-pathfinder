@@ -38,11 +38,98 @@ async function readWithRetry<T>(label: string, loader: () => Promise<T>, fallbac
 
 // Fixed, read-only operational window. Never expose arbitrary history or
 // caller contact details to officers through this action.
+const PROPERTY_MONITORING_EDGE_TOLERANCE_METERS=100;
+function pointInPolygon(lat, lng, polygon = []) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i];
+    const b = polygon[j];
+    const latI = Number(Array.isArray(a) ? a[0] : a?.lat);
+    const lngI = Number(Array.isArray(a) ? a[1] : a?.lng);
+    const latJ = Number(Array.isArray(b) ? b[0] : b?.lat);
+    const lngJ = Number(Array.isArray(b) ? b[1] : b?.lng);
+    if (![latI, lngI, latJ, lngJ].every(Number.isFinite)) continue;
+    const intersects = lngI > lng !== lngJ > lng && lat < (latJ - latI) * (lng - lngI) / (lngJ - lngI || Number.EPSILON) + latI;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+function distanceMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371e3;
+  const toRad = (v) => v * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function pointToSegmentMeters(lat, lng, a, b) {
+  const aLat = Number(Array.isArray(a) ? a[0] : a?.lat);
+  const aLng = Number(Array.isArray(a) ? a[1] : a?.lng);
+  const bLat = Number(Array.isArray(b) ? b[0] : b?.lat);
+  const bLng = Number(Array.isArray(b) ? b[1] : b?.lng);
+  if (![aLat, aLng, bLat, bLng].every(Number.isFinite)) return Infinity;
+  const metersPerLat = 111320;
+  const metersPerLng = 111320 * Math.cos(lat * Math.PI / 180);
+  const ax = (aLng - lng) * metersPerLng;
+  const ay = (aLat - lat) * metersPerLat;
+  const bx = (bLng - lng) * metersPerLng;
+  const by = (bLat - lat) * metersPerLat;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq ? Math.max(0, Math.min(1, (-ax * dx + -ay * dy) / lengthSq)) : 0;
+  const x = ax + t * dx;
+  const y = ay + t * dy;
+  return Math.sqrt(x * x + y * y);
+}
+function normalizedStreet(value) {
+  const cleaned = String(value || "").toUpperCase().replace(/\bNORTH\b/g, "N").replace(/\bSOUTH\b/g, "S").replace(/\bEAST\b/g, "E").replace(/\bWEST\b/g, "W").replace(/\bSTREET\b/g, "ST").replace(/\bAVENUE\b/g, "AVE").replace(/\bROAD\b/g, "RD").replace(/\bBOULEVARD\b/g, "BLVD").replace(/\bLANE\b/g, "LN").replace(/\bDRIVE\b/g, "DR").replace(/\b(\d+)(ST|ND|RD|TH)\b/g, "$1").replace(/[^A-Z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  const number = Number(cleaned.match(/^\d+/)?.[0]);
+  const street = cleaned.replace(/^\d+\s*/, "").replace(/\b(?:RICHMOND|VA|VIRGINIA)\b.*$/, "").trim();
+  return { number, street };
+}
+function sameStreetBlock(callLocation, propertyAddress) {
+  const call = normalizedStreet(callLocation);
+  const property = normalizedStreet(propertyAddress);
+  if (!Number.isFinite(call.number) || !Number.isFinite(property.number) || !call.street || !property.street) return false;
+  const callStreet = call.street.replace(/\b(?:ST|AVE|RD|BLVD|LN|DR)\b$/, "").trim();
+  const propertyStreet = property.street.replace(/\b(?:ST|AVE|RD|BLVD|LN|DR)\b$/, "").trim();
+  return callStreet === propertyStreet && Math.floor(call.number / 100) === Math.floor(property.number / 100);
+}
+function propertyMatch(call, location) {
+  const emergencyFour = /\bOFFICER\b|(?:^|[^A-Z0-9])D\.?\s*O\.?\s*A\.?(?=$|[^A-Z0-9])/i.test(String(call?.incident || ""));
+  if (location?.active === false || !emergencyFour && location?.property_monitoring_enabled !== true) return null;
+  const lat = Number(call?.latitude);
+  const lng = Number(call?.longitude);
+  const hasCoordinates = call?.latitude!=null&&call?.longitude!=null&&String(call.latitude).trim()!==""&&String(call.longitude).trim()!==""&&Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180&&!(lat===0&&lng===0);
+  if (!hasCoordinates) {
+    return sameStreetBlock(call?.location, location?.address) ? { relation: "nearby", distanceMeters: 0, addressFallback: true } : null;
+  }
+  const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
+  const boundaryType = String(location.property_monitoring_boundary_type || (polygon.length >= 3 ? "polygon" : "circle")).toLowerCase();
+  if (boundaryType === "polygon" && polygon.length >= 3) {
+    if (pointInPolygon(lat, lng, polygon)) return { relation: "inside", distanceMeters: 0 };
+    let edgeDistance = Infinity;
+    for (let i = 0; i < polygon.length; i += 1) {
+      edgeDistance = Math.min(
+        edgeDistance,
+        pointToSegmentMeters(lat, lng, polygon[i], polygon[(i + 1) % polygon.length])
+      );
+    }
+    return edgeDistance <= PROPERTY_MONITORING_EDGE_TOLERANCE_METERS ? { relation: "nearby", distanceMeters: edgeDistance } : null;
+  }
+  const centerLat = Number(location.latitude);
+  const centerLng = Number(location.longitude);
+  const radiusMeters = Number(location.property_monitoring_radius_meters || 0);
+  if (![centerLat, centerLng, radiusMeters].every(Number.isFinite) || radiusMeters <= 0) return null;
+  const centerDistance = distanceMeters(lat, lng, centerLat, centerLng);
+  return centerDistance <= radiusMeters ? { relation: "inside", distanceMeters: 0 } : null;
+}
+
 const PROPERTY_WINDOW_MS=12*60*60*1000;
 const terminalPropertyStatus=(status:any)=>['cleared','cancelled','canceled','closed','completed','resolved'].includes(lower(status));
 async function recentPropertyIncidents(db:any,now=Date.now()){
- const since=new Date(now-PROPERTY_WINDOW_MS).toISOString(),until=new Date(now).toISOString();
- const range={$gte:since,$lte:until};
+
  const pages=async(entity:any,query:any,sort:string)=>{
    const all:any[]=[];
    for(let skip=0;skip<10000;skip+=200){
@@ -52,21 +139,53 @@ async function recentPropertyIncidents(db:any,now=Date.now()){
    }
    throw Error('Property incident log exceeded its safe retrieval limit');
  };
- const stamp=(value:any)=>{const raw=String(value||'').trim();return raw?Date.parse(/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(raw)?raw:raw+'Z'):NaN;};
- const alerts=await pages(db.PropertyAlert,{$and:[{is_test:{$ne:true}},{lifecycle_status:{$nin:['test','false_alarm']}},{$or:[{callTime:range},{time_received:range},{created_date:range}]}]},'-created_date');
+ const stamp=(value:any)=>{const raw=String(value||'').trim();return raw?Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z'):NaN;};
+ // Date fields sometimes arrive as UTC without a suffix. Widen only the
+ // database candidate query by a minute; the exact UTC window is enforced below.
+ const candidateRange={$gte:new Date(now-PROPERTY_WINDOW_MS-60000).toISOString().slice(0,19),$lte:new Date(now+60000).toISOString().slice(0,19)};
+ const dateQuery=(field:string,legacy:string)=>({$or:[{[field]:candidateRange},{$and:[{$or:[{[field]:{$exists:false}},{[field]:null},{[field]:''}]},{[legacy]:candidateRange}]}]});
+ const [alerts,links,recentLive,recentArchive,locations]=await Promise.all([
+   pages(db.PropertyAlert,{$and:[{is_test:{$ne:true}},{lifecycle_status:{$ne:'test'}},{$or:[{callTime:candidateRange},{time_received:candidateRange},{created_date:candidateRange}]}]},'-created_date'),
+   pages(db.PropertyCallLink,dateQuery('time_received','linked_at'),'-linked_at'),
+   pages(db.DispatchCall,dateQuery('time_received','created_date'),'-time_received'),
+   pages(db.CallHistory,dateQuery('time_received','created_date'),'-time_received'),
+   pages(db.Location,{active:{$ne:false},property_monitoring_enabled:true},'site_name')
+ ]);
  const grouped=new Map<string,any[]>();
- for(const a of alerts){if(!a.callId||!a.propertyId||a.propertyId==='public-helpme'||a.is_test===true||['test','false_alarm'].includes(lower(a.lifecycle_status)))continue;const id=String(a.callId);if(!grouped.has(id))grouped.set(id,[]);grouped.get(id)!.push(a);}
- if(!grouped.size)return [];
+ const add=(id:string,a:any)=>{if(!id)return;if(!grouped.has(id))grouped.set(id,[]);grouped.get(id)!.push(a);};
+ for(const a of alerts){if(!a.callId||!a.propertyId||a.propertyId==='public-helpme'||a.is_test===true||lower(a.lifecycle_status)==='test')continue;add(String(a.callId),a);}
  const batch=async(entity:any,field:string,ids:string[],sort:string)=>{
    const all:any[]=[];for(let i=0;i<ids.length;i+=100)all.push(...await pages(entity,{[field]:{$in:ids.slice(i,i+100)}},sort));return all;
  };
- const ids=[...grouped.keys()];
- const [live,archives]=await Promise.all([batch(db.DispatchCall,'id',ids,'-created_date'),batch(db.CallHistory,'original_call_id',ids,'-archived_date')]);
+ const explicitArchiveIds=[...new Set(links.filter(l=>lower(l.status)!=='detached').map(l=>String(l.archive_id||'')).filter(Boolean))];
+ const explicitIds=[...new Set([...grouped.keys(),...links.filter(l=>lower(l.status)!=='detached').map(l=>String(l.call_id||'')).filter(Boolean)])];
+ const [linkedLive,linkedArchive,linkedArchiveById]=await Promise.all([batch(db.DispatchCall,'id',explicitIds,'-created_date'),batch(db.CallHistory,'original_call_id',explicitIds,'-archived_date'),batch(db.CallHistory,'id',[...new Set([...explicitArchiveIds,...explicitIds])],'-archived_date')]);
+ const live=[...new Map([...recentLive,...linkedLive].map(c=>[String(c.id),c])).values()];
+ const archives=[...new Map([...recentArchive,...linkedArchive,...linkedArchiveById].map(c=>[String(c.id),c])).values()].sort((a,b)=>(stamp(b.archived_date)||0)-(stamp(a.archived_date)||0));
  const liveById=new Map(live.map(c=>[String(c.id),c]));
- const archiveById=new Map<string,any>();for(const c of archives)if(!archiveById.has(String(c.original_call_id)))archiveById.set(String(c.original_call_id),c);
- const assignmentIds=[...new Set([...ids,...archives.map(c=>String(c.id))])];
+ const archiveById=new Map<string,any>();
+ const canonicalByArchive=new Map<string,string>();
+ for(const c of archives){const key=String(c.original_call_id||c.id);canonicalByArchive.set(String(c.id),key);if(!archiveById.has(key))archiveById.set(key,c);}
+ // Legacy links may reference the archive row ID instead of the original ID.
+ for(const [id,rows] of [...grouped]){const canonical=canonicalByArchive.get(id);if(canonical&&canonical!==id){grouped.delete(id);for(const a of rows)add(canonical,a);}}
+ for(const l of links){if(!l.property_id||l.property_id==='public-helpme'||lower(l.status)==='detached')continue;const id=canonicalByArchive.get(String(l.archive_id||''))||canonicalByArchive.get(String(l.call_id||''))||String(l.call_id||'');add(id,{propertyId:l.property_id,propertyName:l.property_name,callTime:l.time_received||l.linked_at,callIncident:l.incident,callLocation:l.location,cadNumber:l.call_number,callStatus:'Status unavailable',property_evidence:'manual_link'});}
+ // Recovery is read-only. It never creates a live alert, assignment or voice
+ // event for a historical call. Match against today's configured boundaries.
+ for(const [id,c] of new Map([...archiveById,...liveById])){
+   if(!isValidCallRecord(c))continue;
+   const at=stamp(c.time_received||c.created_date);
+   if(!Number.isFinite(at)||at<now-PROPERTY_WINDOW_MS||at>now)continue;
+   for(const location of locations){
+     if(location.active===false||location.property_monitoring_enabled!==true||!propertyMatch(c,location))continue;
+     if(grouped.get(id)?.some(a=>String(a.propertyId)===String(location.id)))continue;
+     add(id,{propertyId:location.id,propertyName:location.site_name||location.address,callTime:c.time_received||c.created_date,callIncident:c.incident,callLocation:c.location,callStatus:c.status,cadNumber:cadRef(c),property_evidence:'boundary_match'});
+   }
+ }
+ if(!grouped.size)return [];
+ const ids=[...grouped.keys()];
+ const assignmentIds=[...new Set([...ids,...archives.filter(c=>grouped.has(String(c.original_call_id||c.id))).map(c=>String(c.id))])];
  const assignments=await batch(db.CallAssignment,'call_id',assignmentIds,'-assigned_at');
- const actorIds=[...new Set([...assignments.map(a=>a.unit_id),...live.flatMap(c=>c.assigned_units||[]),...archives.flatMap(c=>c.assigned_units||[])].filter(Boolean).map(String))];
+ const actorIds=[...new Set([...assignments.map(a=>a.unit_id),...live.filter(c=>grouped.has(String(c.id))).flatMap(c=>c.assigned_units||[]),...archives.filter(c=>grouped.has(String(c.original_call_id||c.id))).flatMap(c=>c.assigned_units||[])].filter(Boolean).map(String))];
  const [units,sessions]=await Promise.all([batch(db.Unit,'id',actorIds,'-last_update_at'),batch(db.ActiveOfficer,'id',actorIds,'-created_date')]);
  const personIds=[...new Set([...actorIds,...units.map(u=>u.user_id)].filter(Boolean).map(String))];
  const emails=[...new Set([...actorIds.filter(id=>id.includes('@')),...sessions.map(s=>s.officer_email)].filter(Boolean).map(String))];
@@ -79,7 +198,7 @@ async function recentPropertyIncidents(db:any,now=Date.now()){
  const result:any[]=[];
  for(const [id,linked] of grouped){
    const a=linked[0],l=liveById.get(id),archive=archiveById.get(id),c=l||archive;
-   if(c&&!isValidCallRecord(c))continue;
+   if(c&&!isValidCallRecord({...c,incident:c.incident||a.callIncident,location:c.location||a.callLocation}))continue;
    const received=[c?.time_received,a.callTime,a.time_received,c?.created_date,a.created_date].map(stamp).find(Number.isFinite);
    if(received===undefined||received<now-PROPERTY_WINDOW_MS||received>now)continue;
    // Preserve actual incident disposition. A resolved alert alone is not
@@ -98,9 +217,9 @@ async function recentPropertyIncidents(db:any,now=Date.now()){
      const person=actor(String(raw));
      if(!unitRows.has(person.key))unitRows.set(person.key,{unit_id:person.key,label:person.label,role:'',status:closed?'Previously attached':'Attached',active:!closed});
    }
-   result.push({id,incident:c?.incident||a.callIncident||'Call for service',location:c?.location||a.callLocation||'',agency:c?.agency||'',status,priority:c?.priority||a.callPriority||'medium',priority_override:c?.priority_override||false,agency_cad_number:c?.agency_cad_number||'',bps_reference:c?.bps_reference||'',call_id:cadRef(c)||cadRef(a),official_cad_verified:Boolean(c?.agency_cad_number||cadRef(a)),time_received:new Date(received).toISOString(),time_cleared:c?.time_cleared||c?.time_closed||null,property_names:[...new Set(linked.map(a=>a.propertyName).filter(Boolean))],property_log:true,property_closed:closed,property_read_only:closed||!l,property_record_available:Boolean(c),pathfinder_property_alert:!closed,assigned_units:[...unitRows.values()].filter(a=>a.active).map(a=>a.unit_id),property_assignments:[...unitRows.values()],property_disposition:c?.disposition||''});
+   result.push({id,incident:c?.incident||a.callIncident||'Call for service',location:c?.location||a.callLocation||'',agency:c?.agency||'',status,priority:c?.priority||a.callPriority||'medium',priority_override:c?.priority_override||false,agency_cad_number:c?.agency_cad_number||'',bps_reference:c?.bps_reference||'',call_id:cadRef(c)||cadRef(a),official_cad_verified:Boolean(c?.agency_cad_number||cadRef(a)),time_received:new Date(received).toISOString(),time_cleared:c?.time_cleared||c?.time_closed||null,property_names:[...new Set(linked.map(a=>a.propertyName).filter(Boolean))],property_log:true,property_boundary_recovered:linked.every(a=>a.property_evidence==='boundary_match'),property_closed:closed,property_read_only:closed||!l,property_record_available:Boolean(c),pathfinder_property_alert:!closed,assigned_units:[...unitRows.values()].filter(a=>a.active).map(a=>a.unit_id),property_assignments:[...unitRows.values()],property_disposition:c?.disposition||''});
  }
- return result.sort((a,b)=>stamp(a.time_received)-stamp(b.time_received)||a.id.localeCompare(b.id));
+ return result.sort((a,b)=>stamp(b.time_received)-stamp(a.time_received)||a.id.localeCompare(b.id));
 }
 
 Deno.serve(async (req) => {
