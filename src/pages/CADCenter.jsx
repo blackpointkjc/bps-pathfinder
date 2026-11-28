@@ -150,7 +150,7 @@ function CadShell({ embedded = false }) {
     const host = hostRef.current;
     const measure = () => {
       const viewport = host.closest('main[data-page]');
-      const bottom = Math.min(window.innerHeight, viewport?.getBoundingClientRect().bottom || window.innerHeight);
+      const bottom = Math.min(window.innerHeight, window.visualViewport?.height||window.innerHeight, viewport?.getBoundingClientRect().bottom || window.innerHeight);
       const height = Math.max(0, Math.floor(bottom - Math.max(0, host.getBoundingClientRect().top, viewport?.getBoundingClientRect().top || 0) - 2));
       if (height > 0) setViewportHeight(height);
     };
@@ -234,8 +234,9 @@ function CadShell({ embedded = false }) {
       onRefresh={refreshAll}
       onFind={() => setPaletteOpen(true)}
       onOpen={openStatusTarget}
-      onToggleMonitor={toggleMonitor}
-      onDetach={openDetachedMap}
+      compact={active.id==='command'}
+      onToggleMonitor={active.id==='command'?undefined:toggleMonitor}
+      onDetach={active.id==='command'?undefined:openDetachedMap}
     />
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
       {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'statusboard'

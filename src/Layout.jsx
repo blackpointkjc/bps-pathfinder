@@ -1615,23 +1615,23 @@ export default function Layout({ children, currentPageName }) {
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="pathfinder-header relative z-[300] flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-          <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student'} className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
+          <button type="button" onClick={openMobileToolsMenu} hidden={allowedCenters(user).length === 1 && allowedCenters(user)[0] === 'student'} className="pf-field-tools hidden min-h-10 items-center gap-2 rounded-lg border border-[#315879] bg-[#10263a] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-sm transition hover:border-cyan-500/70 hover:bg-[#153552] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 xl:flex" aria-label="Open Pathfinder tools">
             <Menu className="h-4 w-4" />
             <span>Tools</span>
           </button>
           {!ROOT_PAGES.has(currentPageName) && (
-            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(userHomePage))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] xl:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(userHomePage))} className="pf-field-back flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] xl:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
           )}
           <Link
             to={createPageUrl(userHomePage)}
-            className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-blue-400/80 bg-blue-600/25 px-2.5 text-[10px] font-black uppercase tracking-wider text-blue-50 shadow-sm hover:bg-blue-600/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:gap-2 sm:px-3"
+            className="pf-field-home flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-blue-400/80 bg-blue-600/25 px-2.5 text-[10px] font-black uppercase tracking-wider text-blue-50 shadow-sm hover:bg-blue-600/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:gap-2 sm:px-3"
             aria-label={`Return to ${userHomeLabel}`}
             title={`Return to ${userHomeLabel}`}
           >
             <Home className="h-4 w-4" />
             <span>{userHomeLabel}</span>
           </Link>
-          {canAccessPage(user,'RecordsAssistant')&&<button type="button" onClick={()=>setRecordsSearchOpen(true)} className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/60 bg-cyan-950/40 px-2 text-[10px] font-black uppercase tracking-wide text-cyan-100 sm:px-3" aria-label="Search Records"><Search className="h-4 w-4"/><span>Search Records</span></button>}
+          {canAccessPage(user,'RecordsAssistant')&&<button type="button" onClick={()=>setRecordsSearchOpen(true)} className="pf-field-search flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/60 bg-cyan-950/40 px-2 text-[10px] font-black uppercase tracking-wide text-cyan-100 sm:px-3" aria-label="Search Records"><Search className="h-4 w-4"/><span>Search Records</span></button>}
           {!['AdminCenter','CorporateBrowser','AdminBrowserControl','AdminReports'].includes(currentPageName) && <div className="pf-header-context hidden min-w-0 md:block">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
@@ -1639,7 +1639,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap text-[10px] text-[#7791aa]">
           <GlobalAppRefresh />
-          <DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} />
+          <DisplayPreferences key={user?.id || user?.email || 'local'} userId={user?.id || user?.email} externalGps={externalGps.connected===true||externalGps.lockedToAntenna===true||externalGps.portGranted===true} />
           <button
             type="button"
             onClick={() => navigate(createPageUrl('SystemStatus'))}

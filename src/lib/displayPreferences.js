@@ -1,11 +1,12 @@
 export const DISPLAY_DEFAULTS = Object.freeze({
-  text: 'standard', contrast: 'standard', spacing: 'standard', motion: 'system',
+  text: 'standard', contrast: 'standard', spacing: 'standard', motion: 'system', layout: 'auto',
 });
 export const DISPLAY_OPTIONS = Object.freeze({
   text: ['standard', 'large', 'extra-large'],
   contrast: ['standard', 'high'],
   spacing: ['standard', 'comfortable'],
   motion: ['system', 'reduced'],
+  layout: ['auto', 'field', 'desktop'],
 });
 export function normalizeDisplayPreferences(value) {
   return Object.fromEntries(Object.entries(DISPLAY_DEFAULTS).map(([key, fallback]) =>

@@ -1,3 +1,4 @@
+import {resolveFieldDisplay,readFieldDisplayInput} from '@/lib/fieldDisplayProfile';
 import {readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
 import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
 import { useEffect, useLayoutEffect, useState } from 'react';
@@ -7,7 +8,7 @@ import { DISPLAY_DEFAULTS, displayStorageKey, readDisplayPreferences, normalizeD
 const TEXT_SIZES = ['standard', 'large', 'extra-large'];
 const TEXT_LABELS = { standard: 'Standard', large: 'Larger', 'extra-large': 'Largest' };
 
-export default function DisplayPreferences({ userId }) {
+export default function DisplayPreferences({ userId, externalGps=false }) {
   const storageKey = displayStorageKey(userId);
   const [settings, setSettings] = useState(() => {
     try { return readDisplayPreferences(window.localStorage, storageKey); }
@@ -16,6 +17,12 @@ export default function DisplayPreferences({ userId }) {
   const [cadScale,setCadScale]=useState(()=>readCadDisplaySettings().scale);
   useEffect(()=>{const sync=()=>setCadScale(readCadDisplaySettings().scale);window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
   const changeCadScale=scale=>{const next=writeCadDisplaySettings({...readCadDisplaySettings(),scale});setCadScale(next.scale);window.dispatchEvent(new CustomEvent('bps-cad-display-changed',{detail:next}));};
+  const [profile,setProfile]=useState(()=>resolveFieldDisplay({...readFieldDisplayInput(window,externalGps),mode:settings.layout}));
+  useLayoutEffect(()=>{
+    const apply=()=>{const next=resolveFieldDisplay({...readFieldDisplayInput(window,externalGps),mode:settings.layout});document.documentElement.dataset.pfProfile=next;setProfile(next);};
+    apply();window.addEventListener('resize',apply);window.addEventListener('orientationchange',apply);window.visualViewport?.addEventListener('resize',apply);
+    return()=>{window.removeEventListener('resize',apply);window.removeEventListener('orientationchange',apply);window.visualViewport?.removeEventListener('resize',apply);delete document.documentElement.dataset.pfProfile;};
+  },[settings.layout,externalGps]);
   const [saveError, setSaveError] = useState(false);
   const sizeIndex = TEXT_SIZES.indexOf(settings.text);
 
@@ -60,6 +67,11 @@ export default function DisplayPreferences({ userId }) {
         <p>Make Pathfinder comfortable to read. Changes apply across your pages immediately.</p>
 
         <fieldset className="pf-display-group">
+          <legend>Screen layout</legend>
+          <div className="pf-choice-row">{[['auto','Automatic'],['field','Toughbook / field'],['desktop','Desktop']].map(([value,label])=><button type="button" key={value} aria-pressed={settings.layout===value} onClick={()=>update({layout:value})}>{label}</button>)}</div>
+          <p>Current layout: {profile==='field'?'Toughbook / field':profile==='compact'?'Compact desktop':profile==='mobile'?'Mobile':'Desktop'}. Fits the usable screen without shrinking incident text.</p>
+        </fieldset>
+        <fieldset className="pf-display-group">
           <legend>Text size</legend>
           <div className="pf-text-controls">
             <button type="button" aria-label="Decrease text size" disabled={sizeIndex === 0} onClick={() => update({ text: TEXT_SIZES[sizeIndex - 1] })}>A−</button>
@@ -71,7 +83,7 @@ export default function DisplayPreferences({ userId }) {
           </div>
         </fieldset>
 
-        <fieldset className="pf-display-group"><legend>CAD workspace zoom</legend><CadZoomControls value={cadScale} onChange={changeCadScale}/><p>Enlarge or reduce the entire CAD workspace.</p></fieldset>
+        <fieldset className="pf-display-group"><legend>CAD workspace zoom</legend><CadZoomControls value={cadScale} onChange={changeCadScale}/><p>Optional CAD magnification. Use 100% with automatic screen fitting first.</p></fieldset>
         <fieldset className="pf-display-group">
           <legend>Contrast</legend>
           <div className="pf-choice-row">

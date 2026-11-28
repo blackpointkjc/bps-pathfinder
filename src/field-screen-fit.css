@@ -1,0 +1,99 @@
+/* Screen fit uses CSS viewport/container sizes; never infer resolution from GPS
+   or apply CSS zoom to the entire document (would distort map hit targets). */
+@media screen {
+ html:is([data-pf-profile=field],[data-pf-profile=compact]){--pf-fit-body:15px;--pf-fit-label:13px;--pf-fit-title:17px}
+ html[data-pf-text=large]{--pf-fit-body:17px;--pf-fit-label:14px;--pf-fit-title:19px}
+ html[data-pf-text=extra-large]{--pf-fit-body:19px;--pf-fit-label:16px;--pf-fit-title:21px}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app{font-family:system-ui,sans-serif}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app>section{padding:0!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main.mobile-field-content{font-size:var(--pf-fit-body);line-height:1.45;padding-bottom:0!important;min-height:0;min-width:0}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) :is(.cad-app main,[role=dialog],[role=menu],[role=listbox]):is(.cad-app main,[role=dialog],[role=menu],[role=listbox]) :is(.text-xs,.text-\[8px\],.text-\[9px\],.text-\[10px\],.text-\[11px\],.text-\[12px\],.text-\[13px\],td,th):not(.leaflet-container *):not(.maplibregl-map *):not(.recharts-wrapper *):not(.pf-display-panel *){font-size:var(--pf-fit-label)!important;line-height:1.4!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) :is(.cad-app main,[role=dialog],[role=menu]) :is(.text-sm,input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select):not(.leaflet-container *):not(.maplibregl-map *):not(.pf-display-panel *){font-size:var(--pf-fit-body)!important;line-height:1.4!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main :is(.font-black,.font-extrabold){font-weight:600!important;letter-spacing:normal!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main :is(.text-slate-500,.text-slate-600,.text-gray-500,.text-gray-600):not(.leaflet-container *):not(.recharts-wrapper *){color:#b7c8d6!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main :is(.grid,.flex)>*{min-width:0}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main :is(td,th,p,label){overflow-wrap:break-word}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main :is(.overflow-x-auto,.bps-table-scroll){max-width:100%;overflow-x:auto!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main [role=tablist]{overflow-x:auto;min-height:38px}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app main [role=tab]{min-height:38px;white-space:normal}
+ /* No oversized mobile heading or bottom phone toolbar on a vehicle computer.
+    The same authorized tools drawer remains accessible from the header. */
+ @media(min-width:800px){
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pf-field-tools{display:flex!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pf-phone-page-heading,html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app>section>nav.pf-phone-navigation{display:none!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pathfinder-header{min-height:48px;padding:4px 8px!important;gap:5px;flex-wrap:wrap;align-items:center}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pathfinder-header>div{min-width:0;overflow:visible;gap:5px;flex-wrap:wrap}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pathfinder-header button,html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pathfinder-header a{min-height:36px;font-size:12px!important;letter-spacing:normal!important;font-weight:550!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pathfinder-header>div:last-child{flex:0 1 auto;justify-content:flex-end}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-app .pf-header-context{display:none!important}
+ }
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell .cad-terminal-nav{flex-wrap:wrap;overflow-x:auto;max-height:90px;overflow-y:auto;flex:none}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-nav-group{flex:0 1 auto;min-width:0}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell .cad-terminal-nav button{font-size:var(--pf-fit-label)!important;min-height:34px;padding:5px 8px;font-weight:550!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell .cad-command-statusbar{flex-wrap:wrap;max-height:90px;overflow:auto}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell .cad-monitor-track{max-height:112px;overflow:auto}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) :is(.cad-monitor-chip,.cad-monitor-chip small,.cad-status-feed,.cad-status-sync,.cad-monitor-ref){font-size:var(--pf-fit-label)!important;line-height:1.35!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call-index{grid-column:1;grid-row:1;display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px;padding:5px 7px;border-right:0;border-bottom:1px solid #31495c}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call-index svg{margin:0 30px 0 auto}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call-body{grid-column:1;grid-row:2;padding:8px 10px!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call .cc-snippet{grid-column:1;grid-row:3;font-size:var(--pf-fit-label)!important;padding:6px 10px;line-height:1.4!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 :is(.cc-call-title strong,.cc-call-body p,.tac-detail-fields dd,.tac-detail-block p,.cad-comments-scroll article p){font-size:var(--pf-fit-body)!important;line-height:1.4!important;font-weight:500!important;overflow-wrap:break-word}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 :is(.cc-call-index b,.cc-call-index time,.cc-call-title em,.cc-call-body small,.cc-call-tags small,.cc-radio-row,.cc-unit-group,.cc-hazard,.cc-tab,.tac-detail-fields dt,.cad-comments-scroll time,.cad-comments-scroll b){font-size:var(--pf-fit-label)!important;line-height:1.4!important;color:#d4e2ed}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call-title em{color:inherit}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-panel>header b{font-size:var(--pf-fit-body)!important;line-height:1.35!important;font-weight:550!important;white-space:normal}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-panel>header{flex-wrap:wrap;gap:5px;padding:5px 8px;min-height:36px}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-pin{width:32px;height:30px;top:2px;right:3px}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call-index{padding-right:40px}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-scroll{padding:5px;scrollbar-width:auto;scrollbar-gutter:stable}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-call-list{gap:6px}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-radio-row{min-height:36px}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-mobile button{font-size:var(--pf-fit-label)!important;min-height:36px;white-space:normal}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 .cc-mobile{gap:5px;flex-wrap:wrap}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-workspace-v2 :is(.cc-duty-control,.cc-self-attach button,.cc-detail-duty button,.tac-detail-actions button){font-size:var(--pf-fit-label)!important;min-height:36px;white-space:normal}
+ /* Field board: two readable queues, full width incident, unit and comment
+    tabs. Reflow responds to actual scaled container width, not device name. */
+ @container (max-width:1500px){
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-mobile{display:flex!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-map=false]{display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;grid-template-areas:"pending active"!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid>.cc-panel{display:none!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=pending],[data-view=active],[data-view=queues])>.cc-pending,
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=pending],[data-view=active],[data-view=queues])>.cc-active{display:flex!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=units],[data-view=incident],[data-view=comments]),html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-pending-expanded=true]{display:flex!important;flex-direction:column!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=units]>.cc-units,
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:is([data-view=incident],[data-view=comments])>.cc-incident{display:flex!important;flex:1 1 0}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-pending{display:flex!important;flex:1 1 0}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-active{display:none!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=incident] .cc-editor{display:flex;flex-direction:column}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=incident] .cc-editor-comments{display:none!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=comments] .cc-editor>.tac-incident-detail-rail{display:none!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=comments] .cc-editor-comments{display:flex!important;flex:1 1 0}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid:not([data-pending-expanded=true]) .cc-call-list{grid-template-columns:minmax(0,1fr)!important}
+ }
+ @container(max-width:850px){
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-map=false]{display:flex!important;flex-direction:column}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=pending]>.cc-active,
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cc-officer-workspace .cc-grid[data-view=active]>.cc-pending{display:none!important}
+ }
+ /* Dispatch work area: use existing working tabs instead of crushing 3 panes. */
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 :is(.dispatch-v3-call-top strong,.dispatch-v3-call p,.pf-dispatch-facts,.pf-dispatch-pane-heading,.pf-dispatch-pane-title,.dispatch-v3-panel-head){font-size:var(--pf-fit-body)!important;line-height:1.4!important;font-weight:500!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 :is(.dispatch-v3-call-meta,.dispatch-v3-priority,.dispatch-v3-call-top time,.dispatch-v3-queue-group h3,.dispatch-v4-summary){font-size:var(--pf-fit-label)!important;line-height:1.4!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 :is(.dispatch-actions button,.cad-queue-controls button,.cad-mobile-view-tabs button){font-size:var(--pf-fit-label)!important;min-height:36px;white-space:normal}
+ @container(max-width:1300px){
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-mobile{display:block!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid{display:flex!important;flex-direction:column!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid>.pf-dispatch-list,html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid>.pf-dispatch-detail,html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid>.pf-dispatch-units{display:none!important;flex:1 1 0!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid[data-mobile-view=calls]>.pf-dispatch-list,
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid[data-selected=true][data-mobile-view=detail]>.pf-dispatch-detail,
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid:is([data-mobile-view=assignment],[data-mobile-view=units])>.pf-dispatch-units,
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid[data-selected=false][data-mobile-view=detail]>.pf-dispatch-list{display:flex!important}
+ }
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) :is(.tac-mdt,.cad-terminal-page,.cc-unit-board) :is(.tac-mdt-facts dd,.tac-mdt-log p,.tac-mdt-queue-list b,.cc-unit-inspect p,.cad-terminal-table td){font-size:var(--pf-fit-body)!important;line-height:1.45!important}
+ html:is([data-pf-profile=field],[data-pf-profile=compact]) :is(.tac-mdt,.cad-terminal-page,.cc-unit-board) :is(.tac-mdt-facts dt,.tac-mdt-queue-list small,.tac-mdt-queue-list span,.cad-terminal-table th){font-size:var(--pf-fit-label)!important}
+ @media(max-height:650px){
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell{min-height:440px!important;overflow-y:auto!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell>.cad-terminal-screen{min-height:300px!important;flex:1 0 300px!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3{min-height:440px!important;overflow-y:auto!important}
+  html:is([data-pf-profile=field],[data-pf-profile=compact]) .dispatch-v3 .dispatch-v3-grid{min-height:280px!important;flex:1 0 280px!important}
+ }
+}

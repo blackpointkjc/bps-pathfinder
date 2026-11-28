@@ -71,9 +71,9 @@ export default function CadStatusBar({
         {!compact&&telemetry.oldest > 0 && <span className="cad-status-oldest">Oldest {cadAgeLabel(telemetry.oldest)}</span>}
         <span className="cad-status-sync">{lastRefresh ? `Synced ${formatEasternTime(lastRefresh)} ET` : 'Awaiting sync'}</span>
         {rosterError && <span className="cad-status-stale" title={rosterError}>Roster delayed</span>}
-        <button type="button" aria-pressed={monitorOpen} onClick={onToggleMonitor} title="Show or hide the incident monitor">
+        {onToggleMonitor&&<button type="button" aria-pressed={monitorOpen} onClick={onToggleMonitor} title="Show or hide the incident monitor">
           <RadioTower size={14} /><span>Monitor {monitorOpen?'on':'off'}</span>
-        </button>
+        </button>}
         {onDetach&&<button type="button" onClick={onDetach} title="Open the live map in a separate window for a second monitor">
           <MonitorPlay size={14} /><span>Detach map</span>
         </button>}
