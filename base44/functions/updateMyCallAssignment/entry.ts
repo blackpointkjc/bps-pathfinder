@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
       || roles.has('cad_access')
       || roles.has('supervisor')
       || roles.has('full_access');
+    if (['client','student','visitor','pending','support'].some(r=>roles.has(r)||primaryRole===r||String(user.user_type||'').toLowerCase()===r)) return Response.json({error:'Officer access required'},{status:403});
     if (!allowed) return Response.json({ error: 'CAD access required' }, { status: 403 });
 
     const { call_id, action } = await req.json();
@@ -48,6 +49,16 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
 
     if (action === 'join') {
+      if(call.manual_dismissed||call.time_cleared||['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(call.status||'').toLowerCase()))return Response.json({error:'Incident is no longer active'},{status:409});
+      if(user.dispatch_hold_new_calls===true)return Response.json({error:'Dispatch has placed new assignments on hold'},{status:409});
+      const currentSessions=await base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:String(user.email||'').trim().toLowerCase()},'-last_update',10);
+      const latest=(currentSessions||[])[0];
+      const status=String(latest?.status||user.status||'').toLowerCase();
+      const heartbeat=Date.parse(latest?.last_update||'');
+      if(!latest||latest.session_active===false||!Number.isFinite(heartbeat)||Date.now()-heartbeat>15*60000||!['available','dispatched','enroute','on scene','busy','on patrol'].includes(status))return Response.json({error:'You must be an online field officer in an operational duty status to attach to a call'},{status:409});
+      const currentId=String(latest.current_call_id||user.current_call_id||'');
+      const queued=Boolean(currentId&&currentId!==String(call_id))||(['dispatched','enroute','on scene','busy'].includes(status)&&currentId!==String(call_id));
+
       const assignedUnits = assigned.includes(user.id) ? assigned : [...assigned, user.id];
       if (!assigned.includes(user.id)) {
         await Promise.all([
@@ -61,7 +72,8 @@ Deno.serve(async (req) => {
             unit_id: user.id,
             role: assigned.length ? 'backup' : 'primary',
             assigned_at: now,
-            status: 'accepted',
+            status: queued?'pending':'accepted',
+            ...(queued?{}:{accepted_at:now}),
           }),
         ]);
         const cadNumber = call.agency_cad_number || call.bps_reference || call.call_id || call.id;
@@ -88,15 +100,17 @@ Deno.serve(async (req) => {
       }
 
       const callInfo = `${call.incident || 'Call for service'} · ${call.location || ''}`.slice(0, 500);
-      await base44.asServiceRole.entities.User.update(user.id, {
+      if(!queued)await base44.asServiceRole.entities.User.update(user.id, {
+        status:'Dispatched',
         current_call_id: String(call_id),
         current_call_info: callInfo,
         last_updated: now,
       }).catch(() => null);
       const sessions = await base44.asServiceRole.entities.ActiveOfficer.filter({ officer_email: user.email }, '-last_update', 10).catch(() => []);
       for (const session of sessions || []) {
-        if (session.session_active === false) continue;
+        if (queued||session.session_active === false) continue;
         await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
+          status:'Dispatched',
           current_call_id: String(call_id),
           current_call_info: callInfo,
           show_lights: false,
@@ -110,7 +124,7 @@ Deno.serve(async (req) => {
           last_update_at: now,
         }).catch(() => null);
       }
-      return Response.json({ success: true, action, assigned_units: assignedUnits, current_call_id: String(call_id), current_call_info: callInfo });
+      return Response.json({ success: true, action, queued, assigned_units: assignedUnits, current_call_id: queued?currentId:String(call_id), current_call_info: queued?(latest.current_call_info||user.current_call_info||''):callInfo });
     }
 
     const assignedUnits = assigned.filter((id: string) => id !== user.id);

@@ -50,10 +50,10 @@ async function withRetry<T>(operation: () => Promise<T>, attempts = 3): Promise<
 
 function isFieldOfficer(user: any) {
   const rank = lower(user?.rank);
-  if (!user?.email || user?.termination_date) return false;
+  if (!user?.email || user?.termination_date || user.disabled || ['suspended','terminated','inactive','denied'].includes(lower(user.account_status)) || ['suspended','terminated'].includes(lower(user.employment_status))) return false;
   if (hasRole(user, 'client') || hasRole(user, 'student') || hasRole(user, 'pending')) return false;
   if (Boolean(user.dispatch_role) && !hasRole(user, 'officer')) return false;
-  return hasRole(user, 'officer') || ['officer', 'corporal', 'sergeant', 'lieutenant', 'captain', 'major', 'lt colonel', 'lieutenant colonel', 'colonel'].includes(rank);
+  return hasRole(user, 'officer') || ['officer', 'unarmed officer', 'senior officer', 'corporal', 'sergeant', 'first sergeant', 'lieutenant', 'captain', 'major', 'lt colonel', 'lieutenant colonel', 'colonel'].includes(rank);
 }
 
 Deno.serve(async (req) => {
@@ -115,8 +115,8 @@ Deno.serve(async (req) => {
     // Use the original incident time, never the ingestion/updated timestamp.
     const incidentAt = new Date(call.time_received || alert.callTime || alert.time_received || call.created_date || 0).getTime();
     const incidentAgeMs = Date.now() - incidentAt;
-    if (!simulation && (!Number.isFinite(incidentAt) || incidentAt <= 0 || incidentAgeMs < -60_000 || incidentAgeMs > 15 * 60_000)) {
-      return Response.json({ success: true, skipped: true, reason: 'Historical or invalid incident time; automatic dispatch is limited to calls received within 15 minutes' });
+    if (!simulation && (call.manual_dismissed===true||call.time_cleared|| (publicCall&&(!Number.isFinite(incidentAt)||incidentAt<=0||incidentAgeMs < -60_000||incidentAgeMs>15*60_000)))) {
+      return Response.json({ success: true, skipped: true, reason: 'Closed incident or expired public assistance request' });
     }
     // Conditional update of the existing alert is the cross-worker claim. A
     // failed claim/read must never be interpreted as permission to dispatch.
@@ -299,7 +299,7 @@ Deno.serve(async (req) => {
         && session?.accuracy != null && Number.isFinite(accuracy) && accuracy >= 0 && accuracy <= 100);
 
       if (!liveSessionFresh) reasons.push('Officer is offline or connection is stale');
-      if (!status || ['out of service', 'out-of-service', 'oos', 'offline', 'distress'].includes(status)) reasons.push(`Status is ${session?.status || officer.status || 'unknown'}`);
+      if (!status || !['available','dispatched','enroute','en route','on scene','busy','on patrol'].includes(status)) reasons.push(`Status is ${session?.status || officer.status || 'unknown'}`);
       if (!reliableGps) reasons.push('Fresh GPS required to determine the closest officer');
       const authorizationValues = [
         officer.assigned_location, officer.assigned_location_id, officer.location_id,
@@ -370,10 +370,11 @@ Deno.serve(async (req) => {
     const existingCallAssignments = (assignments || []).filter((item: any) =>
       String(item.call_id) === callId && !['cleared', 'cancelled'].includes(lower(item.status))
     );
-    const existingAssignedUnitIds = new Set(existingCallAssignments.map((item: any) => String(item.unit_id)));
+    const existingAssignedUnitIds = new Set([...existingCallAssignments.map((item: any) => String(item.unit_id)),...(call.assigned_units||[]).map(String)]);
+    const previouslyCleared=new Set((assignments||[]).filter((a:any)=>lower(a.status)==='cleared').map((a:any)=>String(a.unit_id)));
     const remainingUnitsRequired = Math.max(0, requiredUnits - existingAssignedUnitIds.size);
     const newRecommendations = ranked
-      .filter((item: any) => !existingAssignedUnitIds.has(String(item.unit_id)))
+      .filter((item: any) => !existingAssignedUnitIds.has(String(item.unit_id))&&!previouslyCleared.has(String(item.unit_id)))
       .slice(0, remainingUnitsRequired);
     const existingAssignmentSummaries = existingCallAssignments.map((assignment: any) => {
       const officer = (users || []).find((item: any) => String(item.id) === String(assignment.unit_id));
@@ -421,13 +422,14 @@ Deno.serve(async (req) => {
         const unitId = String(recommendation.unit_id);
         const assignmentRole = hasPrimaryAssignment ? 'backup' : 'primary';
         hasPrimaryAssignment = true;
-        nextAssignedIds.add(unitId);
         const existingAssignments = await base44.asServiceRole.entities.CallAssignment.filter({ call_id: callId, unit_id: unitId }, '-assigned_at', 20);
         const hasActiveAssignment = (existingAssignments || []).some((item: any) => !['cleared', 'cancelled'].includes(lower(item.status)));
         // Automatic dispatch must never resurrect an officer who already cleared this call.
         // A dispatcher can explicitly reassign later through the manual assignment workflow,
         // but realtime/refresh reevaluation cannot recreate the cleared assignment.
         const wasPreviouslyCleared = (existingAssignments || []).some((item: any) => lower(item.status) === 'cleared');
+        if(wasPreviouslyCleared&&!hasActiveAssignment)continue;
+        nextAssignedIds.add(unitId);
         if (!hasActiveAssignment && !wasPreviouslyCleared) {
           await base44.asServiceRole.entities.CallAssignment.create({
             call_id: callId,
@@ -442,32 +444,16 @@ Deno.serve(async (req) => {
 
         const officer = (users || []).find((item: any) => String(item.id) === unitId);
         const session = activeByEmail.get(lower(officer?.email));
-        const statusUpdate = {
-          status: 'Dispatched',
-          current_call_id: callId,
-          current_call_info: `${cadNumber} · ${call.incident || 'Property alert'} · ${property.site_name || property.address}`,
-          last_updated: nowIso,
-          status_since: nowIso,
-        };
-        if (officer && lower(officer.status) !== 'dispatched') {
-          await base44.asServiceRole.entities.User.update(officer.id, statusUpdate);
-          unitStatusChanged = true;
+        const currentId=String(session?.current_call_id||officer?.current_call_id||'');
+        const currentStatus=lower(session?.status||officer?.status);
+        const queued=Boolean(currentId&&currentId!==callId)||['busy','enroute','en route','on scene','dispatched'].includes(currentStatus)&&currentId!==callId;
+        const statusUpdate = {status:'Dispatched',current_call_id:callId,current_call_info:`${cadNumber} · ${call.incident||'Property alert'} · ${property.site_name||property.address}`,last_updated:nowIso,status_since:nowIso};
+        if(!queued){
+          if(officer){await base44.asServiceRole.entities.User.update(officer.id,statusUpdate);unitStatusChanged=true;}
+          if(session){await base44.asServiceRole.entities.ActiveOfficer.update(session.id,{status:'Dispatched',current_call_id:callId,current_call_info:statusUpdate.current_call_info,last_update:nowIso,session_active:true});unitStatusChanged=true;}
         }
-        if (session && lower(session.status) !== 'dispatched') {
-          await base44.asServiceRole.entities.ActiveOfficer.update(session.id, {
-            status: 'Dispatched',
-            current_call_info: statusUpdate.current_call_info,
-            last_update: nowIso,
-            session_active: true,
-          });
-          unitStatusChanged = true;
-        }
-        const linkedUnits = await base44.asServiceRole.entities.Unit.filter({ user_id: unitId });
-        await Promise.all((linkedUnits || []).map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
-          status: 'Dispatched',
-          assigned_call_ids: Array.from(new Set([...(unit.assigned_call_ids || []).map(String), callId])),
-          last_update_at: nowIso,
-        })));
+        const linkedUnits=await base44.asServiceRole.entities.Unit.filter({user_id:unitId});
+        await Promise.all((linkedUnits||[]).map((unit:any)=>base44.asServiceRole.entities.Unit.update(unit.id,{...(queued?{}:{status:'Dispatched'}),assigned_call_ids:Array.from(new Set([...(unit.assigned_call_ids||[]).map(String),callId])),last_update_at:nowIso})));
 
         const assignmentEventKey = `autodispatch:${alert.id}:assignment:${unitId}`;
         const existingLogs = await base44.asServiceRole.entities.CallStatusLog.filter({ event_key: assignmentEventKey }, '-created_date', 1);
@@ -481,12 +467,12 @@ Deno.serve(async (req) => {
             new_status: 'Dispatched',
             unit_id: unitId,
             unit_name: unitLabel,
-            notes: assignmentRole === 'primary' ? 'Automatic property-alert primary assignment' : 'Automatic property-alert backup assignment',
+            notes: queued?'Automatic assignment added to officer queue; current incident retained':assignmentRole === 'primary' ? 'Automatic property-alert primary assignment' : 'Automatic property-alert backup assignment',
             latitude: propertyLat,
             longitude: propertyLon,
             event_key: assignmentEventKey,
             event_type: assignmentRole === 'primary' ? 'unit_dispatched' : 'additional_unit',
-            announcement_text: `Property alert. ${unitLabel}, respond to ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. CAD number ${cadNumber}.`,
+            announcement_text: `Property alert. ${unitLabel}, ${queued?'next assignment, after current incident':'respond'} to ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. CAD number ${cadNumber}.`,
             announcement_priority: call.priority === 'critical' ? 'critical' : call.priority === 'high' ? 'high' : 'normal',
             cad_number: String(cadNumber),
             triggering_action: 'geofenceDispatchAssignment.live',
@@ -502,7 +488,7 @@ Deno.serve(async (req) => {
               recipient_email: lower(officer.email),
               type: 'call_assignment',
               title: `Automatic Dispatch · ${cadNumber}`,
-              message: `Unit ${recommendation.unit_number || ''}, respond to ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. Safety warning: ${property.property_safety_warnings || call.hazards || 'None listed'}.`,
+              message: `Unit ${recommendation.unit_number || ''}, ${queued?'added to your queue, after your current call':'respond to'} ${queued?'':' '} ${property.site_name || property.address}. ${call.incident || 'Property alert'}. Priority ${call.priority || 'medium'}. Safety warning: ${property.property_safety_warnings || call.hazards || 'None listed'}.`,
               is_read: false,
               related_id: callId,
               priority: ['critical', 'high'].includes(lower(call.priority)) ? 'critical' : 'high',
@@ -603,7 +589,7 @@ Deno.serve(async (req) => {
       mode,
       decision,
       recommended_unit_ids: recommendations.map((item: any) => item.unit_id),
-      ranking: [...existingAssignmentSummaries, ...ranked.filter((item: any) => !existingAssignedUnitIds.has(String(item.unit_id)))],
+      ranking: [...existingAssignmentSummaries, ...ranked.filter((item: any) => !existingAssignedUnitIds.has(String(item.unit_id))&&!previouslyCleared.has(String(item.unit_id)))],
       excluded_units: excluded,
       evaluated_at: new Date().toISOString(),
       evaluated_by: user.id,

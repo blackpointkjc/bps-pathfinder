@@ -63,6 +63,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'You must be assigned to this call before changing its status' }, { status: 403 });
     }
 
+    const currentId=String((ownedSessions||[]).find((s:any)=>s.session_active!==false)?.current_call_id||officerRecord?.current_call_id||user.current_call_id||'');
+    const otherCurrent=!!currentId&&currentId!==String(call_id);
+    if(otherCurrent&&['Enroute','On Scene'].includes(status))return Response.json({error:'Finish your current incident before responding to the next queued assignment.'},{status:409});
     const now = new Date().toISOString();
     const unitAlreadyOnScene=assignmentRows.some((a:any)=>String(a.status||'').toLowerCase()==='on_scene')
       || ((ownedSessions||[]).some((session:any)=>String(session.current_call_id||'')===String(call_id)&&String(session.status||'').toLowerCase()==='on scene'));
@@ -102,7 +105,7 @@ Deno.serve(async (req) => {
 
     // Keep every operational status source synchronized. Supervisor views read the
     // live ActiveOfficer stream, while other CAD surfaces may read User/Unit.
-    if (status !== 'Cleared') {
+    if (status !== 'Cleared' && !otherCurrent) {
       const officerStatus = status === 'Acknowledged' ? 'Dispatched' : status;
       const callInfo = `${call.incident || 'Call for service'} · ${call.location || ''}`.slice(0, 500);
       await base44.asServiceRole.entities.User.update(user.id, {
@@ -185,9 +188,9 @@ Deno.serve(async (req) => {
         if (p) return p;
         return new Date(a.assignment.assigned_at || a.call.time_received || a.call.created_date || 0).getTime() - new Date(b.assignment.assigned_at || b.call.time_received || b.call.created_date || 0).getTime();
       });
-      const next = candidates[0];
+      const next = (otherCurrent?candidates.find(item=>String(item.call.id)===currentId):null)||candidates[0];
       const nextCad = next ? (next.call.agency_cad_number || next.call.bps_reference || next.call.call_id || next.call.id) : '';
-      const nextStatus = next ? 'Dispatched' : 'Available';
+      const nextStatus = next ? (otherCurrent&&String(next.call.id)===currentId?(officerRecord.status||user.status||'Dispatched'):'Dispatched') : 'Available';
       const nextInfo = next ? `${next.call.incident || 'Call for service'} · ${next.call.location || ''}`.slice(0, 500) : '';
       await base44.asServiceRole.entities.User.update(user.id, { status: nextStatus, current_call_id: next?.call?.id || '', current_call_info: nextInfo, status_since: now, last_updated: now }).catch(() => null);
       const sessions = ownedSessions;

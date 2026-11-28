@@ -95,7 +95,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    const currentId=String((sessions||[]).find((s:any)=>s.session_active!==false)?.current_call_id||me.current_call_id||'');
     queue.sort((a, b) => {
+      if(String(a.id)===currentId||String(b.id)===currentId)return Number(String(b.id)===currentId)-Number(String(a.id)===currentId);
       const p = Number(a.queue_priority) - Number(b.queue_priority);
       if (p) return p;
       const at = new Date(a.assignment?.assigned_at || a.time_received || a.created_date || 0).getTime();

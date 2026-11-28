@@ -529,8 +529,8 @@ export default function GlobalMessageBanner({ user }) {
         && liveAgeMs >= 0
         && liveAgeMs <= LIVE_PROPERTY_ALERT_MAX_AGE_MS;
       if (!isFreshLivePropertyAlert || !propertyAlertWasTimely(record)) {
-        // A call first published 18 minutes after its actual receive time is
-        // history discovered late, not a brand-new emergency alarm.
+        // Closed/historical alerts must not replay. A late upstream timestamp
+        // alone never suppresses a newly verified active property alert.
         knownIds.current.add(key);
         return;
       }

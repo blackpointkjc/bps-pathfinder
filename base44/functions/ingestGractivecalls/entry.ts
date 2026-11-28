@@ -199,15 +199,11 @@ var CHESTERFIELD_PUBLIC_API_KEY = Deno.env.has("CHESTERFIELD_PUBLIC_API_KEY") ? 
 var ALLOWED_AGENCIES = /* @__PURE__ */ new Set(["RPD", "RFD", "HPD", "HFD", "CCPD", "CCFD"]);
 var AGENCY_SOURCE = { RPD: "richmond", RFD: "richmond", HPD: "henrico", HFD: "henrico", CCPD: "chesterfield", CCFD: "chesterfield" };
 var PROPERTY_MONITORING_EDGE_TOLERANCE_METERS = 100;
-var LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS = 3 * 60 * 1e3;
-var LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS = 15 * 60 * 1e3;
+// Called only when creating a new verified property alert. Agency receive
+// time is informational; a still-active call must not become silent history
+// simply because GRAC publishes late or a boundary match is recovered.
 function isFreshLivePropertyCall(call) {
-  const now = Date.now();
-  const firstSeenAt = new Date(call?.source_first_seen_at || call?.created_date || 0).getTime();
-  const callAt = new Date(call?.time_received || call?.created_date || 0).getTime();
-  const firstSeenAgeMs = now - firstSeenAt;
-  const upstreamAgeMs = now - callAt;
-  return Number.isFinite(firstSeenAt) && firstSeenAt > 0 && firstSeenAgeMs >= 0 && firstSeenAgeMs <= LIVE_PROPERTY_ALERT_NOTIFY_WINDOW_MS && Number.isFinite(callAt) && callAt > 0 && upstreamAgeMs >= 0 && upstreamAgeMs <= LIVE_PROPERTY_ALERT_MAX_UPSTREAM_AGE_MS;
+  return !!call?.id && call.manual_dismissed!==true && !call.time_cleared && !['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(call.status||'').trim().toLowerCase());
 }
 var normalizeStatus = (raw) => {
   const value = String(raw || "").trim().toUpperCase();
@@ -640,7 +636,7 @@ function propertyAlertFingerprint(call, propertyId) {
   ].join("|");
 }
 async function createImmediatePropertyAlerts(base44, call, monitored, existingCallPropertyKeys, existingKeys, sideEffects) {
-  if (!call?.id || ["Cleared", "Cancelled"].includes(String(call.status || ""))) return 0;
+  if (!isFreshLivePropertyCall(call)) return 0;
   let created = 0;
   for (const location of monitored || []) {
     const match = propertyMatch(call, location);
@@ -725,7 +721,7 @@ async function createImmediatePropertyAlerts(base44, call, monitored, existingCa
 async function reconcilePropertyAlerts(base44) {
   const [calls, locations, existingAlerts, existingEvaluations] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list("-created_date", 300),
-    base44.asServiceRole.entities.Location.list("site_name", 100),
+    base44.asServiceRole.entities.Location.list("site_name", 1000),
     // Read ALL alerts, not only unacknowledged alerts. An acknowledged alert is
     // still the authoritative record for that call/property pair and must not be
     // recreated every ingestion cycle.
@@ -884,7 +880,7 @@ async function reconcilePropertyAlerts(base44) {
   for (const alert of existingAlerts || []) {
     const lifecycle = String(alert.lifecycle_status || "active").toLowerCase();
     if (!activeCallIds.has(String(alert.callId)) || ["resolved", "false_alarm", "test"].includes(lifecycle)) continue;
-    const alertAt = new Date(alert.callTime || alert.time_received || alert.created_date || 0).getTime();
+    const alertAt = new Date(alert.created_date || 0).getTime();
     if (Number.isFinite(alertAt) && nowMs - alertAt >= 0 && nowMs - alertAt <= 15 * 60 * 1e3) {
       await base44.asServiceRole.functions.invoke("notifyPropertyAlertSms", {
         property_alert_id: alert.id
@@ -1023,7 +1019,7 @@ async function ingestFastPublishedCalls(base44, incoming) {
   const [saved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list("-created_date", 500),
     base44.asServiceRole.entities.CallHistory.list("-archived_date", 500).catch(() => []),
-    base44.asServiceRole.entities.Location.list("site_name", 100).catch(() => []),
+    base44.asServiceRole.entities.Location.list("site_name", 1000),
     base44.asServiceRole.entities.PropertyAlert.list("-created_date", 300).catch(() => []),
     base44.asServiceRole.entities.CallAssignment.filter({ status: { $nin: ["cleared", "cancelled", "canceled"] } }, "-assigned_at", 1e3),
     base44.asServiceRole.entities.ActiveOfficer.filter({ current_call_id: { $exists: true } }, "-last_update", 500),
@@ -1141,7 +1137,7 @@ async function ingestFastPublishedCalls(base44, incoming) {
       }
     }));
   }
-  for (const row of recent.slice(0, 80)) {
+  for (const row of recent) {
     const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
     if (!previous || previous.manual_dismissed === true || ["Cleared", "Cancelled"].includes(String(previous.status || ""))) continue;
     try {
@@ -1369,7 +1365,7 @@ async function handleGracIngestion(req) {
       const archivedByExternal = new Set((archivedHistory || []).map((row) => externalKey(row)).filter(Boolean));
       const archivedByLegacy = new Set((archivedHistory || []).map((row) => legacyKey(row)).filter(Boolean));
       const [immediateLocations, immediateExistingAlerts] = await Promise.all([
-        base44.asServiceRole.entities.Location.list("site_name", 100).catch(() => []),
+        base44.asServiceRole.entities.Location.list("site_name", 1000),
         base44.asServiceRole.entities.PropertyAlert.list("-created_date", 1e3).catch(() => [])
       ]);
       const immediateMonitored = (immediateLocations || []).filter((location) => location.active !== false);
