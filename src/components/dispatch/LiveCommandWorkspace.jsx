@@ -1,7 +1,6 @@
 import UnifiedCadGrid from './cad/UnifiedCadGrid';
 import './cad-workstations.css';
 import './tactical-console.css';
-const TacticalCommandMap=lazy(()=>import('./TacticalCommandMap'));
 import CommandIncidentDetails from './CommandIncidentDetails';
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription } from '@/components/ui/dialog';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
@@ -9,6 +8,8 @@ import { lookupDistrict } from '@/utils/districtLookup';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { Radio, Search, Users, RefreshCw } from 'lucide-react';
 import { cadAgeLabel, cadServiceLevel } from '@/lib/cadOperationalStatus';
+
+const TacticalCommandMap=lazy(()=>import('./TacticalCommandMap'));
 
 export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster,initialFocus='all',unified=false,canManage=false,onCreate,showMap=true,onMapVisibility,draft,draftOpen,onCloseDraft,standaloneZoom=1,officerMode=false,monitoredIds=[],onTogglePin,standaloneMonitor,onToggleMonitor,emergencyControl,propertyIds,propertyError,currentUser,selfAttachUser,propertyRows,propertyLoading,propertyLogError,onPropertyRefresh}){
  // The CAD status bar and command palette deep-link into the board with a

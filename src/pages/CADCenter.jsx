@@ -11,18 +11,18 @@ import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } fro
 import useCadRoster,{CadRosterProvider} from '@/hooks/useCadRoster';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
-const CadCommandPalette=lazy(()=>import('@/components/dispatch/cad/CadCommandPalette'));
-const CadResourceBoard=lazy(()=>import('@/components/dispatch/cad/CadResourceBoard'));
 import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
-const CadResponseAnalytics=lazy(()=>import('@/components/dispatch/cad/CadResponseAnalytics'));
 import { cadScaleValue, readCadDisplaySettings, writeCadDisplaySettings } from '@/lib/cadDisplaySettings';
 import { createPageUrl } from '@/utils';
 import CommandDashboard from './CommandDashboard';
+
+const CadCommandPalette=lazy(()=>import('@/components/dispatch/cad/CadCommandPalette'));
+const CadResourceBoard=lazy(()=>import('@/components/dispatch/cad/CadResourceBoard'));
+const CadResponseAnalytics=lazy(()=>import('@/components/dispatch/cad/CadResponseAnalytics'));
 const Navigation=lazy(()=>import('./Navigation'));
 const UnitStatus=lazy(()=>import('./UnitStatus'));
 const BOLOAlerts=lazy(()=>import('./BOLOAlerts'));
 const CallHistory=lazy(()=>import('./CallHistory'));
-
 const OfficerDispatchQueue=lazy(()=>import('./OfficerDispatchQueue'));
 
 const TOOLS = {

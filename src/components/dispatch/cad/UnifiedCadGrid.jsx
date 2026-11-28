@@ -1,12 +1,13 @@
 import {formatEasternDateTime} from '@/lib/easternTime';
 import {lazy,Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import { MessageSquare, Search, X, Plus, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, RefreshCw, Maximize, Minimize, Pin, PinOff} from 'lucide-react';
-const TacticalCommandMap=lazy(()=>import('../TacticalCommandMap'));
 import CommandIncidentDetails from '../CommandIncidentDetails';
 import CadIncidentComments from './CadIncidentComments';
 import {cadUnitAvailable,cadAgeLabel} from '@/lib/cadOperationalStatus';
 import {splitCadIncidents,isFieldInitiated,cadDisplayUnitState,isOpenIncident,assignedCadUnitIds,isVerifiedPropertyCall,recentPropertyRows} from '@/lib/cadWorkspaceModel';
 import './unified-cad-grid.css';
+
+const TacticalCommandMap=lazy(()=>import('../TacticalCommandMap'));
 
 const unitKey=u=>String(u.id||u.email||u.unit_number);
 const available=u=>cadUnitAvailable(u)&&cadDisplayUnitState(u)==='available';
