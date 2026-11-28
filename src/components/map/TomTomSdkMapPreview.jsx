@@ -1,3 +1,4 @@
+import {incidentPriority} from '@/lib/incidentPriority';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Shield, MapPin, Crosshair, CloudSun } from 'lucide-react';
@@ -61,8 +62,6 @@ const callType = call => {
   if(agency.includes('FD')||/fire|smoke|alarm/.test(incident))return 'fire';
   return 'police';
 };
-const priorityCall = call => /shooting|shots fired|stabbing|officer down|active shooter|10-00|cardiac arrest|person with gun|assault|robbery|burglary in progress|domestic|pursuit|fire|accident with injury/i
-  .test(`${call.incident||''} ${call.description||''}`);
 const unitPosition = unit => {
   const eligible = unit?.live_location_hidden !== true
     && (unit?.session_active === true || unit?.presence_online === true || unit?.map_visible === true);
@@ -87,9 +86,9 @@ const unitShieldIcon = unit => {
 const cadCallIcon = call => {
   const kind=callType(call);
   const approximate=call.geo_approximate===true;
-  const priority=priorityCall(call);
+  const priority=incidentPriority(call);
   const arrived=/arrived|arv|on scene/i.test(String(call.status||''));
-  return `${kind}${approximate?'-approx':''}${priority?'-priority':''}${arrived?'-arrived':''}`;
+  return `${kind}${approximate?'-approx':''}${priority==='critical'?'-p1':priority==='high'?'-p2':''}${arrived?'-arrived':''}`;
 };
 function registerCadIcons(map){
   const size=80, ratio=2;
@@ -107,10 +106,10 @@ function registerCadIcons(map){
     ctx.fillStyle=fill;ctx.fill();ctx.lineWidth=width;ctx.strokeStyle=stroke;ctx.stroke();
   };
   for(const type of ['police','fire','ems']){
-    for(const approximate of [false,true])for(const priority of [false,true])for(const arrived of [false,true]){
-      register(`bps-${type}${approximate?'-approx':''}${priority?'-priority':''}${arrived?'-arrived':''}`,ctx=>{
+    for(const approximate of [false,true])for(const priority of ["critical","high","medium"])for(const arrived of [false,true]){
+      register(`bps-${type}${approximate?'-approx':''}${priority==='critical'?'-p1':priority==='high'?'-p2':''}${arrived?'-arrived':''}`,ctx=>{
         const fill={police:'#1e40af',fire:'#dc2626',ems:'#d97706'}[type];
-        circle(ctx,40,40,32,fill,priority?'#ef4444':'#fff',approximate?3:6);
+        circle(ctx,40,40,32,fill,priority==='critical'?'#ef4444':priority==='high'?'#facc15':'#fff',approximate?3:6);
         ctx.fillStyle='#fff';ctx.font=type==='fire'||type==='ems' ? '32px "Apple Color Emoji","Segoe UI Emoji",sans-serif' : '900 27px Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillText(({police:'PD',fire:'🔥',ems:'🚑'})[type],40,42);
         // Active/arrived status dot like the existing CAD markers.
@@ -217,7 +216,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     if (snapshot.activeCalls!==previous.calls || callSource!==previous.callSource) {
       const calls=(snapshot.activeCalls||[]).filter(call=>mapped(call.latitude,call.longitude));
       callsRef.current=calls;
-      callSource?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
+      callSource?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,priority:incidentPriority(call),label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
       previous.calls=snapshot.activeCalls;
       previous.callSource=callSource;
     }
@@ -373,6 +372,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
           registerCadIcons(map);
           if(!map.getSource('pathfinder-calls')){
             map.addSource('pathfinder-calls',{type:'geojson',data:featureCollection([])});
+            map.addLayer({id:'pathfinder-priority-ring',type:'circle',source:'pathfinder-calls',filter:['in',['get','priority'],['literal',['critical','high']]],paint:{'circle-radius':20,'circle-color':'transparent','circle-stroke-width':3,'circle-stroke-color':['match',['get','priority'],'critical','#ef4444','#facc15'],'circle-stroke-opacity':1}});
             map.addLayer({id:'pathfinder-calls-dot',type:'symbol',source:'pathfinder-calls',
               layout:{'icon-image':['get','icon'],'icon-size':0.88,'icon-allow-overlap':true,'icon-ignore-placement':true}});
             map.addLayer({id:'pathfinder-calls-label',type:'symbol',source:'pathfinder-calls',
@@ -533,6 +533,17 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     init();
     return ()=>{cancelled=true;clearTimeout(errorTimer);cleanupRef.current?.();cleanupRef.current=null;trafficRef.current={flow:null,incidents:null};trafficInitRef.current=false;terrainInitRef.current=false;perspectiveInitRef.current=false;mapReadyRef.current=false;try{sdkRef.current?.mapLibreMap?.remove?.();}catch{}sdkRef.current=null;};
   }, []);
+  // Animate only the small priority ring; never hide incident symbols or
+  // reload map sources. This works after a day/night style reload too.
+  useEffect(()=>{
+    if(!ready)return;
+    const media=window.matchMedia('(prefers-reduced-motion: reduce)');
+    let bright=true;
+    const update=()=>{const map=sdkRef.current?.mapLibreMap;if(!map?.getLayer('pathfinder-priority-ring'))return;try{map.setPaintProperty('pathfinder-priority-ring','circle-stroke-opacity',media.matches?1:(bright?1:.18));}catch{}};
+    const timer=window.setInterval(()=>{bright=!bright;update();},500);
+    media.addEventListener?.('change',update);
+    return()=>{window.clearInterval(timer);media.removeEventListener?.('change',update);};
+  },[ready]);
   // The Pathfinder day/night toggle changes props, not the TomTom map
   // instance. Update the actual TomTom style and retain module state. The
   // style.load handler below rebuilds CAD overlays on the new style.

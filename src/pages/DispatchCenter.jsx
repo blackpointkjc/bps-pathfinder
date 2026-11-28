@@ -15,7 +15,7 @@ import AIRewriteField from '@/components/AIRewriteField';
 import AddressCallHistory from '@/components/map/AddressCallHistory';
 import PropertyCallLinkControl from '@/components/dispatch/PropertyCallLinkControl';
 import { cadDestination } from '@/lib/cadNavigation';
-import { incidentPriority } from '@/lib/incidentPriority';
+import { incidentPriority,priorityCode } from '@/lib/incidentPriority';
 import IncidentPrioritySelect from '@/components/dispatch/IncidentPrioritySelect';
 import { canEditIncidentPriority } from '@/lib/dispatchPermissions';
 import { comparePersonnel } from '@/utils/rankPolicy';
@@ -900,7 +900,7 @@ function DispatchWorkspace({embedded=false}) {
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
-                                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(incidentPriority(selectedCall))}`}>{incidentPriority(selectedCall).toUpperCase()}</span>
+                                        <span data-priority={incidentPriority(selectedCall)} className={`cad-selected-priority text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(incidentPriority(selectedCall))}`}>{priorityCode(selectedCall)} · {incidentPriority(selectedCall).toUpperCase()}</span>
                                         {canEditIncidentPriority(currentUser) && <IncidentPrioritySelect call={selectedCall} priority={incidentPriority(selectedCall)} onSave={async(call,priority)=>{
                                             const response=await base44.functions.invoke('updateCadCallPriority',{call_id:call.id,priority});
                                             if(response?.data?.error)throw new Error(response.data.error);
@@ -914,11 +914,11 @@ function DispatchWorkspace({embedded=false}) {
                                     </div>
                                     <div className="tac-segment tac-dispatch-tabs" role="group" aria-label="Incident detail views">{[['incident','Incident'],['activity','CAD log / notes'],['all','All details']].map(([id,label])=><button type="button" key={id} aria-pressed={detailTab===id} onClick={()=>setDetailTab(id)}>{label}</button>)}</div>
                                     <div hidden={detailTab==='activity'} className="tac-incident-facts"><button type="button" className="tac-log-jump" onClick={()=>setDetailTab('activity')}><History size={15}/> CAD log · {callNotes.length} entries <ChevronRight size={14}/></button>
-                                    <div className="pf-dispatch-facts px-3 md:px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                                    <div data-priority={incidentPriority(selectedCall)} className="pf-dispatch-facts px-3 md:px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                                         <h2 className="col-span-full text-xl font-bold text-white">{cleanIncident(selectedCall)}</h2>
 
                                         <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
-                                        <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{incidentPriority(selectedCall).toUpperCase()}</span></div>
+                                        <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{priorityCode(selectedCall)} · {incidentPriority(selectedCall).toUpperCase()}</span></div>
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
                                         {selectedCall.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{selectedCall.caller_name}</span></div>}
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}

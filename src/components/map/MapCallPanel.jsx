@@ -1,3 +1,4 @@
+import {incidentPriority,priorityCode} from '@/lib/incidentPriority';
 import { useEffect, useState } from 'react';
 import { X, ChevronRight, ChevronLeft, MapPin, Navigation2, LocateFixed, ExternalLink, Image, ShieldAlert, Users } from 'lucide-react';
 import { cadReference } from '@/lib/cadReference';
@@ -11,7 +12,7 @@ export default function MapCallPanel({call,currentUser,district,collapsed,onColl
  useEffect(()=>setTab('overview'),[call?.id]);
  if(!call)return null;
  const assigned=call.assigned_units?.includes(currentUser?.id);
- const priority=String(call.priority||'medium').toLowerCase();
+ const priority=incidentPriority(call);
  const reference=cadReference(call)||'Reference pending';
  const isActiveCall=!['closed','cleared','cancelled','canceled','resolved','completed'].includes(String(call.status||'').toLowerCase());
  if(collapsed)return <aside className="pf-call-collapsed" style={{top}}><button type="button" className="pf-icon-button" onClick={()=>onCollapse(false)} aria-label="Open call details"><ChevronLeft size={18}/></button></aside>;
@@ -21,7 +22,7 @@ export default function MapCallPanel({call,currentUser,district,collapsed,onColl
      <button type="button" className="pf-icon-button" onClick={onClose} aria-label="Close call details"><X size={17}/></button>
    </div></header>
    <div className="pf-call-summary">
-     <div className="pf-call-badges"><span className={'pf-priority-badge '+priority}>{priority}</span><span className="pf-call-state">{call.status||'New'}</span></div>
+     <div className="pf-call-badges"><span data-priority={isActiveCall?priority:undefined} className={'pf-priority-badge '+priority}>{priorityCode(call)} · {priority}</span><span className="pf-call-state">{call.status||'New'}</span></div>
      <h2>{cleanIncident(call)}</h2>
      <p className="pf-call-address"><MapPin size={15}/><span>{call.location||'Address unavailable'}</span></p>
      <span className="pf-call-reference">{reference}</span>
