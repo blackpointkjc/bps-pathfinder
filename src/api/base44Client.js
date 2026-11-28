@@ -1,3 +1,4 @@
+import {isIaRead,iaReadCacheMs} from '@/lib/iaRequestPolicy';
 import {isFullAccessOwner,effectivePortalIdentity} from '@/lib/portalAccess';
 import {offlineIdentity,rememberOfflineIdentity,forgetOfflineIdentity} from '@/lib/offlineSession';
 import {offlineGet,offlinePut} from '@/lib/offlineWork';
@@ -31,6 +32,7 @@ let nextReadStartAt = 0;
 const READ_CACHE_MS = 12_000;
 const readCacheTtl = meta => {
   if (meta?.kind === 'auth') return 5 * 60_000;
+  if(meta?.kind==='function'&&meta.name==='professionalStandards')return iaReadCacheMs(meta.action);
   if (meta?.kind === 'function' && meta?.name === 'cad-voice-broadcast') return 90_000;
   if (meta?.kind === 'entity' && ['MicrosoftTeamsIdentity','OutlookMailboxLink'].includes(meta?.name)) return 30 * 60_000;
   if (meta?.kind === 'entity' && meta?.name === 'User') return 5 * 60_000;
@@ -164,6 +166,7 @@ const readPriority = meta => {
   // The active History screen is foreground CAD work. Do not leave its
   // paginated feed behind background analytics, roster, or telemetry scans.
   if (meta?.kind === 'function' && meta?.name === 'getCallHistoryFeed') return 92;
+  if(meta?.kind==='function'&&meta.name==='professionalStandards')return 91;
   if (meta?.kind === 'function' && ['getDispatchCallLinkFeed','getIncidentReportHistory','getLocationAuditReport','manageBolo','manageHRTimeEntries','manageDutySupervisorSchedule','manageAutoDispatchConfig'].includes(meta?.name)) return 80;
   if (meta?.kind === 'function' && meta?.name === 'getAccountingData') return 80;
   if (meta?.kind === 'function' && ['getRoleWorkQueue','getFleetScheduleData','managePlannedShifts'].includes(meta?.name)) return 72;
@@ -181,6 +184,7 @@ const readTimeoutMs = meta => {
   if (meta?.kind === 'function' && meta?.name === 'routeNavigation') return 10_000;
   if (meta?.kind === "function" && ["getAddressCallHistory", "getCallOutShifts", "getNavigationLocations", "getOfflineStreetArea"].includes(meta?.name)) return 30_000;
   if (meta?.kind === 'function' && meta?.name === 'getDispatchCallLinkFeed') return 60_000;
+  if(meta?.kind==='function'&&meta.name==='professionalStandards')return 30_000;
   if (meta?.kind === 'function' && meta?.name === 'getCompanyPerformanceData') return 60_000;
   if (meta?.kind === 'function' && meta?.name === 'manageLiveLocationPrivacy') return 30_000;
   // These authenticated snapshots intentionally serialize many source reads.
@@ -222,7 +226,7 @@ const noteRateLimit = error => {
     : CRITICAL_RATE_LIMIT_RECOVERY_MS;
   readRecoveryUntil = Math.max(readRecoveryUntil, recentRateLimitAt + recoveryMs);
   // Concurrent failures belong to one recovery window, not a new minute each.
-  if (sharedRateLimitUntil() > recentRateLimitAt) return;
+  if (sharedRateLimitUntil() > recentRateLimitAt && !(Number.isFinite(retryAt)&&retryAt>sharedRateLimitUntil())) return;
   const until = Math.max(recentRateLimitAt + RATE_LIMIT_COOLDOWN_MS, retryAt || 0);
   try { localStorage.setItem(RATE_LIMIT_KEY, String(until)); } catch {}
 };
@@ -242,7 +246,7 @@ function pumpReads() {
   const cooldownStartedAt = sharedRateLimitUntil() - RATE_LIMIT_COOLDOWN_MS;
   const criticalRecovery = Math.max(0, readRecoveryUntil - Date.now(), cooldown > 0 ? CRITICAL_RATE_LIMIT_RECOVERY_MS - (Date.now() - cooldownStartedAt) : 0);
   const waitFor = job => Math.max(0, (job.readyAt || 0) - Date.now(),
-    job.meta?.kind === 'entity' && job.meta?.method === 'list' ? entityListWaitMs() : 0,
+    job.meta?.kind === 'entity' && ['list','filter'].includes(job.meta?.method) ? entityListWaitMs() : 0,
     job.meta?.kind === 'auth' ? 0 : criticalRecovery,
     // Routine panels must not restart during provider throttling. Keep the
     // scarce recovery allowance for authenticated CAD, property alerts and
@@ -286,7 +290,7 @@ function pumpReads() {
     }
     nextReadStartAt = Date.now() + READ_START_GAP_MS;
     const job = readQueue.shift();
-    if (job.meta?.kind === 'entity' && job.meta?.method === 'list') {
+    if (job.meta?.kind === 'entity' && ['list','filter'].includes(job.meta?.method)) {
       try { localStorage.setItem(ENTITY_LIST_PACE_KEY, String(Date.now() + ENTITY_LIST_START_GAP_MS)); } catch {}
     }
     window.clearTimeout(job.queueTimer);
@@ -334,7 +338,7 @@ function pumpReads() {
           error: errorText(error).slice(0, 700),
         });
         const status = Number(error?.response?.status || error?.status || 0);
-        const retryable = throttled || [502,503,504].includes(status) || /network error|failed to fetch/i.test(errorText(error));
+        const retryable = (job.meta?.name!=='professionalStandards'||!['get','audit_history','officer_file','legacy_entity'].includes(job.meta?.action)) && (throttled || [502,503,504].includes(status) || /network error|failed to fetch/i.test(errorText(error)));
         job.attempt = (job.attempt || 0) + 1;
         if (retryable && !throttled && job.attempt <= 1 && Date.now() - job.queuedAt < READ_QUEUE_TIMEOUT_MS - 30000) {
           job.readyAt = Date.now() + (throttled ? 1000 : 2000 * 2 ** job.attempt) + Math.random() * 3000;
@@ -440,6 +444,7 @@ function invalidateReadCacheForWrite(meta = {}) {
       addFunction('getMyPerformanceData'); addFunction('getCompanyPerformanceData');
     }
     if (meta.name === 'User') prefixes.add('auth:me:');
+    if(['PSCase','PSRecord','PSNotification','Complaint','Commendation','ConfidentialReport','UseOfForceReport','WriteUpReport','InspectionReport','PerformanceReview','OfficerPerformanceReview','ClientFeedback'].includes(meta.name))addFunction('professionalStandards');
     if (['User','Location','Division','OfficerRoster'].includes(meta.name)) {
       addFunction('getAppDirectory');
       addFunction('getOfficerDirectory');
@@ -653,6 +658,7 @@ const entities = new Proxy(rawBase44.entities, {
 const isReadOnlyFunction = (name, payload = {}) => {
   const functionName = String(name || '');
   const action = String(payload?.action || '').toLowerCase();
+  if(functionName==='professionalStandards')return isIaRead(payload);
   const readActions = new Set(['list', 'get', 'search', 'status', 'messages', 'folders', 'preview', 'check', 'history', 'summary']);
 
   // An explicit action is authoritative. Management-style functions often expose

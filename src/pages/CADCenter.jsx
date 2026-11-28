@@ -4,7 +4,7 @@ import { CadClock } from '@/components/dispatch/CadTerminal';
 import '@/components/dispatch/cad-center-terminal.css';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
-import useCadRoster from '@/hooks/useCadRoster';
+import useCadRoster,{CadRosterProvider} from '@/hooks/useCadRoster';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
 import CadCommandPalette from '@/components/dispatch/cad/CadCommandPalette';
@@ -269,6 +269,6 @@ export default function CADCenter({ embedded = false }) {
   // One live CAD queue owns the shell. Nested workstations reuse it instead of
   // mounting their own provider.
   const existing = useOptionalDashboardData();
-  if (existing) return <CadShell embedded={embedded} />;
-  return <DashboardDataProvider><CadShell embedded={embedded} /></DashboardDataProvider>;
+  if (existing) return <CadRosterProvider><CadShell embedded={embedded} /></CadRosterProvider>;
+  return <DashboardDataProvider><CadRosterProvider><CadShell embedded={embedded} /></CadRosterProvider></DashboardDataProvider>;
 }

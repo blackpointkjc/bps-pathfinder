@@ -3,7 +3,7 @@ const officerSummary=p=>({id:p.id,name:[p.rank,p.first_name,p.last_name].filter(
 export async function globalCaseTools(ctx){
  const {action,body,db,u,review,base44,audit,notify,fail}=ctx;
  if(action==='officer_directory'){
-  const users=await db.User.list('last_name',1000);
+  const users=ctx.casePersonnel?await ctx.casePersonnel(db):await db.User.list('last_name',1000);
   return Response.json({officers:users.filter(employee).map(officerSummary)});
  }
  if(action==='training_options'){

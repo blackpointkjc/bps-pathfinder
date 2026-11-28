@@ -97,7 +97,8 @@ export function applyOfficerLocationEvent(rows = [], event) {
     if (record.session_active !== undefined) {
       next.presence_online = record.session_active === true;
       next.presence_state = record.session_active === true ? 'online' : 'offline';
-      if (record.session_active === false) next.connection_stale = false;
+      const stamp=Date.parse(record.last_update||'');
+      if(record.session_active===false||(record.session_active===true&&Number.isFinite(stamp)&&Date.now()-stamp<120000&&stamp<=Date.now()+60000))next.connection_stale=false;
     }
     return scrubUnitLocation(next);
   });
@@ -109,7 +110,6 @@ function applyRealtimeEventToSnapshotCache(event) {
     const payload = cached.payload;
     snapshotCache.set(key, {
       ...cached,
-      at: Date.now(),
       payload: {
         ...payload,
         units: Array.isArray(payload.units) ? applyOfficerLocationEvent(payload.units, event) : payload.units,
@@ -337,6 +337,7 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
       if (rawPayload.error) throw new Error(rawPayload.error);
       // Defense in depth: never let a legacy backend/client return an IP/network
       // estimate (for example ±50,000m) to any Pathfinder map as a live officer fix.
+      if(!Array.isArray(rawPayload.units)&&!Array.isArray(rawPayload.users))throw new Error('Officer roster returned an invalid response.');
       const payload = scrubSnapshot(rawPayload);
       const cachedAt = Date.now();
       snapshotCache.set(key, { at: cachedAt, payload });
