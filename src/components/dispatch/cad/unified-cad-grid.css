@@ -23,3 +23,26 @@
 .cc-unit[data-state=hold]>div{background:#644b2a}.cc-unit-search{flex:none}
 .cc-incident .tac-detail-scroll{flex:1;min-height:0;overflow:auto}.cc-incident .tac-detail-secondary{flex-wrap:wrap}.cc-incident .tac-detail-actions{gap:3px;padding:5px}
 @container(max-width:720px){.cc-command-host>.tac-header .tac-header-actions{width:auto}.cc-command-host>.tac-header .tac-brand{display:none}.cc-command-host>.tac-header-actions{gap:3px}.cc-incident .tac-detail-heading{padding:7px}}
+
+/* Workstation composition: tightly packed full-height incident stack, selected
+   incident, active stack and live side tools; no duplicate dashboard cards. */
+.cc-command-host{display:flex!important;flex-direction:column;min-height:0;overflow:hidden}
+.cc-workspace{background:#06101b;font-family:Arial,system-ui,sans-serif}
+.cc-grid{grid-template-columns:minmax(102px,.85fr) minmax(126px,1.1fr) minmax(205px,2.05fr) minmax(126px,1.1fr) minmax(156px,1.45fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"units pending incident active comments";gap:2px;padding:2px}
+.cc-grid[data-map=true][data-right-tool=map]{grid-template-areas:"units pending incident active map"}
+.cc-grid[data-right-tool=map]>.cc-comments{display:none}
+.cc-grid[data-right-tool=comments]>.cc-map{display:none}
+.cc-panel{border-color:#203449;background:#0a1928}
+.cc-panel>header{font-size:12px;background:#060f1b;min-height:32px}
+.cc-unit{padding:2px;border:0;background:#142b40;margin-bottom:2px}
+.cc-unit>div{font-size:11px;padding:4px 3px;border-radius:2px}
+.cc-unit>span,.cc-unit>small{font-size:10px;padding:2px 3px}
+.cc-call{border-radius:2px;background:#142a3b;padding:5px;margin-bottom:3px}
+.cc-call>strong{font-size:12px;text-transform:uppercase}
+.cc-unit-select{width:100%;text-align:left;display:block}.cc-unit-select[aria-pressed=true]{outline:2px solid #69b9dc;outline-offset:-2px}
+.cc-unit-board{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,1fr);gap:3px;min-height:0;flex:1;overflow:hidden}
+.cc-unit-board .cc-panel>header{flex:none}.cc-unit-inspect .cc-scroll{padding:10px}
+.cc-map>.tac-map-panel{flex:1;min-height:0}
+@container (min-width:721px) and (max-width:850px){.cc-grid,.cc-grid[data-map=false]{grid-template-columns:minmax(90px,.8fr) minmax(110px,1fr) minmax(180px,1.7fr) minmax(110px,1fr);grid-template-rows:minmax(0,1fr) minmax(120px,.65fr);grid-template-areas:"units pending incident active" "units pending comments active"}.cc-grid[data-map=true][data-right-tool=map]{grid-template-areas:"units pending incident active" "units pending map active"}}
+@container(max-width:720px){.cc-grid,.cc-grid[data-map=true][data-right-tool=map],.cc-grid[data-map=false]{display:flex;flex-direction:column}.cc-grid>.cc-panel{display:none}.cc-grid[data-view=queues]>.cc-pending,.cc-grid[data-view=queues]>.cc-active,.cc-grid[data-view=units]>.cc-units,.cc-grid[data-view=incident]>.cc-incident,.cc-grid[data-view=comments]>.cc-comments,.cc-grid[data-view=map]>.cc-map{display:flex}}
+@media(max-width:780px){.cc-unit-board{grid-template-columns:minmax(0,1fr);overflow:auto;display:flex;flex-direction:column}.cc-unit-board>.cc-panel{min-height:180px;flex:1 0 240px}.cc-unit-board[data-detail=false]>.cc-unit-inspect{display:none}}

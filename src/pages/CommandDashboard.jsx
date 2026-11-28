@@ -220,7 +220,7 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
 
     const canManage=!!currentUser&&!currentUser.disabled&&!currentUser.termination_date&&String(currentUser.employment_status||'').toLowerCase()!=='terminated'&&!currentRoles.has('visitor')&&(isDispatchOrAdmin||hasDispatchAccess||currentRoles.has('dispatcher')||currentRoles.has('supervisor')||currentRoles.has('cad_access')||['corporal','first sergeant','sergeant','sgt','lieutenant','lt','lt colonel','lt col','lieutenant colonel','captain','major','colonel'].includes(String(currentUser.rank||'').toLowerCase().replace(/\./g,'').trim()));
     useEffect(()=>{
-        if(!embedded||!canManage)return;
+        if(!canManage)return;
         const handle=event=>{
             if(!event.altKey||event.ctrlKey||event.metaKey||event.repeat||event.target?.closest?.('input,textarea,select,[contenteditable=true]'))return;
             const key=String(event.key||'').toLowerCase();
@@ -228,28 +228,31 @@ function CommandDashboardInner({embedded=false,showMap=true,onMapVisibility}) {
         };
         window.addEventListener('keydown',handle);
         return()=>window.removeEventListener('keydown',handle);
-    },[embedded,canManage]);
+    },[canManage]);
     return <>
-      <LiveCommandWorkspace unified={embedded} showMap={showMap} onMapVisibility={onMapVisibility} canManage={canManage} onCreate={setCreateSource} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
+      <LiveCommandWorkspace unified={true} showMap={showMap} onMapVisibility={onMapVisibility} canManage={canManage} onCreate={setCreateSource} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onDispatch={openCallInDispatch} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} initialFocus={cadFocus}
         actions={<><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />
-      {embedded&&canManage&&createSource&&<CreateCallDialog units={statusUnits} currentUser={currentUser} source={createSource} onClose={()=>setCreateSource(null)} onCreated={call=>{setCreateSource(null);setSelectedCall(call);manualRefresh();}}/>}
+      {canManage&&createSource&&<CreateCallDialog units={statusUnits} currentUser={currentUser} source={createSource} onClose={()=>setCreateSource(null)} onCreated={call=>{setCreateSource(null);setSelectedCall(call);manualRefresh();}}/>}
     </>;
 
 }
 
 export default function CommandDashboard({embedded=false,showMap=true,onMapVisibility}) {
+    const [localMap,setLocalMap]=useState(showMap);
+    const mapVisible=embedded?showMap:localMap;
+    const updateMap=onMapVisibility||setLocalMap;
     // The CAD Center shell already owns the live queue; reuse it instead of
     // mounting a second provider and duplicating every CAD read.
     const existing = useOptionalDashboardData();
-    if (existing) return <CommandDashboardInner embedded={embedded} showMap={showMap} onMapVisibility={onMapVisibility}/>;
+    if (existing) return <CommandDashboardInner embedded={embedded} showMap={mapVisible} onMapVisibility={updateMap}/>;
     return (
         <DashboardDataProvider>
-            <CommandDashboardInner embedded={embedded} showMap={showMap} onMapVisibility={onMapVisibility}/>
+            <CommandDashboardInner embedded={embedded} showMap={mapVisible} onMapVisibility={updateMap}/>
         </DashboardDataProvider>
     );
 }

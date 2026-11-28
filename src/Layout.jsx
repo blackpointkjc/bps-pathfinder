@@ -68,7 +68,7 @@ const CENTER_CONFIG = {
         ['Dispatch Center', 'DispatchCenter', Radio],
         ['Officer Queue', 'OfficerDispatchQueue', Radio],
         ['Live Map', 'Navigation', MapIcon],
-        ['Officer Status', 'UnitStatus', Users],
+        ['Unit Board', 'UnitStatus', Users],
         ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
       ]},
       { label: 'History & Intelligence', items: [
@@ -502,7 +502,7 @@ function allowedCenters(user) {
 
 const CENTER_DEFAULT_PAGE = {
   standards:'ProfessionalStandards', visitor:'VisitorPortal',
-  cad: 'CommandDashboard',
+  cad: 'CADCenter',
   officer: 'Dashboard',
   supervisor: 'SupervisorTasks',
   admin: 'AdminDashboard',

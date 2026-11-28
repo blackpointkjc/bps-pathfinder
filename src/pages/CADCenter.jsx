@@ -8,7 +8,6 @@ import useCadRoster,{CadRosterProvider} from '@/hooks/useCadRoster';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
 import CadCommandPalette from '@/components/dispatch/cad/CadCommandPalette';
-import CadResourceBoard from '@/components/dispatch/cad/CadResourceBoard';
 import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
 import CadDisplaySettingsDialog from '@/components/dispatch/cad/CadDisplaySettingsDialog';
 import CadResponseAnalytics from '@/components/dispatch/cad/CadResponseAnalytics';
@@ -28,9 +27,8 @@ const TOOLS = {
     { id: 'command', icon: RadioTower, short: 'Command', label: 'Command Board', component: CommandDashboard },
     { id: 'dispatch', icon: Radio, short: 'Dispatch', label: 'Dispatch Queue', component: DispatchCenter },
     { id: 'officerqueue', icon: ClipboardList, short: 'Field MDT', label: 'Officer Queue', component: OfficerDispatchQueue },
-    { id: 'resources', icon: LayoutGrid, short: 'Resources', label: 'Unit & Resource Board' },
     { id: 'map', icon: Map, short: 'Live map', label: 'Live Map', component: Navigation },
-    { id: 'units', icon: Users, short: 'Units', label: 'Officer Status', component: UnitStatus },
+    { id: 'units', icon: Users, short: 'Units', label: 'Unit Board', component: UnitStatus },
   ],
   alerts: [{ id: 'bolo', icon: AlertTriangle, short: 'BOLO', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
@@ -61,14 +59,15 @@ function CadShell({ embedded = false }) {
   const section = params.get(embedded ? 'cad_section' : 'section') || 'live';
   const toolKey = embedded ? 'cad_tool' : 'tool';
   const tools = TOOLS[section] || TOOLS.live;
-  const active = tools.find(tool => tool.id === params.get(toolKey)) || tools[0];
+  const requestedTool=params.get(toolKey)==='resources'?'units':params.get(toolKey);
+  const active = tools.find(tool => tool.id === requestedTool) || tools[0];
   const Component = active.component;
   const scale = cadScaleValue(display.scale);
 
   const select = (nextSection, tool, extra = {}) => {
     const next = new URLSearchParams(location.search);
     next.set(embedded ? 'cad_section' : 'section', nextSection);
-    next.set(toolKey, tool);
+    next.set(toolKey, tool==='resources'?'units':tool);
     TRANSIENT_PARAMS.forEach(key => next.delete(key));
     Object.entries(extra).forEach(([key, value]) => {
       if (value != null && value !== '') next.set(key, String(value));
@@ -226,19 +225,7 @@ function CadShell({ embedded = false }) {
     {monitorOpen && active.id!=='command' && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
     <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(TOOLS).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
-      {active.id === 'resources'
-        ? <CadResourceBoard
-            key={(params.get('cad_status') || 'All') + '|' + (params.get('cad_unit') || '')}
-            calls={calls}
-            units={units}
-            loading={loading}
-            rosterLoading={rosterLoading}
-            initialStatus={params.get('cad_status') || 'All'}
-            initialUnitSearch={params.get('cad_unit') || ''}
-            onOpenCall={openCall}
-            onOpenUnits={() => select('live', 'units')}
-          />
-        : active.id === 'response'
+      {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'response'
           ? <CadResponseAnalytics />
           : active.id==='command' ? <CommandDashboard embedded showMap={display.showMap} onMapVisibility={showMap=>updateDisplay({...display,showMap})}/> : Component ? <Component embedded /> : null}
     </div>
@@ -250,7 +237,7 @@ function CadShell({ embedded = false }) {
       workstations={workstations}
       commands={commands}
       onSelectCall={openCall}
-      onSelectUnit={unit => select('live', 'resources', { cad_unit: unit.unit_number || unit.email || '' })}
+      onSelectUnit={unit => select('live', 'units', { cad_unit: unit.unit_number || unit.email || '' })}
       onSelectWorkstation={tool => select(tool.section, tool.id)}
     />
     <CadDisplaySettingsDialog
