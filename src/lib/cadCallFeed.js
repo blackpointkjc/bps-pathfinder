@@ -10,7 +10,7 @@ const LAST_SUCCESSFUL_SOURCE_POLL_KEY = 'bps:cad-last-successful-source-poll-at:
 const BUSY_LEASE_RETRY_MS = 5_000;
 const LIVE_SYNC_BACKOFF_KEY = 'bps:cad-live-sync-backoff-until:v1';
 const LIVE_SYNC_COOLDOWN_MS = 30 * 1000;
-const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 60 * 1000;
+const LIVE_SYNC_RATE_LIMIT_BACKOFF_MS = 30 * 1000;
 let liveSyncInFlight = null;
 
 function timestampMs(value) {

@@ -69,7 +69,7 @@ export default function CadStatusBar({
       </div>}
       <div className="cad-status-actions">
         {!compact&&telemetry.oldest > 0 && <span className="cad-status-oldest">Oldest {cadAgeLabel(telemetry.oldest)}</span>}
-        <span className="cad-status-sync">{lastRefresh ? `Synced ${formatEasternTime(lastRefresh)} ET` : 'Awaiting sync'}</span>
+        <span className="cad-status-sync"><GracFeedIndicator/></span>
         {rosterError && <span className="cad-status-stale" title={rosterError}>Roster delayed</span>}
         {onToggleMonitor&&<button type="button" aria-pressed={monitorOpen} onClick={onToggleMonitor} title="Show or hide the incident monitor">
           <RadioTower size={14} /><span>Monitor {monitorOpen?'on':'off'}</span>
