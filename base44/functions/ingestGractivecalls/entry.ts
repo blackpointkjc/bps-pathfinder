@@ -977,7 +977,8 @@ function chooseCanonical(records) {
   })[0];
 }
 var wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-var GLOBAL_SOURCE_POLL_MIN_GAP_MS = 5e3;
+// All scheduled and browser-triggered ingestion shares this minimum cadence.
+var GLOBAL_SOURCE_POLL_MIN_GAP_MS = 30e3;
 async function acquireIngestionLease(base44, serverRun = false) {
   const token = crypto.randomUUID();
   const now = Date.now();
@@ -997,7 +998,7 @@ async function acquireIngestionLease(base44, serverRun = false) {
     });
   }
   const lastServer = Date.parse(counter.last_server_poll_at || "");
-  if (!serverRun && Number.isFinite(lastServer) && now - lastServer < 75e3 && String(counter.last_source_poll_status||'').startsWith('success')) return { skip: true, reason: "server_source_sync_active", retry_after_ms: 75e3 - (now - lastServer),source_health:{poll_at:counter.last_source_poll_at,poll_status:counter.last_source_poll_status,last_success_at:counter.last_source_success_at||counter.last_source_poll_at,website_rows:counter.last_website_row_count,api_rows:counter.last_api_row_count,latest_received:counter.last_website_latest_received} };
+  if (!serverRun && Number.isFinite(lastServer) && now - lastServer < 95e3 && String(counter.last_source_poll_status||'').startsWith('success')) return { skip: true, reason: "server_source_sync_active", retry_after_ms: 95e3 - (now - lastServer),source_health:{poll_at:counter.last_source_poll_at,poll_status:counter.last_source_poll_status,last_success_at:counter.last_source_success_at||counter.last_source_poll_at,website_rows:counter.last_website_row_count,api_rows:counter.last_api_row_count,latest_received:counter.last_website_latest_received} };
   const lastPollAt = new Date(counter.last_source_poll_at || 0).getTime();
   const lastPollSucceeded = String(counter.last_source_poll_status || "").startsWith("success");
   if (lastPollSucceeded && Number.isFinite(lastPollAt) && now - lastPollAt >= 0 && now - lastPollAt < GLOBAL_SOURCE_POLL_MIN_GAP_MS) {
@@ -1056,17 +1057,20 @@ function canCloseMissingAgencyCall(row,confirmedAgencies){
 async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new Set()) {
   const started = Date.now();
   const incomingKeys=[...new Set(incoming.map(externalKey).filter(Boolean))];
-  const exactSaved=[];
-  for(let i=0;i<incomingKeys.length;i+=100)exactSaved.push(...await base44.asServiceRole.entities.DispatchCall.filter({external_call_id:{$in:incomingKeys.slice(i,i+100)}},'-updated_date',500));
-  const [recentSaved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
-    base44.asServiceRole.entities.DispatchCall.list("-created_date", 500),
-    base44.asServiceRole.entities.CallHistory.list("-archived_date", 500).catch(() => []),
+  const nowCutoff=new Date(Date.now()-3*60*60*1000).toISOString();
+  const [recentSaved, history, locations, alerts, cachedAssignments] = await Promise.all([
+    base44.asServiceRole.entities.DispatchCall.filter({$or:[{external_call_id:{$in:incomingKeys}},{created_date:{$gte:nowCutoff}}]},'-created_date',500),
+    base44.asServiceRole.entities.CallHistory.list("-archived_date", 500),
     base44.asServiceRole.entities.Location.list("site_name", 1000),
-    base44.asServiceRole.entities.PropertyAlert.list("-created_date", 300).catch(() => []),
-    base44.asServiceRole.entities.CallAssignment.filter({ status: { $nin: ["cleared", "cancelled", "canceled"] } }, "-assigned_at", 1e3),
-    base44.asServiceRole.entities.ActiveOfficer.filter({ current_call_id: { $exists: true } }, "-last_update", 500),
-    base44.asServiceRole.entities.Unit.filter({ assigned_call_ids: { $exists: true } }, "-last_update_at", 500)
+    base44.asServiceRole.entities.PropertyAlert.list("-created_date", 300),
+    base44.asServiceRole.entities.CallAssignment.filter({ status: { $nin: ["cleared", "cancelled", "canceled","closed","completed","resolved"] } }, "-assigned_at", 1e3)
   ]);
+  const exactSaved=[];
+  const present=new Set(recentSaved.map(externalKey));
+  // Only missing exact identities need another query; don't query new IDs twice
+  // unless the recent read hit its limit and could have omitted an old record.
+  const missingKeys=incomingKeys.filter(key=>!present.has(key));
+  if(recentSaved.length>=500)for(let i=0;i<missingKeys.length;i+=100)exactSaved.push(...await base44.asServiceRole.entities.DispatchCall.filter({external_call_id:{$in:missingKeys.slice(i,i+100)}},'-updated_date',500));
   const saved=[...new Map([...exactSaved,...recentSaved].map(row=>[String(row.id),row])).values()];
   const byExternal = /* @__PURE__ */ new Map();
   const byLegacy = /* @__PURE__ */ new Map();
@@ -1203,6 +1207,12 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
     const receivedAt = new Date(row.time_received || row.created_date || 0).getTime();
     return receivedAt >= now - 3 * 60 * 6e4 && receivedAt <= now && !["Cleared", "Cancelled"].includes(String(row.status || "")) && row.manual_dismissed !== true && canCloseMissingAgencyCall(row,confirmedAgencies) && !liveKeys.has(externalKey(row)) && !liveKeys.has(legacyKey(row));
   }).slice(0, 20);
+  const closeCandidates=disappeared.filter(row=>!(row.assigned_units||[]).some(id=>String(id).trim())&&!cachedAssignments.some(a=>String(a.call_id)===String(row.id)&&!a.cleared_at&&!["cleared","cancelled","canceled","closed","completed","resolved"].includes(lower(a.status))));
+  const closeIds=closeCandidates.map(row=>String(row.id));
+  const [cachedSessions,cachedUnits]=closeIds.length?await Promise.all([
+    base44.asServiceRole.entities.ActiveOfficer.filter({current_call_id:{$in:closeIds}},'-last_update',500),
+    base44.asServiceRole.entities.Unit.filter({assigned_call_ids:{$in:closeIds}},'-last_update_at',500)
+  ]):[[],[]];
   const closedIdsFromSource = /* @__PURE__ */ new Set();
   for (let offset = 0; offset < disappeared.length; offset += 4) {
     await Promise.all(disappeared.slice(offset, offset + 4).map(async (row) => {

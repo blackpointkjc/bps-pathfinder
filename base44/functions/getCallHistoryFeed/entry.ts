@@ -161,7 +161,11 @@ async function recentPropertyIncidents(db:any,now=Date.now()){
  };
  const explicitArchiveIds=[...new Set(links.filter(l=>lower(l.status)!=='detached').map(l=>String(l.archive_id||'')).filter(Boolean))];
  const explicitIds=[...new Set([...grouped.keys(),...links.filter(l=>lower(l.status)!=='detached').map(l=>String(l.call_id||'')).filter(Boolean)])];
- const [linkedLive,linkedArchive,linkedArchiveById]=await Promise.all([batch(db.DispatchCall,'id',explicitIds,'-created_date'),batch(db.CallHistory,'original_call_id',explicitIds,'-archived_date'),batch(db.CallHistory,'id',[...new Set([...explicitArchiveIds,...explicitIds])],'-archived_date')]);
+ const liveIds=new Set(recentLive.map(c=>String(c.id)));
+ const archiveOriginalIds=new Set(recentArchive.map(c=>String(c.original_call_id||c.id)));
+ const archiveIds=new Set(recentArchive.map(c=>String(c.id)));
+ const unresolved=explicitIds.filter(id=>!liveIds.has(id)&&!archiveOriginalIds.has(id)&&!archiveIds.has(id));
+ const [linkedLive,linkedArchive,linkedArchiveById]=await Promise.all([batch(db.DispatchCall,'id',unresolved,'-created_date'),batch(db.CallHistory,'original_call_id',unresolved,'-archived_date'),batch(db.CallHistory,'id',[...new Set([...explicitArchiveIds.filter(id=>!archiveIds.has(id)),...unresolved])],'-archived_date')]);
  const live=[...new Map([...recentLive,...linkedLive].map(c=>[String(c.id),c])).values()];
  const archives=[...new Map([...recentArchive,...linkedArchive,...linkedArchiveById].map(c=>[String(c.id),c])).values()].sort((a,b)=>(stamp(b.archived_date)||0)-(stamp(a.archived_date)||0));
  const liveById=new Map(live.map(c=>[String(c.id),c]));

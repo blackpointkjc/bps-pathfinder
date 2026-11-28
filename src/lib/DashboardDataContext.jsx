@@ -12,7 +12,7 @@ import { applyDispatchCallEvent, subscribeDispatchCallChanges } from '@/lib/disp
 
 
 const DashboardDataContext = createContext(null);
-const POLL_INTERVAL_MS = 10_000;        // Realtime paints immediately; recover missed CAD events within seconds
+const POLL_INTERVAL_MS = 15_000;        // Realtime paints immediately; recover missed CAD events within seconds
 const RATE_LIMIT_BACKOFF_MS = 15_000;   // Brief local pause only; never make CAD appear dead for minutes after one 429
 const MIN_REFRESH_MS = 3_000;           // Keep fallback reads responsive without overlapping realtime updates
 const USER_REFRESH_MS = 60_000;         // Unit roster changes slower than calls

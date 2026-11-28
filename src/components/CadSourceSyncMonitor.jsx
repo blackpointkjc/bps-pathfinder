@@ -1,3 +1,4 @@
+import {getBase44RequestHealth} from '@/api/base44Client';
 import { useEffect } from 'react';
 import {cadSourceNeedsPoll,getCadSourceSnapshot} from '@/lib/cadSourceHealth';
 import { requestCadLiveSync } from '@/lib/cadCallFeed';
@@ -23,8 +24,14 @@ export default function CadSourceSyncMonitor({ user }) {
       // Continue a conservative best-effort sync while minimized. Browsers may
       // suspend an entire hidden tab, so server scheduling still owns 24/7 work.
       if (!active || running || !navigator.onLine) return;
-      const minimumInterval = 30_000;
-      if(!cadSourceNeedsPoll(getCadSourceSnapshot()))return;
+      const minimumInterval = 60_000;
+      const health=getBase44RequestHealth();
+      if(Date.parse(health.criticalRetryAt||'')>Date.now())return;
+      const source=getCadSourceSnapshot();
+      // On startup let the scheduled feed and initial CAD read establish their
+      // heartbeat before trying a rescue ingestion. No competing startup scan.
+      if(source&&/^success/.test(source.poll_status||'')&&Date.now()-Date.parse(source.poll_at||'')<95000)return;
+      if(!cadSourceNeedsPoll(source))return;
       if (Date.now() - lastSyncAttemptAt < minimumInterval) return;
       // The CAD source has an independent backoff and a server lease.
       // An unrelated background 429 must NEVER postpone checking GRAC;
@@ -50,8 +57,8 @@ export default function CadSourceSyncMonitor({ user }) {
     // server lease and cross-tab throttles prevent duplicate ingestion.
     // On returning from a suspended tab, recover promptly rather than waiting
     // for the next scheduled interval.
-    const first = window.setTimeout(sync, 1200);
-    const timer = window.setInterval(sync, 15_000);
+    const first = window.setTimeout(sync, 20000);
+    const timer = window.setInterval(sync, 30_000);
     const resume = () => {
       if (!navigator.onLine || document.visibilityState !== 'visible') return;
       if (Date.now() - lastResumeAt < 5_000) return;

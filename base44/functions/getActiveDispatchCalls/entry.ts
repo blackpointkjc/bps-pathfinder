@@ -50,13 +50,13 @@ async function __portalLoginIsCurrent(request,sdk,user){
 const metadataCache=new Map<string,{at:number,value:any,pending?:Promise<any>}>();
 async function cachedMetadata(key:string,ttl:number,load:()=>Promise<any>,warnings:string[],label:string){
  let entry=metadataCache.get(key);
- if(entry&&Date.now()-entry.at<ttl)return entry.value;
+ if(entry&&Date.now()-entry.at<ttl){if(entry.value===null)warnings.push(label+' temporarily unavailable');return entry.value;}
  if(!entry?.pending){
   entry={at:entry?.at||0,value:entry?.value??null,pending:load()};
   metadataCache.set(key,entry);
  }
  try{const value=await entry.pending;entry.value=value;entry.at=Date.now();entry.pending=undefined;return value;}
- catch(error:any){entry.pending=undefined;warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return entry.value;}
+ catch(error:any){entry.pending=undefined;entry.at=Date.now()-ttl+10000;warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return entry.value;}
 }
 const retryAfterByKey=new Map<string,number>();
 const readCache = new Map<string, { at:number; rows:any[]; source?:any; warnings?:string[]; pending?:Promise<any> }>();
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     // Pending account identities cannot call operational service-role endpoints.
-    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(()=>null);
+    const __portalCaller = await base44.auth.me().then(__portalAppIdentity).catch(error=>{if(Number(error?.status||error?.response?.status)===429||/rate limit|too many requests/i.test(String(error?.message)))throw error;return null;});
     if(__portalCaller&&!__portalCaller.is_service&&!await __portalLoginIsCurrent(req,base44,__portalCaller))return Response.json({error:'Your Pathfinder session ended. Please sign in again.',code:'SESSION_REAUTH_REQUIRED'},{status:401});
     let __portalService=false;
     if(!__portalCaller && req.headers.get('Authorization')){try{await base44.entities.SystemScanRun.list('-created_date',1);__portalService=true;}catch{}}
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     const limit = Math.max(50, Math.min(500, Number(body?.limit || 100)));
     const cacheKey = (req.headers.get('Base44-App-Id') || '') + ':' + (req.headers.get('X-Data-Env') || 'prod');
     let cached = readCache.get(cacheKey);
-    if (!cached || (Date.now() - cached.at >= 10000 && Date.now()>=(retryAfterByKey.get(cacheKey)||0))) {
+    if (!cached || (Date.now() - cached.at >= 15000 && Date.now()>=(retryAfterByKey.get(cacheKey)||0))) {
       if (!cached?.pending) {
         cached = { at:cached?.at||0, rows:cached?.rows||[], source:cached?.source, warnings:cached?.warnings, pending:(async () => {
           // Keep unresolved verified property calls and active assignments in
@@ -96,9 +96,9 @@ Deno.serve(async (req) => {
           const warnings:string[]=[];
           const optional=async(label:string,read:()=>Promise<any>)=>{try{return await read();}catch(error:any){warnings.push(label+' temporarily unavailable');console.warn(label,error?.message||error);return null;}};
           const [alerts,assignments,counters]=await Promise.all([
-            cachedMetadata(cacheKey+':properties',20000,()=>db.PropertyAlert.filter({lifecycle_status:{$nin:['resolved','false_alarm','test','inactive','closed']},is_test:{$ne:true}},'-created_date',1000),warnings,'Property alert links'),
-            cachedMetadata(cacheKey+':assignments',20000,()=>db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000),warnings,'Officer attachment links'),
-            cachedMetadata(cacheKey+':source',10000,()=>db.CadCounter.filter({counter_key:'dispatch_call'},'-updated_date',1),warnings,'GRAC heartbeat'),
+            cachedMetadata(cacheKey+':properties',30000,()=>db.PropertyAlert.filter({lifecycle_status:{$nin:['resolved','false_alarm','test','inactive','closed']},is_test:{$ne:true}},'-created_date',1000),warnings,'Property alert links'),
+            cachedMetadata(cacheKey+':assignments',30000,()=>db.CallAssignment.filter({status:{$nin:['cleared','cancelled','canceled','closed','completed','resolved']}},'-assigned_at',1000),warnings,'Officer attachment links'),
+            cachedMetadata(cacheKey+':source',15000,()=>db.CadCounter.filter({counter_key:'dispatch_call'},'-updated_date',1),warnings,'GRAC heartbeat'),
           ]);
           const propertyIds=new Set((alerts||[]).filter(a=>a.callId&&a.propertyId&&a.propertyId!=='public-helpme'&&!TERMINAL.has(lower(a.callStatus))).map(a=>String(a.callId)));
           const propertyNames=new Map<string,Set<string>>();for(const a of alerts||[]){if(propertyIds.has(String(a.callId))&&a.propertyName){if(!propertyNames.has(String(a.callId)))propertyNames.set(String(a.callId),new Set());propertyNames.get(String(a.callId))!.add(String(a.propertyName));}}
@@ -129,12 +129,12 @@ Deno.serve(async (req) => {
           const rows = await base44.asServiceRole.entities.DispatchCall.filter({
             $or: [
               ...(sourceIds.size?[{external_call_id:{$in:[...sourceIds]}}]:[]),
+              ...(retainedIds.length&&retainedIds.length<=200?[{id:{$in:retainedIds}}]:[]),
               { time_received: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString(), $lte: new Date(Date.now() + 120000).toISOString() } },
               { $and: [{ $or: [{ time_received: null }, { time_received: '' }, { time_received: { $exists: false } }] }, { created_date: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString() } }] },
               {source:{$in:['public_helpme','dispatch_manual','field_initiated','CAD clone']}},
               {$and:[{agency:'BPS'},{cad_number_source:'bps_internal'}]},
-              {status:{$in:['Dispatched','Enroute','On Scene']}},
-              {'assigned_units.0':{$exists:true}},
+              {$and:[{source:{$nin:['richmond','henrico','chesterfield']}},{'assigned_units.0':{$exists:true}}]},
             ],
             manual_dismissed: {$ne:true},
             status: {$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']},
@@ -143,12 +143,12 @@ Deno.serve(async (req) => {
           // unresolved property incidents out of the ordinary 500-row window.
           const fetchedIds=new Set((rows||[]).map((r:any)=>String(r.id)));
           const fetchedSourceIds=new Set((rows||[]).map((r:any)=>String(r.external_call_id||'')));
-          const sourceKeys=[...sourceIds].filter(id=>!fetchedSourceIds.has(id));
+          const sourceKeys=(rows||[]).length>=500?[...sourceIds].filter(id=>!fetchedSourceIds.has(id)):[];
           for(let i=0;i<sourceKeys.length;i+=100){
             const batch=await optional('Current GRAC snapshot',()=>db.DispatchCall.filter({external_call_id:{$in:sourceKeys.slice(i,i+100)},manual_dismissed:{$ne:true}},'-updated_date',500));
             if(Array.isArray(batch))sourceRows.push(...batch);
           }
-          const missingRetainedIds=retainedIds.filter(id=>!fetchedIds.has(id)&&!sourceRows.some(row=>String(row.id)===id));
+          const missingRetainedIds=((rows||[]).length>=500||retainedIds.length>200?retainedIds:[]).filter(id=>!fetchedIds.has(id)&&!sourceRows.some(row=>String(row.id)===id));
           const retainedRows:any[]=[];
           // Bound the ID query size, and never fail the ordinary feed due to an optional historical attachment lookup.
           for(let i=0;i<missingRetainedIds.length;i+=100){const batch=await optional('Retained CAD records',()=>db.DispatchCall.filter({id:{$in:missingRetainedIds.slice(i,i+100)},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',100));if(Array.isArray(batch))retainedRows.push(...batch);}
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
         })() };
         readCache.set(cacheKey, cached);
       }
-      try { const result=await cached.pending!; if(cached.at&&result.warnings.some((w:string)=>/Current GRAC snapshot|Retained CAD records|GRAC heartbeat/.test(w))){cached.warnings=result.warnings;cached.pending=undefined;retryAfterByKey.set(cacheKey,Date.now()+5000);}else{cached.rows=result.rows; cached.source=result.source; cached.warnings=result.warnings; cached.at = Date.now(); cached.pending = undefined;} }
+      try { const pending=cached.pending!;const result=await pending; if(cached.pending===pending){if(cached.at&&result.warnings.some((w:string)=>/Current GRAC snapshot|Retained CAD records|GRAC heartbeat/.test(w))){cached.warnings=result.warnings;cached.pending=undefined;retryAfterByKey.set(cacheKey,Date.now()+5000);}else{cached.rows=result.rows; cached.source=result.source; cached.warnings=result.warnings; cached.at = Date.now(); cached.pending = undefined;}} }
       catch (error:any) { retryAfterByKey.set(cacheKey,Date.now()+5000);cached.pending=undefined;if(!cached.at){readCache.delete(cacheKey);throw error;}cached.warnings=[...new Set([...(cached.warnings||[]),'CAD refresh delayed; showing last confirmed records'])];console.warn('CAD refresh delayed',error?.message||error); }
     }
     const rows = cached.rows;
