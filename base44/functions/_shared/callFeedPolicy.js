@@ -29,8 +29,15 @@ export function isVisibleActiveCall(call, now = Date.now()) {
   return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }
 
+// Map presentation has its own strict rolling hour. Retention for CAD
+// work queues or local assignments never extends the map marker window.
+export const LIVE_MAP_WINDOW_MS=60*60*1000;
+export function isRecentActiveMapIncident(call,now=Date.now()){
+ const received=callTimestamp(call);
+ return isVisibleActiveCall(call,now)&&call.property_closed!==true&&received>now-LIVE_MAP_WINDOW_MS&&received<=now;
+}
 export function isLiveMapCall(call,now=Date.now()){
- if(!isVisibleActiveCall(call,now)||call.property_closed===true)return false;
+ if(!isRecentActiveMapIncident(call,now))return false;
  const lat=call.latitude,lng=call.longitude;
  if(lat==null||lng==null||String(lat).trim()===''||String(lng).trim()==='')return false;
  const y=Number(lat),x=Number(lng);

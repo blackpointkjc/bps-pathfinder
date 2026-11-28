@@ -1,3 +1,4 @@
+import useLiveMapWindow from '@/hooks/useLiveMapWindow';
 import MapToolDock from '@/components/map/MapToolDock';
 import MapCallPanel from '@/components/map/MapCallPanel';
 import '@/components/map/mapWorkspace.css';
@@ -93,6 +94,7 @@ function NavigationWorkspace({embedded=false}={}) {
     const [currentUser, setCurrentUser] = useState(null);
     const [otherUnits, setOtherUnits] = useState([]);
     const {calls:activeCalls,loading:cadLoading,lastRefresh:callsCheckedAt,rateLimited:cadRateLimited,manualRefresh:refreshCad}=useDashboardData();
+    const mapWindowCalls=useLiveMapWindow(activeCalls);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isLiveTracking, setIsLiveTracking] = useState(false);
     // Free map by default: tracking a GPS marker should never commandeer the
@@ -233,7 +235,7 @@ function NavigationWorkspace({embedded=false}={}) {
     const [assigning, setAssigning] = useState(false);
     const [unmappedCalls, setUnmappedCalls] = useState([]);
     const [showUnmapped, setShowUnmapped] = useState(false);
-    useEffect(() => { setUnmappedCalls(splitCallsByCoords(activeCalls).unmapped); }, [activeCalls]);
+    useEffect(() => { setUnmappedCalls(splitCallsByCoords(mapWindowCalls).unmapped); }, [mapWindowCalls]);
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
     const [showOnlyCriticalCalls, setShowOnlyCriticalCalls] = useState(false);
@@ -1672,9 +1674,9 @@ function NavigationWorkspace({embedded=false}={}) {
     // Officer-safety rule: every authorized officer sees every recently active unit.
     const mapVisibleUnits = otherUnits;
 
-    const criticalCalls = activeCalls.filter(isCriticalCall);
-    const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length && !c.source);
-    const displayedCalls = showOnlyCriticalCalls ? criticalCalls : activeCalls;
+    const criticalCalls = mapWindowCalls.filter(isCriticalCall);
+    const unassignedCalls = mapWindowCalls.filter(c => !c.assigned_units?.length && !c.source);
+    const displayedCalls = showOnlyCriticalCalls ? criticalCalls : mapWindowCalls;
     const activeNavStep = navSteps[navStepIndex] || null;
     const nextNavStep = navSteps[navStepIndex + 1] || null;
     const navDistanceLabel = navTurnDistanceFeet < 1000
@@ -1785,7 +1787,7 @@ function NavigationWorkspace({embedded=false}={}) {
                             title: showHeatmap ? 'Hide call heatmap' : 'Show call heatmap',
                             icon: <Flame className="h-4 w-4" />,
                             active: showHeatmap,
-                            disabled: activeCalls.length === 0,
+                            disabled: mapWindowCalls.length === 0,
                         },
                     ];
 
@@ -1860,7 +1862,7 @@ function NavigationWorkspace({embedded=false}={}) {
                     onMapPick={selectMapLocation}
                     mapTheme={mapTheme}
                     showHeatmap={showHeatmap}
-                    allCalls={activeCalls}
+                    allCalls={mapWindowCalls}
                     onCallClick={(call) => {
                         setMapToolsPanel(null); setShowAddressSearch(false); setSelectedCall(call); setShowCallSidebar(true); setCallSidebarCollapsed(false); setCallDistrict(null);
                         if (call.latitude && call.longitude) lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
@@ -1881,7 +1883,7 @@ function NavigationWorkspace({embedded=false}={}) {
                     criticalCount={criticalCalls.length}
                     fullscreen={mapFullscreen} onToggleFullscreen={toggleMapFullscreen}
                     gpsLabel={!isLiveTracking && (externalReceiver.connected || externalReceiver.connecting) ? (externalReceiver.connecting&&!externalReceiver.connected?'External antenna reconnecting…':externalReceiver.lastFixAt ? 'External antenna connected · Waiting for fresh satellite fix' : 'External antenna connected · No satellite fix yet') : !isLiveTracking && externalReceiver.portGranted ? 'External antenna authorized · Reconnecting receiver' : isLiveTracking ? `${gpsFixSource === 'external_serial' ? 'External antenna' : 'Device GPS'} · ${Math.round(Number(gpsQuality?.accuracy || 0))} m` : gpsQuality?.state === 'denied' ? 'Allow location access' : gpsQuality?.state === 'acquiring' ? 'Acquiring GPS…' : 'GPS signal lost · last known position'}
-                    gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={activeCalls.length} unassignedCount={unassignedCalls.length} />
+                    gpsActive={isLiveTracking} online={isOnline} speed={speed} unitCount={onlineUnits.length} callCount={displayedCalls.length} unassignedCount={unassignedCalls.length} />
 
             </div>
 
@@ -2139,7 +2141,7 @@ function NavigationWorkspace({embedded=false}={}) {
     if(mapFullscreen)return createPortal(mapContent,document.body);
     if(!embedded)return mapContent;
     const indexQuery=cadIndexQuery.trim().toLowerCase();
-    const indexCalls=activeCalls.filter(c=>[c.incident,c.location,c.call_id,c.bps_reference].join(' ').toLowerCase().includes(indexQuery));
+    const indexCalls=mapWindowCalls.filter(c=>[c.incident,c.location,c.call_id,c.bps_reference].join(' ').toLowerCase().includes(indexQuery));
     const indexUnits=mapVisibleUnits.filter(u=>u.live_location_hidden!==true&&[u.unit_number,u.rank,u.last_name,u.status].join(' ').toLowerCase().includes(indexQuery));
     const focusPoint=(lat,lng)=>{if(!validPosition(lat,lng))return false;setMapCenter([Number(lat),Number(lng)]);setCadMapCamera({mode:'focus',points:[[Number(lat),Number(lng)]]});return true;};
     return <div className="cad-map-terminal">{cadIndexOpen&&!isNavigating&&<aside className="cad-map-index"><div className="tac-panel-bar"><span>Map index</span><button onClick={()=>setCadIndexOpen(false)}>Close</button></div><div className="tac-segment"><button aria-pressed={cadIndexMode==='calls'} onClick={()=>setCadIndexMode('calls')}>Calls</button><button aria-pressed={cadIndexMode==='units'} onClick={()=>setCadIndexMode('units')}>Units</button></div><div className="cad-terminal-filter"><input value={cadIndexQuery} onChange={e=>setCadIndexQuery(e.target.value)} aria-label="Search map index" placeholder="Search map index"/></div><div className="cad-terminal-scroll">{cadIndexMode==='calls'?indexCalls.map(c=><button type="button" key={c.id} className="cad-history-strip" onClick={()=>{focusPoint(c.latitude,c.longitude);setSelectedCall(c);setShowCallSidebar(true);setShowActiveCalls(true);setCadIndexOpen(false);}}><small>{c.bps_reference||c.call_id||'CAD'}</small><strong>{c.incident}</strong><p>{c.location}</p></button>):indexUnits.map(u=><button type="button" key={u.id||u.email} className="cad-history-strip" disabled={!validPosition(u.latitude,u.longitude)} onClick={()=>{focusPoint(u.latitude,u.longitude);setCadIndexOpen(false);}}><small>UNIT {u.unit_number||'—'}</small><strong>{[u.rank,u.last_name].filter(Boolean).join(' ')||'Officer'}</strong><p>{u.status||'Unknown'} · {validPosition(u.latitude,u.longitude)?'Recorded location':'No mapped fix'}</p></button>)}{!(cadIndexMode==='calls'?indexCalls:indexUnits).length&&<p className="tac-empty">No matching map records</p>}</div></aside>}{mapContent}</div>;

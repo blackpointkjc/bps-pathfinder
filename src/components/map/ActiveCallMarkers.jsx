@@ -1,3 +1,4 @@
+import useLiveMapWindow from '@/hooks/useLiveMapWindow';
 import {isLiveMapCall} from '../../../base44/functions/_shared/callFeedPolicy.js';
 import {incidentPriority} from '@/lib/incidentPriority';
 /**
@@ -8,6 +9,7 @@ import { Fragment } from 'react';
 import { CircleMarker, Marker, Pane, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
+const EMPTY_CALLS=[];
 const createCallIcon = (call, priority = "medium") => {
     const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
@@ -66,9 +68,10 @@ const createCallIcon = (call, priority = "medium") => {
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
     const map = useMap();
-    if (!calls || calls.length === 0) return null;
+    const recent=useLiveMapWindow(calls||EMPTY_CALLS);
+    if (!recent.length) return null;
 
-    const renderable = calls.filter(c=>isLiveMapCall(c)).map(c => ({ ...c, latitude: Number(c.latitude), longitude: Number(c.longitude) }));
+    const renderable = recent.filter(c=>isLiveMapCall(c)).map(c => ({ ...c, latitude: Number(c.latitude), longitude: Number(c.longitude) }));
 
     return (
         <Pane name="active-cad-calls" pane={map.getPane('norotatePane') ? 'norotatePane' : undefined} style={{ zIndex: 7 }}>

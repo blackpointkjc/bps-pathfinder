@@ -1,3 +1,4 @@
+import useLiveMapWindow from '@/hooks/useLiveMapWindow';
 import {isLiveMapCall} from '../../../base44/functions/_shared/callFeedPolicy.js';
 import {incidentPriority} from '@/lib/incidentPriority';
 import { useEffect, useRef, useState } from 'react';
@@ -163,12 +164,13 @@ const safeZoom = value => Math.min(TOMTOM_CLOSE_ZOOM, Number(value) || 16);
 
 /** TomTom main CAD map, with automatic fallback to the original map on failure. */
 export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls=[],otherUnits=[],route=[],destination,mapTheme='day',navigation=null,onCallClick,embedded=false,heading=null,onSelectPoint,onMapUnavailable,onMapReady,searchPins=[],selectedPin=null,speedMph=0,recenterRevision=0,mapPickEnabled=false,facilityFilters={},showPoliceStations=true,showFireStations=true,showJails=true,onSelectFacility,initialCenter=null,fitMarkers=false,geofence=null,allowBlankMapFallback=false,showDistress=false,centerDistress=false,tacticalCamera=null}) {
+  const recentMapCalls=useLiveMapWindow(activeCalls);
   const distressAlerts=useActiveDistress(showDistress);
   const centeredDistressRef=useRef(new Set());
   const elementRef=useRef(null);
   const sdkRef=useRef(null);
   const clickRef=useRef(onCallClick);
-  const callsRef=useRef(activeCalls);
+  const callsRef=useRef(recentMapCalls);
   const facilitiesRef=useRef([]);
   const userInteractedRef=useRef(false);
   const mapClickEnabledRef=useRef(mapPickEnabled);
@@ -177,7 +179,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   const onSelectFacilityRef=useRef(onSelectFacility);
   const onMapUnavailableRef=useRef(onMapUnavailable);
   const onMapReadyRef=useRef(onMapReady);
-  const cadDataRef=useRef({currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress});
+  const cadDataRef=useRef({currentLocation,activeCalls:recentMapCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress});
   const layerSnapshotRef=useRef({});
   const trafficRef=useRef({flow:null,incidents:null});
   const trafficModulesRef=useRef(null);
@@ -202,7 +204,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   onSelectFacilityRef.current=onSelectFacility;
   onMapUnavailableRef.current=onMapUnavailable;
   onMapReadyRef.current=onMapReady;
-  cadDataRef.current={currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress};
+  cadDataRef.current={currentLocation,activeCalls:recentMapCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress};
   mapClickEnabledRef.current=mapPickEnabled;
   // A traffic style reload creates new sources. Immediately repopulate them
   // from the latest CAD snapshot instead of waiting for the next GPS update.
@@ -604,7 +606,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     if(ready&&map)syncCadData(map);
-  },[ready,currentLocation,activeCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress]);
+  },[ready,currentLocation,recentMapCalls,otherUnits,route,destination,searchPins,selectedPin,facilityFilters,showPoliceStations,showFireStations,showJails,geofence,distressAlerts,centerDistress]);
   useEffect(()=>{
     const map=sdkRef.current?.mapLibreMap;
     const driving=Boolean(navigation) || Number(speedMph)>=5;
