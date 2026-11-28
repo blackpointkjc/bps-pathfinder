@@ -16,8 +16,8 @@ export default function UnifiedCadGrid({calls=[],allCalls=[],units=[],loading,ro
  const [view,setView]=useState('queues');
  const [unitSearch,setUnitSearch]=useState('');
  const [fieldOnly,setFieldOnly]=useState(false);
- const [tabs,setTabs]=useState([]);
- const [draftSelected,setDraftSelected]=useState(false);
+ const [tabs,setTabs]=useState(()=>detail?.id?[detail.id]:[]);
+ const [draftSelected,setDraftSelected]=useState(draftOpen);
  const [collapsed,setCollapsed]=useState({});
  const [now,setNow]=useState(Date.now);
  const [unitDetail,setUnitDetail]=useState(null);
@@ -28,13 +28,13 @@ export default function UnifiedCadGrid({calls=[],allCalls=[],units=[],loading,ro
  useEffect(()=>{if(screen==='units'){setView('units');unitSearchRef.current?.focus();}else if(screen==='incidents')setView('queues');},[screen]);
  const open=c=>{onOpen(c);setDraftSelected(false);setView('incident');};
  const liveById=useMemo(()=>new Map(allCalls.map(c=>[c.id,c])),[allCalls]);
- const openTabs=tabs.filter(id=>liveById.has(id)&&isOpenIncident(liveById.get(id)));
+ const openTabs=[...new Set([...tabs,...(detail?.id?[detail.id]:[])])].filter(id=>liveById.has(id)&&isOpenIncident(liveById.get(id)));
  const closeTab=id=>{
   setTabs(old=>old.filter(x=>x!==id));
   if(detail?.id===id){const next=openTabs.filter(x=>x!==id).at(-1);if(next)open(liveById.get(next));else if(draftOpen){onClose();setDraftSelected(true);}else{onClose();setView('queues');}}
  };
  const selected=detail&&isOpenIncident(detail)?detail:null;
- const editing=Boolean((draftOpen&&draftSelected)||selected);
+ const editing=Boolean(draftOpen||selected);
  const {pending,active}=splitCadIncidents(calls,fieldOnly);
  const roster=units.filter(u=>(unitFilter==='all'||String(u.status||'').toLowerCase()===unitFilter)&&[u.unit_number,u.rank,u.last_name,u.full_name,u.email,u.status,u.platoon].join(' ').toLowerCase().includes(unitSearch.toLowerCase()));
  const unitsById=useMemo(()=>{const map=new Map();for(const u of units)for(const id of [u.id,u.user_id,u.active_officer_id,u.unit_number,u.email])if(id!=null)map.set(String(id),u);return map;},[units]);
@@ -48,7 +48,7 @@ export default function UnifiedCadGrid({calls=[],allCalls=[],units=[],loading,ro
  const toggleMap=()=>{onMapVisibility?.(!showMap);if(!showMap)setView('map');else if(view==='map')setView('queues');};
  return <div className="cc-workspace cc-workspace-v2">
   <div className="cc-toolbar"><label><Search size={14}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Find incident · CAD number, address, type" aria-label="Search CAD incidents"/></label><select value={agency} onChange={e=>setAgency(e.target.value)} aria-label="Agency"><option value="all">All agencies</option>{[...new Set(allCalls.map(c=>c.agency).filter(Boolean))].sort().map(a=><option key={a}>{a}</option>)}</select><button type="button" aria-pressed={fieldOnly} onClick={()=>setFieldOnly(v=>!v)}>Field calls</button><button type="button" onClick={()=>{setFieldOnly(false);onReset?.();}}>Reset filters</button><button type="button" aria-pressed={showMap} onClick={toggleMap}>{showMap?<PanelRightClose size={14}/>:<PanelRightOpen size={14}/>} Map</button></div>
-  <nav className="cc-mobile" aria-label="Compact CAD panels">{[['units','Units'],['queues','Calls'],['incident','Incident'],['comments','Comments'],['map','Map']].map(([id,label])=><button key={id} type="button" aria-pressed={view===id} disabled={id==='incident'&&!editing||id==='comments'&&!selected} onClick={()=>{if(id==='map')onMapVisibility?.(true);setView(id);}}>{label}</button>)}</nav>
+  <nav className="cc-mobile" aria-label="Compact CAD panels">{[['units','Units'],['queues','Calls'],['incident','Incident'],['comments','Comments'],['map','Map']].map(([id,label])=><button key={id} type="button" aria-pressed={view===id} disabled={id==='incident'&&!editing||id==='comments'&&!selected} onClick={()=>{if(id==='map')onMapVisibility?.(true);if(id==='comments')setDraftSelected(false);setView(id);}}>{label}</button>)}</nav>
   <div className="cc-grid" data-view={view} data-map={showMap} data-selected={editing} data-draft={draftOpen&&draftSelected}>
    <section className="cc-panel cc-units" aria-label="Units"><header><b>Units ({roster.length})</b><button onClick={onRetryRoster} disabled={rosterLoading} type="button" title="Refresh units"><RefreshCw size={12}/></button></header><div className="cc-unit-filters"><input ref={unitSearchRef} className="cc-unit-search" aria-label="Search units" value={unitSearch} onChange={e=>setUnitSearch(e.target.value)} placeholder="Find unit"/><select className="cc-unit-search" aria-label="Filter unit status" value={unitFilter} onChange={e=>setUnitFilter?.(e.target.value)}><option value="all">All statuses</option>{[...new Set(units.map(u=>String(u.status||'').toLowerCase()).filter(Boolean))].sort().map(s=><option key={s}>{s}</option>)}</select></div>{rosterError&&<p className="cc-empty">{rosterError}</p>}
    <div className="cc-scroll">{groups.map(([title,rows])=><div key={title}><button type="button" className="cc-unit-group" aria-expanded={!collapsed[title]} onClick={()=>setCollapsed(v=>({...v,[title]:!v[title]}))}>{collapsed[title]?<ChevronRight size={12}/>:<ChevronDown size={12}/>} {title} ({rows.length})</button>{!collapsed[title]&&rows.map(u=>{const state=cadDisplayUnitState(u);return <button type="button" className="cc-unit cc-radio-row" title={name(u)+' · '+state} aria-pressed={unitDetail===unitKey(u)} key={unitKey(u)} data-state={state} onClick={()=>setUnitDetail(old=>old===unitKey(u)?null:unitKey(u))}><b>{u.unit_number||'—'}</b><span>{stateCode[state]||String(u.status||'?').toUpperCase()}</span><time>{age(u.status_updated_at||u.last_status_change||u.last_update,now)}</time></button>})}</div>)}{!roster.length&&<p className="cc-empty">{rosterLoading?'Loading roster…':'No matching units'}</p>}</div>
