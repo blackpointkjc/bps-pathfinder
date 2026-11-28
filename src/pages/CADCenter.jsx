@@ -97,7 +97,7 @@ function CadCenterShell({ embedded = false }) {
    <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16}/><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><CadClock/></div>
    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(TOOLS).map(([group,items])=><div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item=>{const Icon=item.icon;return <button type="button" key={item.id} aria-current={active.id===item.id?'page':undefined} onClick={()=>select(group,item.id)} title={item.label}><Icon size={17}/><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>})}</div>)}</nav>
    <CadStatusBar calls={calls} units={units} loading={loading} rateLimited={rateLimited} activeWorkstation={active.id} onSearch={()=>setPaletteOpen(true)} onOpenWorkstation={openStation} onRefresh={()=>{manualRefresh();refreshRoster(true);}}/>
-   <div className={'cad-active-screen cad-terminal-screen cad-screen-'+active.id}><Component embedded /></div>
+   <div className={'cad-active-screen cad-terminal-screen cad-screen-'+active.id}>{active.id==='statusboard'?<CadResourceBoard calls={calls} onOpenCall={openCall}/>:<Component embedded />}</div>
    <CadCommandPalette open={paletteOpen} onClose={()=>setPaletteOpen(false)} calls={calls} units={units} workstations={workstations} onSelectCall={openCall} onSelectUnit={()=>select('resources','statusboard')} onSelectWorkstation={station=>select(station.group,station.id)}/>
  </section>;
 }
