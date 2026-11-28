@@ -101,3 +101,11 @@ html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell .
 .cad-resource-unit b,.cad-resource-unit small,.cad-resource-unit>span{font-size:14px;white-space:normal;overflow-wrap:anywhere}
 .cad-resource-inspect{padding:12px;background:#182e40;border:1px solid #4d7185;line-height:1.5;font-size:14px}
 .cad-resource-inspect button{display:block;margin-top:6px;padding:8px;text-align:left;border:1px solid #4d7185;border-radius:3px}
+.cc-property-log-note{flex-wrap:wrap;gap:5px}
+.cc-property-verified{font-size:12px;color:#b5cbd8;white-space:normal}
+.cad-resource-board .cad-resource-unit{grid-template-columns:minmax(40px,auto) minmax(0,1fr)}
+.cad-resource-board .cad-resource-unit>span{grid-column:2}
+.cad-terminal-shell .cad-terminal-nav{flex-wrap:wrap;gap:4px;overflow:visible}
+.cad-terminal-shell .cad-terminal-nav-group{flex:0 1 auto;flex-wrap:wrap}
+.cad-terminal-shell .cad-terminal-nav button{flex:0 1 auto;white-space:normal;min-width:0;padding:6px 9px;gap:5px}
+.cad-terminal-shell .cad-nav-find{margin-left:auto}

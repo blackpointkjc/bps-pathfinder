@@ -12,3 +12,19 @@ test('one unit workstation removes duplicate backlog and retains legacy links; d
  assert.ok(!board.includes('Pending assignments'));assert.ok(board.includes('Officer detail'));assert.ok(board.includes('initialUnitSearch'));
  assert.ok(command.includes('unified={true}'));assert.ok(command.includes('officerMode'));assert.ok(command.includes('showMap={false} canManage={false}'));
 });
+
+test('CAD removes the redundant sync row and uses a single resource board with working property refresh',()=>{
+ const shell=readFileSync('src/pages/CADCenter.jsx','utf8');
+ const status=readFileSync('src/components/dispatch/cad/CadStatusBar.jsx','utf8');
+ assert.ok(!status.includes('GracFeedIndicator'));
+ assert.ok(!status.includes('CAD queue synced'));
+ assert.ok(!status.includes('Oldest '));
+ assert.ok(shell.includes("!['command','units'].includes(active.id)&&<CadStatusBar"));
+ const board=readFileSync('src/components/dispatch/cad/CadResourceBoard.jsx','utf8');
+ assert.ok(!board.includes('Full board'));assert.ok(board.includes('selectedCalls.map'));assert.ok(board.includes('onClick={onRefresh}'));
+ const hook=readFileSync('src/hooks/useRecentPropertyIncidents.js','utf8');
+ assert.ok(hook.includes('...(force?{refresh:true}:{})'));
+ assert.ok(hook.includes('query.refetch({cancelRefetch:false})'));
+ const grid=readFileSync('src/components/dispatch/cad/UnifiedCadGrid.jsx','utf8');
+ assert.ok(grid.includes('disabled={propertyRefreshing}'));assert.ok(grid.includes('Refreshing…'));
+});

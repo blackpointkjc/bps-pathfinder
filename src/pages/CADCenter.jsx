@@ -224,12 +224,11 @@ function CadShell({ embedded = false }) {
 
   return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} data-high-zoom={scale>1.24} style={shellStyle}>
     {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin} propertyIds={propertyIds} />}
-    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}<button className="cad-nav-monitor" type="button" aria-pressed={monitorOpen} onClick={toggleMonitor}><RadioTower size={15}/><span>Monitor {monitorOpen?'on':'off'}</span></button>{active.id==='command'&&<button type="button" className="cad-nav-find" onClick={()=>setPaletteOpen(true)} title="Quick find (Ctrl+K)">Find</button>}{rateLimited&&<span role="status" className="cad-inline-feed-warning">Feed delayed</span>}</nav>
-    {active.id!=='command'&&<CadStatusBar
+    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}<button className="cad-nav-monitor" type="button" aria-pressed={monitorOpen} onClick={toggleMonitor}><RadioTower size={15}/><span>Monitor {monitorOpen?'on':'off'}</span></button>{['command','units'].includes(active.id)&&<button type="button" className="cad-nav-find" onClick={()=>setPaletteOpen(true)} title="Quick find (Ctrl+K)">Find</button>}{rateLimited&&<span role="status" className="cad-inline-feed-warning">Feed delayed</span>}</nav>
+    {!['command','units'].includes(active.id)&&<CadStatusBar
       calls={calls}
       units={units}
       rosterError={rosterError}
-      monitorOpen={monitorOpen}
       onRefresh={refreshAll}
       onFind={() => setPaletteOpen(true)}
       onOpen={openStatusTarget}

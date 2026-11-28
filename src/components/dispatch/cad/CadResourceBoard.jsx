@@ -6,6 +6,8 @@ import {
   cadReferenceValue,
   cadServiceLevel,
 } from '@/lib/cadOperationalStatus';
+import {dutyRows} from '../UnitDutyBoard';
+import {formatEasternDateTime} from '@/lib/easternTime';
 import './cad-command.css';
 
 const STATUS_TONE = {
@@ -54,13 +56,13 @@ export default function CadResourceBoard({
 
   const rows = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return units.filter(unit => {
+    return dutyRows(units,calls).filter(unit => {
       if(platoon!=='All'&&(unit.platoon||unit.oversight_platoon)!==platoon)return false;
       if (status !== 'All' && String(unit.status || 'Unknown') !== status) return false;
-      return !term || [unit.unit_number, unit.rank, unit.last_name, unit.full_name, unit.status, unit.current_call_info]
+      return !term || [unit.unit_number, unit.rank, unit.last_name, unit.full_name, unit.status, unit.assignment]
         .filter(Boolean).join(' ').toLowerCase().includes(term);
     });
-  }, [units, status, query,platoon]);
+  }, [units,calls,status,query,platoon]);
 
   const key=unit=>String(unit.id||unit.email||unit.officer_email);
   const selected=rows.find(unit=>key(unit)===selectedId);
@@ -125,13 +127,13 @@ export default function CadResourceBoard({
                 <strong>{unit.unit_number || '—'}</strong>
                 <div>
                   <b>{[unit.rank, unit.last_name || unit.full_name].filter(Boolean).join(' ') || 'Officer'}</b>
-                  <small>{unit.current_call_info || unit.platoon || 'No active assignment'}</small>
+                  <small>{unit.assignment || 'No active assignment'}</small>
                 </div>
                 <span>{unit.status || 'Unknown'}</span>
               </button>
             ))}
             {!rows.length && <p className="tac-empty">{rosterLoading ? 'Loading units…' : 'No matching units.'}</p>}
-            {selected&&<div className="cad-resource-inspect"><b>Unit {selected.unit_number||'—'} · {[selected.rank,selected.last_name].filter(Boolean).join(' ')||selected.full_name||'Officer'}</b><p>{selected.status||'Unknown'} · {selected.connection_stale?'Connection stale':selected.presence_online||selected.session_active?'Online':'Offline'}</p><p>{selected.platoon||selected.oversight_platoon||'Unassigned'}</p>{selectedCalls.map(call=><button key={call.id} type="button" onClick={()=>onOpenCall?.(call)}>{cadReferenceValue(call)} · {call.incident} · {call.location}</button>)}{!selectedCalls.length&&<p>No active assignment recorded.</p>}</div>}
+            {selected&&<div className="cad-resource-inspect"><b>Unit {selected.unit_number||'—'} · {[selected.rank,selected.last_name].filter(Boolean).join(' ')||selected.full_name||'Officer'}</b><p>{selected.status||'Unknown'} · {selected.connection_stale?'Connection stale':selected.presence_online||selected.session_active?'Online':'Offline'}</p><p>{selected.platoon||selected.oversight_platoon||'Unassigned'} · GPS {selected.live_location_hidden?'Private':selected.connection_stale?'Stale':selected.gps_updated_at?'Recorded fix':selected.last_gps_updated_at?'Last known':'Unavailable'}</p><p>{selected.assignment}</p>{(selected.last_update_at||selected.last_update)&&<p>Last recorded update: {formatEasternDateTime(selected.last_update_at||selected.last_update)} ET</p>{selectedCalls.map(call=><button key={call.id} type="button" onClick={()=>onOpenCall?.(call)}>{cadReferenceValue(call)} · {call.incident} · {call.location}</button>)}{!selectedCalls.length&&<p>No active assignment recorded.</p>}</div>}
           </div>
         </section>
       </div>

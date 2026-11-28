@@ -269,3 +269,21 @@ browserFeed.recordCadRealtimeEvent({type:'update',id:closureRecord.id,data:closu
 assert.equal(browserFeed.dedupeOperationalCalls([closureRecord]).length,0,'out-of-order older update cannot resurrect the marker');
 browserFeed.recordCadRealtimeEvent({type:'delete',id:closureRecord.id});
 assert.equal(browserFeed.dedupeOperationalCalls([closureRecord]).length,0);
+const cachedProperty=await history({action:'recent_property_incidents',cached:true});
+assert.equal(cachedProperty.status,200);
+const manualAt=Date.parse(cachedProperty.data.fetched_at);
+const originalDateNow=Date.now;
+try{
+ Date.now=()=>manualAt+16000;
+ const newPropertyId='000000000000000000000019';
+ records.DispatchCall.push({...live,id:newPropertyId,time_received:atHour(.2),status:'Cleared'});
+ records.PropertyAlert.push(makeAlert(newPropertyId,.2,{callStatus:'Cleared',lifecycle_status:'resolved'}));
+ const ordinary=await history({action:'recent_property_incidents',cached:true});
+ assert.ok(!ordinary.data.calls.some(c=>c.id===newPropertyId));
+ const refreshed=await history({action:'recent_property_incidents',cached:true,refresh:true});
+ assert.equal(refreshed.status,200);
+ assert.ok(refreshed.data.calls.some(c=>c.id===newPropertyId),'manual refresh bypasses the ordinary 90-second cache');
+ const beforeRepeat=reads.length;
+ await history({action:'recent_property_incidents',cached:true,refresh:true});
+ assert.equal(reads.slice(beforeRepeat).filter(r=>r.entity!=='PortalAuthSession').length,0,'rapid repeated clicks reuse the shared result');
+}finally{Date.now=originalDateNow;}
