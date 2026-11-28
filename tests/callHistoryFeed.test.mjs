@@ -178,7 +178,7 @@ records.DispatchCall.push({...prior,id:'original-prior'});
 result=await addressHistory({address:'3000 Griffin Avenue, Richmond, VA'});
 assert.equal(result.data.count,1); // active/archive copies are one call
 let browserFeedSource = await readFile('src/lib/activeDispatchCalls.js','utf8');
-browserFeedSource = browserFeedSource.replace("../../base44/functions/_shared/callFeedPolicy.js",new URL('../base44/functions/_shared/callFeedPolicy.js',import.meta.url).href)
+browserFeedSource = browserFeedSource.replace('@/lib/cadSourceHealth',new URL('../src/lib/cadSourceHealth.js',import.meta.url).href).replace("../../base44/functions/_shared/callFeedPolicy.js",new URL('../base44/functions/_shared/callFeedPolicy.js',import.meta.url).href)
  .replace("import { base44 } from '@/api/base44Client';","const base44 = {};")
  .replace("import { withRequestTimeout } from '@/lib/requestTimeout';","const withRequestTimeout = task => task;");
 const browserFeed = await import('data:text/javascript;base64,'+Buffer.from(browserFeedSource).toString('base64'));
@@ -192,8 +192,10 @@ records.DispatchCall.push({...live,id:'old-manual',source:'dispatch_manual',time
 records.DispatchCall.push({...live,id:'old-property',time_received:oldAt,assigned_units:[]},{...live,id:'old-assignment-row',time_received:oldAt,assigned_units:[]},{...live,id:'closed-property',time_received:oldAt,status:'Cleared'});
 records.PropertyAlert.push({id:'p-old',callId:'old-property',propertyId:'site',lifecycle_status:'active',callStatus:'New'},{id:'p-closed',callId:'closed-property',propertyId:'site',lifecycle_status:'active'});
 records.CallAssignment.push({id:'assignment-row',call_id:'old-assignment-row',unit_id:'officer-id',status:'pending'});
+records.CadCounter=[{id:'cad-counter',counter_key:'dispatch_call',last_source_poll_at:new Date(now-5000).toISOString(),last_source_poll_status:'success',last_website_row_count:46,last_api_row_count:46,last_website_latest_received:new Date(now-6*60000).toISOString()}];
 const liveResult = await liveFeed({limit:100});
 assert.equal(liveResult.status,200);
+assert.equal(liveResult.data.source_health.poll_status,'success');assert.equal(liveResult.data.source_health.api_rows,46);assert.equal(liveResult.data.source_health.poll_at,records.CadCounter[0].last_source_poll_at);
 assert.equal(liveResult.data.calls.length,5);
 assert.deepEqual(new Set(liveResult.data.calls.map(row=>row.id)),new Set(['live','old-manual','old-assigned','old-property','old-assignment-row']));
 assert.equal(liveResult.data.calls.find(c=>c.id==='old-property').pathfinder_property_alert,true);
