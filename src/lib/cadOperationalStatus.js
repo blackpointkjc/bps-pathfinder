@@ -27,47 +27,66 @@ export const cadAnchor = call => {
   return created || received || null;
 };
 
+export const cadAgeMinutes = (call, now = Date.now()) => {
+  const anchor = cadAnchor(call);
+  return anchor ? Math.max(0, (now - anchor) / 60000) : 0;
+};
+
+/** ok → watch → overdue for one incident, on its own priority clock. */
 export const cadServiceLevel = (call, now = Date.now()) => {
   const priority = cadPriority(call);
   const sla = CAD_SLA[priority];
-  const anchor = cadAnchor(call);
-  const minutes = anchor ? Math.max(0, (now - anchor) / 60000) : null;
-  const state = minutes == null
-    ? 'unknown'
-    : minutes >= sla.overdue
-      ? 'overdue'
-      : minutes >= sla.watch
-        ? 'watch'
-        : 'normal';
-  return { priority, code: sla.code, label: sla.label, minutes, state };
+  const minutes = cadAgeMinutes(call, now);
+  return {
+    priority,
+    code: sla.code,
+    label: sla.label,
+    minutes,
+    unassigned: cadNeedsDispatch(call),
+    target: sla.overdue,
+    state: minutes >= sla.overdue ? 'overdue' : minutes >= sla.watch ? 'watch' : 'ok',
+  };
 };
 
 export const cadAgeLabel = minutes => {
   if (minutes == null) return '—';
   const total = Math.max(0, Math.round(minutes));
+  if (total < 1) return 'under 1m';
   if (total < 60) return `${total}m`;
   return `${Math.floor(total / 60)}h ${total % 60}m`;
 };
 
+/** Display reference for an incident, matching the command board. */
 export const cadReferenceValue = call => cadReference(call) || 'REFERENCE PENDING';
 
 export const cadNeedsDispatch = call => !(Array.isArray(call?.assigned_units) && call.assigned_units.length);
+export const cadUnassigned = cadNeedsDispatch;
 
 export const cadUnitAvailable = unit => String(unit?.status || '') === 'Available'
   && !unit?.connection_stale
   && (unit?.presence_online === true || unit?.session_active === true);
 
+const unitStatus = unit => String(unit?.status || '').trim().toLowerCase();
+
 /** One pass over the queue produces every counter on the CAD status bar. */
 export const cadTelemetry = (calls = [], units = [], now = Date.now()) => {
-  const levels = calls.map(call => cadServiceLevel(call, now));
+  const rows = (calls || []).filter(Boolean);
+  const levels = rows.map(call => ({ call, level: cadServiceLevel(call, now) }));
+  const roster = (units || []).filter(Boolean);
+  const onDuty = roster.filter(unit => unitStatus(unit) && unitStatus(unit) !== 'out of service');
+  const oldest = levels.reduce((worst, row) => (!worst || row.level.minutes > worst.level.minutes ? row : worst), null);
   return {
-    active: calls.length,
-    unassigned: calls.filter(cadNeedsDispatch).length,
-    urgent: levels.filter(level => level.priority === 'critical' || level.priority === 'high').length,
-    overdue: levels.filter(level => level.state === 'overdue').length,
-    oldest: levels.reduce((max, level) => Math.max(max, level.minutes ?? 0), 0),
-    available: units.filter(cadUnitAvailable).length,
-    distress: units.filter(unit => String(unit?.status || '').toLowerCase() === 'distress').length,
-    onDuty: units.filter(unit => String(unit?.status || '').toLowerCase() !== 'out of service').length,
+    active: rows.length,
+    unassigned: levels.filter(row => row.level.unassigned).length,
+    urgent: levels.filter(row => ['critical', 'high'].includes(row.level.priority)).length,
+    overdue: levels.filter(row => row.level.state === 'overdue').length,
+    watch: levels.filter(row => row.level.state === 'watch').length,
+    oldest: oldest?.level.minutes || 0,
+    oldestMinutes: oldest?.level.minutes || 0,
+    oldestCall: oldest?.call || null,
+    available: roster.filter(cadUnitAvailable).length,
+    distress: roster.filter(unit => unitStatus(unit) === 'distress').length,
+    onDuty: onDuty.length,
+    levels,
   };
 };

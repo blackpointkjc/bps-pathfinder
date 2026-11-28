@@ -15,7 +15,7 @@
 .tac-header-actions button:hover,.tac-panel-bar button:hover,.tac-selected-actions button:hover{background:#304c64}
 .tac-feed-state{display:inline-flex;align-items:center;gap:5px;color:#b8c9d7;font:10px var(--tac-mono);white-space:nowrap;padding:4px}
 .tac-feed-state i{width:8px;height:8px;border-radius:50%;background:#7edab1}.tac-feed-state i[data-state=warning]{background:#f1b46b}.tac-feed-state i[data-state=loading]{background:#71beea}
-.tac-command-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:#111a24;border-bottom:1px solid var(--tac-border)}
+.tac-command-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));background:#111a24;border-bottom:1px solid var(--tac-border)}
 .tac-command-strip button{display:flex;align-items:center;justify-content:space-between;gap:6px;text-align:left;padding:11px 12px;border-right:1px solid var(--tac-border);border-radius:0!important}
 .tac-command-strip button:hover{background:#263849}.tac-command-strip span{font:11px var(--tac-mono);letter-spacing:.045em;color:#b8c7d6}
 .tac-command-strip strong{font:700 25px var(--tac-mono);color:#e7f2fb}.tac-command-strip [data-tone=ready] strong{color:#82dfb0}.tac-command-strip [data-tone=warning] strong{color:#f7c779}.tac-command-strip [data-tone=danger] strong{color:#ff9595}
@@ -182,3 +182,11 @@
 }
 @media(max-width:720px){.tac-command .tac-command-grid{display:grid}.tac-command .tac-header-actions{width:100%}.tac-command .tac-command-strip button{padding:4px 6px}.tac-command .tac-command-strip strong{font-size:17px}.tac-command .tac-header-actions button{min-height:34px!important}.tac-command .tac-detail-actions button{min-height:40px}.tac-command .tac-map-camera-tools button{min-height:40px!important}}
 @media(max-height:470px){.tac-command{height:auto;min-height:380px;overflow:visible}.tac-command .tac-command-grid{flex:none;height:350px}}
+
+/* Service-level (CommandCentral-style) escalation: an incident that passes its
+   priority target is flagged on the stack without changing its priority. */
+.tac-sla-chip{flex:none;border:1px solid #edc56f;background:#3a2c12;color:#ffdf9e;padding:1px 5px;font:700 9px ui-monospace,Consolas,monospace;letter-spacing:.04em;white-space:nowrap}
+.tac-sla-chip[data-state=overdue]{border-color:#f87582;background:#3d1a20;color:#ffb6bd}
+.tac-call-strip[data-sla=overdue]{background:#1d1a20}
+.tac-call-strip[data-sla=overdue]:hover{background:#2a2027}
+.tac-call-strip[data-sla=watch]{background:#1a2129}

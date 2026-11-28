@@ -5,7 +5,6 @@ import '@/components/dispatch/cad-center-terminal.css';
 import {useState} from 'react';
 import useCadRoster from '@/hooks/useCadRoster';
 import {DashboardDataProvider,useDashboardData,useOptionalDashboardData} from '@/lib/DashboardDataContext';
-
 import {dutyRows} from '@/components/dispatch/UnitDutyBoard';
 import {cadReferenceValue} from '@/lib/cadOperationalStatus';
 import {cadDisplayUnitState} from '@/lib/cadWorkspaceModel';
@@ -40,4 +39,10 @@ function UnitStatusPage({initialStatus='All',initialUnitSearch='',onOpenCall}) {
       </div>
     </div>;
 }
-export default function UnitStatus(props){const existing=useOptionalDashboardData();return existing?<UnitStatusPage {...props}/>:<DashboardDataProvider><UnitStatusPage {...props}/></DashboardDataProvider>;}
+
+export default function UnitStatus(props){
+  // The CAD Center shell already provides the live queue; reuse it instead of
+  // mounting a second polling provider inside the same screen.
+  const existing=useOptionalDashboardData();
+  return existing?<UnitStatusPage {...props}/>:<DashboardDataProvider><UnitStatusPage {...props}/></DashboardDataProvider>;
+}

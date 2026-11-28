@@ -99,3 +99,6 @@
 .cad-terminal-shell[data-high-zoom=true]>.cad-terminal-screen{min-height:320px!important;flex:1 0 320px!important}
 .tac-command[data-high-zoom=true],.dispatch-v3[data-high-zoom=true]{overflow-y:auto!important}
 .tac-command[data-high-zoom=true]>.cc-workspace,.dispatch-v3[data-high-zoom=true]>.dispatch-v3-grid{min-height:300px!important;flex:1 0 300px!important}
+/* Premise (repeat-call) history panel in the incident detail rail. */
+.tac-detail-premise{padding:8px}
+.tac-detail-premise .tac-detail-message{margin:0 0 4px}

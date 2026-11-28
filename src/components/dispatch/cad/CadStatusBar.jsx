@@ -50,7 +50,8 @@ export default function CadStatusBar({
     { key: 'active', label: 'Active', value: telemetry.active, tone: 'normal', target: { tool: 'command', params: { cad_focus: 'all' } } },
     { key: 'unassigned', label: 'Unassigned', value: telemetry.unassigned, tone: 'warning', target: { tool: 'command', params: { cad_focus: 'unassigned' } } },
     { key: 'urgent', label: 'P1 / P2', value: telemetry.urgent, tone: 'danger', target: { tool: 'command', params: { cad_focus: 'urgent' } } },
-    { key: 'overdue', label: 'Over SLA', value: telemetry.overdue, tone: telemetry.overdue ? 'danger' : 'normal', target: { tool: 'units' } },
+    { key: 'overdue', label: 'Over SLA', value: telemetry.overdue, tone: telemetry.overdue ? 'danger' : 'normal', target: { tool: 'command', params: { cad_focus: 'overdue' } } },
+    { key: 'onDuty', label: 'On duty', value: telemetry.onDuty, tone: 'normal', target: { tool: 'units' } },
     { key: 'available', label: 'Available', value: telemetry.available, tone: 'ready', target: { tool: 'units', params: { cad_status: 'Available' } } },
     { key: 'distress', label: 'Distress', value: telemetry.distress, tone: telemetry.distress ? 'danger' : 'normal', target: { tool: 'units', params: { cad_status: 'Distress' } } },
   ];

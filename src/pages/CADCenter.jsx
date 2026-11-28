@@ -10,7 +10,9 @@ import { Navigate,useLocation, useNavigate } from 'react-router-dom';
 import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
 import useCadRoster,{CadRosterProvider} from '@/hooks/useCadRoster';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
 import CadCommandPalette from '@/components/dispatch/cad/CadCommandPalette';
+import CadResourceBoard from '@/components/dispatch/cad/CadResourceBoard';
 import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
 import CadResponseAnalytics from '@/components/dispatch/cad/CadResponseAnalytics';
 import { cadScaleValue, readCadDisplaySettings, writeCadDisplaySettings } from '@/lib/cadDisplaySettings';
@@ -30,6 +32,7 @@ const TOOLS = {
     { id: 'map', icon: Map, short: 'Live map', label: 'Live Map', component: Navigation },
     { id: 'units', icon: Users, short: 'Units', label: 'Unit Board', component: UnitStatus },
   ],
+  resources: [{ id: 'statusboard', icon: Users, short: 'Board', label: 'Unit board', component: CadResourceBoard }],
   alerts: [{ id: 'bolo', icon: AlertTriangle, short: 'BOLO', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
     { id: 'history', icon: History, short: 'Records', label: 'Call History', component: CallHistory },
@@ -195,6 +198,15 @@ function CadShell({ embedded = false }) {
     },
   ].filter(command=>(active.id!=='command'||command.id!=='cmd-detach')&&(command.id!=='cmd-analytics'||adminAllowed)), [monitorOpen, display, refreshAll, location.search,active.id,adminAllowed]);
 
+  // The telemetry strip deep-links into the workstation that owns each counter:
+  // incident counts open the command board pre-filtered, resource counts open the
+  // unit board on the matching status.
+  const openStatusTarget = target => {
+    if (!target?.tool) return;
+    const extra = target.params || {};
+    select('live', target.tool, extra);
+  };
+
   if(requestedTool==='dispatch'&&dispatchAllowed){const next=new URLSearchParams();for(const key of ['call_id','call_number','new','open'])if(params.has(key))next.set(key,params.get(key));return <Navigate replace to={createPageUrl('DispatchCenter')+(next.size?'?'+next.toString():'')}/>;}
   if (detached) {
     return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" data-high-zoom={scale>1.24} style={shellStyle}>
@@ -211,8 +223,24 @@ function CadShell({ embedded = false }) {
   return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} data-high-zoom={scale>1.24} style={shellStyle}>
     {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin} propertyIds={propertyIds} />}
     <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}<button className="cad-nav-monitor" type="button" aria-pressed={monitorOpen} onClick={toggleMonitor}><RadioTower size={15}/><span>Monitor {monitorOpen?'on':'off'}</span></button>{rateLimited&&<span role="status" className="cad-inline-feed-warning">Feed delayed</span>}</nav>
+    <CadStatusBar
+      calls={calls}
+      units={units}
+      loading={loading}
+      rateLimited={rateLimited}
+      lastRefresh={lastRefresh}
+      rosterError={rosterError}
+      monitorOpen={monitorOpen}
+      onRefresh={refreshAll}
+      onFind={() => setPaletteOpen(true)}
+      onOpen={openStatusTarget}
+      onToggleMonitor={toggleMonitor}
+      onDetach={openDetachedMap}
+    />
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
-      {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'response'
+      {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'statusboard'
+          ? <CadResourceBoard calls={calls} units={units} loading={loading} rosterLoading={rosterLoading} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall} onOpenUnits={() => select('live', 'units')} />
+          : active.id === 'response'
           ? <CadResponseAnalytics />
           : active.id==='command' ? <CommandDashboard embedded/> : Component ? <Component embedded /> : null}
     </div>
