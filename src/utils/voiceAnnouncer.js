@@ -124,7 +124,7 @@ export function cancelPatrolSpeedVoice() {
 }
 
 function buildUtterance(clean, options = {}) {
-  const utterance = new SpeechSynthesisUtterance(clean);
+  const utterance = new SpeechSynthesisUtterance(formatCadReferenceForSpeech(clean));
   utterance.lang = options.lang || 'en-US';
   // One consistent, natural radio voice across Pathfinder. Avoid the unnaturally
   // low pitch/rate combination that made announcements sound synthetic.

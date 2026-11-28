@@ -130,10 +130,10 @@ assert.equal(events.includes('speech:Cancelled call.'), false);
 // Both public announcement paths must deliver phonetic CAD identifiers to TTS.
 voice.announceVoice('CAD 00123. Respond to 100 Main Street.', {eventId:'speech:cad-number'});
 await flush();
-assert.ok(events.includes('speech:C A D number zero zero one two three. Respond to 100 Main Street.'));
+assert.ok(events.includes('speech:see ay dee number zero zero one two three. Respond to 100 Main Street.'));
 const spoken=await voice.announceVoiceAsync('CAD number BPS-202611-00042.',{eventId:'speech:bps-number'});
 assert.equal(spoken,true);
-assert.ok(events.includes('speech:C A D number zero zero zero four two.'));
+assert.ok(events.includes('speech:see ay dee number zero zero zero four two.'));
 // Actual horn oscillator scheduling, completion, and cancellation.
 const { playPropertyHorn } = await import('../src/utils/alertUtils.js');
 let stopped = 0, disconnected = 0;

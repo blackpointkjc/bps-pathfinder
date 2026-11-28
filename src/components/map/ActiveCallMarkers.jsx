@@ -1,3 +1,4 @@
+import {incidentPriority} from '@/lib/incidentPriority';
 /**
  * ActiveCallMarkers — PURE RENDER ONLY.
  * Consumes pre-geocoded calls. Never fetches, geocodes, or modifies state.
@@ -6,7 +7,7 @@ import { Fragment } from 'react';
 import { CircleMarker, Marker, Pane, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-const createCallIcon = (call, isHighPriority = false) => {
+const createCallIcon = (call, priority = "medium") => {
     const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
     const isApproximate = call.geo_approximate === true;
@@ -45,11 +46,11 @@ const createCallIcon = (call, isHighPriority = false) => {
         : '';
 
     return new L.DivIcon({
-        className: 'custom-call-marker',
+        className: 'custom-call-marker cad-priority-marker',
         html: `
-            <div style="position:relative;width:40px;height:40px;">
+            <div data-priority="${priority}" class="cad-marker-priority-ring" style="position:relative;width:40px;height:40px;">
                 <svg width="40" height="40" viewBox="0 0 40 40">
-                    <circle cx="20" cy="20" r="18" fill="${bgColor}" stroke="${isHighPriority ? '#EF4444' : 'white'}" stroke-width="${isApproximate ? 1.5 : 3}" ${isApproximate ? 'opacity="0.75"' : ''}/>
+                    <circle cx="20" cy="20" r="18" fill="${bgColor}" stroke="${priority==='critical'?'#EF4444':priority==='high'?'#FACC15':'white'}" stroke-width="${isApproximate ? 1.5 : 3}" ${isApproximate ? 'opacity="0.75"' : ''}/>
                     ${iconSvg}
                     <circle cx="32" cy="8" r="6" fill="${statusColor}" stroke="white" stroke-width="2"/>
                     ${outerRing}
@@ -60,23 +61,6 @@ const createCallIcon = (call, isHighPriority = false) => {
         iconAnchor: [20, 20],
         popupAnchor: [0, -20]
     });
-};
-
-const assessCallPriority = (call) => {
-    const combined = `${call.incident || ''} ${call.description || ''}`.toLowerCase();
-    if (combined.includes('shooting') || combined.includes('shots fired') ||
-        combined.includes('stabbing') || combined.includes('officer down') ||
-        combined.includes('active shooter') || combined.includes('10-00') ||
-        combined.includes('cardiac arrest') || combined.includes('person with gun')) {
-        return { score: 4 };
-    }
-    if (combined.includes('assault') || combined.includes('robbery') ||
-        combined.includes('burglary in progress') || combined.includes('domestic') ||
-        combined.includes('pursuit') || combined.includes('fire') ||
-        combined.includes('accident with injury')) {
-        return { score: 3 };
-    }
-    return { score: 1 };
 };
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
@@ -91,9 +75,9 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     return (
         <Pane name="active-cad-calls" pane={map.getPane('norotatePane') ? 'norotatePane' : undefined} style={{ zIndex: 7 }}>
             {renderable.map((call, index) => {
-                const priority = assessCallPriority(call);
+                const priority = incidentPriority(call);
                 const key = call.id || `call-${index}`;
-                const fillColor = priority.score >= 3 ? '#ef4444' : '#2563eb';
+                const fillColor = priority==='critical'?'#ef4444':priority==='high'?'#facc15':'#2563eb';
                 return (
                     <Fragment key={key}>
                         <CircleMarker
@@ -106,8 +90,8 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                         <Marker
                             pane="active-cad-calls"
                             position={[call.latitude, call.longitude]}
-                            icon={createCallIcon(call, priority.score >= 3)}
-                            zIndexOffset={priority.score >= 3 ? 1200 : 900}
+                            icon={createCallIcon(call, priority)}
+                            zIndexOffset={priority==='critical'?1300:priority==='high'?1200:900}
                             eventHandlers={{ click: () => onCallClick?.(call) }}
                         >
                             <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>

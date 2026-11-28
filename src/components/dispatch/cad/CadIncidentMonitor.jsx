@@ -47,6 +47,7 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
           <div key={call.id} className="cad-monitor-entry"><button
             type="button"
             className="cad-monitor-chip"
+            data-priority={level.priority}
             data-state={level.state}
             data-pending={awaiting}
             onClick={() => onOpen?.(call)}
