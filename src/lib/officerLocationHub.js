@@ -338,8 +338,8 @@ export async function getOfficerLocationSnapshot({ locationOnly = false, force =
       // Defense in depth: never let a legacy backend/client return an IP/network
       // estimate (for example ±50,000m) to any Pathfinder map as a live officer fix.
       if(!Array.isArray(rawPayload.units)&&!Array.isArray(rawPayload.users))throw new Error('Officer roster returned an invalid response.');
-      const payload = scrubSnapshot(rawPayload);
       const cachedAt = Date.now();
+      const payload = {...scrubSnapshot(rawPayload),verified_at:new Date(cachedAt).toISOString()};
       snapshotCache.set(key, { at: cachedAt, payload });
       // A full roster contains the live-location fields required by ordinary map
       // consumers. Cache a live-only derivative so a simultaneous map request does
@@ -368,19 +368,29 @@ export async function getOfficerLocationHistory(officerEmail) {
   return Array.isArray(payload.history) ? payload.history : [];
 }
 
+const locationListeners=new Set();
+let sharedLocationSubscriptions=[];
 export function subscribeOfficerLocationChanges(listener) {
-  if (typeof listener !== 'function') return () => {};
-  const subscriptions = [];
-  for (const name of ['ActiveOfficer','User']) {
-    try {
-      const unsubscribe = base44.entities[name].subscribe(rawEvent => {
-        const event = name === 'User' ? { ...rawEvent, directory_profile:true } : rawEvent;
-        if (name === 'User' && event.type === 'delete') { clearSnapshotCache(); return; }
-        applyRealtimeEventToSnapshotCache(event);
-        listener(event);
-      });
-      if (typeof unsubscribe === 'function') subscriptions.push(unsubscribe);
-    } catch { /* Other streams and the periodic canonical refresh remain active. */ }
+  if(typeof listener!=='function')return ()=>{};
+  locationListeners.add(listener);
+  if(!sharedLocationSubscriptions.length){
+    for(const name of ['ActiveOfficer','User']){
+      try{
+        const unsubscribe=base44.entities[name].subscribe(rawEvent=>{
+          const event=name==='User'?{...rawEvent,directory_profile:true}:rawEvent;
+          if(name==='User'&&event.type==='delete')clearSnapshotCache();
+          else applyRealtimeEventToSnapshotCache(event);
+          for(const fn of [...locationListeners]){try{fn(event);}catch(error){console.warn('[Roster] Listener failed:',error?.message);}}
+        });
+        if(typeof unsubscribe==='function')sharedLocationSubscriptions.push(unsubscribe);
+      }catch{/* Canonical refresh remains active. */}
+    }
   }
-  return () => subscriptions.forEach(unsubscribe => unsubscribe());
+  return ()=>{
+    locationListeners.delete(listener);
+    if(!locationListeners.size){
+      for(const unsubscribe of sharedLocationSubscriptions){try{unsubscribe();}catch{}}
+      sharedLocationSubscriptions=[];
+    }
+  };
 }

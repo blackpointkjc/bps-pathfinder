@@ -36,7 +36,7 @@ function useLocalCadRoster(enabled=true){
     if(payload.stale){errors.push('Live status delayed; showing the last received roster.');if(liveRef.current.length)return;}
     liveRef.current=live;
     setRows(mergeCadRoster(directoryRef.current,liveRef.current));
-    if(!payload.stale)setLastVerifiedAt(new Date());
+    if(!payload.stale&&payload.verified_at)setLastVerifiedAt(new Date(payload.verified_at));
    }).catch(()=>errors.push('Live status unavailable; retry when connected.'));
    await Promise.all([directoryRequest,statusRequest]);
    if(mounted.current){setError(errors.join(' '));setLoading(false);}
@@ -47,6 +47,7 @@ function useLocalCadRoster(enabled=true){
   if(!enabled)return;
   mounted.current=true;void refresh();
   const unsub=subscribeOfficerLocationChanges(event=>{
+   if(event.directory_profile&&event.type==='delete'){directoryRef.current=directoryRef.current.filter(row=>String(row.id)!==String(event.id||event.data?.id));liveRef.current=liveRef.current.filter(row=>String(row.user_id||row.id)!==String(event.id||event.data?.id));setRows(mergeCadRoster(directoryRef.current,liveRef.current));return;}
    liveRef.current=applyOfficerLocationEvent(liveRef.current,event);
    setRows(old=>applyOfficerLocationEvent(old,event));
   });
