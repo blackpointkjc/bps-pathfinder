@@ -9,7 +9,10 @@ export const CAD_SCALES = [
   { id: 'compact', label: 'Compact', value: 0.9, note: 'Fits more rows on a small screen' },
   { id: 'standard', label: 'Standard', value: 1, note: 'Default CAD sizing' },
   { id: 'large', label: 'Large', value: 1.12, note: 'Larger labels and controls' },
-  { id: 'xlarge', label: 'Extra large', value: 1.24, note: 'Maximum readability at a distance' },
+  { id: 'xlarge', label: 'Extra large', value: 1.24, note: 'Larger display' },
+  { id: '150', label: '150%', value: 1.5, note: 'High readability' },
+  { id: '175', label: '175%', value: 1.75, note: 'Very large controls' },
+  { id: '200', label: '200%', value: 2, note: 'Maximum enlargement' },
 ];
 
 const DEFAULTS = { scale: 'standard', monitor: true, showMap: true };
@@ -44,3 +47,4 @@ export function writeCadDisplaySettings(next) {
 }
 
 export const cadScaleValue = id => CAD_SCALES.find(option => option.id === id)?.value ?? 1;
+export function stepCadScale(id,direction){const index=CAD_SCALES.findIndex(x=>x.id===id);return CAD_SCALES[Math.max(0,Math.min(CAD_SCALES.length-1,(index<0?1:index)+Math.sign(direction)))].id;}

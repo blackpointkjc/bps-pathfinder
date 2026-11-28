@@ -30,7 +30,7 @@ export default function CadDisplaySettingsDialog({ open, onOpenChange, settings,
                 onClick={() => update({ scale: option.id })}
               >
                 <span>
-                  <b>{option.label}</b>
+                  <b>{option.label} · {Math.round(option.value*100)}%</b>
                   <small>{option.note}</small>
                 </span>
                 {settings?.scale === option.id && <Check size={15} />}

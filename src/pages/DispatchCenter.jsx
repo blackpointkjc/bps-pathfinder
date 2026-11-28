@@ -1,3 +1,8 @@
+import {useAuth} from '@/lib/AuthContext';
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
+import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
+import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
+import '@/components/dispatch/cad/dispatch-readable.css';
 import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
 import '@/components/dispatch/tactical-console.css';
@@ -48,15 +53,24 @@ const DISPATCH_CALL_CACHE_KEY = 'bps-cad-active-calls-v4';
 function readCachedDispatchCalls() { return readLastGoodCalls(); }
 
 export default function DispatchCenter({embedded=false}) {
+ const {user,isLoadingAuth}=useAuth();
+ if(isLoadingAuth)return <div role="status" className="p-6 text-slate-200">Checking dispatch authorization…</div>;
+ if(!canAccessDispatchCenter(user))return <section className="p-6 text-slate-200" role="alert"><h1 className="text-xl font-bold">Dispatch access required</h1><p>This workstation is restricted to personnel assigned the dispatch role.</p></section>;
+ return <DispatchWorkspace embedded={embedded}/>;
+}
+
+function DispatchWorkspace({embedded=false}) {
+    const [standaloneScale,setStandaloneScale]=useState(()=>readCadDisplaySettings().scale);
+    const zoom=embedded?1:cadScaleValue(standaloneScale);
     const workstationRef=React.useRef(null);
     const statusBarRef=React.useRef(null);
     useEffect(()=>{
         if(embedded||!workstationRef.current)return;
         const host=workstationRef.current;
-        const measure=()=>host.style.setProperty('--cad-standalone-height',`${Math.max(280,window.innerHeight-Math.max(0,host.getBoundingClientRect().top)-8)}px`);
+        const measure=()=>host.style.setProperty('--cad-standalone-height',`${Math.max(280,window.innerHeight-Math.max(0,host.getBoundingClientRect().top)-8)/zoom}px`);
         measure();window.addEventListener('resize',measure);
         return()=>window.removeEventListener('resize',measure);
-    },[embedded]);
+    },[embedded,zoom]);
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
@@ -73,7 +87,7 @@ export default function DispatchCenter({embedded=false}) {
     const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(false);
-    const [dockMap,setDockMap]=useState(()=>typeof window!=='undefined'&&window.innerWidth>=1440);
+    const [dockMap,setDockMap]=useState(false);
     const [detailTab,setDetailTab]=useState('incident');
     const [dispatchTomTomFailed,setDispatchTomTomFailed]=useState(false);
     const [useDispatchTomTom,setUseDispatchTomTom]=useState(true);
@@ -83,6 +97,7 @@ export default function DispatchCenter({embedded=false}) {
     const [persistedPropertyCallIds,setPersistedPropertyCallIds]=useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('agency');
+    const [toolsOpen,setToolsOpen]=useState(false);
     const [supervisorWorking,setSupervisorWorking]=useState(false);
     const [statusWorking,setStatusWorking]=useState(false);
     const [dispatchFeedback,setDispatchFeedback]=useState('');
@@ -153,7 +168,7 @@ export default function DispatchCenter({embedded=false}) {
                 return;
             }
             setActiveCalls(current => {
-                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 200 });
+                const next = applyDispatchCallEvent(current, event, { hideClosed: true, limit: 500 });
                 try {
                     window.localStorage.setItem(DISPATCH_CALL_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), calls: next }));
                 } catch {}
@@ -298,19 +313,9 @@ export default function DispatchCenter({embedded=false}) {
             const user = await withRequestTimeout(base44.auth.me(), 12000, 'Dispatch authentication');
             setCurrentUser(user);
 
-            // Check every supported dispatch/CAD access path consistently.
-            const roles = new Set((user.additional_roles || []).map(role => String(role).trim().toLowerCase()));
-            const hasDispatchAccess = user.role === 'admin'
-                || String(user.role || '').trim().toLowerCase() === 'dispatch'
-                || user.dispatch_role === true
-                || roles.has('dispatch')
-                || roles.has('cad_access')
-                || hasSupervisorAccess(user)
-                || roles.has('full_access');
-
-            if (!hasDispatchAccess) {
-                toast.error('Unauthorized - Dispatch access required');
-                navigate(createPageUrl('CommandDashboard'));
+            if (!canAccessDispatchCenter(user)) {
+                toast.error('Unauthorized - Dispatch role required');
+                navigate(createPageUrl('CommandDashboard'),{replace:true});
                 return;
             }
 
@@ -408,7 +413,7 @@ export default function DispatchCenter({embedded=false}) {
        if (activeCallsLoadingRef.current || (!force && now - lastActiveCallsLoadRef.current < 3000)) return;
        activeCallsLoadingRef.current = true;
        try {
-            let calls = await loadActiveDispatchCallRows(100);
+            let calls = await loadActiveDispatchCallRows(500);
             // Source ingestion is owned by one guarded timer, not triggered by
             // each feed reader; simultaneous retries previously competed for locks.
 
@@ -416,7 +421,7 @@ export default function DispatchCenter({embedded=false}) {
             const uniqueCalls = new Map();
             for (const call of calls || []) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
-                const key = call.external_call_id || descriptionKey || call.id;
+                const key = ['CAD clone','dispatch_manual','field_initiated'].includes(call.source)?call.id:call.external_call_id || descriptionKey || call.id;
                 const current = uniqueCalls.get(key);
                 const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
                 const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
@@ -719,21 +724,21 @@ export default function DispatchCenter({embedded=false}) {
     const propertyCallIds=new Set(propertyAlertCalls.map(call=>String(call.id)));
     const matchesQueue = (call,filter) => {
         if (filter==='agency') return true;
-        if (!propertyCallIds.has(String(call.id))) return false;
+        if(filter==='all')return propertyCallIds.has(String(call.id));
         const activeAssignments=cadAssignmentRows.filter(row=>String(row.call_id)===String(call.id)&&!['cleared','cancelled','canceled'].includes(String(row.status||'').toLowerCase()));
-        if(filter==='all')return true;
+        if(filter==='assigned')return !!call.assigned_units?.length||!!activeAssignments.length;
         if(filter==='unassigned')return !call.assigned_units?.length&&!activeAssignments.length;
         if(filter==='priority')return ['critical','high'].includes(incidentPriority(call));
         const normalize=value=>String(value||'').toLowerCase().replace(/[ _-]/g,'');
-        return normalize(propertyCallProgress(call))===normalize(filter);
+        return normalize(call.status)===normalize(filter);
     };
     const allCalls=activeCalls.filter(call=>matchesQueue(call,queueFilter)&&[call.call_id,call.bps_reference,call.agency_cad_number,call.incident,call.location,call.caller_name].filter(Boolean).join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
 
     const statusUnits = units.filter(unit => Boolean(unit.status));
     const availableUnits = statusUnits.filter(unit => unit.status === 'Available');
     const activeUnits = statusUnits.filter(unit => unit.status !== 'Out of Service');
-    const unassignedCalls = propertyAlertCalls.filter(call => !call.assigned_units?.length);
-    const priorityCalls = propertyAlertCalls.filter(call => ['critical', 'high'].includes(incidentPriority(call)));
+    const unassignedCalls = activeCalls.filter(call => matchesQueue(call,'unassigned'));
+    const priorityCalls = activeCalls.filter(call => ['critical', 'high'].includes(incidentPriority(call)));
     // "Old/wait" time is a Pathfinder property-monitoring metric only. General
     // GRAC/agency calls must never make this timer old or red.
     const callAgeMinutes = (call) => Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000));
@@ -749,7 +754,7 @@ export default function DispatchCenter({embedded=false}) {
 
 
     return (
-        <div ref={workstationRef} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch relative flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white "+(!embedded?' cad-dispatch-standalone':'')}>
+        <div ref={workstationRef} style={!embedded?{zoom,'--dispatch-zoom':zoom}:undefined} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch dispatch-v3 relative flex h-full min-h-0 flex-col overflow-hidden text-white "+(!embedded?' cad-dispatch-standalone':'')}>
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
@@ -757,12 +762,13 @@ export default function DispatchCenter({embedded=false}) {
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
                     <div className="min-w-0">
-                        <h1 className="pf-dispatch-title">Dispatch / Control</h1>
-                        <p className="mt-0.5 text-[10px] leading-snug text-slate-300">Coordinate calls, units and response</p>
+                        <h1 className="pf-dispatch-title">Dispatch Center</h1>
+                        <p className="mt-0.5 text-[10px] leading-snug text-slate-300">Select an incident, review details, assign responding units</p>
                     </div>
                     <span className={"w-1.5 h-1.5 rounded-full ml-1 "+(callsLoadWarning?"bg-amber-400":loading?"bg-blue-400":"bg-green-400")} />
                     <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : callsLoadWarning?'DEGRADED':'CAD FEED'}</span>
                 </div>
+                {!embedded&&<CadZoomControls value={standaloneScale} onChange={value=>{setStandaloneScale(value);writeCadDisplaySettings({...readCadDisplaySettings(),scale:value});}}/>}
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
                     <button type="button" onClick={()=>{for(const prefix of ['function:getActiveDispatchCalls:','function:getOnDutyUnits:','function:sharedCadTimeline:'])clearBase44ReadCacheMatching(prefix);void loadActiveCalls(true);void loadUnits(true);if(selectedCall?.id){void loadCallNotes(selectedCall.id);void loadWelfareChecks(selectedCall.id);}}} className="pf-cad-button">Refresh</button>
@@ -837,11 +843,11 @@ export default function DispatchCenter({embedded=false}) {
             <div className="dispatch-kpis pf-dispatch-metrics tac-dispatch-metrics grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
-                    { label: 'PROPERTY UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
-                    { label: 'PROPERTY PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
+                    { label: 'WAITING', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
+                    { label: 'PRIORITY CALLS', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
                     { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
                     { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
-                    { label: 'PROPERTY OLDEST', value: propertyAlertCalls.length ? `${oldestPropertyCallMinutes}m` : '—', tone: oldestPropertyCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
+                    { label: 'OLDEST PROPERTY', value: propertyAlertCalls.length ? `${oldestPropertyCallMinutes}m` : '—', tone: oldestPropertyCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
                 ].map(({ label, value, tone, icon: Icon }) => (
                     <div key={label} className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#26384c] bg-[#0d1420] px-2 py-2 text-center shadow-lg">
                         <Icon className={`hidden h-3 w-3 shrink-0 sm:block ${tone}`} />
@@ -850,10 +856,10 @@ export default function DispatchCenter({embedded=false}) {
                 ))}
             </div>
 
-            <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2 xl:hidden">
+            <div className="dispatch-v3-mobile flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2">
                 <div className="cad-mobile-view-tabs flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1.5" aria-label="Dispatch mobile panels">
                     {[
-                        ['calls','1 · Calls'], ['detail','2 · Details'], ['assignment','3 · Assign'], ['units','Units'], ['map','Map']
+                        ['calls','Calls'], ['detail','Details'], ['assignment','Assign'], ['units','Units'], ['map','Map']
                     ].map(([value,label]) => (
                         <button type="button" key={value} aria-pressed={value==='map'?showMap:mobileView===value} onClick={() => value==='map'?setShowMap(true):setMobileView(value)} className={`min-h-11 min-w-[76px] flex-1 shrink-0 rounded-lg border px-2 text-[10px] font-black tracking-wide ${(value==='map'?showMap:mobileView===value) ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#0b1320] text-slate-300'}`}>{label}</button>
                     ))}
@@ -869,7 +875,7 @@ export default function DispatchCenter({embedded=false}) {
                 </div>
                 <div className="cad-queue-filter-strip flex min-w-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1" aria-label="Filter dispatch calls">
                     {[
-                        ['all','PROPERTY CALLS'], ['unassigned','UNASSIGNED'], ['priority','PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','EN ROUTE'], ['On Scene','ON SCENE'], ['agency','ALL ACTIVE CALLS']
+                        ['agency','All calls'], ['unassigned','Waiting'], ['assigned','Assigned'], ['priority','Priority'], ['all','Property']
                     ].map(([value,label]) => (
                         <button type="button" key={value} aria-pressed={queueFilter===value} onClick={() => {setQueueFilter(value);setMobileView('calls');}} className={`shrink-0 whitespace-nowrap rounded border px-2.5 py-2 text-[10px] ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-300 hover:text-white'}`}>{label} ({activeCalls.filter(call=>matchesQueue(call,value)).length})</button>
                     ))}
@@ -882,7 +888,7 @@ export default function DispatchCenter({embedded=false}) {
                 <button onClick={() => setSortOrder('asc')} className={`px-2 py-0.5 rounded text-[10px] border ${
                     sortOrder === 'asc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
                 }`}>Oldest</button>
-                <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {queueFilter==='agency'?activeCalls.length:propertyAlertCalls.length}</span>
+                <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {activeCalls.length}</span>
             </div>
 
             {/* ══ MAIN GRID ══ */}
@@ -891,61 +897,12 @@ export default function DispatchCenter({embedded=false}) {
                     <CallHistory embedded />
                 </div>
             ) : (
-                <div className="dispatch-main pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0 flex flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
+                <div data-mobile-view={mobileView} className="dispatch-main dispatch-v3-grid pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
                     <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}>
-                        {/* Police Calls */}
-                        <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
-                            <span className="pf-dispatch-pane-title">1 · {queueFilter==='agency'?'All active calls':'Company property calls'}</span>
-                            <span className="text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
-                        </div>
-                        {/* Table header */}
-                        <div className="dispatch-call-headings pf-dispatch-legacy-head flex-none grid grid-cols-12">
-                            <div className="col-span-2">PRI</div>
-                            <div className="col-span-5">Incident</div>
-                            <div className="col-span-5">TIME</div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {allCalls.length === 0 ? (
-                                <div className="text-[10px] text-slate-500 text-center py-4">{loading ? 'Loading Current Calls…' : callsLoadWarning ? 'Active call feed unavailable — retrying when the API recovers' : queueSearch ? 'No Calls Match This Search' : queueFilter==='agency' ? 'No Active Calls' : 'No Property Calls Match This Filter'}</div>
-                            ) : allCalls.map(call => {
-                                return (
-                                <div key={call.id} role="button" tabIndex={0} aria-label={'Open incident '+(call.bps_reference||call.call_id||call.id)} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();handleSelectCall(call);}}} onClick={() => handleSelectCall(call)}
-                                    className={`dispatch-call-card pf-dispatch-call group grid cursor-pointer border-b px-2 py-2.5 transition-all ${
-                                        selectedCall?.id === call.id
-                                            ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6] border-[#172536]'
-                                            : 'border-[#172536] hover:bg-[#111827]'
-                                    }`}>
-                                    <div className="pf-dispatch-priority">
-                                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(incidentPriority(call))}`}>
-                                            {{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}
-                                        </span>
-                                    </div>
-                                    <div className="pf-dispatch-call-info">
-                                        <div className={`text-[9px] font-mono font-bold truncate ${call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{(call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…')}</div>
-                                        <div className="break-words text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{cleanIncident(call)}</div>
-                                        <div className="mt-1 break-words text-[9px] text-slate-400">{call.location}</div>
-                                        {propertyCallIds.has(String(call.id))&&<div className="mt-1 text-[9px] font-bold text-cyan-300">PROPERTY STATUS: {propertyCallProgress(call).toUpperCase()}</div>}
-                                        <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wide ${'text-slate-600'}`}>
-                                            {(call.agency || 'AGENCY N/A')}
-                                        </div>
-                                    </div>
-                                    <div className="pf-dispatch-call-time text-slate-400">
-                                        <div>{formatEasternTime(call.time_received || call.created_date)}</div>
-                                        {findPropertyMatch(call, monitoredProperties) ? (
-                                            <div className={`mt-1 font-bold ${callAgeMinutes(call) >= 15 ? 'text-red-400' : 'text-slate-600'}`}>
-                                                {callAgeMinutes(call)} MIN AGO · PROPERTY
-                                            </div>
-                                        ) : (
-                                            <div className={`mt-1 font-bold ${'text-slate-700'}`}>{'AGENCY CALL'}</div>
-                                        )}
-                                    </div>
-                                </div>
-                                );
-                            })}
-                        </div>
+                        <header className="dispatch-v3-panel-head"><b>Incident queue</b><span>{allCalls.length} calls</span></header>
+                        <div className="dispatch-v3-queue-scroll">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Assigned / responding',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>handleSelectCall(call)}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
 
                     </div>
 
@@ -956,7 +913,7 @@ export default function DispatchCenter({embedded=false}) {
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
                             {selectedCall ? (
-                                <div className="pf-dispatch-detail-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>2 · Incident details</span><div className="flex gap-2 xl:hidden"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
+                                <div className="pf-dispatch-detail-scroll dispatch-v3-detail min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>Incident details</span><div className="flex gap-2 xl:hidden"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
@@ -1063,8 +1020,8 @@ export default function DispatchCenter({embedded=false}) {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-center h-16 text-[10px] text-slate-600">
-                                    Select a call from the queue to view details and manage response.
+                                <div className="dispatch-v3-empty flex items-center justify-center p-6 text-center">
+                                    Select an incident on the left to review its address, hazards and response actions. Then assign units on the right.
                                 </div>
                             )}
                         </div>
@@ -1078,7 +1035,7 @@ export default function DispatchCenter({embedded=false}) {
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                                    <span className="pf-dispatch-pane-title">3 · Assign units</span>
+                                    <span className="pf-dispatch-pane-title">Assign units</span>
                                     <span className="ml-auto rounded-md border border-blue-800/60 bg-blue-950/40 px-2 py-1 text-[8px] font-black text-blue-200">Call selected</span>
                                 </div>
                                 <div className="min-h-0 flex-1 p-3">
@@ -1089,7 +1046,7 @@ export default function DispatchCenter({embedded=false}) {
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                                    <span className="pf-dispatch-pane-title">3 · Assign units</span>
+                                    <span className="pf-dispatch-pane-title">Assign units</span>
                                 </div>
                                 <div className="flex min-h-0 flex-1 items-center justify-center p-4">
                                     <div className="max-w-[260px] rounded-xl border border-dashed border-slate-700 bg-[#09121e] p-5 text-center text-xs text-slate-400">Select an active call, then return to Assignment to dispatch a unit.</div>

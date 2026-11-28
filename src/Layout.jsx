@@ -1,3 +1,4 @@
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import RecordsSearchDialog from '@/components/RecordsSearchDialog';
 import {getRoleHome} from '@/lib/roleHome';
 import {hasIAAccess,hasWholeAppAccess} from '@/lib/portalAccess';
@@ -483,13 +484,13 @@ function allowedCenters(user) {
   if (roles.has('student') || user?.user_type === 'student') return ['student'];
   if (roles.has('visitor')) return ['visitor'];
   if (hasWholeAppAccess(user)) return ['admin','standards','cad','officer','supervisor','hr','support','accounting','training','client','student'];
-  if (user?.role === 'admin') return ['admin',...(hasIAAccess(user)?['standards']:[]),...(canAccessAccounting(user)?['accounting']:[]),...(roles.has('trainer')?['training']:[])];
+  if (user?.role === 'admin') return ['admin',...(canAccessDispatchCenter(user)?['cad']:[]),...(hasIAAccess(user)?['standards']:[]),...(canAccessAccounting(user)?['accounting']:[]),...(roles.has('trainer')?['training']:[])];
 
   // Combine ALL assigned workspaces. Previously an early return for dispatch,
   // supervisor or officer discarded HR/training/accounting and secondary roles.
   const centers = [];
   if (supervisor) centers.push('supervisor', 'cad', 'officer');
-  if (roles.has('dispatch') || user?.role === 'dispatch' || roles.has('cad_access')) centers.push('cad');
+  if (canAccessDispatchCenter(user) || roles.has('cad_access')) centers.push('cad');
   if (roles.has('officer')) centers.push('officer', 'cad');
   if (roles.has('hr') || rank === 'human resources') centers.push('hr');
   if (roles.has('support_staff') || roles.has('support') || rank === 'support staff') centers.push('support');
@@ -523,6 +524,7 @@ function defaultPageForUser(user) {
 }
 
 function canAccessPage(user, pageName) {
+  if (pageName === 'DispatchCenter') return canAccessDispatchCenter(user);
   // Post Orders are an authenticated field reference, never a public/client page.
   if (pageName === 'PostOrders') {
     const client = user?.user_type === 'client' || String(user?.rank || '').toLowerCase() === 'client' || (user?.additional_roles || []).some(role => String(role).toLowerCase() === 'client');

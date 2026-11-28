@@ -1,3 +1,6 @@
+import {useAuth} from '@/lib/AuthContext';
+import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
+import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, ClipboardList, History, LayoutGrid, Map, Radio, RadioTower, Shield, Users } from 'lucide-react';
 import { CadClock } from '@/components/dispatch/CadTerminal';
@@ -43,6 +46,9 @@ const TOOLS = {
 const TRANSIENT_PARAMS = ['new', 'open', 'call_id', 'call_number', 'callId', 'lat', 'lng', 'cad_focus', 'cad_unit', 'cad_status'];
 
 function CadShell({ embedded = false }) {
+  const {user}=useAuth();
+  const dispatchAllowed=canAccessDispatchCenter(user);
+  const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>item.id!=='dispatch'||dispatchAllowed)])),[dispatchAllowed]);
   const location = useLocation();
   const navigate = useNavigate();
   const hostRef = useRef(null);
@@ -58,13 +64,16 @@ function CadShell({ embedded = false }) {
   const detached = params.get('detached') === '1';
   const section = params.get(embedded ? 'cad_section' : 'section') || 'live';
   const toolKey = embedded ? 'cad_tool' : 'tool';
-  const tools = TOOLS[section] || TOOLS.live;
+  const tools = permittedTools[section] || permittedTools.live;
   const requestedTool=params.get(toolKey)==='resources'?'units':params.get(toolKey);
   const active = tools.find(tool => tool.id === requestedTool) || tools[0];
   const Component = active.component;
   const scale = cadScaleValue(display.scale);
+  const [viewportHeight,setViewportHeight]=useState(null);
+  const shellStyle={'--cad-scale':scale,zoom:scale,'--cad-scaled-height':viewportHeight?viewportHeight/scale+'px':undefined};
 
   const select = (nextSection, tool, extra = {}) => {
+    if(tool==='dispatch'&&!dispatchAllowed)return;
     const next = new URLSearchParams(location.search);
     next.set(embedded ? 'cad_section' : 'section', nextSection);
     next.set(toolKey, tool==='resources'?'units':tool);
@@ -88,6 +97,7 @@ function CadShell({ embedded = false }) {
     setDisplay(writeCadDisplaySettings(next));
   }, []);
 
+  useEffect(()=>{const sync=()=>setDisplay(readCadDisplaySettings());window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync);},[]);
   const toggleMonitor = () => {
     const next = !monitorOpen;
     setMonitorOpen(next);
@@ -117,8 +127,8 @@ function CadShell({ embedded = false }) {
       }
       if (!event.altKey || event.ctrlKey || event.metaKey) return;
       const index = Number(key);
-      if (Number.isInteger(index) && index >= 1 && index <= TOOLS.live.length) {
-        const tool = TOOLS.live[index - 1];
+      if (Number.isInteger(index) && index >= 1 && index <= permittedTools.live.length) {
+        const tool = permittedTools.live[index - 1];
         if (tool) {
           event.preventDefault();
           select('live', tool.id);
@@ -132,7 +142,7 @@ function CadShell({ embedded = false }) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [location.search, refreshAll]);
+  }, [location.search, refreshAll, permittedTools]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -141,7 +151,7 @@ function CadShell({ embedded = false }) {
       const viewport = host.closest('main[data-page]');
       const bottom = Math.min(window.innerHeight, viewport?.getBoundingClientRect().bottom || window.innerHeight);
       const height = Math.max(0, Math.floor(bottom - Math.max(0, host.getBoundingClientRect().top, viewport?.getBoundingClientRect().top || 0) - 2));
-      if (height > 0) host.style.setProperty('--cad-workspace-height', height + 'px');
+      if (height > 0) setViewportHeight(height);
     };
     measure();
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
@@ -153,11 +163,11 @@ function CadShell({ embedded = false }) {
       window.removeEventListener('resize', measure);
       window.visualViewport?.removeEventListener('resize', measure);
     };
-  }, [active.id]);
+  }, [active.id,scale]);
 
   const workstations = useMemo(
-    () => Object.entries(TOOLS).flatMap(([group, items]) => items.map(item => ({ ...item, section: group }))),
-    [],
+    () => Object.entries(permittedTools).flatMap(([group, items]) => items.map(item => ({ ...item, section: group }))),
+    [permittedTools],
   );
 
   const commands = useMemo(() => [
@@ -194,10 +204,10 @@ function CadShell({ embedded = false }) {
   ], [monitorOpen, display, refreshAll, location.search]);
 
   if (detached) {
-    return <section className="cad-console-shell cad-terminal-shell cad-shell-detached" style={{ '--cad-scale': scale }}>
+    return <section className="cad-console-shell cad-terminal-shell cad-shell-detached" style={shellStyle}>
       <div className="cad-terminal-systembar">
         <span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>Detached live map</span></span>
-        <CadClock />
+        <div className="cad-top-display"><CadZoomControls value={display.scale} onChange={value=>updateDisplay({...display,scale:value})}/><CadClock /></div>
       </div>
       <div className="cad-active-screen cad-terminal-screen cad-screen-map">
         <Navigation embedded />
@@ -205,8 +215,8 @@ function CadShell({ embedded = false }) {
     </section>;
   }
 
-  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} style={{ '--cad-scale': scale }}>
-    <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><CadClock /></div>
+  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} style={shellStyle}>
+    <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><div className="cad-top-display"><CadZoomControls value={display.scale} onChange={value=>updateDisplay({...display,scale:value})}/><CadClock /></div></div>
     <CadStatusBar
       calls={calls}
       units={units}
@@ -223,7 +233,7 @@ function CadShell({ embedded = false }) {
       onSettings={() => setSettingsOpen(true)}
     />
     {monitorOpen && active.id!=='command' && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
-    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(TOOLS).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
+    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
       {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'response'
           ? <CadResponseAnalytics />
