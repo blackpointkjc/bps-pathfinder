@@ -7,7 +7,7 @@ import './cad-upgrade.css';
  * Per-workstation display settings. Scaling is stored on this browser so one
  * dispatcher's readability choice never changes another workstation's layout.
  */
-export default function CadDisplaySettingsDialog({ open, onOpenChange, settings, onChange }) {
+export default function CadDisplaySettingsDialog({ open, onOpenChange, settings, onChange, showMapSetting=false }) {
   const update = patch => onChange?.({ ...settings, ...patch });
 
   return (
@@ -46,11 +46,11 @@ export default function CadDisplaySettingsDialog({ open, onOpenChange, settings,
           >
             <span>
               <b>Incident monitor</b>
-              <small>Show an at-risk incident strip outside the unified command board</small>
+              <small>Show pending and at-risk incidents above the current workstation</small>
             </span>
             <i>{settings?.monitor ? 'Shown' : 'Hidden'}</i>
           </button>
-          <button type="button" className="cad-settings-toggle" aria-pressed={settings?.showMap!==false} onClick={()=>update({showMap:settings?.showMap===false})}><span><b>Integrated map</b><small>Keep the tactical map on the command workstation.</small></span><i>{settings?.showMap===false?'Hidden':'Shown'}</i></button>
+          {showMapSetting&&<button type="button" className="cad-settings-toggle" aria-pressed={settings?.showMap!==false} onClick={()=>update({showMap:settings?.showMap===false})}><span><b>Integrated map</b><small>Keep the tactical map on the command workstation.</small></span><i>{settings?.showMap===false?'Hidden':'Shown'}</i></button>}
           <button
             type="button"
             className="cad-settings-reset"

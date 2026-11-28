@@ -81,6 +81,7 @@ function DispatchWorkspace({embedded=false}) {
     const [selectedCall, setSelectedCall] = useState(null);
     const [loading, setLoading] = useState(activeCalls.length === 0);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [intakeSource,setIntakeSource]=useState('dispatch');
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showDispatchLog, setShowDispatchLog] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
@@ -143,7 +144,7 @@ function DispatchWorkspace({embedded=false}) {
                 event.preventDefault();
                 document.getElementById('cad-queue-search')?.focus();
             }
-            if (event.key.toLowerCase() === 'n') setShowCreateDialog(true);
+            if (event.key.toLowerCase() === 'n') {setIntakeSource('dispatch');setShowCreateDialog(true);setMobileView('detail');}
             if (event.key.toLowerCase() === 'm') setShowMap(value => !value);
             if (event.key === 'Escape') {
                 setShowMap(false);
@@ -502,12 +503,13 @@ function DispatchWorkspace({embedded=false}) {
         setDetailTab('incident');
         selectedNoteCallRef.current=String(call?.id||'');
         setCallNotes([]);
-        if (typeof window !== 'undefined' && window.innerWidth < 1280) setMobileView('detail');
+        setWelfareChecks([]);
+        setMobileView('detail');
         setCallDistrict(null);
         loadCallNotes(call?.id);
         loadWelfareChecks(call?.id);
         if (call?.latitude && call?.longitude) {
-            lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
+            lookupDistrict(call.latitude, call.longitude).then(d => {if(selectedNoteCallRef.current===String(call.id))setCallDistrict(d);}).catch(()=>{});
         }
     };
 
@@ -563,7 +565,7 @@ function DispatchWorkspace({embedded=false}) {
                 status: newStatus,
             });
             const payload = result?.data || result || {};
-            if (payload.error) throw new Error(payload.error);
+            if (payload.error || !payload.success) throw new Error(payload.error || 'CAD did not confirm status update');
             setDispatchFeedback(`Call Updated: ${newStatus}`); setSelectedCall(previous=>previous?{...previous,status:newStatus}:previous);
             toast.success(`Call marked ${newStatus}`);
             if (['Cleared', 'Cancelled'].includes(newStatus)) setSelectedCall(null);
@@ -661,7 +663,8 @@ function DispatchWorkspace({embedded=false}) {
             return [createdCall, ...without];
         });
         setShowCreateDialog(false);
-        toast.success('Call created and dispatched');
+        toast.success('Incident saved');
+        handleSelectCall(createdCall);
         // Reconcile quietly in the background after the modal has closed.
         loadActiveCalls().catch(() => null);
     };
@@ -754,7 +757,7 @@ function DispatchWorkspace({embedded=false}) {
 
 
     return (
-        <div ref={workstationRef} style={!embedded?{zoom,'--dispatch-zoom':zoom}:undefined} data-high-zoom={!embedded&&zoom>1.24} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch dispatch-v3 relative flex h-full min-h-0 flex-col overflow-hidden text-white "+(!embedded?' cad-dispatch-standalone':'')}>
+        <div ref={workstationRef} style={!embedded?{zoom,'--dispatch-zoom':zoom}:undefined} data-high-zoom={!embedded&&zoom>1.24} className={"bps-command-page cad-command-workstation pf-cad-workspace pf-dispatch-workspace tac-console tac-dispatch dispatch-v3 dispatch-workspace-v4 relative flex h-full min-h-0 flex-col overflow-hidden text-white "+(!embedded?' cad-dispatch-standalone':'')}>
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
@@ -772,10 +775,11 @@ function DispatchWorkspace({embedded=false}) {
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
                     <button type="button" onClick={()=>{for(const prefix of ['function:getActiveDispatchCalls:','function:getOnDutyUnits:','function:sharedCadTimeline:'])clearBase44ReadCacheMatching(prefix);void loadActiveCalls(true);void loadUnits(true);if(selectedCall?.id){void loadCallNotes(selectedCall.id);void loadWelfareChecks(selectedCall.id);}}} className="pf-cad-button">Refresh</button>
-                    <button onClick={() => setShowCreateDialog(true)}
+                    <button onClick={() => {setIntakeSource('dispatch');setShowCreateDialog(true);setMobileView('detail');setShowPriorCalls(false);setShowDispatchLog(false);}}
                         className="flex items-center gap-1 rounded-lg border border-blue-700 bg-[#163153] text-white hover:bg-blue-900">
-                        <Plus className="w-3 h-3" /> New call
+                        <Plus className="w-3 h-3" /> New incident
                     </button>
+                    <button type="button" onClick={()=>{setIntakeSource('field');setShowCreateDialog(true);setMobileView('detail');setShowPriorCalls(false);setShowDispatchLog(false);}}>Field initiated</button>
 
                     <button onClick={() => {
                         setShowMap(true);
@@ -842,22 +846,7 @@ function DispatchWorkspace({embedded=false}) {
 
 
             {!showDispatchLog && <>
-            {/* ══ COMMAND STATUS STRIP ══ */}
-            <div className="dispatch-kpis pf-dispatch-metrics tac-dispatch-metrics grid flex-none grid-cols-3 gap-2 border-b border-[#1e2d4a] bg-[#080d16] p-2 xl:grid-cols-6">
-                {[
-                    { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
-                    { label: 'WAITING', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
-                    { label: 'PRIORITY CALLS', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
-                    { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
-                    { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
-                    { label: 'OLDEST PROPERTY', value: propertyAlertCalls.length ? `${oldestPropertyCallMinutes}m` : '—', tone: oldestPropertyCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
-                ].map(({ label, value, tone, icon: Icon }) => (
-                    <div key={label} className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#26384c] bg-[#0d1420] px-2 py-2 text-center shadow-lg">
-                        <Icon className={`hidden h-3 w-3 shrink-0 sm:block ${tone}`} />
-                        <div className="min-w-0"><div className={`text-sm font-black leading-none ${tone}`}>{value}</div><div className="mt-0.5 truncate text-[7px] font-bold tracking-[0.1em] text-slate-500">{label}</div></div>
-                    </div>
-                ))}
-            </div>
+            <div className="dispatch-v4-summary"><span><i data-tone="warning"/> Waiting <b>{unassignedCalls.length}</b></span><span>Responding <b>{activeCalls.length-unassignedCalls.length}</b></span><span>Priority <b>{priorityCalls.length}</b></span><span>Available units <b>{availableUnits.length}</b></span>{callsLoadWarning&&<span role="alert">{callsLoadWarning}</span>}</div>
 
             <div className="dispatch-v3-mobile flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2">
                 <div className="cad-mobile-view-tabs flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1.5" aria-label="Dispatch mobile panels">
@@ -900,23 +889,23 @@ function DispatchWorkspace({embedded=false}) {
                     <CallHistory embedded />
                 </div>
             ) : (
-                <div data-mobile-view={mobileView} className="dispatch-main dispatch-v3-grid pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0">
+                <div data-mobile-view={mobileView} data-selected={!!selectedCall||showCreateDialog} className="dispatch-main dispatch-v3-grid dispatch-v4-grid pf-dispatch-grid tac-dispatch-grid flex-1 min-h-0">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
                     <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} pf-dispatch-list min-h-0 w-full flex-1 flex-col xl:flex xl:min-h-0 xl:flex-none`}>
                         <header className="dispatch-v3-panel-head"><b>Incident queue</b><span>{allCalls.length} calls</span></header>
-                        <div className="dispatch-v3-queue-scroll">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Assigned / responding',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>handleSelectCall(call)}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
+                        <div className="dispatch-v3-queue-scroll dispatch-v4-queue-lanes">{[['Waiting for assignment',allCalls.filter(c=>matchesQueue(c,'unassigned'))],['Assigned / responding',allCalls.filter(c=>!matchesQueue(c,'unassigned'))]].map(([label,items])=><section key={label} className="dispatch-v3-queue-group"><h3>{label} <span>{items.length}</span></h3>{items.map(call=><button key={call.id} type="button" className="dispatch-v3-call" data-priority={incidentPriority(call)} aria-pressed={selectedCall?.id===call.id} onClick={()=>handleSelectCall(call)}><div className="dispatch-v3-call-top"><span className="dispatch-v3-priority">{{critical:'P1',high:'P2',medium:'P3',low:'P4'}[incidentPriority(call)]}</span><strong>{cleanIncident(call)}</strong><time>{callAgeMinutes(call)}m</time></div><p>{call.location||'Location pending'}</p><div className="dispatch-v3-call-meta"><span>{call.agency_cad_number||call.bps_reference||call.call_id||'Reference pending'}</span><span>{call.status||'New'}</span>{propertyCallIds.has(String(call.id))&&<span>Property</span>}</div>{call.hazards&&<span className="dispatch-v3-hazard">Safety alert: {call.hazards}</span>}</button>)}{!items.length&&<p className="dispatch-v3-empty">{loading?'Loading incidents…':callsLoadWarning?'Feed delayed. Last received data shown.':'No matching calls'}</p>}</section>)}</div>
 
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
                     <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} pf-dispatch-detail min-h-0 w-full flex-1 min-w-0 flex-col xl:flex xl:min-h-0`}>
-                        <div className="tac-dispatch-center-tools"><span>INCIDENT WORKSPACE</span><div><button type="button" aria-pressed={dockMap} onClick={()=>setDockMap(x=>!x)}>{dockMap?'Hide map':'Dock tactical map'}</button><button type="button" onClick={()=>setShowMap(true)}>Full map</button></div></div>
-                        {dockMap&&!showMap&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
+                        <div className="tac-dispatch-center-tools"><span>{showCreateDialog?'New incident':'Incident workspace'}</span><div><button type="button" onClick={()=>{if(showCreateDialog&&!window.confirm('Discard unsaved draft?'))return;setShowCreateDialog(false);setSelectedCall(null);setMobileView('calls');}}>Close workspace</button><button type="button" aria-pressed={dockMap} onClick={()=>setDockMap(x=>!x)}>{dockMap?'Hide map':'Dock tactical map'}</button><button type="button" onClick={()=>setShowMap(true)}>Full map</button></div></div>
+                        {dockMap&&!showMap&&!showCreateDialog&&<TacticalCommandMap compact calls={activeCalls} units={units} onCallClick={handleSelectCall}/>}
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] xl:flex`}>
-                            {selectedCall ? (
-                                <div className="pf-dispatch-detail-scroll dispatch-v3-detail min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>Incident details</span><div className="flex gap-2 xl:hidden"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
+                            {showCreateDialog?<div className="cc-workspace-v2 dispatch-v4-intake"><CreateCallDialog inline source={intakeSource} units={units} currentUser={currentUser} onClose={()=>setShowCreateDialog(false)} onCreated={handleCallCreated}/></div>:selectedCall ? (
+                                <div className="pf-dispatch-detail-scroll dispatch-v3-detail min-h-0 flex-1 overflow-y-auto overscroll-contain"><div className="pf-dispatch-pane-heading"><span>Incident details</span><div className="flex gap-2"><button type="button" className="pf-cad-button" onClick={()=>setMobileView('calls')}>Back to calls</button><button type="button" className="pf-cad-primary" onClick={()=>setMobileView('assignment')}>Assign units</button></div></div>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
@@ -1034,7 +1023,7 @@ function DispatchWorkspace({embedded=false}) {
 
                     {/* ═══ RIGHT: UNITS / ASSIGNMENT ═══ */}
                     <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} pf-dispatch-units min-h-0 w-full flex-1 flex-col xl:flex xl:flex-none`}>
-                        {selectedCall && mobileView !== 'units' ? (
+                        {selectedCall && !showCreateDialog && mobileView !== 'units' ? (
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
@@ -1110,15 +1099,7 @@ function DispatchWorkspace({embedded=false}) {
                 onClose={() => setShowMessaging(false)}
             />
 
-            {/* Create Call Dialog */}
-            {showCreateDialog && (
-                <CreateCallDialog
-                    units={units}
-                    currentUser={currentUser}
-                    onClose={() => setShowCreateDialog(false)}
-                    onCreated={handleCallCreated}
-                />
-            )}
+
         </div>
     );
 }

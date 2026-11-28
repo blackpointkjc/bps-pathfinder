@@ -183,3 +183,27 @@
 
 .cc-workspace-v2:fullscreen{width:100vw;height:100vh;max-width:none;min-height:0;background:#06101c;overflow:hidden}
 .cc-workspace-v2:fullscreen .cc-grid{flex:1 1 0}
+
+/* Officer command is a monitoring board, not a dispatch console. Give the
+   pending queue the largest share; a detail view temporarily replaces units. */
+.cc-officer-workspace .cc-grid[data-map=false]{grid-template-columns:minmax(130px,18%) minmax(0,1.4fr) minmax(0,1fr);grid-template-areas:"units pending active";grid-template-rows:minmax(0,1fr)}
+.cc-officer-workspace .cc-grid[data-selected=true][data-map=false]{grid-template-columns:minmax(180px,32%) minmax(0,1fr) minmax(145px,23%);grid-template-areas:"pending incident active";grid-template-rows:minmax(0,1fr)}
+.cc-officer-workspace .cc-grid[data-selected=true]>.cc-units{display:none}
+.cc-officer-workspace .cc-grid[data-selected=false] .cc-pending .cc-call-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.cc-officer-workspace .cc-grid[data-pending-expanded=true][data-map=false]{grid-template-columns:minmax(0,1fr);grid-template-areas:"pending"}
+.cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-panel:not(.cc-pending){display:none}
+.cc-officer-workspace .cc-grid[data-pending-expanded=true] .cc-call-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.cc-officer-workspace .cc-editor{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1.4fr) minmax(100px,.8fr)}
+.cc-officer-workspace .cc-call-title strong{font-weight:550;text-transform:none;font-size:13px;line-height:1.4}
+.cc-officer-workspace .cc-panel>header b{font-weight:550;font-size:13px}
+.cc-officer-workspace .cc-call-index b,.cc-officer-workspace .cc-radio-row{font-weight:500}
+.cc-officer-workspace .cc-call-body p{font-size:12px;color:#d9e5ee}
+@container(max-width:780px){
+ .cc-officer-workspace .cc-mobile{display:flex}
+ .cc-officer-workspace .cc-grid[data-map=false],.cc-officer-workspace .cc-grid[data-selected=true][data-map=false],.cc-officer-workspace .cc-grid[data-pending-expanded=true][data-map=false]{display:flex;flex-direction:column}
+ .cc-officer-workspace .cc-grid>.cc-panel,.cc-officer-workspace .cc-grid[data-selected=true]>.cc-units{display:none}
+ .cc-officer-workspace .cc-grid[data-view=pending]>.cc-pending,.cc-officer-workspace .cc-grid[data-view=active]>.cc-active,.cc-officer-workspace .cc-grid[data-view=units]>.cc-units,.cc-officer-workspace .cc-grid[data-view=incident]>.cc-incident,.cc-officer-workspace .cc-grid[data-view=comments]>.cc-incident{display:flex}
+ .cc-officer-workspace .cc-grid[data-pending-expanded=true]>.cc-pending{display:flex}
+ .cc-officer-workspace .cc-editor{display:flex;flex-direction:column}
+ .cc-officer-workspace .cc-grid[data-view=comments] .cc-editor-comments{display:flex}
+}

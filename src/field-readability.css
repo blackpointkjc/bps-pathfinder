@@ -159,3 +159,15 @@
  html:is([data-pf-text="large"],[data-pf-text="extra-large"]) .cc-workspace-v2 .cc-radio-row{min-height:33px}
  html[data-pf-contrast="high"] :is(.cc-workspace-v2,.dispatch-v3,.cad-terminal-page) :is(.cc-call-index,.cc-call-body small,.cc-empty,.cc-unit-group,.dispatch-v3-empty,.dispatch-v3-call-meta){color:#e2eef7!important}
 }
+
+@media screen{
+ .cad-terminal-shell,.cc-command-host,.dispatch-workspace-v4{font-family:system-ui,sans-serif}
+ :is(.cad-terminal-shell,.cc-command-host,.dispatch-workspace-v4) :is(.cad-terminal-id b,.cad-terminal-nav button,.cad-status-metrics strong,.cad-monitor-title,.cad-monitor-counts b,.cad-monitor-chip strong,.cc-panel>header b,.cc-call-title strong,.cc-tab button,.tac-detail-title h2,.tac-detail-block h3,.tac-detail-actions button,.cad-terminal-record-title h2,.cad-terminal-header h1,.dispatch-v3-call-top strong,.pf-dispatch-pane-title,.dispatch-v3-panel-head){font-weight:550!important;letter-spacing:normal!important;text-transform:none!important}
+ :is(.cad-terminal-shell,.cc-command-host,.dispatch-workspace-v4) :is(.font-black,.font-extrabold){font-weight:600!important;letter-spacing:normal!important}
+ .cad-terminal-shell .cad-monitor-track{max-height:105px;overflow-y:auto}
+ .cad-terminal-shell .cad-monitor-title{font:500 12px/1.3 system-ui,sans-serif;color:#c4d9e6}
+ .cad-terminal-shell .cad-monitor-chip{min-width:190px;max-width:260px}
+ .cad-terminal-shell .cad-monitor-chip strong{white-space:normal}
+ .cad-terminal-shell .cad-monitor-chip small{white-space:normal}
+ .cc-officer-workspace .cc-panel>header{font-size:13px}
+}

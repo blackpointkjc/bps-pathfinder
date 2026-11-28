@@ -70,11 +70,11 @@ export default function CadStatusBar({
         <span className="cad-status-sync">{lastRefresh ? `Synced ${formatEasternTime(lastRefresh)} ET` : 'Awaiting sync'}</span>
         {rosterError && <span className="cad-status-stale" title={rosterError}>Roster delayed</span>}
         <button type="button" aria-pressed={monitorOpen} onClick={onToggleMonitor} title="Show or hide the incident monitor">
-          <RadioTower size={14} /><span>Monitor</span>
+          <RadioTower size={14} /><span>Monitor {monitorOpen?'on':'off'}</span>
         </button>
-        <button type="button" onClick={onDetach} title="Open the live map in a separate window for a second monitor">
+        {onDetach&&<button type="button" onClick={onDetach} title="Open the live map in a separate window for a second monitor">
           <MonitorPlay size={14} /><span>Detach map</span>
-        </button>
+        </button>}
         <button type="button" onClick={onSettings} aria-label="CAD display settings" title="CAD display settings">
           <SlidersHorizontal size={14} />
         </button>

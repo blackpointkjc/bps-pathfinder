@@ -56,7 +56,7 @@ function CadShell({ embedded = false }) {
   const { rows, loading: rosterLoading, error: rosterError, refresh: refreshRoster } = useCadRoster();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [display, setDisplay] = useState(() => readCadDisplaySettings());
-  const [monitorOpen, setMonitorOpen] = useState(() => readCadDisplaySettings().monitor);
+  const monitorOpen=display.monitor;
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const units = useMemo(() => rows.filter(isOperationalOfficer), [rows]);
@@ -94,14 +94,12 @@ function CadShell({ embedded = false }) {
   }, [manualRefresh, refreshRoster]);
 
   const updateDisplay = useCallback(next => {
-    setDisplay(writeCadDisplaySettings(next));
+    setDisplay(previous=>writeCadDisplaySettings(typeof next==='function'?next(previous):next));
   }, []);
 
   useEffect(()=>{const sync=()=>setDisplay(readCadDisplaySettings());window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync);},[]);
   const toggleMonitor = () => {
-    const next = !monitorOpen;
-    setMonitorOpen(next);
-    updateDisplay({ ...display, monitor: next });
+    updateDisplay(previous=>({...previous,monitor:!previous.monitor}));
   };
 
   // A detached map runs in its own browser window, so a dispatcher can keep the
@@ -201,7 +199,7 @@ function CadShell({ embedded = false }) {
       detail: 'Scaling, incident monitor and workspace layout',
       run: () => setSettingsOpen(true),
     },
-  ], [monitorOpen, display, refreshAll, location.search]);
+  ].filter(command=>active.id!=='command'||command.id!=='cmd-detach'), [monitorOpen, display, refreshAll, location.search,active.id]);
 
   if (detached) {
     return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" data-high-zoom={scale>1.24} style={shellStyle}>
@@ -229,15 +227,15 @@ function CadShell({ embedded = false }) {
       onFind={() => setPaletteOpen(true)}
       onOpen={target => select('live', target.tool, target.params || {})}
       onToggleMonitor={toggleMonitor}
-      onDetach={openDetachedMap}
+      onDetach={active.id==='command'?undefined:openDetachedMap}
       onSettings={() => setSettingsOpen(true)}
     />
-    {monitorOpen && active.id!=='command' && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
+    {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
     <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
       {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'response'
           ? <CadResponseAnalytics />
-          : active.id==='command' ? <CommandDashboard embedded showMap={display.showMap} onMapVisibility={showMap=>updateDisplay({...display,showMap})}/> : Component ? <Component embedded /> : null}
+          : active.id==='command' ? <CommandDashboard embedded/> : Component ? <Component embedded /> : null}
     </div>
     <CadCommandPalette
       open={paletteOpen}
@@ -253,10 +251,10 @@ function CadShell({ embedded = false }) {
     <CadDisplaySettingsDialog
       open={settingsOpen}
       onOpenChange={setSettingsOpen}
-      settings={display}
+      settings={display} showMapSetting={false}
       onChange={next => {
         updateDisplay(next);
-        setMonitorOpen(next.monitor);
+
       }}
     />
   </section>;

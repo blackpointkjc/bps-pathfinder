@@ -55,3 +55,34 @@
 
 .dispatch-v3 .dispatch-v3-more{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
 .dispatch-v3 .dispatch-v3-more[hidden]{display:none!important}
+
+/* Dispatch intake & response desk: an expanded incident list in monitor mode,
+   then a focused editor with responding-unit controls after selection. */
+.dispatch-workspace-v4{font:13px/1.45 system-ui,sans-serif!important}
+.dispatch-workspace-v4 .dispatch-v4-summary{display:flex;align-items:center;gap:16px;flex-wrap:wrap;flex:none;padding:7px 10px;background:#102331;border-bottom:1px solid #395265;font-size:12px;color:#b9d0de}
+.dispatch-workspace-v4 .dispatch-v4-summary b{font-weight:550;color:#edf6fb;margin-left:4px;font-variant-numeric:tabular-nums}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false]{grid-template-columns:minmax(0,1fr) minmax(210px,22%)}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false]>.pf-dispatch-detail{display:none!important}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false] .dispatch-v4-queue-lanes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}
+.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=true]{grid-template-columns:minmax(220px,31%) minmax(0,1fr) minmax(210px,25%)}
+.dispatch-workspace-v4 .dispatch-v4-queue-lanes section{min-width:0}
+.dispatch-workspace-v4 .dispatch-v4-queue-lanes h3{font-weight:550;font-size:12px;text-transform:none}
+.dispatch-workspace-v4 .dispatch-v3-call{padding:7px 9px;background:#142939;border:1px solid #334f62;border-left:3px solid #53798c}
+.dispatch-workspace-v4 .dispatch-v3-call-top strong{font-size:13px;font-weight:550;text-transform:none}
+.dispatch-workspace-v4 .dispatch-v3-call p{font-size:12px}
+.dispatch-workspace-v4 .dispatch-v3-call-meta{font-size:11px}
+.dispatch-workspace-v4 .dispatch-v3-call[data-priority=critical]{border-left-color:#fb727d}.dispatch-workspace-v4 .dispatch-v3-call[data-priority=high]{border-left-color:#f3b250}
+.dispatch-workspace-v4 .dispatch-v3-call[aria-pressed=true]{background:#21516a;border-color:#7bc3e4}
+.dispatch-workspace-v4 .pf-dispatch-title{font-size:16px!important;font-weight:600!important}
+.dispatch-workspace-v4 .dispatch-v3-panel-head,.dispatch-workspace-v4 .pf-dispatch-pane-heading,.dispatch-workspace-v4 .pf-dispatch-pane-title,.dispatch-workspace-v4 .tac-dispatch-center-tools{font-size:13px!important;font-weight:550!important;text-transform:none!important;letter-spacing:0!important}
+.dispatch-workspace-v4 .pf-dispatch-facts h2{font-size:16px!important;font-weight:550!important}
+.dispatch-workspace-v4 .dispatch-v4-intake{display:flex;flex:1;min-height:0;overflow:hidden}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft{flex:1;min-height:0}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft-body{overflow:auto}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft>header b{font-size:13px;font-weight:550;text-transform:none}
+.dispatch-workspace-v4 .dispatch-v4-intake .cc-draft-field{font-weight:500}
+@container(max-width:900px){
+ .dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false],.dispatch-workspace-v4 .dispatch-v4-grid[data-selected=true]{display:flex!important;flex-direction:column}
+ .dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false] .dispatch-v4-queue-lanes{display:block}
+ .dispatch-workspace-v4 .dispatch-v4-grid[data-selected=false][data-mobile-view=detail]>.pf-dispatch-detail{display:flex!important}
+}
