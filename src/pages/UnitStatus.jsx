@@ -4,7 +4,7 @@ import {formatEasternDateTime} from '@/lib/easternTime';
 import '@/components/dispatch/cad-center-terminal.css';
 import { useEffect, useState } from 'react';
 import { getAppDirectory } from '@/lib/appDirectory';
-import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
+import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
 import { applyOfficerLocationEvent, subscribeOfficerLocationChanges } from '@/lib/officerLocationHub';
 import {dutyRows} from '@/components/dispatch/UnitDutyBoard';
 
@@ -59,4 +59,9 @@ function UnitStatusPage() {
       </div>
     </div>;
 }
-export default function UnitStatus() { return <DashboardDataProvider><UnitStatusPage /></DashboardDataProvider>; }
+export default function UnitStatus() {
+  // The CAD Center shell already provides the live queue; reuse it instead of
+  // mounting a second polling provider inside the same screen.
+  const existing = useOptionalDashboardData();
+  return existing ? <UnitStatusPage /> : <DashboardDataProvider><UnitStatusPage /></DashboardDataProvider>;
+}

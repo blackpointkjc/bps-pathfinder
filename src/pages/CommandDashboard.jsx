@@ -11,7 +11,7 @@ import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils'
 import { incidentPriority as getCallPriority } from '@/lib/incidentPriority';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
-import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
+import { DashboardDataProvider, useDashboardData, useOptionalDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { persistOfficerStatus, getLastOfficerStatus } from '@/lib/officerStatusService';
@@ -57,6 +57,18 @@ function CommandDashboardInner() {
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
     const [statusSaving,setStatusSaving] = useState(false);
+    // Command Center deep links: the CAD status bar and command palette can open
+    // an incident or a pre-filtered queue directly in the command board.
+    const cadFocus = new URLSearchParams(window.location.search).get('cad_focus') || 'all';
+    const linkedCallId = new URLSearchParams(window.location.search).get('call_id');
+    // Apply each deep link once, so closing the detail rail never re-opens it on
+    // the next queue refresh.
+    const appliedLink = useRef(null);
+    useEffect(() => {
+        if (!linkedCallId || !calls.length || appliedLink.current === linkedCallId) return;
+        const match = calls.find(call => String(call.id) === String(linkedCallId));
+        if (match) { appliedLink.current = linkedCallId; setSelectedCall(match); }
+    }, [linkedCallId, calls]);
     const {rows:roster,loading:rosterLoading,error:rosterError,refresh:refreshRoster}=useCadRoster();
     const [, setTick]                           = useState(0);
 
@@ -203,7 +215,7 @@ function CommandDashboardInner() {
         : DISPATCH_STATUSES;
 
     return <>
-      <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
+      <LiveCommandWorkspace calls={calls} allCalls={calls} units={statusUnits} initialFocus={cadFocus} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} onMap={openCallOnMap} onDispatch={openCallInDispatch} onPriority={handlePriorityOverride} onClear={handleMarkCleared}
         canChangePriority={canEditIncidentPriority(currentUser)} canClear={isDispatchOrAdmin}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor}
@@ -215,6 +227,8 @@ function CommandDashboardInner() {
 }
 
 export default function CommandDashboard() {
+    const existing = useOptionalDashboardData();
+    if (existing) return <CommandDashboardInner />;
     return (
         <DashboardDataProvider>
             <CommandDashboardInner />

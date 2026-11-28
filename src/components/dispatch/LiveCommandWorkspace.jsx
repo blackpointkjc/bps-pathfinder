@@ -7,9 +7,10 @@ import { useEffect, useRef, useState } from 'react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { comparePersonnel } from '@/utils/rankPolicy';
 import { Radio, Search, Users, RefreshCw } from 'lucide-react';
+import { cadAgeLabel, cadServiceLevel } from '@/lib/cadOperationalStatus';
 
-export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
- const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState('all'),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
+export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,initialFocus='all',syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster}){
+ const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState(initialFocus),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
  const [utilityPanel,setUtilityPanel]=useState(null);
  const [screen,setScreen]=useState('operations');
  const [expandedMap,setExpandedMap]=useState(false);
@@ -34,6 +35,18 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
    measure();
    return()=>{cancelAnimationFrame(frame);observer?.disconnect();window.removeEventListener('resize',measure);window.visualViewport?.removeEventListener('resize',measure);};
  },[]);
+ // A deep-linked incident (CAD status bar or command palette) opens the detail
+ // rail exactly as if the dispatcher had selected it from the incident stack.
+ const lastLinked=useRef(null);
+ useEffect(()=>{
+  if(!selectedCall){lastLinked.current=null;return;}
+  if(lastLinked.current===selectedCall.id)return;
+  lastLinked.current=selectedCall.id;
+  setRightPane('incident');setScreen('incident');setExpandedMap(false);
+ },[selectedCall?.id]);
+ // Telemetry shortcuts (for example the CAD status bar's "Unassigned") arrive as
+ // a new initialFocus while this board stays mounted.
+ useEffect(()=>{if(initialFocus)setFocus(initialFocus);},[initialFocus]);
  const [unitFilter,setUnitFilter]=useState('all');
  const [districts,setDistricts]=useState({});
  const districtCache=useRef(new Map());
@@ -61,7 +74,7 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  const critical=allCalls.filter(c=>['critical','high'].includes(priorityOf(c)));
  const available=units.filter(u=>u.status==='Available'&&!u.connection_stale&&(u.presence_online===true||u.session_active===true));
  const priorities={critical:{label:'P1 · Critical',style:'border-red-500/60 bg-red-950/50 text-red-200'},high:{label:'P2 · High',style:'border-orange-500/50 bg-orange-950/40 text-orange-200'},medium:{label:'P3 · Standard',style:'border-amber-600/40 bg-amber-950/30 text-amber-200'},low:{label:'P4 · Low',style:'border-sky-500/40 bg-sky-950/30 text-sky-200'}};
- const visible=calls.filter(c=>(agency==='all'||c.agency===agency)&&(focus==='all'||focus==='unassigned'&&needsDispatch(c)||focus==='urgent'&&['critical','high'].includes(priorityOf(c)))&&[incidentOf(c),c.location,c.cross_street,identifierOf(c).value].join(' ').toLowerCase().includes(query.toLowerCase()));
+ const visible=calls.filter(c=>(agency==='all'||c.agency===agency)&&(focus==='all'||focus==='unassigned'&&needsDispatch(c)||focus==='urgent'&&['critical','high'].includes(priorityOf(c))||focus==='overdue'&&cadServiceLevel(c).state==='overdue')&&[incidentOf(c),c.location,c.cross_street,identifierOf(c).value].join(' ').toLowerCase().includes(query.toLowerCase()));
  // Chronological board, not priority-sorted: newest/shortest elapsed first,
  // oldest/longest elapsed last. Use the same timestamp as the visible timer.
  // Unknown timestamps remain at the bottom with a deterministic tie-break.
@@ -81,15 +94,15 @@ export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],load
  return <div ref={commandRef} className="tac-console tac-command">
   <header className="tac-header"><div className="tac-brand"><Radio size={23}/><div><small>BLACK POINT · OPERATIONS</small><h1>Command / Control</h1></div></div><div className="tac-header-actions"><span className="tac-feed-state"><i data-state={rateLimited||syncStatus.state==='error'?'warning':loading?'loading':'ready'}/>{rateLimited?'RATE LIMITED':loading?'SYNCING':syncStatus.state==='error'?'DEGRADED':'CAD FEED'}</span><button onClick={onRefresh}><RefreshCw size={15}/> Refresh</button>{actions}<button onClick={()=>setUtilityPanel('duty')}>Duty settings</button></div></header>
   <div className="tac-command-strip">{[
-    ['ALL INCIDENTS',allCalls.length,'all','normal'],['UNASSIGNED',allCalls.filter(needsDispatch).length,'unassigned','warning'],['P1 / P2',critical.length,'urgent','danger'],['AVAILABLE',available.length,'resources','ready'],['DISTRESS',units.filter(u=>String(u.status).toLowerCase()==='distress').length,'distress','danger']
+    ['ALL INCIDENTS',allCalls.length,'all','normal'],['UNASSIGNED',allCalls.filter(needsDispatch).length,'unassigned','warning'],['P1 / P2',critical.length,'urgent','danger'],['OVERDUE',allCalls.filter(c=>cadServiceLevel(c).state==='overdue').length,'overdue','danger'],['AVAILABLE',available.length,'resources','ready'],['DISTRESS',units.filter(u=>String(u.status).toLowerCase()==='distress').length,'distress','danger']
   ].map(([label,count,id,tone])=><button key={id} data-tone={tone} onClick={()=>{if(id==='resources'||id==='distress'){setUnitFilter(id==='distress'?'distress':'available');showUnits();}else {setFocus(id);setScreen('incidents');setExpandedMap(false)}}}><span>{label}</span><strong>{loading&&!allCalls.length&&id==='all'?'—':count}</strong></button>)}</div>
   {(error||syncStatus.state==='error'&&syncStatus.error||rateLimited)&&<p role="alert" className="tac-warning">{error||syncStatus.error||'CAD rate limited. Showing last received data.'}</p>}
   <div className="tac-mobile-switch"><button aria-pressed={screen==='operations'} onClick={()=>setScreen('operations')}>Map</button><button aria-pressed={screen==='incidents'} onClick={()=>{setExpandedMap(false);setScreen('incidents')}}>Calls</button><button aria-pressed={screen==='incident'} disabled={!detail} onClick={()=>{setExpandedMap(false);setRightPane('incident');setScreen('incident')}}>Details</button><button aria-pressed={screen==='units'} onClick={showUnits}>Units</button></div>
   <div className="tac-command-grid" data-screen={screen} data-map-expanded={expandedMap} data-right-pane={detail&&rightPane==='incident'?'incident':'units'}>
     <section className="tac-incident-rail"><div className="tac-panel-bar"><span>Incident stack <b>{visible.length}</b></span><button onClick={()=>{setFocus('all');setQuery('');setAgency('all')}}>Reset</button></div>
       <div className="tac-filters"><label><Search size={14}/><input aria-label="Search live incidents" value={query} onChange={e=>setQuery(e.target.value)} placeholder="CAD / address / incident"/></label><select aria-label="Agency" value={agency} onChange={e=>setAgency(e.target.value)}><option value="all">All agencies</option>{[...new Set(allCalls.map(c=>c.agency).filter(Boolean))].sort().map(a=><option key={a}>{a}</option>)}</select></div>
-      <div className="tac-segment">{[['all','All'],['urgent','Priority'],['unassigned','Unassigned']].map(([id,label])=><button key={id} aria-pressed={focus===id} onClick={()=>setFocus(id)}>{label}</button>)}</div>
-      <div className="tac-incident-scroll">{visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;return <button key={call.id} className="tac-call-strip" data-priority={priorityOf(call)} aria-pressed={detail?.id===call.id} onClick={()=>openIncident(call)}><div className="tac-call-top"><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span><b>{identifierOf(call).value}</b><time>{elapsedOf(call)||'—'}</time></div><strong>{incidentOf(call)}</strong><span className="tac-address">{call.location||'Location pending'}</span><div className="tac-call-foot"><span>{call.agency||'BPS'}</span><span>{call.status||'Active'}</span><span>{(call.assigned_units||[]).length} units</span></div></button>})}{!visible.length&&<p className="tac-empty">{loading?'Loading incidents…':'No matching active incidents'}</p>}</div>
+      <div className="tac-segment">{[['all','All'],['urgent','Priority'],['unassigned','Unassigned'],['overdue','Overdue']].map(([id,label])=><button key={id} aria-pressed={focus===id} onClick={()=>setFocus(id)}>{label}</button>)}</div>
+      <div className="tac-incident-scroll">{visible.map(call=>{const p=priorities[priorityOf(call)]||priorities.medium;const sla=cadServiceLevel(call);return <button key={call.id} className="tac-call-strip" data-priority={priorityOf(call)} data-sla={sla.state} aria-pressed={detail?.id===call.id} onClick={()=>openIncident(call)}><div className="tac-call-top"><span className={'cad-priority border '+p.style}>{p.label.split(' · ')[0]}</span><b>{identifierOf(call).value}</b>{sla.state!=='ok'&&<span className="tac-sla-chip" data-state={sla.state}>{sla.state==='overdue'?'OVERDUE':'AGING'} {cadAgeLabel(sla.minutes)}</span>}<time>{elapsedOf(call)||'—'}</time></div><strong>{incidentOf(call)}</strong><span className="tac-address">{call.location||'Location pending'}</span><div className="tac-call-foot"><span>{call.agency||'BPS'}</span><span>{call.status||'Active'}</span><span>{(call.assigned_units||[]).length} units</span></div></button>})}{!visible.length&&<p className="tac-empty">{loading?'Loading incidents…':'No matching active incidents'}</p>}</div>
     </section>
     <div className="tac-operations"><TacticalCommandMap calls={allCalls} units={units} onCallClick={openIncident} selectedCall={detail} expanded={expandedMap} onExpand={()=>{setScreen('operations');setExpandedMap(x=>!x);}}/></div>
     {detail&&rightPane==='incident'&&<CommandIncidentDetails key={detail.id} call={detail} units={units} priority={priorities[priorityOf(detail)]||priorities.medium} reference={identifierOf(detail).value} incident={incidentOf(detail)} elapsed={elapsedOf(detail)} district={callDistrict(detail)} onClose={closeIncident} onUnits={showUnits} onDispatch={onDispatch} onMap={onMap} onPriority={onPriority} onClear={(call,event)=>run(call.id,async()=>{await onClear(call,event);closeIncident();})} canChangePriority={canChangePriority} canClear={canClear} working={working}/>}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { isClientAccount } from '@/lib/directoryUtils';
-import { ShieldCheck, FileCheck2, AlertTriangle, Loader2, LockKeyhole } from 'lucide-react';
+import { ShieldCheck, FileCheck2, Loader2, LockKeyhole } from 'lucide-react';
 
 export const AUP_VERSION = '2026-10-31-pathfinder-v2';
 const sections = [
@@ -99,7 +99,7 @@ export default function AcceptableUseGate({user,children}) {
   return <div className="fixed inset-0 z-[999999] flex items-center justify-center overflow-y-auto bg-[#030914] p-3 text-white sm:p-5" role="dialog" aria-modal="true" aria-label="Required Pathfinder user agreement">
     <div className="my-auto flex w-full max-w-[780px] flex-col overflow-hidden rounded-2xl border border-[#315574] bg-[#091522] shadow-[0_30px_100px_rgba(0,0,0,.8)]">
       <header className="flex gap-4 border-b border-[#29435d] bg-[#10263d] p-5"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-600/20 text-cyan-200"><ShieldCheck className="h-7 w-7"/></div><div><div className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-300">Pathfinder · Required account acknowledgment</div><h1 className="mt-1 text-xl font-bold">Pathfinder Application User Agreement</h1><p className="mt-1 text-xs text-slate-300">Read and approve before continuing into your company account.</p></div></header>
-      <><div className="max-h-[48dvh] overflow-y-auto px-5 py-5 sm:px-7"><div className="mb-4 flex justify-between gap-2 text-xs text-slate-400"><span>Employee agreement · Client Portal accounts exempt</span><span>Policy {data?.policy_version||AUP_VERSION}</span></div><AcceptableUsePolicyText/></div>
+      <div className="max-h-[48dvh] overflow-y-auto px-5 py-5 sm:px-7"><div className="mb-4 flex justify-between gap-2 text-xs text-slate-400"><span>Employee agreement · Client Portal accounts exempt</span><span>Policy {data?.policy_version||AUP_VERSION}</span></div><AcceptableUsePolicyText/></div>
       <div className="space-y-3 border-t border-[#29435d] bg-[#0b1d30] p-5">
         <label className="flex items-start gap-3 text-sm text-slate-200"><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)} className="mt-1 h-4 w-4 accent-cyan-500"/><span>I have read the Pathfinder Application User Agreement, agree to follow its account, operational, confidentiality, security, and authorized-use requirements, and understand that violations may result in corrective or disciplinary action.</span></label>
         <label className="block text-xs font-bold text-slate-300">Electronic signature — type your full name<input value={signature} onChange={event=>setSignature(event.target.value)} maxLength={100} autoComplete="name" placeholder={data?.user_name||'First and last name'} className="mt-1.5 h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-base text-white"/></label>
@@ -107,7 +107,7 @@ export default function AcceptableUseGate({user,children}) {
         {isLoading&&!isError&&<div role="status" className="text-xs text-slate-400">Checking your existing approval in the background. You can read the agreement while it verifies.</div>}
         <div className="flex flex-wrap items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs text-slate-400"><LockKeyhole className="h-4 w-4"/>Approval is saved to your account and visible in Admin Reports</span><button type="button" disabled={!confirmed||signature.trim().length<3||accept.isPending||isError||!data||data?.policy_version!==AUP_VERSION} onClick={()=>accept.mutate()} className="flex min-h-11 items-center gap-2 rounded-lg bg-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40">{accept.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:<FileCheck2 className="h-4 w-4"/>}Accept & Continue</button></div>
         {accept.isError && <p className="text-xs text-red-300">{accept.error?.response?.data?.error||accept.error?.message||'Could not record acknowledgment.'}</p>}
-      </div></>}
+      </div>
     </div>
   </div>;
 }
