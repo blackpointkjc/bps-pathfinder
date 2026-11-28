@@ -157,7 +157,8 @@ export async function loadActiveDispatchCallRows(limit = 100) {
       primaryError = error;
       noteCadReadFailure(error);
       if (Number(error?.status || error?.response?.status) === 429 || /429|rate limit|too many requests/i.test(String(error?.message || error?.response?.data?.error || ''))) {
-        requestBackoffUntil = Date.now() + Math.min(60000,Math.max(15000,Number(error?.retry_after_ms)||30000));
+        const retrySeconds=Number(String(error?.message||error?.response?.data?.error||'').match(/retry after\s+(\d+(?:\.\d+)?)\s*s/i)?.[1]);
+        requestBackoffUntil=Date.now()+Math.min(60000,Math.max(2000,Number(error?.retry_after_ms)||(Number.isFinite(retrySeconds)?retrySeconds*1000:8000)));
         if (Array.isArray(lastGoodRows)) return filterVisibleActiveCalls(lastGoodRows);
         const cached = readLastGoodCalls();
         if (cached.length) return cached;

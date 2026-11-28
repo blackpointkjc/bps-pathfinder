@@ -51,12 +51,15 @@ Deno.serve(async (req) => {
       db.ActiveOfficer.filter({officer_email:me.email},'-last_update',10)
     ]);
     const aliases=[...new Set([String(me.id),String(me.email||''),...(ownedUnits||[]).map((r:any)=>String(r.id)),...(sessions||[]).map((r:any)=>String(r.id))].filter(Boolean))];
-    const [assignments,linkedRecords]=await Promise.all([
-      pages(db.CallAssignment,{unit_id:{$in:aliases}},'-assigned_at'),
+    const [ownOpenRows,linkedRecords]=await Promise.all([
+      pages(db.CallAssignment,{unit_id:{$in:aliases},status:{$nin:[...terminal]}},'-assigned_at'),
       optional('Legacy attachments',()=>pages(db.DispatchCall,{assigned_units:{$in:aliases},manual_dismissed:{$ne:true},status:{$nin:['Cleared','Cancelled','Canceled','Closed','Completed','Resolved','cleared','cancelled','canceled','closed','completed','resolved']}},'-created_date'))
     ]);
-    const activeAssignments=assignments.filter((a:any)=>!terminal.has(lower(a.status))&&!a.cleared_at);
-    const linkedCalls=linkedRecords.filter((call:any)=>Array.isArray(call.assigned_units)&&call.assigned_units.some((id:any)=>aliases.includes(String(id)))&&!isTerminalCall(call)&&(!assignments.some((a:any)=>String(a.call_id)===String(call.id))||activeAssignments.some((a:any)=>String(a.call_id)===String(call.id))));
+    const activeAssignments=ownOpenRows.filter((a:any)=>!terminal.has(lower(a.status))&&!a.cleared_at);
+    const mirrorIds=linkedRecords.map((c:any)=>String(c.id));
+    const mirrorAssignments=mirrorIds.length?await optional('Legacy assignment verification',()=>pages(db.CallAssignment,{unit_id:{$in:aliases},call_id:{$in:mirrorIds}},'-assigned_at')):[];
+    const assignments=[...new Map([...ownOpenRows,...mirrorAssignments].map((r:any)=>[String(r.id),r])).values()];
+    const linkedCalls=linkedRecords.filter((call:any)=>(!warnings.includes('Legacy assignment verification delayed')||activeAssignments.some((a:any)=>String(a.call_id)===String(call.id)))&&Array.isArray(call.assigned_units)&&call.assigned_units.some((id:any)=>aliases.includes(String(id)))&&!isTerminalCall(call)&&(!assignments.some((a:any)=>String(a.call_id)===String(call.id))||activeAssignments.some((a:any)=>String(a.call_id)===String(call.id))));
     const callIds=[...new Set([...activeAssignments.map((a:any)=>String(a.call_id||'')),...linkedCalls.map((c:any)=>String(c.id))].filter(Boolean))];
     const callById=new Map(linkedCalls.map((c:any)=>[String(c.id),c]));
     const missing=callIds.filter(id=>validId(id)&&!callById.has(id));
@@ -92,7 +95,7 @@ Deno.serve(async (req) => {
         assignment:{...(assignment||{assigned_at:call.time_dispatched||call.created_date,unit_id:me.id,call_id:call.id}),status:ownStatus},
         assigned_officers:activeForCall.map((a:any)=>({
           unit_id:a.unit_id,officer_name:actors.has(String(a.unit_id))?named(actors.get(String(a.unit_id))):'Assigned Officer',
-          role:String(a.id)===String(namedPrimary?.id)?'primary':'additional',status:a.status||'pending',assigned_at:a.assigned_at,
+          role:String(a.id)===String(namedPrimary?.id)?'primary':lower(a.role)==='backup'?'backup':'additional',status:a.status||'pending',assigned_at:a.assigned_at,
         })).sort((a:any,b:any)=>(a.role==='primary'?-1:1)-(b.role==='primary'?-1:1)),
         welfare_check: (welfareChecks || []).find((check:any) => String(check.call_id) === String(call.id) && lower(check.status) === 'pending') || null,
         queue_priority: priorityWeight[lower(call.priority)] ?? 2,
