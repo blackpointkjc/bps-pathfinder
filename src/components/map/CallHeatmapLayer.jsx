@@ -1,15 +1,18 @@
+import useLiveMapWindow from '@/hooks/useLiveMapWindow';
+import {isLiveMapCall} from '../../../base44/functions/_shared/callFeedPolicy.js';
 import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 export default function CallHeatmapLayer({ calls, enabled }) {
   const map = useMap();
+  const recentCalls=useLiveMapWindow(calls);
 
   useEffect(() => {
-    if (!enabled || !calls.length) return;
+    if (!enabled || !recentCalls.length) return;
 
     // Filter calls with valid coordinates
-    const points = calls.filter(c => c.latitude && c.longitude);
+    const points = recentCalls.filter(c => isLiveMapCall(c));
     if (!points.length) return;
 
     // Create a grid-based density map
@@ -61,7 +64,7 @@ export default function CallHeatmapLayer({ calls, enabled }) {
     return () => {
       map.removeLayer(layerGroup);
     };
-  }, [calls, enabled, map]);
+  }, [recentCalls, enabled, map]);
 
   return null;
 }
