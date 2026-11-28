@@ -603,7 +603,7 @@ function propertyMatch(call, location) {
   if (location?.active === false || !emergencyFour && location?.property_monitoring_enabled !== true) return null;
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
-  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+  const hasCoordinates = call?.latitude!=null&&call?.longitude!=null&&String(call.latitude).trim()!==""&&String(call.longitude).trim()!==""&&Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180&&!(lat===0&&lng===0);
   if (!hasCoordinates) {
     return sameStreetBlock(call?.location, location?.address) ? { relation: "nearby", distanceMeters: 0, addressFallback: true } : null;
   }
@@ -1014,6 +1014,23 @@ async function releaseIngestionLease(base44, lease) {
     }).catch(() => null);
   }
 }
+async function repairRecentPropertyAnnouncementEvents(base44,alerts,calls,monitored,closedIds){
+ const callById=new Map((calls||[]).filter(c=>isFreshLivePropertyCall(c)&&!closedIds.has(String(c.id))).map(c=>[String(c.id),c]));
+ const siteById=new Map((monitored||[]).map(p=>[String(p.id),p]));
+ const candidates=(alerts||[]).filter(a=>{const c=callById.get(String(a.callId)),p=siteById.get(String(a.propertyId));const at=new Date(a.created_date||0).getTime();return c&&p&&propertyMatch(c,p)&&a.is_test!==true&&!['resolved','false_alarm','test','inactive','closed'].includes(String(a.lifecycle_status||'').toLowerCase())&&Number.isFinite(at)&&Date.now()-at>=0&&Date.now()-at<=60*60*1000;});
+ if(!candidates.length)return 0;
+ const keys=candidates.map(a=>`property-alert:${a.id}:created`);
+ const logs=await base44.asServiceRole.entities.CallStatusLog.filter({event_key:{$in:keys}},'-created_date',Math.min(1000,keys.length+1));
+ const published=new Set((logs||[]).map(row=>row.event_key));
+ let repaired=0;
+ for(const a of candidates.filter(a=>!published.has(`property-alert:${a.id}:created`)).slice(0,5)){
+  const c=callById.get(String(a.callId)),p=siteById.get(String(a.propertyId));
+  const cad=String(c.agency_cad_number||c.bps_reference||c.call_id||c.id);
+  await base44.asServiceRole.entities.CallStatusLog.create({call_id:c.id,incident_type:c.incident||'',location:c.location||'',old_status:'',new_status:c.status||'New',notes:'Recovered verified active property-alert announcement',event_key:`property-alert:${a.id}:created`,event_type:'property_alert',announcement_text:`Active call for service at ${p.site_name||p.address||'monitored property'}. ${c.incident||'Call for service'} at ${c.location||p.address||'address unavailable'}. CAD number ${cad}.`,announcement_priority:'high',cad_number:cad,triggering_action:'ingestGractivecalls.property_alert_recovery',audio_enabled:true,sensitive:false});
+  repaired++;
+ }
+ return repaired;
+}
 async function ingestFastPublishedCalls(base44, incoming) {
   const started = Date.now();
   const [saved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
@@ -1178,6 +1195,8 @@ async function ingestFastPublishedCalls(base44, incoming) {
   }
   waitUntil(Promise.allSettled(sideEffects));
   const closedIds = closedIdsFromSource;
+  try{await repairRecentPropertyAnnouncementEvents(base44,alerts,saved,monitored,closedIds);}catch(error){alertFailures++;console.error('Property announcement recovery deferred to next poll',error?.message||error);}
+
   const activeIds = new Set(saved.filter((call) => !closedIds.has(String(call.id)) && !["Cleared", "Cancelled"].includes(String(call.status))).map((call) => String(call.id)));
   const properties = new Map(monitored.map((property) => [String(property.id), property]));
   const candidates = alerts.filter((alert) => {

@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
 
     if (action === 'join') {
       if(call.manual_dismissed||call.time_cleared||['cleared','cancelled','canceled','closed','resolved','completed'].includes(String(call.status||'').toLowerCase()))return Response.json({error:'Incident is no longer active'},{status:409});
+      if(!roles.has('officer')&&primaryRole!=='officer')return Response.json({error:'Field officer role required to attach to an incident'},{status:403});
       if(user.dispatch_hold_new_calls===true)return Response.json({error:'Dispatch has placed new assignments on hold'},{status:409});
       const currentSessions=await base44.asServiceRole.entities.ActiveOfficer.filter({officer_email:String(user.email||'').trim().toLowerCase()},'-last_update',10);
       const latest=(currentSessions||[])[0];

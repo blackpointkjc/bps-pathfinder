@@ -106,7 +106,7 @@ const dateRange=await history({until});
 assert(dateRange.data.rows.every(row=>callTimestamp(row)<=Date.parse(until)));
 failSource='CallHistory';
 const partial=await history({});assert.equal(partial.status,200);assert(partial.data.warnings.some(w=>w.includes('archived')));
-failSource=''; role='user';officer=true;assert.equal((await history({page_size:25})).status,200);officer=false;role='client';
+failSource=''; role='user';officer=true;assert.equal((await history({page_size:25})).status,403);officer=false;role='client';
 assert.equal((await history({})).status,403);
 role='admin';
 // Exercise a filtered-out prefix, cross-page duplicate, property orphan and

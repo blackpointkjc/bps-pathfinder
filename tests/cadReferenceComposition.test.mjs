@@ -44,10 +44,10 @@ test('draft is rendered inline rather than obscuring the live queues; layout con
 });
 
 test('officer board shows the wider pending queue and no dispatcher or map controls even with dispatcher capability props',()=>{
- const html=render({officerMode:true,showMap:true,canManage:true,detail:active});
+ const html=render({officerMode:true,showMap:true,canManage:true,detail:active,propertyIds:new Set(['pending'])});
  assert.match(html,/cc-officer-workspace/);
  assert.match(html,/data-map="false"/);
- assert.match(html,/Pending incidents \(1\)/);
+ assert.match(html,/Property calls awaiting assignment \(1\)/);
  assert.match(html,/Expand/);
  assert.ok(!html.includes('aria-label="Live map"'));
  assert.ok(!html.includes('Field initiated'));

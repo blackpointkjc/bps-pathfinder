@@ -7,6 +7,7 @@ import {
   cadServiceLevel,
 } from '@/lib/cadOperationalStatus';
 import './cad-upgrade.css';
+import {needsPropertyAssignment} from '@/lib/cadWorkspaceModel';
 import {monitoredIncidents} from '@/lib/cadMonitorSelection';
 
 const FIELD_SOURCE = /officer|field|mdt|helpm|self|patrol|unit/i;
@@ -16,7 +17,7 @@ const isFieldCall = call => FIELD_SOURCE.test(String(call?.source || call?.sourc
 /**
  * CommandCentral-style incident monitor. Only incidents explicitly pinned by the current user are displayed.
  */
-export default function CadIncidentMonitor({ calls = [], loading = false, onOpen, onCollapse, selectedIds=[], onTogglePin }) {
+export default function CadIncidentMonitor({ calls = [], loading = false, onOpen, onCollapse, selectedIds=[], onTogglePin,propertyIds=new Set() }) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
     return () => clearInterval(timer);
   }, []);
 
-  const rows = useMemo(()=>monitoredIncidents(calls,selectedIds).map(call=>({call,level:cadServiceLevel(call,now),pending:cadNeedsDispatch(call)})),[calls,selectedIds,now]);
+  const rows = useMemo(()=>monitoredIncidents(calls,selectedIds).map(call=>({call,level:cadServiceLevel(call,now),pending:needsPropertyAssignment(call,propertyIds)})),[calls,selectedIds,now,propertyIds]);
   const missing=selectedIds.filter(id=>!rows.some(row=>String(row.call.id)===id));
 
   const pending = rows.filter(row => row.pending).length;

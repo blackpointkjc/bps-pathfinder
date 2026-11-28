@@ -165,7 +165,7 @@ function CommandDashboardInner({embedded=false}) {
         : DISPATCH_STATUSES;
 
     return <>
-      {!embedded&&monitor&&<CadIncidentMonitor calls={calls} loading={loading} onOpen={setSelectedCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin}/>}
+      {!embedded&&monitor&&<CadIncidentMonitor calls={calls} loading={loading} onOpen={setSelectedCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin} propertyIds={propertyIds}/>}
       <LiveCommandWorkspace propertyIds={propertyIds} propertyError={propertyError} currentUser={currentUser} monitoredIds={monitoredIds} onTogglePin={togglePin} standaloneMonitor={!embedded?monitor:undefined} onToggleMonitor={!embedded?toggleMonitor:undefined} emergencyControl={<OfficerDistressButton currentUser={currentUser} compact/>} officerMode standaloneZoom={embedded?1:cadScaleValue(localScale)} unified={true} showMap={false} canManage={false} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} 
         canChangePriority={false} canClear={false}

@@ -13,5 +13,5 @@ assert.equal(live({}),false);
 assert(!/createOscillator|playNotificationChime|new.*AudioContext/.test(source),'generic chime generator removed');
 assert(source.includes('record.audio_enabled === false || !isLiveAudioEvent(record)'),'durable recovery uses the same silent baseline');
 assert.equal((source.match(/options.allowAudio !== false && isLiveAudioEvent/g)||[]).length,2,'messages and BOLOs use the startup baseline');
-assert.match(source,/isLiveAudioEvent\(record\) \|\| options.recovery===true/);assert.match(source,/created >= propertyCutoff/);assert.match(source,/allowAudio: Date.now\(\)-created <= LIVE_PROPERTY_ALERT_MAX_AGE_MS/);
+assert.match(source,/isLiveAudioEvent\(record\) \|\| options.recovery===true/);assert.match(source,/created >= propertyCutoff/);assert.match(source,/allowAudio: Date.now\(\)-created <= PROPERTY_RECOVERY_MAX_AGE_MS/);
 console.log('PASS refresh audio: existing/recovered events silent; new live events allowed; generic chime removed');

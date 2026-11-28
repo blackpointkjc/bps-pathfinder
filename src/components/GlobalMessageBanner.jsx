@@ -70,6 +70,7 @@ export function CadAudioToggle() {
 
 const LOCAL_CLAIM_TTL_MS = 6 * 60 * 60 * 1000;
 const LIVE_PROPERTY_ALERT_MAX_AGE_MS = 3 * 60 * 1000;
+const PROPERTY_RECOVERY_MAX_AGE_MS = 60 * 60 * 1000;
 const localAnnouncementClaims = new Map();
 
 function localClaimKey(eventKey) {
@@ -527,7 +528,7 @@ export default function GlobalMessageBanner({ user }) {
       const liveAgeMs = Date.now() - liveReferenceAt;
       const isFreshLivePropertyAlert = Number.isFinite(liveReferenceAt)
         && liveAgeMs >= 0
-        && liveAgeMs <= LIVE_PROPERTY_ALERT_MAX_AGE_MS;
+        && (liveAgeMs <= LIVE_PROPERTY_ALERT_MAX_AGE_MS || (options.recovery===true && liveAgeMs <= PROPERTY_RECOVERY_MAX_AGE_MS));
       if (!isFreshLivePropertyAlert || !propertyAlertWasTimely(record)) {
         // Closed/historical alerts must not replay. A late upstream timestamp
         // alone never suppresses a newly verified active property alert.
@@ -540,7 +541,7 @@ export default function GlobalMessageBanner({ user }) {
       // that verified snapshot immediately instead of blocking speech on several
       // follow-up network reads. Recovery/update events keep the conservative
       // lookup path below so stale history can never replay as a live call.
-      const realtimeCreate = options.realtimeCreate === true || options.recovery===true;
+      const realtimeCreate = options.realtimeCreate === true || (options.recovery===true&&liveAgeMs<=LIVE_PROPERTY_ALERT_MAX_AGE_MS);
       if (realtimeCreate && record.callId && record.propertyId && record.propertyName && record.callIncident) {
         const callKey = String(record.callId);
         const currentStatus = callStatusKey(record.callStatus || 'new');
@@ -888,7 +889,7 @@ export default function GlobalMessageBanner({ user }) {
       // window could announce a call 15+ minutes late after a refresh/reconnect,
       // which made BPSPF sound delayed even though the alert row was old.
       const recoverRecentPropertyCalls = () => {
-        const propertyCutoff = Date.now() - LIVE_PROPERTY_ALERT_MAX_AGE_MS;
+        const propertyCutoff = Date.now() - PROPERTY_RECOVERY_MAX_AGE_MS;
         return base44.entities.PropertyAlert.list('-created_date', 50).then(records => {
           (records || []).slice().reverse().forEach(record => {
             if (!record?.id) return;
@@ -897,7 +898,7 @@ export default function GlobalMessageBanner({ user }) {
             if (Number.isFinite(created) && created >= propertyCutoff) {
               // A verified property alert arriving during connection is still
               // actionable for a short interval. Claim once, never replay later.
-              void showPropertyCall(record, { allowAudio: Date.now()-created <= LIVE_PROPERTY_ALERT_MAX_AGE_MS, recovery:true });
+              void showPropertyCall(record, { allowAudio: Date.now()-created <= PROPERTY_RECOVERY_MAX_AGE_MS, recovery:true });
             } else {
               // Old alerts stay available in history but are never replayed as a
               // new live voice/banner event.

@@ -1,3 +1,4 @@
+import usePropertyAssignmentCalls from '@/hooks/usePropertyAssignmentCalls';
 import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter,canAccessCadAdminPages} from '@/lib/dispatchPermissions';
 import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
@@ -46,6 +47,7 @@ const TRANSIENT_PARAMS = ['new', 'open', 'call_id', 'call_number', 'callId', 'la
 function CadShell({ embedded = false }) {
   const {user}=useAuth();
   const dispatchAllowed=canAccessDispatchCenter(user);
+  const {ids:propertyIds}=usePropertyAssignmentCalls();
   const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(user?.id||user?.email);
   const adminAllowed=canAccessCadAdminPages(user);
   const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>(item.id!=='dispatch'||dispatchAllowed)&&(!['history','response'].includes(item.id)||adminAllowed))]).filter(([,items])=>items.length)),[dispatchAllowed,adminAllowed]);
@@ -208,7 +210,7 @@ function CadShell({ embedded = false }) {
   }
 
   return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} data-high-zoom={scale>1.24} style={shellStyle}>
-    {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
+    {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin} propertyIds={propertyIds} />}
     <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}<button className="cad-nav-monitor" type="button" aria-pressed={monitorOpen} onClick={toggleMonitor}><RadioTower size={15}/><span>Monitor {monitorOpen?'on':'off'}</span></button>{rateLimited&&<span role="status" className="cad-inline-feed-warning">Feed delayed</span>}</nav>
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
       {active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'response'

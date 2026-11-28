@@ -11,7 +11,7 @@ test('dispatch workstation requires an explicitly assigned dispatch role, not ge
 test('page guard and every nested navigation entry use the dispatch authorization policy',()=>{
  const layout=readFileSync('src/Layout.jsx','utf8'),shell=readFileSync('src/pages/CADCenter.jsx','utf8'),page=readFileSync('src/pages/DispatchCenter.jsx','utf8');
  assert.ok(layout.includes("if (pageName === 'DispatchCenter') return canAccessDispatchCenter(user)"));
- assert.ok(shell.includes("items.filter(item=>item.id!=='dispatch'||dispatchAllowed)"));
+ assert.ok(shell.includes("items.filter(item=>(item.id!=='dispatch'||dispatchAllowed)"));
  assert.ok(shell.includes('Object.entries(permittedTools).flatMap'));
  assert.ok(shell.includes('Object.entries(permittedTools).map'));
  assert.ok(shell.includes("if(tool==='dispatch'&&!dispatchAllowed)return"));
@@ -29,7 +29,7 @@ test('zoom controls step up/down through 200%, reset and persist',()=>{
 });
 test('dispatch redesign keeps real response actions, timeline and assignment controls',()=>{
  const page=readFileSync('src/pages/DispatchCenter.jsx','utf8');
- for(const token of ['Waiting for assignment','Assigned / responding','UnitAssignmentPanel','requestWelfareForSelectedCall','requestSupervisorForSelectedCall','addCallNote','CadVoiceBroadcastButton','PropertyCallLinkControl','DispatcherShiftReports','MessagingPanel','CreateCallDialog'])assert.ok(page.includes(token),token);
+ for(const token of ['Waiting for assignment','Other live / responding incidents','UnitAssignmentPanel','requestWelfareForSelectedCall','requestSupervisorForSelectedCall','addCallNote','CadVoiceBroadcastButton','PropertyCallLinkControl','DispatcherShiftReports','MessagingPanel','CreateCallDialog'])assert.ok(page.includes(token),token);
  const css=readFileSync('src/components/dispatch/cad/dispatch-readable.css','utf8');
  assert.ok(css.includes('@container(max-width:900px)'));
  assert.ok(css.includes('grid-template-columns:minmax(220px,29%) minmax(0,1fr) minmax(220px,28%)'));
