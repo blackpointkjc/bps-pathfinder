@@ -26,7 +26,7 @@ function isVisibleActiveCall(call, now = Date.now()) {
   const stamp = callTimestamp(call);
   // Public requests remain visible until a real disposition, even if
   // waiting on a dispatcher or eligible unit for more than an hour.
-  const retained = call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
+  const retained = call.pathfinder_source_active===true || call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
   return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -86,6 +86,16 @@ Deno.serve(async (req) => {
           const assignmentUnits=new Map<string,Set<string>>();
           for(const row of assignments||[]){if(!row.call_id||!row.unit_id||TERMINAL.has(lower(row.status)))continue;const key=String(row.call_id);if(!assignmentUnits.has(key))assignmentUnits.set(key,new Set());assignmentUnits.get(key)!.add(String(row.unit_id));}
           const retainedIds=[...new Set([...propertyIds,...assignmentUnits.keys()])].filter(validRecordId);
+          const counter=counters?.[0];
+          const sourceIds=new Set<string>((Array.isArray(counter?.active_source_snapshot)?counter.active_source_snapshot:[]).map((r:any)=>String(r.external_call_id||'')).filter(Boolean));
+          const sourceRows:any[]=[];
+          // Read by upstream identity, including incidents opened days ago.
+          // This query does not use record IDs and cannot trigger the legacy-ID error.
+          const sourceKeys=[...sourceIds];
+          for(let i=0;i<sourceKeys.length;i+=100){
+            const batch=await optional('Current GRAC snapshot',()=>db.DispatchCall.filter({external_call_id:{$in:sourceKeys.slice(i,i+100)},manual_dismissed:{$ne:true}},'-updated_date',500));
+            if(Array.isArray(batch))sourceRows.push(...batch);
+          }
           const rows = await base44.asServiceRole.entities.DispatchCall.filter({
             $or: [
               { time_received: { $gte: new Date(Date.now() - ACTIVE_WINDOW_MS).toISOString(), $lte: new Date(Date.now() + 120000).toISOString() } },
@@ -103,9 +113,21 @@ Deno.serve(async (req) => {
           const retainedRows:any[]=[];
           // Bound the ID query size, and never fail the ordinary feed due to an optional historical attachment lookup.
           for(let i=0;i<retainedIds.length;i+=100){const batch=await optional('Retained CAD records',()=>db.DispatchCall.filter({id:{$in:retainedIds.slice(i,i+100)},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',100));if(Array.isArray(batch))retainedRows.push(...batch);}
-          const counter=counters?.[0];
-          const source=counter?{poll_at:counter.last_source_poll_at||null,poll_status:counter.last_source_poll_status||'',last_server_poll_at:counter.last_server_poll_at||null,last_success_at:counter.last_source_success_at||(String(counter.last_source_poll_status||'').startsWith('success')?counter.last_source_poll_at:null),website_rows:counter.last_website_row_count??null,api_rows:counter.last_api_row_count??null,latest_received:counter.last_website_latest_received||null,duration_ms:counter.last_source_poll_duration_ms??null}:null;
-          return {source,warnings,rows:[...new Map([...rows||[],...retainedRows||[]].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row))};
+          const source=counter?{poll_at:counter.last_source_poll_at||null,poll_status:counter.last_source_poll_status||'',last_server_poll_at:counter.last_server_poll_at||null,last_success_at:counter.last_source_success_at||(String(counter.last_source_poll_status||'').startsWith('success')?counter.last_source_poll_at:null),website_rows:counter.last_website_row_count??null,api_rows:counter.last_api_row_count??null,latest_received:counter.last_website_latest_received||null,duration_ms:counter.last_source_poll_duration_ms??null,snapshot_count:sourceIds.size}:null;
+          const all=[...new Map([...rows||[],...retainedRows||[],...sourceRows].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_source_active:sourceIds.has(String(row.external_call_id||''))&&['richmond','henrico','chesterfield'].includes(lower(row.source)),pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row));
+          // Duplicate saved records of one source incident must not crowd out
+          // other source incidents. Preserve the row with local attachments;
+          // otherwise prefer the most recently updated record.
+          const unique=new Map<string,any>();
+          const rank=(row:any)=>Number(Boolean(row.pathfinder_assignment_unit_ids?.length||row.assigned_units?.length))*4+Number(row.pathfinder_property_alert)*2+Number(Boolean(row.official_cad_verified));
+          for(const row of all){
+            const key=row.pathfinder_source_active?'source:'+row.external_call_id:'local:'+row.id;
+            const prior=unique.get(key);
+            if(!prior||rank(row)>rank(prior)||rank(row)===rank(prior)&&Date.parse(row.updated_date||row.created_date||0)>Date.parse(prior.updated_date||prior.created_date||0))unique.set(key,row);
+          }
+          const result=[...unique.values()];
+          if(source){source.visible_source_count=result.filter(r=>r.pathfinder_source_active).length;source.missing_source_count=Math.max(0,sourceIds.size-source.visible_source_count);}
+          return {source,warnings,rows:result};
         })() };
         readCache.set(cacheKey, cached);
       }
@@ -115,7 +137,7 @@ Deno.serve(async (req) => {
     const rows = cached.rows;
     const calls = (Array.isArray(rows) ? rows : [])
       .filter(call => isVisibleActiveCall(call))
-      .sort((a, b) => Number(Boolean(b.pathfinder_property_alert||b.pathfinder_assignment_unit_ids?.length||b.assigned_units?.length))-Number(Boolean(a.pathfinder_property_alert||a.pathfinder_assignment_unit_ids?.length||a.assigned_units?.length))||callTimestamp(b)-callTimestamp(a))
+      .sort((a, b) => Number(Boolean(b.pathfinder_source_active||b.pathfinder_property_alert||b.pathfinder_assignment_unit_ids?.length||b.assigned_units?.length))-Number(Boolean(a.pathfinder_source_active||a.pathfinder_property_alert||a.pathfinder_assignment_unit_ids?.length||a.assigned_units?.length))||callTimestamp(b)-callTimestamp(a))
       .slice(0, limit);
 
     return Response.json({

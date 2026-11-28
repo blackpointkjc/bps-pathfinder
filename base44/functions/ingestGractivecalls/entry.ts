@@ -1055,7 +1055,10 @@ function canCloseMissingAgencyCall(row,confirmedAgencies){
 }
 async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new Set()) {
   const started = Date.now();
-  const [saved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
+  const incomingKeys=[...new Set(incoming.map(externalKey).filter(Boolean))];
+  const exactSaved=[];
+  for(let i=0;i<incomingKeys.length;i+=100)exactSaved.push(...await base44.asServiceRole.entities.DispatchCall.filter({external_call_id:{$in:incomingKeys.slice(i,i+100)}},'-updated_date',500));
+  const [recentSaved, history, locations, alerts, cachedAssignments, cachedSessions, cachedUnits] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list("-created_date", 500),
     base44.asServiceRole.entities.CallHistory.list("-archived_date", 500).catch(() => []),
     base44.asServiceRole.entities.Location.list("site_name", 1000),
@@ -1064,9 +1067,11 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
     base44.asServiceRole.entities.ActiveOfficer.filter({ current_call_id: { $exists: true } }, "-last_update", 500),
     base44.asServiceRole.entities.Unit.filter({ assigned_call_ids: { $exists: true } }, "-last_update_at", 500)
   ]);
+  const saved=[...new Map([...exactSaved,...recentSaved].map(row=>[String(row.id),row])).values()];
   const byExternal = /* @__PURE__ */ new Map();
   const byLegacy = /* @__PURE__ */ new Map();
   for (const row of saved || []) {
+    if(!['richmond','henrico','chesterfield'].includes(lower(row.source)))continue;
     if (externalKey(row) && !byExternal.has(externalKey(row))) byExternal.set(externalKey(row), row);
     if (legacyKey(row) && !byLegacy.has(legacyKey(row))) byLegacy.set(legacyKey(row), row);
   }
@@ -1087,7 +1092,7 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
     const external = externalKey(row), legacy = legacyKey(row), key = external || legacy;
     if (!key || seen.has(key)) return false;
     seen.add(key);
-    return !matchAgencyRecord(row,byExternal,byLegacy) && !archivedExternal.has(external) && !archivedLegacy.has(legacy);
+    return !matchAgencyRecord(row,byExternal,byLegacy) && !archivedExternal.has(external) && (!external||!String(row.source_channel||'').includes('grac_api')?!archivedLegacy.has(legacy):true);
   }).slice(0, 40);
   const numbers = await reserveCadNumbers(base44, newCalls.length);
   const sideEffects = [];
@@ -1137,7 +1142,7 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
   const sameLiveField = (field, a, b) => field === "time_received" ? Date.parse(a) === Date.parse(b) : ["latitude", "longitude"].includes(field) ? Number(a) === Number(b) : String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
   const updateQueue = recent.filter((row) => {
     const existing = matchAgencyRecord(row,byExternal,byLegacy);
-    return existing && existing.manual_dismissed !== true && ["incident", "location", "agency", "zone", "status", "priority", "time_received", "latitude", "longitude"].some((field) => row[field] !== void 0 && !(field === "priority" && existing.priority_override) && !sameLiveField(field, row[field], existing[field]));
+    return existing && existing.manual_dismissed !== true && !existing.time_cleared && ["incident", "location", "agency", "zone", "status", "priority", "time_received", "latitude", "longitude"].some((field) => row[field] !== void 0 && !(field === "priority" && existing.priority_override) && !sameLiveField(field, row[field], existing[field]));
   }).slice(0, 60);
   for (let offset = 0; offset < updateQueue.length; offset += 4) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async (row) => {
@@ -1346,20 +1351,23 @@ async function handleGracIngestion(req) {
         ...persistableCall(call),
         source_first_seen_at: call.source_first_seen_at || sourceObservedAt
       }));
-      await base44.asServiceRole.entities.CadCounter.update(lease.id, {
+      const snapshotPatch = {
         active_source_snapshot_at: sourceObservedAt,
         active_source_snapshot: incoming.map((call) => ({
           external_call_id: externalKey(call),
           agency: call.agency,
           incident: call.incident,
+          location:call.location,
+          status:call.status,
           time_received: call.time_received
         }))
-      });
+      };
       const webAgencies=new Set(websiteIncoming.map(c=>String(c.agency||'').toUpperCase()));
       const confirmedAgencies=new Set(apiIncoming.map(c=>String(c.agency||'').toUpperCase()).filter(a=>webAgencies.has(a)));
       if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
         const result = await ingestFastPublishedCalls(base44, incoming,confirmedAgencies);
         await recordSourcePoll(base44, lease, {
+          ...snapshotPatch,
           last_source_poll_at: sourceObservedAt,
           last_source_poll_status: "success",
           last_source_success_at:sourceObservedAt,
@@ -1567,6 +1575,7 @@ async function handleGracIngestion(req) {
         return { status: "failed", error: error?.message || String(error) };
       });
       await recordSourcePoll(base44, lease, {
+        ...snapshotPatch,
         last_source_poll_at: sourceObservedAt,
         last_source_poll_status: "success:full_reconcile",
         last_source_success_at:sourceObservedAt,

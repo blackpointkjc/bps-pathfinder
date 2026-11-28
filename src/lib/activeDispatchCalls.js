@@ -24,6 +24,7 @@ function filterVisibleActiveCalls(rows = []) {
 function preferCall(current, candidate) {
   if (!current) return candidate;
   const score = call =>
+    (call?.pathfinder_source_active===true ? 16 : 0) +
     (call?.official_cad_verified && (call?.agency_cad_number || call?.call_id) ? 8 : 0)
     + (call?.agency_cad_number ? 4 : 0)
     + (call?.external_call_id ? 2 : 0)
@@ -78,7 +79,7 @@ export function dedupeOperationalCalls(rows = []) {
       result.push(call);
     }
   }
-  return result.sort((a,b)=>Number(Boolean(b.pathfinder_property_alert||b.pathfinder_assignment_unit_ids?.length||b.assigned_units?.length))-Number(Boolean(a.pathfinder_property_alert||a.pathfinder_assignment_unit_ids?.length||a.assigned_units?.length))||callTimestamp(b)-callTimestamp(a));
+  return result.sort((a,b)=>Number(Boolean(b.pathfinder_source_active||b.pathfinder_property_alert||b.pathfinder_assignment_unit_ids?.length||b.assigned_units?.length))-Number(Boolean(a.pathfinder_source_active||a.pathfinder_property_alert||a.pathfinder_assignment_unit_ids?.length||a.assigned_units?.length))||callTimestamp(b)-callTimestamp(a));
 }
 
 function readLastGoodCalls() {

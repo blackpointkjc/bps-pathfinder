@@ -194,13 +194,19 @@ records.PropertyAlert.push({id:'p-old',callId:'000000000000000000000001',propert
 records.CallAssignment.push({id:'assignment-row',call_id:'000000000000000000000002',unit_id:'officer-id',status:'pending'});
 records.PropertyAlert.push({id:'legacy-alert',callId:'CAD-12345',propertyId:'site',lifecycle_status:'active'});
 records.CallAssignment.push({id:'legacy-assignment',call_id:'BPS-202611-99',unit_id:'legacy-unit',status:'pending'});
-records.CadCounter=[{id:'cad-counter',counter_key:'dispatch_call',last_source_poll_at:new Date(now-5000).toISOString(),last_source_poll_status:'success',last_website_row_count:46,last_api_row_count:46,last_website_latest_received:new Date(now-6*60000).toISOString()}];
+records.DispatchCall.push({...live,id:'000000000000000000000020',external_call_id:'grac-long-open',source:'richmond',time_received:oldAt,status:'On Scene'},{...live,id:'000000000000000000000021',external_call_id:'grac-long-open',source:'richmond',time_received:oldAt,status:'On Scene',created_date:new Date(now-1000).toISOString()},{...live,id:'000000000000000000000022',external_call_id:'grac-old-closed',source:'richmond',time_received:oldAt,status:'Cleared'});
+records.CadCounter=[{active_source_snapshot:[{external_call_id:'grac-long-open'},{external_call_id:'grac-old-closed'}],id:'cad-counter',counter_key:'dispatch_call',last_source_poll_at:new Date(now-5000).toISOString(),last_source_poll_status:'success',last_website_row_count:46,last_api_row_count:46,last_website_latest_received:new Date(now-6*60000).toISOString()}];
 const liveResult = await liveFeed({limit:100});
 assert.equal(liveResult.status,200);
 assert.ok(!JSON.stringify(reads.filter(r=>r.entity==='DispatchCall')).includes('CAD-12345'));assert.ok(!JSON.stringify(reads.filter(r=>r.entity==='DispatchCall')).includes('BPS-202611-99'));
 assert.equal(liveResult.data.source_health.poll_status,'success');assert.equal(liveResult.data.source_health.api_rows,46);assert.equal(liveResult.data.source_health.poll_at,records.CadCounter[0].last_source_poll_at);
-assert.equal(liveResult.data.calls.length,5);
-assert.deepEqual(new Set(liveResult.data.calls.map(row=>row.id)),new Set(['live','old-manual','old-assigned','000000000000000000000001','000000000000000000000002']));
+assert.equal(liveResult.data.calls.length,6);
+assert.equal(liveResult.data.source_health.snapshot_count,2);assert.equal(liveResult.data.source_health.visible_source_count,1);
+assert.equal(liveResult.data.calls.filter(c=>c.external_call_id==='grac-long-open').length,1);
+assert.ok(browserFeed.dedupeOperationalCalls(liveResult.data.calls).some(c=>c.external_call_id==='grac-long-open'));
+assert.ok(!liveResult.data.calls.some(c=>c.external_call_id==='grac-old-closed'));
+
+assert.deepEqual(new Set(liveResult.data.calls.filter(row=>!row.pathfinder_source_active).map(row=>row.id)),new Set(['live','old-manual','old-assigned','000000000000000000000001','000000000000000000000002']));
 assert.equal(liveResult.data.calls.find(c=>c.id==='000000000000000000000001').pathfinder_property_alert,true);
 assert.deepEqual(Array.from(liveResult.data.calls.find(c=>c.id==='000000000000000000000002').pathfinder_assignment_unit_ids),['officer-id']);
 console.log('PASS: 840 calls across 90-day pages; older-call search/date range; bounded enrichment; source failure/access controls; full GPS address -> retained prior call; managed-property lookup; duplicate suppression; live recency.');
