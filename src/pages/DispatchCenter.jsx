@@ -732,7 +732,7 @@ function DispatchWorkspace({embedded=false}) {
         const normalize=value=>String(value||'').toLowerCase().replace(/[ _-]/g,'');
         return normalize(call.status)===normalize(filter);
     };
-    const allCalls=activeCalls.filter(call=>matchesQueue(call,queueFilter)&&[call.call_id,call.bps_reference,call.agency_cad_number,call.incident,call.location,call.caller_name].filter(Boolean).join(' ').toLowerCase().includes(queueSearch.toLowerCase()));
+    const allCalls=activeCalls.filter(call=>matchesQueue(call,queueFilter)&&[call.call_id,call.bps_reference,call.agency_cad_number,call.incident,call.location,call.caller_name].filter(Boolean).join(' ').toLowerCase().includes(queueSearch.toLowerCase())).sort((a,b)=>{const ta=parseServerTimestamp(a.time_received||a.created_date)?.getTime()||0,tb=parseServerTimestamp(b.time_received||b.created_date)?.getTime()||0;return sortOrder==='desc'?tb-ta:ta-tb;});
 
     const statusUnits = units.filter(unit => Boolean(unit.status));
     const availableUnits = statusUnits.filter(unit => unit.status === 'Available');
@@ -783,6 +783,8 @@ function DispatchWorkspace({embedded=false}) {
                         className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMap || mobileView === 'map' ? 'border-blue-500/40 bg-blue-900/20 text-blue-400' : 'border-slate-600 text-slate-500'}`}>
                         <MapIcon className="w-2.5 h-2.5" /> Map
                     </button>
+                    <button type="button" aria-expanded={toolsOpen} onClick={()=>setToolsOpen(v=>!v)} className="pf-cad-button">More tools {toolsOpen?'−':'+'}</button>
+                    <div className="dispatch-v3-more" hidden={!toolsOpen}>
                     <button onClick={() => setShowPriorCalls(!showPriorCalls)}
                         className={`px-2 py-1 border rounded text-[10px] ${
                             showPriorCalls ? 'border-amber-500/40 text-amber-400' : 'border-slate-600 text-slate-400 hover:text-white'
@@ -814,6 +816,7 @@ function DispatchWorkspace({embedded=false}) {
                             <Shield className="w-2.5 h-2.5" /> ADMIN
                         </button>
                     )}
+                    </div>
                     <OfficerDistressButton currentUser={currentUser} className="text-[10px]" />
 
                 </div>

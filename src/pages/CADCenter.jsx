@@ -204,7 +204,7 @@ function CadShell({ embedded = false }) {
   ], [monitorOpen, display, refreshAll, location.search]);
 
   if (detached) {
-    return <section className="cad-console-shell cad-terminal-shell cad-shell-detached" style={shellStyle}>
+    return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" style={shellStyle}>
       <div className="cad-terminal-systembar">
         <span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>Detached live map</span></span>
         <div className="cad-top-display"><CadZoomControls value={display.scale} onChange={value=>updateDisplay({...display,scale:value})}/><CadClock /></div>

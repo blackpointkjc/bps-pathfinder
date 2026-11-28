@@ -82,3 +82,15 @@
 .cad-mdt-terminal .tac-mdt-current h2{font-size:clamp(18px,2vw,27px);margin:3px 0}
 .cad-mdt-terminal .tac-mdt-actionbar button{min-height:52px}
 @media(max-width:720px){.cad-terminal-screen>.cad-mdt-terminal{overflow-y:auto}.cad-mdt-body{flex:none;overflow:visible}.cad-mdt-terminal .tac-mdt-actionbar button{min-height:53px}.cad-mdt-terminal .tac-mdt-reference{flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap}}
+/* Apply the physical viewport height after zoom, including dispatch's old
+   media-query height rule. A larger zoom reflows container-query layouts. */
+.cad-terminal-shell[style]{height:var(--cad-scaled-height,calc(var(--cad-workspace-height,calc(100dvh - 150px)) / var(--cad-scale,1)))!important}
+.cad-app main[data-page="CADCenter"] .cad-terminal-shell.cad-shell-dispatch[style]{height:var(--cad-scaled-height,calc(var(--cad-workspace-height,calc(100dvh - 150px)) / var(--cad-scale,1)))!important}
+.cad-top-display,.cad-zoom-controls{display:flex;align-items:center;gap:4px;flex:none}
+.cad-zoom-controls{border:1px solid #547187;background:#132a3a;border-radius:3px;padding:2px}
+.cad-zoom-controls button{font:700 12px/1.2 system-ui,sans-serif!important;min-width:27px;min-height:26px;color:#e8f4fc;background:#203d52;padding:3px 5px;border-radius:2px}
+.cad-zoom-controls button:disabled{opacity:.4}
+.cad-zoom-controls button:hover:not(:disabled){background:#335b72}
+.cad-terminal-systembar{flex-wrap:wrap}
+.cad-terminal-systembar .cad-terminal-id{overflow-wrap:anywhere;flex-wrap:wrap}
+.cad-terminal-shell .cad-terminal-screen{min-height:0}
