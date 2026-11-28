@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { X, Send, AlertCircle } from 'lucide-react';
 import { CALL_TYPES, findCallType } from '@/lib/cadCallTypes';
 
-export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority }) {
+export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority, source }) {
     const [creating, setCreating] = useState(false);
     const [selectedUnits, setSelectedUnits] = useState([]);
     const [suggestedCallType, setSuggestedCallType] = useState(null);
@@ -72,6 +72,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
 
             const callData = {
                 ...formData,
+                ...(source==='field'?{source:'field_initiated',source_channel:'dispatcher_field_intake'}:{}),
                 call_id: bpsReference,
                 bps_reference: bpsReference,
                 agency_cad_number: '',
@@ -128,7 +129,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                                 <AlertCircle className="w-6 h-6 text-red-500" />
-                                Create New Call
+                                {source==='field'?'Record field-initiated incident':'Create New Call'}
                             </h2>
                             <Button
                                 variant="ghost"

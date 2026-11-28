@@ -223,7 +223,7 @@ function CadShell({ embedded = false }) {
       onDetach={openDetachedMap}
       onSettings={() => setSettingsOpen(true)}
     />
-    {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
+    {monitorOpen && active.id!=='command' && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
     <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(TOOLS).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
       {active.id === 'resources'

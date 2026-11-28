@@ -73,13 +73,13 @@ export default function CadCloneIncidentDialog({ open, onOpenChange, call, onClo
       if (form.zone.trim()) data.zone = form.zone.trim();
       if (form.hazards.trim()) data.hazards = form.hazards.trim();
       const unchangedAddress = form.location.trim().toLowerCase() === String(call?.location || '').trim().toLowerCase();
-      if (unchangedAddress && Number.isFinite(Number(call?.latitude)) && Number.isFinite(Number(call?.longitude))) {
+      if (unchangedAddress && call?.latitude!=null && call?.longitude!=null && call.latitude!=='' && call.longitude!=='' && Number.isFinite(Number(call.latitude)) && Number.isFinite(Number(call.longitude))) {
         data.latitude = Number(call.latitude);
         data.longitude = Number(call.longitude);
       }
       const response = await base44.functions.invoke('createDispatchCall', { data, selected_units: [] });
       const payload = response?.data || {};
-      if (payload.error) throw new Error(payload.error);
+      if (payload.error || !payload.success || !payload.call?.id) throw new Error(payload.error || 'CAD did not confirm incident creation.');
       window.dispatchEvent(new CustomEvent('bps-data-changed', {
         detail: { kind: 'entity', name: 'DispatchCall', method: 'create', at: Date.now() },
       }));

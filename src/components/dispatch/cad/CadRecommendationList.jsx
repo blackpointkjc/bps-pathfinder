@@ -34,7 +34,7 @@ export default function CadRecommendationList({ call, units = [], onAssigned }) 
         unit_id: item.unit.id,
       });
       const payload = response?.data || {};
-      if (payload.error) throw new Error(payload.error);
+      if (payload.error || !payload.success) throw new Error(payload.error || 'CAD did not confirm assignment.');
       setFeedback(`${unitLabel(item.unit)} assigned to this incident.`);
       window.dispatchEvent(new CustomEvent('bps-data-changed', {
         detail: { kind: 'entity', name: 'DispatchCall', method: 'update', at: Date.now() },
