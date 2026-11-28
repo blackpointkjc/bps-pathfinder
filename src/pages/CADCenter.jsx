@@ -205,7 +205,7 @@ function CadShell({ embedded = false }) {
     </section>;
   }
 
-  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id} data-workstation={active.id} style={{ '--cad-scale': scale }}>
+  return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} style={{ '--cad-scale': scale }}>
     <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><CadClock /></div>
     <CadStatusBar
       calls={calls}

@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { X, Send, AlertCircle } from 'lucide-react';
 import { CALL_TYPES, findCallType } from '@/lib/cadCallTypes';
 
-export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority, source }) {
+export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority, source, inline=false }) {
     const [creating, setCreating] = useState(false);
     const [selectedUnits, setSelectedUnits] = useState([]);
     const [suggestedCallType, setSuggestedCallType] = useState(null);
@@ -108,6 +108,14 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
             prev.includes(unitId) ? prev.filter(id => id !== unitId) : [...prev, unitId]
         );
     };
+
+    if(inline) {
+        const field=(key,label,required=false)=> <label className="cc-draft-field">{label}{required?' *':''}<input required={required} value={formData[key]} onChange={e=>setFormData(old=>({...old,[key]:e.target.value}))}/></label>;
+        const eligible=units.filter(u=>u.id&&!u.connection_stale&&!u.dispatch_hold_new_calls&&(u.session_active===true||u.presence_online===true)&&u.session_active!==false&&!['offline','stale','out of service','distress'].includes(String(u.status||'').toLowerCase()));
+        return <form className="cc-draft" onSubmit={e=>{e.preventDefault();if(!creating)void handleCreate();}}><header><b>{source==='field'?'FIELD-INITIATED INCIDENT':'NEW INCIDENT DRAFT'}</b><span>Not yet saved</span></header><div className="cc-draft-body">
+         <div className="cc-draft-fields">{field('location','Address',true)}<div className="cc-draft-pair">{field('cross_street','Cross street')}{field('landmark','Additional location')}</div>{field('caller_phone','Callback number')}<label className="cc-draft-field">Incident description<textarea rows={4} value={formData.description} onChange={e=>setFormData(old=>({...old,description:e.target.value}))}/></label>{field('incident','Incident type',true)}<details><summary>Incident type catalog</summary><input value={callTypeSearch} onChange={e=>setCallTypeSearch(e.target.value)} placeholder="Find incident type" aria-label="Find incident type"/><div className="cc-draft-catalog">{filteredCallTypes.map(ct=><button type="button" key={ct.code} onClick={()=>setFormData(old=>({...old,incident:ct.label,priority:ct.priority||old.priority}))}>{ct.code} · {ct.label}</button>)}</div></details>{field('caller_name','Reporting party')}<div className="cc-draft-pair"><label className="cc-draft-field">Agency<select value={formData.agency} onChange={e=>setFormData(old=>({...old,agency:e.target.value}))}>{['BPS','RPD','HPD','CCPD'].map(a=><option key={a}>{a}</option>)}</select></label>{field('zone','Zone / beat')}</div><label className="cc-draft-field">Priority<select value={formData.priority} onChange={e=>setFormData(old=>({...old,priority:e.target.value}))}>{['low','medium','high','critical'].map(v=><option key={v}>{v}</option>)}</select></label><label className="cc-draft-field">Known hazards<textarea rows={2} value={formData.hazards} onChange={e=>setFormData(old=>({...old,hazards:e.target.value}))}/></label></div>
+         <div className="cc-draft-units"><h3>Assign units ({selectedUnits.length})</h3>{eligible.map(u=><button type="button" key={u.id} aria-pressed={selectedUnits.includes(u.id)} onClick={()=>toggleUnit(u.id)}>{u.unit_number||'—'} · {u.rank} {u.last_name}<small>{u.status}</small></button>)}{!eligible.length&&<p>No eligible connected units.</p>}<p>Save without units to place the incident in Pending.</p></div></div><footer><button type="button" disabled={creating} onClick={()=>{if(window.confirm('Discard this incident draft?'))onClose();}}>Cancel</button><button type="submit" disabled={creating||!formData.location.trim()||!formData.incident.trim()}>{creating?'Saving…':selectedUnits.length?'Create & dispatch':'Create incident'}</button></footer></form>;
+    }
 
     return (
         <motion.div

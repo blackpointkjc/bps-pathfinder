@@ -15,11 +15,12 @@ import {useNavigate} from 'react-router-dom';
 import {ArrowRight,RefreshCw,X,MapPin,Users,Copy,FilePlus2,FileSearch} from 'lucide-react';
 
 const recorded=(value,fallback='Not recorded')=>value==null||String(value).trim()===''?fallback:String(value);
-export default function CommandIncidentDetails({call,units,priority,reference,incident,elapsed,district,onClose,onUnits,onDispatch,onMap,onPriority,onClear,canChangePriority,canClear,working,unified=false,canManage=false,allCalls=[],onChanged,onCloned}){
+export default function CommandIncidentDetails({call,units,priority,reference,incident,elapsed,district,onClose,onUnits,onDispatch,onMap,onPriority,onClear,canChangePriority,canClear,working,unified=false,canManage=false,allCalls=[],onChanged,onCloned,inlineComments=false}){
  const bodyRef=useRef(null);
  const [tab,setTab]=useState('details');
  const [cloneOpen,setCloneOpen]=useState(false);
  const [recordsOpen,setRecordsOpen]=useState(false);
+ const [premiseOpen,setPremiseOpen]=useState(false);
  const navigate=useNavigate();
  const id=String(call.id);
  const query=useQuery({
@@ -44,7 +45,7 @@ export default function CommandIncidentDetails({call,units,priority,reference,in
  return <section className="tac-incident-detail-rail" aria-label="Incident details">
   <div className="tac-panel-bar"><span>Incident details</span><div><button type="button" onClick={refresh} disabled={query.isFetching} aria-label="Refresh incident records"><RefreshCw size={15} className={query.isFetching?'animate-spin':''}/></button><button type="button" onClick={onUnits}><Users size={15}/> Units</button><button type="button" aria-label="Close incident details" onClick={onClose}><X size={17}/></button></div></div>
   <div className="tac-detail-heading"><small>{reference}</small><div className="tac-detail-title"><h2>{incident}</h2><b data-priority={priority.label.split(' ')[0]}>{priority.label}</b></div><p><MapPin size={16}/>{recorded(call.location,'Location pending')}</p><div className="tac-detail-status"><span>{recorded(call.agency,'Agency pending')}</span><span>{recorded(call.status,'Status unavailable')}</span><span>{recorded(elapsed,'Elapsed unavailable')}</span></div></div>
-  <div className="tac-segment"><button type="button" aria-pressed={tab==='details'} onClick={()=>setTab('details')}>Information</button><button type="button" aria-pressed={tab==='activity'} onClick={()=>setTab('activity')}>Notes & activity{data?' ('+(data.timeline?.length||0)+')':''}</button><button type="button" aria-pressed={tab==='comments'} onClick={()=>setTab('comments')}>Comments</button>{unified&&canManage&&<button type="button" aria-pressed={tab==='assign'} onClick={()=>setTab('assign')}>Assign units</button>}</div>
+  <div className="tac-segment"><button type="button" aria-pressed={tab==='details'} onClick={()=>setTab('details')}>Information</button><button type="button" aria-pressed={tab==='activity'} onClick={()=>setTab('activity')}>Notes & activity{data?' ('+(data.timeline?.length||0)+')':''}</button>{!inlineComments&&<button type="button" aria-pressed={tab==='comments'} onClick={()=>setTab('comments')}>Comments</button>}{unified&&canManage&&<button type="button" aria-pressed={tab==='assign'} onClick={()=>setTab('assign')}>Assign units</button>}</div>
   <div className="tac-detail-scroll" ref={bodyRef}>
    {query.isFetching&&!data&&<p className="tac-detail-message" role="status">Loading recorded call details and activity…</p>}
    {query.isError&&<p role="alert" className="tac-warning">Additional records could not be loaded. Showing available call information. Use refresh to retry.</p>}
@@ -53,9 +54,10 @@ export default function CommandIncidentDetails({call,units,priority,reference,in
     <dl className="tac-detail-fields">{[['Received',call.time_received||call.created_date?formatEasternDateTime(call.time_received||call.created_date)+' ET':'Not recorded'],['District / zone',recorded(call.district||call.beat||call.zone||district)],['Cross street',recorded(call.cross_street)],['Source',recorded(call.source||call.source_channel)],['Caller',recorded(call.caller_name)],['Callback',recorded(call.caller_phone)]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     <div className="tac-detail-block"><h3>Safety / hazards</h3><p className={call.hazards?'text-amber-200':''}>{recorded(call.hazards,'No hazards recorded.')}</p></div>
     <div className="tac-detail-block"><h3>Incident narrative</h3><p>{recorded(data?.narrative||call.description,query.isFetching?'Retrieving original narrative…':'No narrative recorded.')}</p></div>
-    {call.location&&<div className="tac-detail-block"><h3>Premise history</h3><AddressCallHistory address={call.location} excludeCallId={call.id}/></div>}
-    <div className="tac-detail-block"><h3>Assigned units · {assigned.length}</h3>{assigned.length?assigned.map((u,i)=><div className="tac-detail-assignment" key={u.unit_id+'-'+i}><b>{u.label}</b><small>{recorded(u.role,'Role not recorded')} · {recorded(u.status,'Status not recorded')}</small></div>):<p>{query.isFetching?'Checking assignments…':query.isError||data?.warnings?.length?'Assignment records may be incomplete.':'No assigned units in available records.'}</p>}</div>
-    {canManage&&<div className="tac-detail-block"><h3>Recommended units</h3><CadRecommendationList call={call} units={units} onAssigned={refresh}/></div>}
+    {call.location&&<details className="tac-detail-block" onToggle={e=>{if(e.currentTarget.open)setPremiseOpen(true);}}><summary>Premise history</summary>{premiseOpen&&<AddressCallHistory address={call.location} excludeCallId={call.id}/>}</details>}
+    {canManage&&<div className="tac-detail-block cc-dispatch-inline"><h3>Assign new units</h3><CadRecommendationList call={call} units={units} onAssigned={refresh}/><button className="tac-detail-link" type="button" onClick={()=>setTab('assign')}>Manage all units <ArrowRight size={13}/></button></div>}
+    <div className="tac-detail-block"><h3>Responding ({assigned.length})</h3>{assigned.length?assigned.map((u,i)=><div className="tac-detail-assignment" key={u.unit_id+'-'+i}><b>{u.label}</b><small>{recorded(u.role,'Role not recorded')} · {recorded(u.status,'Status not recorded')}</small></div>):<p>{query.isFetching?'Checking assignments…':query.isError||data?.warnings?.length?'Assignment records may be incomplete.':'No assigned units in available records.'}</p>}</div>
+
     {data?.disposition&&<div className="tac-detail-block"><h3>Disposition</h3><p>{data.disposition}</p></div>}
     <div className="tac-detail-block"><h3>Recorded notes & activity</h3><button className="tac-detail-link" type="button" onClick={()=>setTab('activity')}>View CAD activity {data?'('+ (data.timeline?.length||0)+')':''} <ArrowRight size={14}/></button></div>
    </>:<div className="tac-detail-activity">{data?.timeline?.length?data.timeline.slice().reverse().map(event=><article key={event.id}><time>{event.at?formatEasternDateTime(event.at)+' ET':'Time not recorded'}</time><b>{event.title} · {event.actor}</b>{event.text&&<p>{event.text}</p>}</article>):<p className="tac-detail-message">{query.isFetching?'Loading recorded activity…':query.isError||data?.warnings?.length?'Activity may be incomplete. Refresh to retry.':'No recorded activity in the available records.'}</p>}</div>}
