@@ -17,10 +17,10 @@ export default function UnifiedCadGrid({calls,allCalls,units,loading,rosterLoadi
  const unitSearchRef=useRef(null);
  const setShowMap=onMapVisibility||(()=>{});
  useEffect(()=>{setRightTool(showMap?'map':'comments');},[showMap]);
- useEffect(()=>{if(detail?.id)setView('incident');},[detail?.id]);
+ useEffect(()=>{if(detail?.id){setView('incident');setRightTool('comments');}},[detail?.id]);
  useEffect(()=>{if(screen==='units'){setView('units');unitSearchRef.current?.focus();}else if(screen==='incidents')setView('queues');},[screen]);
  const [fieldOnly,setFieldOnly]=useState(false);
- const open=c=>{onOpen(c);setView('incident');};
+ const open=c=>{onOpen(c);setView('incident');setRightTool('comments');};
  const {pending,active}=splitCadIncidents(calls,fieldOnly);
  const roster=units.filter(u=>(unitFilter==='all'||String(u.status||'').toLowerCase()===unitFilter)&&[u.unit_number,u.rank,u.last_name,u.status].join(' ').toLowerCase().includes(unitSearch.toLowerCase()));
  const unitLabel=id=>{const u=units.find(u=>[u.id,u.user_id,u.active_officer_id,u.unit_number].some(v=>v!=null&&String(v)===String(id)));return u?.unit_number||'Unit';};

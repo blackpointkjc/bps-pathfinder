@@ -91,7 +91,7 @@ function emit(patch = {}) {
     lockedSelector: storedSelector(),
   };
   listeners.forEach(listener => {
-    try { listener(state); } catch (_) {}
+    try { listener(getExternalGpsStatus()); } catch (_) {}
   });
 }
 
@@ -113,8 +113,8 @@ function storedSelector() {
     const value = JSON.parse(localStorage.getItem(STORAGE_SELECTOR_KEY) || 'null');
     if (!value || typeof value !== 'object') return null;
     return {
-      usbVendorId: Number.isFinite(Number(value.usbVendorId)) ? Number(value.usbVendorId) : null,
-      usbProductId: Number.isFinite(Number(value.usbProductId)) ? Number(value.usbProductId) : null,
+      usbVendorId: value.usbVendorId!=null&&Number.isFinite(Number(value.usbVendorId)) ? Number(value.usbVendorId) : null,
+      usbProductId: value.usbProductId!=null&&Number.isFinite(Number(value.usbProductId)) ? Number(value.usbProductId) : null,
     };
   } catch {
     return null;
@@ -522,6 +522,7 @@ async function closeCurrentPort() {
     try { await port.close(); } catch (_) {}
   }
   lineBuffer = '';
+  lastGgaFixAt=0;lastMotion={speed:0,heading:null};
 }
 
 async function connectPort(port, baudRate) {
@@ -685,7 +686,7 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
 
     const ownsPort = await acquireGpsOwnership({ requestRelease: false, waitMs: serialStreamStalled ? 2500 : 0 });
     if (!ownsPort) {
-      emit({ connected: false, connecting: false, backgroundReader: false, error: '' });
+      emit({ connected: false, connecting: false, backgroundReader: false, error: 'Receiver is in use by another Pathfinder tab. Retrying automatically.' });
       return getExternalGpsStatus();
     }
 
@@ -708,14 +709,15 @@ export async function startExternalGpsAutoReconnect({ recoverStale = false } = {
         return getExternalGpsStatus();
       }
 
-      const preferredPort = selectedPort || (!remembered&&ports.length === 1 ? ports[0] : null);
+      const rememberedHardware=remembered&&(remembered.usbVendorId!=null||remembered.usbProductId!=null);
+      const preferredPort = selectedPort || (!locked&&!rememberedHardware&&ports.length===1 ? ports[0]:null);
       if (!preferredPort) {
         emit({
           connected: false,
           connectedAt: null,
           connecting: false,
           backgroundReader: false,
-          error: 'Multiple approved COM ports are available. Select the GPS antenna from Pathfinder before reconnecting.',
+          error: ports.length>1?'Multiple approved COM ports are available. Select the GPS antenna from Pathfinder before reconnecting.':'The saved receiver is not available. Reattach it or select a replacement.',
         });
         releaseGpsOwnership();
         return getExternalGpsStatus();

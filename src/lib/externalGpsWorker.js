@@ -108,6 +108,7 @@ async function stopPort() {
     try { await port.close(); } catch (_) {}
   }
   lineBuffer = '';
+  lastGgaFixAt=0;lastMotion={speed:0,heading:null};
 }
 
 function portMatches(port, selector = {}) {
