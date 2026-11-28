@@ -53,3 +53,10 @@ test('officer board shows the wider pending queue and no dispatcher or map contr
  assert.ok(!html.includes('Field initiated'));
  assert.ok(!html.includes('> Map</button>'));
 });
+test('officer command contains manual call pins, not duplicated filters or toolbar',()=>{
+ const html=render({officerMode:true,monitoredIds:['pending'],onTogglePin:()=>{},dutyControl:React.createElement('button',null,'My status')});
+ assert.ok(!html.includes('Find incident · CAD number'));assert.ok(!html.includes('All agencies'));
+ assert.ok(!html.includes('Browser full screen'));assert.ok(!html.includes('Reset filters'));
+ assert.match(html,/aria-label="Stop monitoring pending"/);assert.match(html,/aria-label="Monitor active"/);
+ assert.match(html,/My status/);
+});

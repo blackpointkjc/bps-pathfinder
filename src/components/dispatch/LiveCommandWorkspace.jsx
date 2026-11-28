@@ -12,7 +12,7 @@ import { Radio, Search, Users, RefreshCw } from 'lucide-react';
 export default function LiveCommandWorkspace({calls=[],allCalls=[],units=[],loading,syncStatus={},rateLimited,onRefresh,onOpen,selectedCall,onClose,onMap,onDispatch,onPriority,onClear,canChangePriority,canClear,priorityOf,identifierOf,incidentOf,timeOf,elapsedOf,elapsedTimestampOf,actions,settings,rosterLoading=false,rosterError='',onRetryRoster,initialFocus='all',unified=false,canManage=false,onCreate,showMap=true,onMapVisibility,draft,draftOpen,onCloseDraft,standaloneZoom=1,officerMode=false,monitoredIds=[],onTogglePin,standaloneMonitor,onToggleMonitor,emergencyControl}){
  // The CAD status bar and command palette deep-link into the board with a
  // pre-filtered queue, so the requested view is already on screen.
- const startingFocus=['all','urgent','unassigned'].includes(initialFocus)?initialFocus:'all';
+ const startingFocus=officerMode?'all':['all','urgent','unassigned'].includes(initialFocus)?initialFocus:'all';
  const [query,setQuery]=useState(''),[agency,setAgency]=useState('all'),[focus,setFocus]=useState(startingFocus),[unitSearch,setUnitSearch]=useState(''),[working,setWorking]=useState(''),[error,setError]=useState('');
  const [utilityPanel,setUtilityPanel]=useState(null);
  useEffect(()=>{setFocus(startingFocus);},[startingFocus]);

@@ -14,9 +14,7 @@ const FIELD_SOURCE = /officer|field|mdt|helpm|self|patrol|unit/i;
 const isFieldCall = call => FIELD_SOURCE.test(String(call?.source || call?.source_channel || ''));
 
 /**
- * CommandCentral-style incident monitor. Outstanding calls stay on screen on
- * every workstation for their whole lifecycle: pending dispatch first, then the
- * calls already assigned but at or past their service level.
+ * CommandCentral-style incident monitor. Only incidents explicitly pinned by the current user are displayed.
  */
 export default function CadIncidentMonitor({ calls = [], loading = false, onOpen, onCollapse, selectedIds=[], onTogglePin }) {
   const [now, setNow] = useState(() => Date.now());
@@ -28,16 +26,6 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
 
   const rows = useMemo(()=>monitoredIncidents(calls,selectedIds).map(call=>({call,level:cadServiceLevel(call,now),pending:cadNeedsDispatch(call)})),[calls,selectedIds,now]);
   const missing=selectedIds.filter(id=>!rows.some(row=>String(row.call.id)===id));
-
-  const pending = cadNeedsDispatch(call);
-      return { call, level, pending };
-    })
-    .filter(row => row.pending || row.level.state === 'overdue' || row.level.state === 'watch')
-    .sort((a, b) => {
-      if (a.pending !== b.pending) return a.pending ? -1 : 1;
-      return (b.level.minutes ?? -1) - (a.level.minutes ?? -1);
-    })
-    , [calls, now]);
 
   const pending = rows.filter(row => row.pending).length;
   const overdue = rows.filter(row => row.level.state === 'overdue').length;
