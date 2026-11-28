@@ -1632,7 +1632,7 @@ export default function Layout({ children, currentPageName }) {
             <span>{userHomeLabel}</span>
           </Link>
           {canAccessPage(user,'RecordsAssistant')&&<button type="button" onClick={()=>setRecordsSearchOpen(true)} className="pf-field-search flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/60 bg-cyan-950/40 px-2 text-[10px] font-black uppercase tracking-wide text-cyan-100 sm:px-3" aria-label="Search Records"><Search className="h-4 w-4"/><span>Search Records</span></button>}
-          {!['AdminCenter','CorporateBrowser','AdminBrowserControl','AdminReports'].includes(currentPageName) && <div className="pf-header-context hidden min-w-0 md:block">
+          {!['AdminCenter','CorporateBrowser','AdminBrowserControl','AdminReports'].includes(currentPageName) && <div className="pf-header-context hidden min-w-0 md:block" aria-label={pageLabel(currentPageName)}>
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white xl:tracking-[0.15em]"><span className="xl:hidden">{pageLabel(currentPageName)}</span><span className="hidden xl:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="xl:hidden">FIELD OPERATIONS</span><span className="hidden xl:inline">UNIFIED OPERATIONS PLATFORM</span></div>
           </div>}
