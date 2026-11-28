@@ -1015,7 +1015,7 @@ async function acquireIngestionLease(base44, serverRun = false) {
   });
   await wait(500);
   const verified = (await base44.asServiceRole.entities.CadCounter.filter({ counter_key: "dispatch_call" }))?.[0];
-  return verified?.ingestion_lock_token === token ? { id: verified.id, token } : null;
+  return verified?.ingestion_lock_token === token ? { id: verified.id, token, previousSnapshot:counter.active_source_snapshot||[], previousCovered:counter.active_source_confirmed_agencies||[] } : null;
 }
 async function recordSourcePoll(base44, lease, data) {
   if (!lease?.id) return;
@@ -1142,7 +1142,7 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
   const sameLiveField = (field, a, b) => field === "time_received" ? Date.parse(a) === Date.parse(b) : ["latitude", "longitude"].includes(field) ? Number(a) === Number(b) : String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
   const updateQueue = recent.filter((row) => {
     const existing = matchAgencyRecord(row,byExternal,byLegacy);
-    return existing && existing.manual_dismissed !== true && !existing.time_cleared && ["incident", "location", "agency", "zone", "status", "priority", "time_received", "latitude", "longitude"].some((field) => row[field] !== void 0 && !(field === "priority" && existing.priority_override) && !sameLiveField(field, row[field], existing[field]));
+    return existing && existing.manual_dismissed !== true && !existing.time_cleared && !existing.time_closed && ["incident", "location", "agency", "zone", "status", "priority", "time_received", "latitude", "longitude"].some((field) => row[field] !== void 0 && !(field === "priority" && existing.priority_override) && !sameLiveField(field, row[field], existing[field]));
   }).slice(0, 60);
   for (let offset = 0; offset < updateQueue.length; offset += 4) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async (row) => {
@@ -1351,19 +1351,14 @@ async function handleGracIngestion(req) {
         ...persistableCall(call),
         source_first_seen_at: call.source_first_seen_at || sourceObservedAt
       }));
-      const snapshotPatch = {
-        active_source_snapshot_at: sourceObservedAt,
-        active_source_snapshot: incoming.map((call) => ({
-          external_call_id: externalKey(call),
-          agency: call.agency,
-          incident: call.incident,
-          location:call.location,
-          status:call.status,
-          time_received: call.time_received
-        }))
-      };
       const webAgencies=new Set(websiteIncoming.map(c=>String(c.agency||'').toUpperCase()));
       const confirmedAgencies=new Set(apiIncoming.map(c=>String(c.agency||'').toUpperCase()).filter(a=>webAgencies.has(a)));
+      const incomingSnapshot=incoming.map(call=>({external_call_id:externalKey(call),agency:call.agency,incident:call.incident,location:call.location,status:call.status,time_received:call.time_received}));
+      // If one source/agency is temporarily missing, keep the last known
+      // identities for that agency rather than inferring closure.
+      const snapshotById=new Map((lease.previousSnapshot||[]).filter(row=>!confirmedAgencies.has(String(row.agency||'').toUpperCase())).map(row=>[row.external_call_id,row]));
+      for(const row of incomingSnapshot)if(row.external_call_id)snapshotById.set(row.external_call_id,row);
+      const snapshotPatch={active_source_snapshot_at:sourceObservedAt,active_source_snapshot:[...snapshotById.values()],active_source_confirmed_agencies:[...confirmedAgencies]};
       if (scheduledRun || body?.live_sync === true || body?.fast_sync === true) {
         const result = await ingestFastPublishedCalls(base44, incoming,confirmedAgencies);
         await recordSourcePoll(base44, lease, {

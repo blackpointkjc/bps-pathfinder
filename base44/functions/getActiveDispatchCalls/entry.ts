@@ -21,12 +21,17 @@ function isValidCallRecord(call) {
   return !['test', 'demo', 'sample'].includes(String(call.lifecycle_status || '').toLowerCase());
 }
 function isVisibleActiveCall(call, now = Date.now()) {
-  if (!isValidCallRecord(call) || call.manual_dismissed === true || call.time_cleared
+  if (!isValidCallRecord(call) || call.manual_dismissed === true || call.time_cleared || call.time_closed
     || TERMINAL.has(String(call.status || '').trim().toLowerCase())) return false;
   const stamp = callTimestamp(call);
+  const imported=['richmond','henrico','chesterfield'].includes(String(call.source||'').toLowerCase());
+  const locallyAssigned=Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0;
+  // An old property alert or assigned_units mirror is not evidence that GRAC
+  // still has this incident. A genuine outstanding local assignment is separate.
+  if(imported&&call.pathfinder_source_absent===true&&!locallyAssigned)return false;
   // Public requests remain visible until a real disposition, even if
   // waiting on a dispatcher or eligible unit for more than an hour.
-  const retained = call.pathfinder_source_active===true || call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
+  const retained = call.pathfinder_source_active===true || call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (!imported && Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
   return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }
 const __portalReauthAfter = '2026-11-01T22:38:04.000Z';
@@ -98,10 +103,26 @@ Deno.serve(async (req) => {
           const propertyIds=new Set((alerts||[]).filter(a=>a.callId&&a.propertyId&&a.propertyId!=='public-helpme'&&!TERMINAL.has(lower(a.callStatus))).map(a=>String(a.callId)));
           const propertyNames=new Map<string,Set<string>>();for(const a of alerts||[]){if(propertyIds.has(String(a.callId))&&a.propertyName){if(!propertyNames.has(String(a.callId)))propertyNames.set(String(a.callId),new Set());propertyNames.get(String(a.callId))!.add(String(a.propertyName));}}
           const assignmentUnits=new Map<string,Set<string>>();
-          for(const row of assignments||[]){if(!row.call_id||!row.unit_id||TERMINAL.has(lower(row.status)))continue;const key=String(row.call_id);if(!assignmentUnits.has(key))assignmentUnits.set(key,new Set());assignmentUnits.get(key)!.add(String(row.unit_id));}
+          for(const row of assignments||[]){if(!row.call_id||!row.unit_id||row.cleared_at||TERMINAL.has(lower(row.status)))continue;const key=String(row.call_id);if(!assignmentUnits.has(key))assignmentUnits.set(key,new Set());assignmentUnits.get(key)!.add(String(row.unit_id));}
           const retainedIds=[...new Set([...propertyIds,...assignmentUnits.keys()])].filter(validRecordId);
           const counter=counters?.[0];
-          const sourceIds=new Set<string>((Array.isArray(counter?.active_source_snapshot)?counter.active_source_snapshot:[]).map((r:any)=>String(r.external_call_id||'')).filter(Boolean));
+          const snapshot=Array.isArray(counter?.active_source_snapshot)?counter.active_source_snapshot:[];
+          const sourceIds=new Set<string>(snapshot.map((r:any)=>String(r.external_call_id||'')).filter(Boolean));
+          const agencyOf=(r:any)=>String(r?.agency||'').trim().toUpperCase();
+          const covered=new Set<string>(Array.isArray(counter?.active_source_confirmed_agencies)?counter.active_source_confirmed_agencies.map((x:any)=>String(x).toUpperCase()):counter?.last_website_row_count>0&&counter?.last_api_row_count>0?snapshot.map(agencyOf).filter(Boolean):[]);
+          const snapshotAt=callTimestamp({time_received:counter?.active_source_snapshot_at||counter?.last_source_poll_at});
+          const identity=(r:any)=>{const at=callTimestamp(r),incident=String(r?.incident||'').trim().toUpperCase().replace(/\s+/g,' '),location=String(r?.location||'').trim().toUpperCase().replace(/\bNORTH\b/g,'N').replace(/\bSOUTH\b/g,'S').replace(/\bEAST\b/g,'E').replace(/\bWEST\b/g,'W').replace(/\bSTREET\b/g,'ST').replace(/\bAVENUE\b/g,'AVE').replace(/\bBOULEVARD\b/g,'BLVD').replace(/\bROAD\b/g,'RD').replace(/[^A-Z0-9]+/g,' ').trim();return at&&agencyOf(r)&&incident&&location?[agencyOf(r),at,incident,location].join('|'):'';};
+          const snapshotByIdentity=new Map<string,any[]>();
+          for(const r of snapshot){const k=identity(r);if(k){if(!snapshotByIdentity.has(k))snapshotByIdentity.set(k,[]);snapshotByIdentity.get(k)!.push(r);}}
+          const matchSource=(row:any)=>{
+            const key=String(row.external_call_id||'');
+            if(sourceIds.has(key))return key;
+            const candidates=snapshotByIdentity.get(identity(row))||[];
+            // Permit a unique website/API alias, not two distinct verified API incidents.
+            const match=candidates.length===1?candidates[0]:null;
+            if(match&&(!key||key.startsWith('web-')||String(match.external_call_id||'').startsWith('web-')))return String(match.external_call_id);
+            return '';
+          };
           const sourceRows:any[]=[];
           // Read by upstream identity, including incidents opened days ago.
           // This query does not use record IDs and cannot trigger the legacy-ID error.
@@ -132,19 +153,27 @@ Deno.serve(async (req) => {
           // Bound the ID query size, and never fail the ordinary feed due to an optional historical attachment lookup.
           for(let i=0;i<missingRetainedIds.length;i+=100){const batch=await optional('Retained CAD records',()=>db.DispatchCall.filter({id:{$in:missingRetainedIds.slice(i,i+100)},manual_dismissed:{$ne:true},status:{$nin:[...TERMINAL,'Cleared','Cancelled','Canceled','Closed','Completed','Resolved']}},'-created_date',100));if(Array.isArray(batch))retainedRows.push(...batch);}
           const source=counter?{poll_at:counter.last_source_poll_at||null,poll_status:counter.last_source_poll_status||'',last_server_poll_at:counter.last_server_poll_at||null,last_success_at:counter.last_source_success_at||(String(counter.last_source_poll_status||'').startsWith('success')?counter.last_source_poll_at:null),website_rows:counter.last_website_row_count??null,api_rows:counter.last_api_row_count??null,latest_received:counter.last_website_latest_received||null,duration_ms:counter.last_source_poll_duration_ms??null,snapshot_count:sourceIds.size}:null;
-          const all=[...new Map([...rows||[],...retainedRows||[],...sourceRows].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>({...row,pathfinder_source_active:sourceIds.has(String(row.external_call_id||''))&&['richmond','henrico','chesterfield'].includes(lower(row.source)),pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_property_names:[...(propertyNames.get(String(row.id))||[])],pathfinder_assignment_unit_ids:[...(assignmentUnits.get(String(row.id))||[])]})).filter((row:any)=>isVisibleActiveCall(row));
+          const all=[...new Map([...rows||[],...retainedRows||[],...sourceRows].map((row:any)=>[String(row.id),row])).values()].map((row:any)=>{
+            const imported=['richmond','henrico','chesterfield'].includes(lower(row.source));
+            const sourceKey=imported?matchSource(row):'';
+            const firstSeen=callTimestamp({time_received:row.source_first_seen_at||row.created_date});
+            const newlyObserved=firstSeen>snapshotAt&&Date.now()-firstSeen<=120000;
+            const sourceAbsent=imported&&covered.has(agencyOf(row))&&snapshotAt>0&&!sourceKey&&!newlyObserved;
+            const localAssignmentIds=[...(assignmentUnits.get(String(row.id))||[])];
+            return {...row,pathfinder_source_active:Boolean(sourceKey),pathfinder_source_key:sourceKey,pathfinder_source_absent:sourceAbsent,pathfinder_local_response:sourceAbsent&&localAssignmentIds.length>0,pathfinder_property_alert:propertyIds.has(String(row.id)),pathfinder_property_names:[...(propertyNames.get(String(row.id))||[])],pathfinder_assignment_unit_ids:localAssignmentIds};
+          }).filter((row:any)=>isVisibleActiveCall(row));
           // Duplicate saved records of one source incident must not crowd out
           // other source incidents. Preserve the row with local attachments;
           // otherwise prefer the most recently updated record.
           const unique=new Map<string,any>();
           const rank=(row:any)=>Number(Boolean(row.pathfinder_assignment_unit_ids?.length||row.assigned_units?.length))*4+Number(row.pathfinder_property_alert)*2+Number(Boolean(row.official_cad_verified));
           for(const row of all){
-            const key=row.pathfinder_source_active?'source:'+row.external_call_id:'local:'+row.id;
+            const key=row.pathfinder_source_active?'source:'+row.pathfinder_source_key:'local:'+row.id;
             const prior=unique.get(key);
             if(!prior||rank(row)>rank(prior)||rank(row)===rank(prior)&&Date.parse(row.updated_date||row.created_date||0)>Date.parse(prior.updated_date||prior.created_date||0))unique.set(key,row);
           }
           const result=[...unique.values()];
-          if(source){source.visible_source_count=result.filter(r=>r.pathfinder_source_active).length;source.missing_source_count=Math.max(0,sourceIds.size-source.visible_source_count);}
+          if(source){source.visible_source_count=new Set(result.filter(r=>r.pathfinder_source_active).map(r=>r.pathfinder_source_key)).size;source.missing_source_count=Math.max(0,sourceIds.size-source.visible_source_count);}
           return {source,warnings,rows:result};
         })() };
         readCache.set(cacheKey, cached);

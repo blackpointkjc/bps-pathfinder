@@ -93,7 +93,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                             eventHandlers={{ click: () => onCallClick?.(call) }}
                         >
                             <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>
-                                <div style={{ fontWeight: 700 }}>{call.incident || 'Active Call'}</div>
+                                <div style={{ fontWeight: 700 }}>{call.pathfinder_local_response?'LOCAL · ':''}{call.incident || 'Active Call'}</div>
                                 <div>{(call.call_id || call.agency_cad_number || call.bps_reference || '')}</div>
                             </Tooltip>
                         </Marker>

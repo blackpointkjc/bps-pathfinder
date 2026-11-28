@@ -195,12 +195,15 @@ records.CallAssignment.push({id:'assignment-row',call_id:'0000000000000000000000
 records.PropertyAlert.push({id:'legacy-alert',callId:'CAD-12345',propertyId:'site',lifecycle_status:'active'});
 records.CallAssignment.push({id:'legacy-assignment',call_id:'BPS-202611-99',unit_id:'legacy-unit',status:'pending'});
 records.DispatchCall.push({...live,id:'000000000000000000000020',external_call_id:'grac-long-open',source:'richmond',time_received:oldAt,status:'On Scene'},{...live,id:'000000000000000000000021',external_call_id:'grac-long-open',source:'richmond',time_received:oldAt,status:'On Scene',created_date:new Date(now-1000).toISOString()},{...live,id:'000000000000000000000022',external_call_id:'grac-old-closed',source:'richmond',time_received:oldAt,status:'Cleared'});
-records.CadCounter=[{active_source_snapshot:[{external_call_id:'grac-long-open'},{external_call_id:'grac-old-closed'}],id:'cad-counter',counter_key:'dispatch_call',last_source_poll_at:new Date(now-5000).toISOString(),last_source_poll_status:'success',last_website_row_count:46,last_api_row_count:46,last_website_latest_received:new Date(now-6*60000).toISOString()}];
+records.DispatchCall.push({...live,id:'000000000000000000000031',source:'richmond',external_call_id:'stale-wanted',time_received:oldAt,assigned_units:['legacy-mirror'],status:'On Scene'},{...live,id:'000000000000000000000032',source:'richmond',external_call_id:'stale-recent',status:'Dispatched',created_date:new Date(now-120000).toISOString()},{...live,id:'000000000000000000000033',source:'richmond',external_call_id:'closed-missing',status:'Dispatched',time_closed:new Date(now-30000).toISOString()});
+records.PropertyAlert.push({callId:'000000000000000000000031',propertyId:'site',lifecycle_status:'active',callStatus:'On Scene'});
+records.CadCounter=[{active_source_confirmed_agencies:['RPD'],active_source_snapshot_at:new Date(now-5000).toISOString(),active_source_snapshot:[{external_call_id:'grac-long-open'},{external_call_id:'grac-old-closed'}],id:'cad-counter',counter_key:'dispatch_call',last_source_poll_at:new Date(now-5000).toISOString(),last_source_poll_status:'success',last_website_row_count:46,last_api_row_count:46,last_website_latest_received:new Date(now-6*60000).toISOString()}];
 const liveResult = await liveFeed({limit:100});
 assert.equal(liveResult.status,200);
 assert.ok(!JSON.stringify(reads.filter(r=>r.entity==='DispatchCall')).includes('CAD-12345'));assert.ok(!JSON.stringify(reads.filter(r=>r.entity==='DispatchCall')).includes('BPS-202611-99'));
 assert.equal(liveResult.data.source_health.poll_status,'success');assert.equal(liveResult.data.source_health.api_rows,46);assert.equal(liveResult.data.source_health.poll_at,records.CadCounter[0].last_source_poll_at);
 assert.equal(liveResult.data.calls.length,6);
+assert.ok(!liveResult.data.calls.some(c=>['stale-wanted','stale-recent','closed-missing'].includes(c.external_call_id)));
 assert.equal(liveResult.data.source_health.snapshot_count,2);assert.equal(liveResult.data.source_health.visible_source_count,1);
 assert.equal(liveResult.data.calls.filter(c=>c.external_call_id==='grac-long-open').length,1);
 assert.ok(browserFeed.dedupeOperationalCalls(liveResult.data.calls).some(c=>c.external_call_id==='grac-long-open'));

@@ -217,7 +217,7 @@ export default function TomTomSdkMapPreview({onClose,currentLocation,activeCalls
     if (snapshot.activeCalls!==previous.calls || callSource!==previous.callSource) {
       const calls=(snapshot.activeCalls||[]).filter(call=>isLiveMapCall(call));
       callsRef.current=calls;
-      callSource?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,priority:incidentPriority(call),label:String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
+      callSource?.setData(featureCollection(calls.map(call=>marker(call.id,call.latitude,call.longitude,{id:call.id,priority:incidentPriority(call),label:(call.pathfinder_local_response?'LOCAL · ':'')+String(call.incident||call.call_type||'CAD call').slice(0,42),icon:`bps-${cadCallIcon(call)}`} ))));
       previous.calls=snapshot.activeCalls;
       previous.callSource=callSource;
     }

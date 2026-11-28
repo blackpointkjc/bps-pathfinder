@@ -66,6 +66,7 @@
       },
       "description": "Identities in the last successfully parsed upstream active list; never replaced on a failed poll"
     },
+    "active_source_confirmed_agencies": {"type":"array","items":{"type":"string"},"description":"Agencies confirmed present in both upstream sources on last successful poll"},
     "active_source_snapshot_at": {
       "type": "string",
       "format": "date-time"

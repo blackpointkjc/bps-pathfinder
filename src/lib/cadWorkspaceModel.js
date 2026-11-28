@@ -1,6 +1,6 @@
 // Pure CAD presentation helpers; never change the underlying call records.
 export const isFieldInitiated = call => /officer|field|mdt|helpm|self|patrol/i.test([call?.source,call?.source_channel].filter(Boolean).join(' '));
-export const isOpenIncident = call => !!call&&!call.manual_dismissed&&!call.time_cleared&&!['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(call?.status||'').trim().toLowerCase());
+export const isOpenIncident = call => !!call&&!call.manual_dismissed&&!call.time_cleared&&!call.time_closed&&!['cleared','cancelled','canceled','closed','completed','resolved'].includes(String(call?.status||'').trim().toLowerCase());
 export const isOperationalPropertyAlert=alert=>!!alert?.callId&&!!alert.propertyId&&alert.propertyId!=='public-helpme'&&alert.is_test!==true&&!['resolved','false_alarm','test','inactive','closed'].includes(String(alert.lifecycle_status||'').toLowerCase());
 export const assignedCadUnitIds=call=>[...new Set([...(Array.isArray(call?.assigned_units)?call.assigned_units:[]),...(Array.isArray(call?.pathfinder_assignment_unit_ids)?call.pathfinder_assignment_unit_ids:[])].filter(Boolean).map(String))];
 export const isVerifiedPropertyCall=(call,propertyIds=new Set())=>call?.pathfinder_property_alert===true||propertyIds.has(String(call?.id));

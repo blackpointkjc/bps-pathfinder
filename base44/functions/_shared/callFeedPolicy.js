@@ -17,10 +17,15 @@ export function isValidCallRecord(call) {
   return !['test', 'demo', 'sample'].includes(String(call.lifecycle_status || '').toLowerCase());
 }
 export function isVisibleActiveCall(call, now = Date.now()) {
-  if (!isValidCallRecord(call) || call.manual_dismissed === true || call.time_cleared
+  if (!isValidCallRecord(call) || call.manual_dismissed === true || call.time_cleared || call.time_closed
     || TERMINAL.has(String(call.status || '').trim().toLowerCase())) return false;
   const stamp = callTimestamp(call);
-  const retained = call.pathfinder_source_active===true || call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
+  const imported=['richmond','henrico','chesterfield'].includes(String(call.source||'').toLowerCase());
+  const locallyAssigned=Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0;
+  // An old property alert or assigned_units mirror is not evidence that GRAC
+  // still has this incident. A genuine outstanding local assignment is separate.
+  if(imported&&call.pathfinder_source_absent===true&&!locallyAssigned)return false;
+  const retained = call.pathfinder_source_active===true || call.pathfinder_property_alert===true || (Array.isArray(call.pathfinder_assignment_unit_ids)&&call.pathfinder_assignment_unit_ids.length>0) || ['public_helpme','dispatch_manual','field_initiated','CAD clone'].includes(call.source) || (call.agency==='BPS' && call.cad_number_source==='bps_internal' && !call.external_call_id) || (!imported && Array.isArray(call.assigned_units) && call.assigned_units.some(id=>String(id||'').trim()));
   return stamp > 0 && stamp <= now + 120000 && (retained || now - stamp <= ACTIVE_WINDOW_MS);
 }
 

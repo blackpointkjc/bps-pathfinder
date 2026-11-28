@@ -3,10 +3,10 @@ import { callTimestamp, isVisibleActiveCall } from '../../base44/functions/_shar
 import { base44 } from '@/api/base44Client';
 import { withRequestTimeout } from '@/lib/requestTimeout';
 
-const CACHE_KEY = 'bps-cad-active-calls-v7';
+const CACHE_KEY = 'bps-cad-active-calls-v8';
 const terminalStatuses=new Set(['cleared','cancelled','canceled','closed','completed','resolved']);
 const closedEvents=new Map();
-const rowClosed=row=>row?.manual_dismissed===true||Boolean(row?.time_cleared)||terminalStatuses.has(String(row?.status||'').trim().toLowerCase());
+const rowClosed=row=>row?.manual_dismissed===true||Boolean(row?.time_cleared||row?.time_closed)||terminalStatuses.has(String(row?.status||'').trim().toLowerCase());
 const eventStamp=row=>{const raw=String(row?.updated_date||row?.time_cleared||'');return raw?Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z')||0:0;};
 export function filterKnownClosedCalls(rows){return (rows||[]).filter(row=>!closedEvents.has(String(row?.id||'')));}
 export function recordCadRealtimeEvent(event){

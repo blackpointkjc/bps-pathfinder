@@ -26,3 +26,12 @@ test('navigation shares CAD shell provider and both marker engines consume the s
  assert.ok(read('src/components/map/TomTomSdkMapPreview.jsx').includes('isLiveMapCall(call)'));
  assert.ok(read('src/lib/dispatchCallRealtime.js').includes('recordCadRealtimeEvent(event)'));
 });
+
+test('agency absence and recorded source closure override misleading stored open status and legacy attachments',()=>{
+ const old={...base,time_received:new Date(now-40*86400000).toISOString(),status:'On Scene',pathfinder_source_absent:true,pathfinder_property_alert:true,assigned_units:['legacy']};
+ assert.equal(isLiveMapCall(old,now),false);
+ assert.equal(isVisibleActiveCall({...base,pathfinder_source_absent:true},now),false);
+ assert.equal(isLiveMapCall({...base,time_closed:new Date(now).toISOString(),pathfinder_source_active:true},now),false);
+ assert.equal(isLiveMapCall({...old,pathfinder_source_active:true,pathfinder_source_absent:false},now),true);
+ assert.equal(isLiveMapCall({...old,pathfinder_assignment_unit_ids:['confirmed-local'],pathfinder_local_response:true},now),true);
+});
