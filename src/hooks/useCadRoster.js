@@ -22,7 +22,7 @@ function useLocalCadRoster(enabled=true){
   setLoading(true);setError('');
   const request=(async()=>{
    const errors=[];
-   // Paint independently: a slow directory never prevents live status from appearing.
+   // Fetch live status first; defer directory enrichment until the roster paints.
    const statusRequest=getOfficerLocationSnapshot({force}).then(payload=>{
     if(!mounted.current)return;
     const live=Array.isArray(payload.units)?payload.units:payload.users;

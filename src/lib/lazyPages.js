@@ -80,10 +80,8 @@ const Pages = Object.fromEntries([...routes].map(([name,file])=>{
 const mainPage = generatedConfig.match(/^export const pagesConfig\s*=\s*\{\s*mainPage:\s*["']([^"']+)["']/m)?.[1] || 'Home';
 export const pagesConfig = { Pages, mainPage, Layout };
 
-// Load the same page modules used by React.lazy before the welcome screen closes.
-// No page is mounted here; imports cannot submit a form or run component effects.
-// Each page module pulls in the components it renders, so warming the pages is
-// enough and every tool still opens instantly from the cache.
+// Warm only the authorized route being entered; other tools load on demand.
+// No page is mounted here, and no directory query is required for preparation.
 const prepared=new Map();
 export function prepareWorkspace(user,onProgress){
  if(prepared.has(user.id))return prepared.get(user.id);
