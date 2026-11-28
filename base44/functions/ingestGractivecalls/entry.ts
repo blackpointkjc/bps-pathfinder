@@ -325,9 +325,23 @@ function externalKey(record) {
 function legacyKey(record) {
   const agency = String(record?.agency || "").trim().toUpperCase();
   const incident = String(record?.incident || "").trim().toUpperCase().replace(/\s+/g, " ");
-  const received = record?.time_received ? new Date(record.time_received).toISOString() : "";
-  if (!ALLOWED_AGENCIES.has(agency) || !incident || !received) return "";
-  return `${agency}|${received}|${incident}`;
+  const stamp=Date.parse(record?.time_received||"");
+  const received=Number.isFinite(stamp)?new Date(stamp).toISOString():"";
+  const location=String(record?.location||"").trim().toUpperCase().replace(/\bNORTH\b/g,"N").replace(/\bSOUTH\b/g,"S").replace(/\bEAST\b/g,"E").replace(/\bWEST\b/g,"W").replace(/\bSTREET\b/g,"ST").replace(/\bAVENUE\b/g,"AVE").replace(/\bBOULEVARD\b/g,"BLVD").replace(/\bROAD\b/g,"RD").replace(/[^A-Z0-9]+/g," ").trim();
+  if (!ALLOWED_AGENCIES.has(agency) || !incident || !received || !location) return "";
+  return `${agency}|${received}|${incident}|${location}`;
+}
+function sameAgencyIdentity(a,b){
+ if(!a||!b)return false;
+ const first=externalKey(a),second=externalKey(b);
+ if(first&&second&&first!==second&&String(a.source_channel||"").includes("grac_api")&&String(b.source_channel||"").includes("grac_api"))return false;
+ return !!legacyKey(a)&&legacyKey(a)===legacyKey(b);
+}
+function matchAgencyRecord(row,byExternal,byLegacy){
+ const exact=byExternal.get(externalKey(row));
+ if(exact)return exact;
+ const fallback=byLegacy.get(legacyKey(row));
+ return sameAgencyIdentity(row,fallback)?fallback:null;
 }
 function recordKey(record) {
   return externalKey(record) || legacyKey(record);
@@ -467,6 +481,10 @@ function mergeLiveWebsiteAndApi(websiteCalls, apiCalls, _websiteCacheAgeSeconds 
   for (const api of apiCalls || []) {
     const key = liveMergeKey(api);
     const web = byKey.get(key);
+    if(web?.source_channel?.includes("grac_api_live")&&web.external_call_id&&api.external_call_id&&web.external_call_id!==api.external_call_id){
+      byKey.set(key+"|"+api.external_call_id,{...api,source_channel:"grac_api_live"});
+      continue;
+    }
     if (!web) {
       byKey.set(key, { ...api, source_channel: "grac_api_live" });
       continue;
@@ -1068,7 +1086,7 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
     const external = externalKey(row), legacy = legacyKey(row), key = external || legacy;
     if (!key || seen.has(key)) return false;
     seen.add(key);
-    return !byExternal.has(external) && !byLegacy.has(legacy) && !archivedExternal.has(external) && !archivedLegacy.has(legacy);
+    return !matchAgencyRecord(row,byExternal,byLegacy) && !archivedExternal.has(external) && !archivedLegacy.has(legacy);
   }).slice(0, 40);
   const numbers = await reserveCadNumbers(base44, newCalls.length);
   const sideEffects = [];
@@ -1117,12 +1135,12 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
   }));
   const sameLiveField = (field, a, b) => field === "time_received" ? Date.parse(a) === Date.parse(b) : ["latitude", "longitude"].includes(field) ? Number(a) === Number(b) : String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
   const updateQueue = recent.filter((row) => {
-    const existing = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+    const existing = matchAgencyRecord(row,byExternal,byLegacy);
     return existing && existing.manual_dismissed !== true && ["incident", "location", "agency", "zone", "status", "priority", "time_received", "latitude", "longitude"].some((field) => row[field] !== void 0 && !(field === "priority" && existing.priority_override) && !sameLiveField(field, row[field], existing[field]));
   }).slice(0, 60);
   for (let offset = 0; offset < updateQueue.length; offset += 4) {
     await Promise.all(updateQueue.slice(offset, offset + 4).map(async (row) => {
-      const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+      const previous = matchAgencyRecord(row,byExternal,byLegacy);
       const upstreamTerminal = ["cleared", "cancelled", "canceled", "closed", "resolved", "completed"].includes(lower(row.status));
       const preserveOfficerQueue = upstreamTerminal && await hasOutstandingOfficerAssignment(base44.asServiceRole.entities, previous, cachedAssignments);
       const patch = {
@@ -1158,7 +1176,7 @@ async function ingestFastPublishedCalls(base44, incoming, confirmedAgencies=new 
     }));
   }
   for (const row of recent) {
-    const previous = byExternal.get(externalKey(row)) || byLegacy.get(legacyKey(row));
+    const previous = matchAgencyRecord(row,byExternal,byLegacy);
     if (!previous || previous.manual_dismissed === true || ["Cleared", "Cancelled"].includes(String(previous.status || ""))) continue;
     try {
       propertyAlertsCreated += await createImmediatePropertyAlerts(
@@ -1365,7 +1383,7 @@ async function handleGracIngestion(req) {
       for (const [key, records] of groups) {
         const canonical = chooseCanonical(records);
         const matchingIncoming = incomingByLegacy.get(legacyKey(canonical));
-        const upstreamId = matchingIncoming?.external_call_id || externalKey(canonical);
+        const upstreamId = sameAgencyIdentity(canonical,matchingIncoming) ? (matchingIncoming?.external_call_id || externalKey(canonical)) : externalKey(canonical);
         if (upstreamId && canonical.external_call_id !== upstreamId) {
           await base44.asServiceRole.entities.DispatchCall.update(canonical.id, { external_call_id: upstreamId });
         }
@@ -1412,7 +1430,7 @@ async function handleGracIngestion(req) {
         (record) => recordKey(record) && !/^BPS-\d{6}-\d{1,8}$/i.test(String(record.bps_reference || ""))
       );
       const newCalls = incoming.filter(
-        (call) => !byExternal.has(call.external_call_id) && !byLegacy.has(legacyKey(call)) && !archivedByExternal.has(externalKey(call)) && !archivedByLegacy.has(legacyKey(call))
+        (call) => !matchAgencyRecord(call,byExternal,byLegacy) && !archivedByExternal.has(externalKey(call)) && !archivedByLegacy.has(legacyKey(call))
       );
       const cadNumbers = await reserveCadNumbers(base44, needingCad.length + newCalls.length);
       let cadIndex = 0;
@@ -1433,7 +1451,7 @@ async function handleGracIngestion(req) {
       for (const callData of incoming) {
         const incomingExternal = externalKey(callData);
         const incomingLegacy = legacyKey(callData);
-        const existing = byExternal.get(callData.external_call_id) || byLegacy.get(incomingLegacy);
+        const existing = matchAgencyRecord(callData,byExternal,byLegacy);
         const alreadyArchived = archivedByExternal.has(incomingExternal) || archivedByLegacy.has(incomingLegacy);
         if (!existing && alreadyArchived) {
           continue;

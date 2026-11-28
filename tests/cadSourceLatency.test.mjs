@@ -57,3 +57,22 @@ if(process.argv.includes('--live')){
  console.log('LIVE SOURCE OK:',rows.length,'calls;',Date.now()-began,'ms;', 'cache age',response.cacheAgeSeconds);
 }
 console.log('PASS: newer API calls bypass stale HTML, cached-page fallback, duplicate merge, older active call retention, timeout retry, failed-source bounds.');
+
+// Both source entry points must execute byte-identical ingestion logic.
+const scheduled=await readFile('base44/functions/scheduledGracSync/entry.ts','utf8');
+const mainCore=source.split('var entry_default = handleGracIngestion;')[0].trim();
+const scheduledCore=scheduled.slice(scheduled.indexOf('// base44/functions/ingestGractivecalls/entry.ts'),scheduled.indexOf('// base44/functions/scheduledGracSync/entry.ts\nasync function entry_default(req)')).trim();
+assert.equal(scheduledCore,mainCore,'scheduled ingestion drifted from interactive ingestion');
+const identitySource=source.slice(source.indexOf('function externalKey(record)'),source.indexOf('function normalizeCall(row)'));
+const closureSource=source.slice(source.indexOf('function canCloseMissingAgencyCall('),source.indexOf('async function ingestFastPublishedCalls('));
+const identityContext={Date,Map,Set,String,Number,ALLOWED_AGENCIES:new Set(['RFD'])};
+vm.createContext(identityContext);vm.runInContext(identitySource+'\n'+closureSource,identityContext);
+const a={...row('id-one',1),source:'richmond',source_channel:'grac_api_live'};
+const b={...a,external_call_id:'id-two',location:'200 Different St'};
+assert.notEqual(identityContext.legacyKey(a),identityContext.legacyKey(b));
+assert.equal(identityContext.matchAgencyRecord(b,new Map(),new Map([[identityContext.legacyKey(a),a]])),null);
+assert.equal(identityContext.matchAgencyRecord({...a,external_call_id:'different-api'},new Map(),new Map([[identityContext.legacyKey(a),a]])),null);
+assert.equal(identityContext.canCloseMissingAgencyCall(a,new Set()),false);
+assert.equal(identityContext.canCloseMissingAgencyCall({...a,source:'dispatch_manual'},new Set(['RFD'])),false);
+assert.equal(identityContext.canCloseMissingAgencyCall(a,new Set(['RFD'])),true);
+assert.equal(merge([], [a,{...a,external_call_id:'id-two'}]).length,2);

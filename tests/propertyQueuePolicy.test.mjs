@@ -21,3 +21,14 @@ test('history and analytics are admin-only; dispatcher and supervisory roles alo
  assert.ok(canAccessCadAdminPages({role:'admin'}));for(const user of [{role:'dispatch'},{additional_roles:['supervisor']},{role:'admin',disabled:true},{role:'admin',additional_roles:['client']}])assert.ok(!canAccessCadAdminPages(user));
  const shell=readFileSync('src/pages/CADCenter.jsx','utf8');assert.ok(shell.includes("if(['history','response'].includes(tool)&&!adminAllowed)return"));assert.ok(shell.includes('selectedIds={monitoredIds} onTogglePin={togglePin}'));
 });
+
+test('assignment record-only links do not duplicate the officer queue or count as waiting',()=>{
+ const call={id:'linked',status:'On Scene',assigned_units:[],pathfinder_property_alert:true,pathfinder_assignment_unit_ids:['me']};
+ assert.ok(!needsPropertyAssignment(call,new Set()));assert.equal(splitCadIncidents([call],false,new Set(),['me']).active.length,0);
+});
+test('assignment and property notifications deep-link to the correct authorized workstations',()=>{
+ const banner=readFileSync('src/components/GlobalMessageBanner.jsx','utf8'),queue=readFileSync('src/pages/OfficerDispatchQueue.jsx','utf8');
+ assert.ok(banner.includes("page: 'OfficerDispatchQueue', kind: 'assignment'"));assert.ok(banner.includes("page: 'CommandDashboard',"));
+ assert.ok(banner.includes('cadDestination(page,new URLSearchParams(banner.callId?{call_id:banner.callId}:{}))'));
+ assert.ok(queue.includes('setSelectedId(linkedCallId)'));
+});

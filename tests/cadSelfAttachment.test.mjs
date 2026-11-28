@@ -12,9 +12,14 @@ test('self-attach is authenticated, adds only the requesting officer and keeps t
  const source=(await readFile('base44/functions/updateMyCallAssignment/entry.ts','utf8')).replace(/^import .*;\n/gm,'');
  const code=(await transform(source,{loader:'ts',format:'esm'})).code;let handler;
  new Function('createClientFromRequest','Deno',code)(()=>sdk,{serve:fn=>handler=fn});
- const invoke=async(call_id)=>{sdk.auth.me=async()=>officer;const response=await handler(new Request('https://example.test',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({call_id,action:'join',unit_id:'forged'})}));return {status:response.status,...await response.json()};};
+ const invoke=async(call_id,action='join')=>{sdk.auth.me=async()=>officer;const response=await handler(new Request('https://example.test',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({call_id,action,unit_id:'forged'})}));return {status:response.status,...await response.json()};};
  let result=await invoke('next');assert.equal(result.success,true,JSON.stringify(result));assert.equal(result.queued,true);assert.equal(officer.current_call_id,'current');assert.equal(tables.ActiveOfficer[0].status,'On Scene');assert.deepEqual(tables.DispatchCall[0].assigned_units,['other','me']);assert.equal(tables.CallAssignment[0].unit_id,'me');assert.equal(tables.CallAssignment[0].status,'pending');
  result=await invoke('next');assert.equal(tables.CallAssignment.length,1);assert.equal(result.success,true);
  result=await invoke('closed');assert.equal(result.status,409);
  officer.dispatch_hold_new_calls=true;result=await invoke('next');assert.equal(result.status,409);
+ officer.dispatch_hold_new_calls=false;
+ tables.DispatchCall.push({id:'current',incident:'Current call',location:'First street',status:'On Scene',assigned_units:['me']});
+ tables.CallAssignment.push({id:'current-assignment',call_id:'current',unit_id:'me',status:'on_scene',role:'primary',assigned_at:now});
+ result=await invoke('current','leave');assert.equal(result.success,true,JSON.stringify(result));assert.equal(result.current_call_id,'next');assert.equal(officer.current_call_id,'next');assert.equal(tables.ActiveOfficer[0].status,'Dispatched');assert.equal(tables.CallAssignment.find(a=>a.id==='current-assignment').status,'cleared');
+
 });
