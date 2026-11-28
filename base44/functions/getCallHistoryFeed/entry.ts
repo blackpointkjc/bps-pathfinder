@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
       // Explicit cached mode is used by the command board. Existing admin
       // historical queries and their access checks are unchanged.
       if(input.cached!==true)return Response.json({success:true,calls:await recentPropertyIncidents(base44.asServiceRole.entities),window_hours:12,fetched_at:new Date().toISOString()});
-      if(!entry||Date.now()-entry.at>=90000){
+      if(!entry||Date.now()-entry.at>=(input.refresh===true?15000:90000)){
         if(!entry?.pending){entry={at:entry?.at||0,rows:entry?.rows||[],pending:recentPropertyIncidents(base44.asServiceRole.entities)};propertyHistoryCache.set(cacheKey,entry);}
         try{const rows=await entry.pending!;entry.rows=rows;entry.at=Date.now();entry.pending=undefined;}
         catch(error){entry.pending=undefined;if(!entry.at)throw error;return Response.json({success:true,calls:entry.rows,window_hours:12,fetched_at:new Date(entry.at).toISOString(),warning:'Historical property log delayed; showing last confirmed records'});}

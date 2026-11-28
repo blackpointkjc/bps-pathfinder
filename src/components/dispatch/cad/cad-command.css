@@ -86,3 +86,18 @@
   .cad-resource-summary button{flex:1 1 78px;padding:5px 7px}
 }
 .grac-feed-indicator{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:12px;line-height:1.4;color:#d3e5ee}.grac-feed-indicator i{width:7px;height:7px;border-radius:50%;background:#22c55e;flex:none}.grac-feed-indicator[data-tone=warning] i{background:#facc15}.grac-feed-indicator b{font-weight:600}
+
+/* Keep the operational toolbar compact without the redundant source transcript. */
+.cad-terminal-shell .cad-command-statusbar.cad-status-clean{flex-wrap:wrap;align-items:center;gap:4px;overflow:visible;max-height:none;padding:4px 8px}
+.cad-status-clean .cad-status-metrics{flex:1 1 420px;flex-wrap:wrap;gap:2px}
+.cad-status-clean .cad-status-metrics button{flex:1 1 66px;min-width:0;padding:4px 6px;min-height:32px;align-items:center}
+.cad-status-clean .cad-status-metrics span{font:550 12px/1.25 system-ui,sans-serif;white-space:normal;text-align:center}
+.cad-status-clean .cad-status-metrics strong{font:650 15px/1.2 system-ui,sans-serif}
+.cad-status-clean .cad-status-actions{flex-wrap:wrap;gap:5px;padding:2px 0;border-left:0}
+.cad-status-clean .cad-status-actions button{font-size:13px;min-height:32px}
+html:is([data-pf-profile=field],[data-pf-profile=compact]) .cad-terminal-shell .cad-command-statusbar.cad-status-clean{max-height:none;overflow:visible}
+.cad-resource-unit{width:100%;text-align:left;color:#e2edf6;font-family:system-ui,sans-serif;grid-template-columns:minmax(40px,auto) minmax(0,1fr) auto}
+.cad-resource-unit[aria-pressed=true]{background:#25465c;border-color:#7cc8e5}
+.cad-resource-unit b,.cad-resource-unit small,.cad-resource-unit>span{font-size:14px;white-space:normal;overflow-wrap:anywhere}
+.cad-resource-inspect{padding:12px;background:#182e40;border:1px solid #4d7185;line-height:1.5;font-size:14px}
+.cad-resource-inspect button{display:block;margin-top:6px;padding:8px;text-align:left;border:1px solid #4d7185;border-radius:3px}

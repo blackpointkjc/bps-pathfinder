@@ -7,7 +7,8 @@ test('one unit workstation removes duplicate backlog and retains legacy links; d
  const command=readFileSync('src/pages/CommandDashboard.jsx','utf8');
  assert.equal((shell.match(/id: 'units'/g)||[]).length,1);
  assert.ok(!shell.includes("id: 'resources'"));
- assert.ok(shell.includes("params.get(toolKey)==='resources'?'units'"));
+ assert.ok(shell.includes("['resources','statusboard','units'].includes(rawTool)"));
+ assert.ok(!shell.includes('const UnitStatus=lazy'));assert.ok(!shell.includes("id: 'statusboard'"));assert.ok(shell.includes("active.id === 'units' ? <CadResourceBoard"));
  assert.ok(!board.includes('Pending assignments'));assert.ok(board.includes('Officer detail'));assert.ok(board.includes('initialUnitSearch'));
  assert.ok(command.includes('unified={true}'));assert.ok(command.includes('officerMode'));assert.ok(command.includes('showMap={false} canManage={false}'));
 });

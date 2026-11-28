@@ -20,7 +20,6 @@ const CadCommandPalette=lazy(()=>import('@/components/dispatch/cad/CadCommandPal
 const CadResourceBoard=lazy(()=>import('@/components/dispatch/cad/CadResourceBoard'));
 const CadResponseAnalytics=lazy(()=>import('@/components/dispatch/cad/CadResponseAnalytics'));
 const Navigation=lazy(()=>import('./Navigation'));
-const UnitStatus=lazy(()=>import('./UnitStatus'));
 const BOLOAlerts=lazy(()=>import('./BOLOAlerts'));
 const CallHistory=lazy(()=>import('./CallHistory'));
 const OfficerDispatchQueue=lazy(()=>import('./OfficerDispatchQueue'));
@@ -30,9 +29,8 @@ const TOOLS = {
     { id: 'command', icon: RadioTower, short: 'Command', label: 'Command Board', component: CommandDashboard },
     { id: 'officerqueue', icon: ClipboardList, short: 'Field MDT', label: 'Officer Queue', component: OfficerDispatchQueue },
     { id: 'map', icon: Map, short: 'Live map', label: 'Live Map', component: Navigation },
-    { id: 'units', icon: Users, short: 'Units', label: 'Unit Board', component: UnitStatus },
+    { id: 'units', icon: Users, short: 'Units', label: 'Unit Board', component: CadResourceBoard },
   ],
-  resources: [{ id: 'statusboard', icon: Users, short: 'Board', label: 'Unit board', component: CadResourceBoard }],
   alerts: [{ id: 'bolo', icon: AlertTriangle, short: 'BOLO', label: 'BOLO / Alerts', component: BOLOAlerts }],
   history: [
     { id: 'history', icon: History, short: 'Records', label: 'Call History', component: CallHistory },
@@ -56,7 +54,7 @@ function CadShell({ embedded = false }) {
   const location = useLocation();
   const navigate = useNavigate();
   const hostRef = useRef(null);
-  const { calls, loading, rateLimited, lastRefresh, manualRefresh } = useDashboardData();
+  const { calls, loading, rateLimited, manualRefresh } = useDashboardData();
   const {ids:propertyIds}=usePropertyAssignmentCalls(calls);
   const { rows, loading: rosterLoading, error: rosterError, refresh: refreshRoster } = useCadRoster();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -66,10 +64,12 @@ function CadShell({ embedded = false }) {
   const units = useMemo(() => rows.filter(isOperationalOfficer), [rows]);
   const params = new URLSearchParams(location.search);
   const detached = params.get('detached') === '1';
-  const section = params.get(embedded ? 'cad_section' : 'section') || 'live';
+  const rawSection=params.get(embedded ? 'cad_section' : 'section') || 'live';
+  const section=rawSection==='resources'?'live':rawSection;
   const toolKey = embedded ? 'cad_tool' : 'tool';
   const tools = permittedTools[section] || permittedTools.live;
-  const requestedTool=params.get(toolKey)==='resources'?'units':params.get(toolKey);
+  const rawTool=params.get(toolKey);
+  const requestedTool=['resources','statusboard','units'].includes(rawTool)||rawSection==='resources'&&!rawTool?'units':rawTool;
   const active = tools.find(tool => tool.id === requestedTool) || tools[0];
   const Component = active.component;
   const scale = cadScaleValue(display.scale);
@@ -81,7 +81,7 @@ function CadShell({ embedded = false }) {
     if(['history','response'].includes(tool)&&!adminAllowed)return;
     const next = new URLSearchParams(location.search);
     next.set(embedded ? 'cad_section' : 'section', nextSection);
-    next.set(toolKey, tool==='resources'?'units':tool);
+    next.set(toolKey, ['resources','statusboard'].includes(tool)?'units':tool);
     TRANSIENT_PARAMS.forEach(key => next.delete(key));
     Object.entries(extra).forEach(([key, value]) => {
       if (value != null && value !== '') next.set(key, String(value));
@@ -224,25 +224,19 @@ function CadShell({ embedded = false }) {
 
   return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} data-high-zoom={scale>1.24} style={shellStyle}>
     {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin} propertyIds={propertyIds} />}
-    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}<button className="cad-nav-monitor" type="button" aria-pressed={monitorOpen} onClick={toggleMonitor}><RadioTower size={15}/><span>Monitor {monitorOpen?'on':'off'}</span></button>{rateLimited&&<span role="status" className="cad-inline-feed-warning">Feed delayed</span>}</nav>
-    <CadStatusBar
+    <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}<button className="cad-nav-monitor" type="button" aria-pressed={monitorOpen} onClick={toggleMonitor}><RadioTower size={15}/><span>Monitor {monitorOpen?'on':'off'}</span></button>{active.id==='command'&&<button type="button" className="cad-nav-find" onClick={()=>setPaletteOpen(true)} title="Quick find (Ctrl+K)">Find</button>}{rateLimited&&<span role="status" className="cad-inline-feed-warning">Feed delayed</span>}</nav>
+    {active.id!=='command'&&<CadStatusBar
       calls={calls}
       units={units}
-      loading={loading}
-      rateLimited={rateLimited}
-      lastRefresh={lastRefresh}
       rosterError={rosterError}
       monitorOpen={monitorOpen}
       onRefresh={refreshAll}
       onFind={() => setPaletteOpen(true)}
       onOpen={openStatusTarget}
-      compact={active.id==='command'}
-      onToggleMonitor={active.id==='command'?undefined:toggleMonitor}
-      onDetach={active.id==='command'?undefined:openDetachedMap}
-    />
+      onDetach={openDetachedMap}
+    />}
     <div className={'cad-active-screen cad-terminal-screen cad-screen-' + active.id}>
-      <Suspense fallback={<CadToolLoading label={active.label}/>}>{active.id === 'units' ? <UnitStatus key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall}/>        : active.id === 'statusboard'
-          ? <CadResourceBoard calls={calls} units={units} loading={loading} rosterLoading={rosterLoading} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall} onOpenUnits={() => select('live', 'units')} />
+      <Suspense fallback={<CadToolLoading label={active.label}/>}>{active.id === 'units' ? <CadResourceBoard key={(params.get('cad_status')||'All')+'|'+(params.get('cad_unit')||'')} calls={calls} units={units} loading={loading} rosterLoading={rosterLoading} rosterError={rosterError} onRefresh={()=>refreshRoster(true)} initialStatus={params.get('cad_status')||'All'} initialUnitSearch={params.get('cad_unit')||''} onOpenCall={openCall} />
           : active.id === 'response'
           ? <CadResponseAnalytics />
           : active.id==='command' ? <CommandDashboard embedded/> : Component ? <Component embedded /> : null}</Suspense>

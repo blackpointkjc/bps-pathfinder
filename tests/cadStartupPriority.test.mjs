@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 const read=p=>readFileSync(p,'utf8');
 test('CAD shell opens the command board without loading other workstations',()=>{
  const shell=read('src/pages/CADCenter.jsx');
- for(const name of ['Navigation','UnitStatus','BOLOAlerts','CallHistory','OfficerDispatchQueue','CadCommandPalette','CadResponseAnalytics','CadResourceBoard']){
+ for(const name of ['Navigation','BOLOAlerts','CallHistory','OfficerDispatchQueue','CadCommandPalette','CadResponseAnalytics','CadResourceBoard']){
   assert.ok(shell.includes('const '+name+'=lazy(()=>import('),name);
   assert.ok(!shell.includes('import '+name+' from '),name);
  }
