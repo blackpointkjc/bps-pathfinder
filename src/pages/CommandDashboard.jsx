@@ -1,5 +1,5 @@
 import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
-import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
+import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
 import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
 import { cadReference } from '@/lib/cadReference';
 import useCadRoster from '@/hooks/useCadRoster';
@@ -9,7 +9,6 @@ import OfficerDutyStatusControl from '@/components/dispatch/OfficerDutyStatusCon
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useLocation,useNavigate } from 'react-router-dom';
-import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils';
 import { incidentPriority as getCallPriority } from '@/lib/incidentPriority';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
@@ -57,9 +56,10 @@ function CommandDashboardInner({embedded=false}) {
     const navigate = useNavigate();
     const { calls, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
     const { user: authenticatedUser } = useAuth();
+    const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(authenticatedUser?.id||authenticatedUser?.email);
+    useEffect(()=>{const sync=()=>{const next=readCadDisplaySettings();setLocalScale(next.scale);setMonitor(next.monitor);};window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
 
     const [currentUser, setCurrentUser] = useState(() => authenticatedUser ? { ...authenticatedUser, status: authenticatedUser.status || getLastOfficerStatus() || 'Out of Service' } : null);
-    const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
     const [syncStatus, setSyncStatus]           = useState({ state: 'syncing', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
     const [statusSaving,setStatusSaving] = useState(false);
@@ -79,7 +79,6 @@ function CommandDashboardInner({embedded=false}) {
         setSelectedCall(match);
     }, [linkedCallId, calls]);
 
-    const soundEnabledRef        = useRef(!isDispatchAlertMuted());
 
     // Re-render every second for live elapsed timers
     useEffect(() => {
@@ -94,9 +93,6 @@ function CommandDashboardInner({embedded=false}) {
             ...authenticatedUser,
             status: (authenticatedUser.status === 'On Patrol' ? 'Available' : authenticatedUser.status) || cachedStatus || 'Out of Service',
         });
-        const val = !isDispatchAlertMuted();
-        setSoundEnabled(val);
-        soundEnabledRef.current = val;
     }, [authenticatedUser]);
 
     useEffect(() => {
@@ -141,23 +137,6 @@ function CommandDashboardInner({embedded=false}) {
         }
     };
 
-    const toggleSound = () => {
-        const next = !soundEnabled;
-        setSoundEnabled(next);
-        soundEnabledRef.current = next;
-        setDispatchAlertMuted(!next);
-    };
-
-    useEffect(() => {
-        const syncMute = (event) => {
-            const enabled = !(event?.detail?.muted ?? isDispatchAlertMuted());
-            setSoundEnabled(enabled);
-            soundEnabledRef.current = enabled;
-        };
-        window.addEventListener('bps-alert-mute-changed', syncMute);
-        return () => window.removeEventListener('bps-alert-mute-changed', syncMute);
-    }, []);
-
     const getCallIdentifier = (call) => {
         const official = String(call?.agency_cad_number || (call?.official_cad_verified ? call?.call_id : '') || '').trim();
         const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
@@ -186,12 +165,11 @@ function CommandDashboardInner({embedded=false}) {
         : DISPATCH_STATUSES;
 
     return <>
-      {!embedded&&monitor&&<CadIncidentMonitor calls={calls} loading={loading} onOpen={setSelectedCall} onCollapse={toggleMonitor}/>}
-      <LiveCommandWorkspace officerMode standaloneZoom={embedded?1:cadScaleValue(localScale)} unified={true} showMap={false} canManage={false} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
+      {!embedded&&monitor&&<CadIncidentMonitor calls={calls} loading={loading} onOpen={setSelectedCall} onCollapse={toggleMonitor} selectedIds={monitoredIds} onTogglePin={togglePin}/>}
+      <LiveCommandWorkspace monitoredIds={monitoredIds} onTogglePin={togglePin} standaloneMonitor={!embedded?monitor:undefined} onToggleMonitor={!embedded?toggleMonitor:undefined} emergencyControl={<OfficerDistressButton currentUser={currentUser} compact/>} officerMode standaloneZoom={embedded?1:cadScaleValue(localScale)} unified={true} showMap={false} canManage={false} calls={calls} allCalls={calls} units={statusUnits} loading={loading} syncStatus={syncStatus} rateLimited={rateLimited} onRefresh={()=>{manualRefresh();refreshRoster(true);}} rosterLoading={rosterLoading} rosterError={rosterError} onRetryRoster={()=>refreshRoster(true)}
         onOpen={setSelectedCall} selectedCall={selectedCall} onClose={()=>setSelectedCall(null)} 
         canChangePriority={false} canClear={false}
         priorityOf={getCallPriority} identifierOf={getCallIdentifier} incidentOf={cleanIncident} timeOf={fmtTime} elapsedOf={elapsed} elapsedTimestampOf={elapsedAnchor} initialFocus={cadFocus}
-        actions={<>{!embedded&&<button type="button" aria-pressed={monitor} onClick={toggleMonitor}>Monitor {monitor?'on':'off'}</button>}{!embedded&&<CadZoomControls value={localScale} onChange={value=>{setLocalScale(value);writeCadDisplaySettings({...readCadDisplaySettings(),scale:value});}}/>}<button type="button" onClick={()=>navigate(cadDestination('OfficerDispatchQueue'))} className="min-h-9 rounded border border-cyan-700 px-3 text-sm">My assignments</button><button type="button" onClick={()=>navigate(cadDestination('CallHistory'))} className="min-h-10 rounded border border-cyan-700 px-3 text-sm">Call / property history</button><button type="button" onClick={()=>{const params=new URLSearchParams({new:'1'});if(selectedCall?.id){params.set('call_id',selectedCall.id);params.set('call_number',getCallIdentifier(selectedCall).value);}navigate(cadDestination('BOLOAlerts',params));}} className="min-h-10 rounded-lg border border-red-700 bg-red-950/50 px-4 text-sm font-semibold text-red-100">New BOLO</button><button type="button" aria-pressed={soundEnabled} onClick={toggleSound} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm">Audio {soundEnabled?'on':'off'}</button><OfficerDistressButton currentUser={currentUser}/></>}
         settings={<><OfficerDutyStatusControl user={currentUser} status={currentUser?.status} statuses={myStatuses} onChange={handleStatusChange} saving={statusSaving}/><AdminLiveLocationPrivacy currentUser={currentUser}/></>}
       />
 

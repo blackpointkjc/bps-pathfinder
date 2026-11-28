@@ -1,6 +1,6 @@
 import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
-import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
+import useCadMonitorSelection from '@/hooks/useCadMonitorSelection';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, ClipboardList, History, LayoutGrid, Map, Radio, RadioTower, Shield, Users } from 'lucide-react';
 import { CadClock } from '@/components/dispatch/CadTerminal';
@@ -12,7 +12,6 @@ import { isOperationalOfficer } from '@/lib/directoryUtils';
 import CadStatusBar from '@/components/dispatch/cad/CadStatusBar';
 import CadCommandPalette from '@/components/dispatch/cad/CadCommandPalette';
 import CadIncidentMonitor from '@/components/dispatch/cad/CadIncidentMonitor';
-import CadDisplaySettingsDialog from '@/components/dispatch/cad/CadDisplaySettingsDialog';
 import CadResponseAnalytics from '@/components/dispatch/cad/CadResponseAnalytics';
 import { cadScaleValue, readCadDisplaySettings, writeCadDisplaySettings } from '@/lib/cadDisplaySettings';
 import { createPageUrl } from '@/utils';
@@ -48,6 +47,7 @@ const TRANSIENT_PARAMS = ['new', 'open', 'call_id', 'call_number', 'callId', 'la
 function CadShell({ embedded = false }) {
   const {user}=useAuth();
   const dispatchAllowed=canAccessDispatchCenter(user);
+  const {ids:monitoredIds,toggle:togglePin}=useCadMonitorSelection(user?.id||user?.email);
   const permittedTools=useMemo(()=>Object.fromEntries(Object.entries(TOOLS).map(([group,items])=>[group,items.filter(item=>item.id!=='dispatch'||dispatchAllowed)])),[dispatchAllowed]);
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,7 +57,6 @@ function CadShell({ embedded = false }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [display, setDisplay] = useState(() => readCadDisplaySettings());
   const monitorOpen=display.monitor;
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const units = useMemo(() => rows.filter(isOperationalOfficer), [rows]);
   const params = new URLSearchParams(location.search);
@@ -97,7 +96,7 @@ function CadShell({ embedded = false }) {
     setDisplay(previous=>writeCadDisplaySettings(typeof next==='function'?next(previous):next));
   }, []);
 
-  useEffect(()=>{const sync=()=>setDisplay(readCadDisplaySettings());window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync);},[]);
+  useEffect(()=>{const sync=()=>setDisplay(readCadDisplaySettings());window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
   const toggleMonitor = () => {
     updateDisplay(previous=>({...previous,monitor:!previous.monitor}));
   };
@@ -178,7 +177,7 @@ function CadShell({ embedded = false }) {
     {
       id: 'cmd-monitor',
       label: monitorOpen ? 'Hide incident monitor' : 'Show incident monitor',
-      detail: 'Pending and at-risk incidents across every workstation',
+      detail: 'Show or hide your manually selected incidents',
       run: toggleMonitor,
     },
     {
@@ -193,19 +192,13 @@ function CadShell({ embedded = false }) {
       detail: 'Dispatch, acknowledgement, arrival and clearance times',
       run: () => select('analysis', 'response'),
     },
-    {
-      id: 'cmd-display',
-      label: 'CAD display settings',
-      detail: 'Scaling, incident monitor and workspace layout',
-      run: () => setSettingsOpen(true),
-    },
   ].filter(command=>active.id!=='command'||command.id!=='cmd-detach'), [monitorOpen, display, refreshAll, location.search,active.id]);
 
   if (detached) {
     return <section ref={hostRef} className="cad-console-shell cad-terminal-shell cad-shell-detached" data-high-zoom={scale>1.24} style={shellStyle}>
       <div className="cad-terminal-systembar">
         <span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>Detached live map</span></span>
-        <div className="cad-top-display"><CadZoomControls value={display.scale} onChange={value=>updateDisplay({...display,scale:value})}/><CadClock /></div>
+        <div className="cad-top-display"><CadClock /></div>
       </div>
       <div className="cad-active-screen cad-terminal-screen cad-screen-map">
         <Navigation embedded />
@@ -214,7 +207,7 @@ function CadShell({ embedded = false }) {
   }
 
   return <section ref={hostRef} className={'cad-console-shell cad-terminal-shell cad-shell-' + active.id+(active.id==='command'?' cad-command-v2':'')} data-workstation={active.id} data-high-zoom={scale>1.24} style={shellStyle}>
-    <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><div className="cad-top-display"><CadZoomControls value={display.scale} onChange={value=>updateDisplay({...display,scale:value})}/><CadClock /></div></div>
+    <div className="cad-terminal-systembar"><span className="cad-terminal-id"><Shield size={16} /><b>PATHFINDER CAD</b><span> / </span><span>{active.label}</span></span><div className="cad-top-display"><CadClock /></div></div>
     <CadStatusBar
       calls={calls}
       units={units}
@@ -228,7 +221,7 @@ function CadShell({ embedded = false }) {
       onOpen={target => select('live', target.tool, target.params || {})}
       onToggleMonitor={toggleMonitor}
       onDetach={active.id==='command'?undefined:openDetachedMap}
-      onSettings={() => setSettingsOpen(true)}
+      compact={active.id==='command'}
     />
     {monitorOpen && <CadIncidentMonitor calls={calls} loading={loading} onOpen={openCall} onCollapse={toggleMonitor} />}
     <nav className="cad-terminal-nav" aria-label="CAD workstations">{Object.entries(permittedTools).map(([group, items]) => <div key={group} className="cad-terminal-nav-group" aria-label={group}>{items.map(item => { const Icon = item.icon; return <button type="button" key={item.id} aria-current={active.id === item.id ? 'page' : undefined} onClick={() => select(group, item.id)} title={item.label}><Icon size={17} /><span className="cad-nav-full">{item.label}</span><span className="cad-nav-short">{item.short}</span></button>; })}</div>)}</nav>
@@ -247,15 +240,6 @@ function CadShell({ embedded = false }) {
       onSelectCall={openCall}
       onSelectUnit={unit => select('live', 'units', { cad_unit: unit.unit_number || unit.email || '' })}
       onSelectWorkstation={tool => select(tool.section, tool.id)}
-    />
-    <CadDisplaySettingsDialog
-      open={settingsOpen}
-      onOpenChange={setSettingsOpen}
-      settings={display} showMapSetting={false}
-      onChange={next => {
-        updateDisplay(next);
-
-      }}
     />
   </section>;
 }

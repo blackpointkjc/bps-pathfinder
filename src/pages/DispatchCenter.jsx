@@ -4,7 +4,6 @@ import '@/components/dispatch/cad/unified-cad-grid.css';
 import {useAuth} from '@/lib/AuthContext';
 import {canAccessDispatchCenter} from '@/lib/dispatchPermissions';
 import {cadScaleValue,readCadDisplaySettings,writeCadDisplaySettings} from '@/lib/cadDisplaySettings';
-import CadZoomControls from '@/components/dispatch/cad/CadZoomControls';
 import '@/components/dispatch/cad/dispatch-readable.css';
 import '@/components/dispatch/cad-center-terminal.css';
 import '@/components/dispatch/cad-workstations.css';
@@ -65,6 +64,7 @@ export default function DispatchCenter({embedded=false}) {
 function DispatchWorkspace({embedded=false}) {
     const [standaloneScale,setStandaloneScale]=useState(()=>readCadDisplaySettings().scale);
     const zoom=embedded?1:cadScaleValue(standaloneScale);
+    useEffect(()=>{const sync=()=>setStandaloneScale(readCadDisplaySettings().scale);window.addEventListener('storage',sync);window.addEventListener('bps-cad-display-changed',sync);return()=>{window.removeEventListener('storage',sync);window.removeEventListener('bps-cad-display-changed',sync);};},[]);
     const workstationRef=React.useRef(null);
     const statusBarRef=React.useRef(null);
     useEffect(()=>{
@@ -776,7 +776,7 @@ function DispatchWorkspace({embedded=false}) {
                     <span className={"w-1.5 h-1.5 rounded-full ml-1 "+(callsLoadWarning?"bg-amber-400":loading?"bg-blue-400":"bg-green-400")} />
                     <span className="text-cyan-200 text-[10px]">{loading ? 'SYNCING' : callsLoadWarning?'DEGRADED':'CAD FEED'}</span>
                 </div>
-                {!embedded&&<CadZoomControls value={standaloneScale} onChange={value=>{setStandaloneScale(value);writeCadDisplaySettings({...readCadDisplaySettings(),scale:value});}}/>}
+                
                 <div className="flex-1" />
                 <div className="dispatch-actions flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 sm:w-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_button]:h-9 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_button]:rounded-lg [&_button]:px-3 [&_button]:text-[10px] [&_button]:font-bold">
                     <button type="button" onClick={()=>{for(const prefix of ['function:getActiveDispatchCalls:','function:getOnDutyUnits:','function:sharedCadTimeline:'])clearBase44ReadCacheMatching(prefix);void loadActiveCalls(true);void loadUnits(true);if(selectedCall?.id){void loadCallNotes(selectedCall.id);void loadWelfareChecks(selectedCall.id);}}} className="pf-cad-button">Refresh</button>

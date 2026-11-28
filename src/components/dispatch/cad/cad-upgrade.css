@@ -137,4 +137,8 @@
   .cad-analytics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .cad-analytics-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
   .cad-settings-scales,.cad-clone-grid{grid-template-columns:minmax(0,1fr)}
-}
+}.cad-monitor-entry{display:flex;align-items:stretch;flex:none;background:#142838}
+.cad-monitor-entry .cad-monitor-chip{min-width:170px}
+.cad-monitor-remove,.cad-monitor-missing button{color:#c5dbe8;padding:4px;border-left:1px solid #3a5265;background:#182b3b}
+.cad-monitor-remove:hover,.cad-monitor-missing button:hover{background:#65303b;color:white}
+.cad-monitor-missing{display:flex;align-items:center;gap:5px;padding:5px 8px;color:#a9bdcc;font-size:11px;flex:none}

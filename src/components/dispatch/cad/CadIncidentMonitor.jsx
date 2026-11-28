@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronUp, RadioTower } from 'lucide-react';
+import { ChevronUp, RadioTower, X } from 'lucide-react';
 import {
   cadAgeLabel,
   cadNeedsDispatch,
@@ -7,6 +7,7 @@ import {
   cadServiceLevel,
 } from '@/lib/cadOperationalStatus';
 import './cad-upgrade.css';
+import {monitoredIncidents} from '@/lib/cadMonitorSelection';
 
 const FIELD_SOURCE = /officer|field|mdt|helpm|self|patrol|unit/i;
 
@@ -17,7 +18,7 @@ const isFieldCall = call => FIELD_SOURCE.test(String(call?.source || call?.sourc
  * every workstation for their whole lifecycle: pending dispatch first, then the
  * calls already assigned but at or past their service level.
  */
-export default function CadIncidentMonitor({ calls = [], loading = false, onOpen, onCollapse }) {
+export default function CadIncidentMonitor({ calls = [], loading = false, onOpen, onCollapse, selectedIds=[], onTogglePin }) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -25,10 +26,10 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
     return () => clearInterval(timer);
   }, []);
 
-  const rows = useMemo(() => calls
-    .map(call => {
-      const level = cadServiceLevel(call, now);
-      const pending = cadNeedsDispatch(call);
+  const rows = useMemo(()=>monitoredIncidents(calls,selectedIds).map(call=>({call,level:cadServiceLevel(call,now),pending:cadNeedsDispatch(call)})),[calls,selectedIds,now]);
+  const missing=selectedIds.filter(id=>!rows.some(row=>String(row.call.id)===id));
+
+  const pending = cadNeedsDispatch(call);
       return { call, level, pending };
     })
     .filter(row => row.pending || row.level.state === 'overdue' || row.level.state === 'watch')
@@ -44,7 +45,7 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
   return (
     <section className="cad-monitor" aria-label="Incident monitor">
       <div className="cad-monitor-bar">
-        <span className="cad-monitor-title"><RadioTower size={14} /> Incident monitor</span>
+        <span className="cad-monitor-title"><RadioTower size={14} /> My monitored incidents ({rows.length})</span>
         <span className="cad-monitor-counts">
           <b data-tone={pending ? 'warning' : 'normal'}>{pending} pending</b>
           <b data-tone={overdue ? 'danger' : 'normal'}>{overdue} over SLA</b>
@@ -55,8 +56,7 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
       </div>
       <div className="cad-monitor-track">
         {rows.map(({ call, level, pending: awaiting }) => (
-          <button
-            key={call.id}
+          <div key={call.id} className="cad-monitor-entry"><button
             type="button"
             className="cad-monitor-chip"
             data-state={level.state}
@@ -73,11 +73,12 @@ export default function CadIncidentMonitor({ calls = [], loading = false, onOpen
               <i>{awaiting ? 'Pending' : 'Active'}</i>
               {isFieldCall(call) && <i data-field="true">Field</i>}
             </span>
-          </button>
+          </button>{onTogglePin&&<button className="cad-monitor-remove" type="button" aria-label={'Stop monitoring '+cadReferenceValue(call)} title="Stop monitoring" onClick={()=>onTogglePin(call.id)}><X size={14}/></button>}</div>
         ))}
-        {!rows.length && (
+        {missing.map(id=><div className="cad-monitor-missing" key={id}><span>Incident no longer in live feed</span><button type="button" aria-label="Remove unavailable incident from monitor" onClick={()=>onTogglePin?.(id)}><X size={14}/></button></div>)}
+        {!rows.length && !missing.length && (
           <p className="cad-monitor-empty">
-            {loading ? 'Loading the live CAD feed…' : 'No pending or at-risk incidents right now.'}
+            {loading ? 'Loading the live CAD feed…' : 'No calls selected. Use the pin icon on an incident to monitor it.'}
           </p>
         )}
       </div>

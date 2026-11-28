@@ -32,6 +32,7 @@ export default function CadStatusBar({
   onToggleMonitor,
   onDetach,
   onSettings,
+  compact=false,
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -57,16 +58,16 @@ export default function CadStatusBar({
   return (
     <div className="cad-command-statusbar" role="status" aria-live="polite">
       <span className="cad-status-feed" data-tone={feed.tone}><i />{feed.label}</span>
-      <div className="cad-status-metrics">
+      {!compact&&<div className="cad-status-metrics">
         {metrics.map(metric => (
           <button key={metric.key} type="button" data-tone={metric.tone} onClick={() => onOpen?.(metric.target)}>
             <span>{metric.label}</span>
             <strong>{metric.value}</strong>
           </button>
         ))}
-      </div>
+      </div>}
       <div className="cad-status-actions">
-        {telemetry.oldest > 0 && <span className="cad-status-oldest">Oldest {cadAgeLabel(telemetry.oldest)}</span>}
+        {!compact&&telemetry.oldest > 0 && <span className="cad-status-oldest">Oldest {cadAgeLabel(telemetry.oldest)}</span>}
         <span className="cad-status-sync">{lastRefresh ? `Synced ${formatEasternTime(lastRefresh)} ET` : 'Awaiting sync'}</span>
         {rosterError && <span className="cad-status-stale" title={rosterError}>Roster delayed</span>}
         <button type="button" aria-pressed={monitorOpen} onClick={onToggleMonitor} title="Show or hide the incident monitor">
@@ -75,15 +76,15 @@ export default function CadStatusBar({
         {onDetach&&<button type="button" onClick={onDetach} title="Open the live map in a separate window for a second monitor">
           <MonitorPlay size={14} /><span>Detach map</span>
         </button>}
-        <button type="button" onClick={onSettings} aria-label="CAD display settings" title="CAD display settings">
+        {onSettings&&<button type="button" onClick={onSettings} aria-label="CAD display settings" title="CAD display settings">
           <SlidersHorizontal size={14} />
-        </button>
+        </button>}
         <button type="button" onClick={onFind} aria-label="Open the CAD command palette">
           <Search size={14} /><span>Find</span><kbd>Ctrl K</kbd>
         </button>
-        <button type="button" onClick={onRefresh} aria-label="Refresh the CAD feed and unit roster">
+        {!compact&&<button type="button" onClick={onRefresh} aria-label="Refresh the CAD feed and unit roster">
           <RefreshCw size={14} /><span>Refresh</span>
-        </button>
+        </button>}
       </div>
     </div>
   );
